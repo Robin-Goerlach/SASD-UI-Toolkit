@@ -12,11 +12,13 @@ This roadmap describes technical direction, not release-date commitments. The pr
 - [x] Treat terminal as a first-class backend
 - [x] Reserve Model/View as the long-term basis for data-heavy widgets
 - [x] Create German/English documentation structure
-- [ ] Introduce Architecture Decision Records (ADR) for detailed decisions that need durable rationale
+- [x] Introduce Architecture Decision Records (ADR) for durable rationale
+- [x] Define public naming without vendor-prefixed class names
+- [x] Keep the visual designer/RAD environment outside the core toolkit
 
-## M1 – Core skeleton
+## M1 – Core skeleton and headless validation
 
-**Goal:** make the platform-neutral core compile.
+**Goal:** make the platform-neutral core executable and testable without a real display backend.
 
 Planned:
 
@@ -31,14 +33,18 @@ Planned:
 - event queue / dispatcher
 - backend interface
 - capability model
+- deterministic headless/mock backend
+- reusable backend contract tests
 - unit-test foundation
 - CI for Windows, Linux and macOS
 
-**Exit criterion:** the core builds with GCC, Clang and MSVC without requiring a concrete GUI framework.
+The mock backend should validate component trees, ownership, events, focus, layout and backend contracts without requiring a terminal, display server or native window system.
+
+**Exit criterion:** the core builds with GCC, Clang and MSVC without requiring a concrete GUI framework, and representative core behavior passes against the headless/mock backend.
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Goal:** first genuinely usable vertical slice.
+**Goal:** first genuinely usable user-visible vertical slice.
 
 Planned:
 
@@ -85,11 +91,11 @@ Planned:
 - `CheckBox`
 - `RadioButton`
 - `ComboBox`
-- `ListView`
 - commands/actions
 - semantic menu model
 - shortcuts
 - clipboard foundation
+- binding/validation foundations where supported by real use cases
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 
@@ -134,7 +140,7 @@ Longer-term areas:
 - printing
 - theme/appearance integration
 
-## M8 – Developer productivity
+## M8 – Developer productivity foundations
 
 Only after the component model is sufficiently stable:
 
@@ -142,8 +148,10 @@ Only after the component model is sufficiently stable:
 - serialization of UI descriptions
 - resource system
 - designer-friendly properties
-- optional visual designer
-- IDE/tooling support
+- design-time validation metadata
+- IDE/tooling integration points
+
+A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 
 ## Deliberately later
 
@@ -156,7 +164,10 @@ Do not prioritize too early:
 - full rich-text stack
 - browser engine
 - maximizing widget count merely for a feature checklist
+- stable binary ABI before the architecture has survived multiple real backends
 
 ## Release principle
 
 A release should provide a **usable and tested vertical slice**. Six widgets that work correctly across two backends are more valuable than fifty partially implemented components.
+
+Pre-1.0 releases may contain source-breaking changes when necessary to correct the architecture. Such changes must be documented clearly.
