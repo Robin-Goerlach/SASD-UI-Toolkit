@@ -12,11 +12,13 @@ Die Roadmap ist eine technische Richtung, kein verbindlicher Veröffentlichungst
 - [x] Terminal als First-Class-Backend festlegen
 - [x] Model/View als langfristige Basis für datenreiche Widgets vorsehen
 - [x] deutsch-/englischsprachige Dokumentationsstruktur anlegen
-- [ ] erste Architecture Decision Records (ADR) für strittige Detailentscheidungen einführen
+- [x] Architecture Decision Records (ADR) mit dauerhafter Begründung einführen
+- [x] öffentliche Namenskonvention ohne Herstellerpräfixe festlegen
+- [x] visuellen Designer/RAD-Umgebung außerhalb des Toolkit-Core halten
 
-## M1 – Core Skeleton
+## M1 – Core Skeleton und Headless-Validierung
 
-**Ziel:** plattformneutralen Kern kompilierbar machen.
+**Ziel:** den plattformneutralen Kern ohne reales Anzeige-Backend ausführbar und testbar machen.
 
 Geplant:
 
@@ -31,14 +33,18 @@ Geplant:
 - Event Queue / Dispatcher
 - Backend-Interface
 - Capability-Modell
+- deterministisches Headless-/Mock-Backend
+- wiederverwendbare Backend-Contract-Tests
 - Unit-Test-Grundlage
 - CI für Windows, Linux und macOS
 
-**Exit-Kriterium:** Der Core baut mit GCC, Clang und MSVC und benötigt keine konkrete GUI-Bibliothek.
+Das Mock-Backend soll Component Tree, Ownership, Events, Fokus, Layout und Backend-Verträge ohne Terminal, Display Server oder natives Fenstersystem prüfen können.
+
+**Exit-Kriterium:** Der Core baut mit GCC, Clang und MSVC ohne konkrete GUI-Bibliothek, und repräsentatives Core-Verhalten besteht die Tests gegen das Headless-/Mock-Backend.
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Ziel:** erster tatsächlich nutzbarer vertikaler Schnitt.
+**Ziel:** erster tatsächlich nutzbarer und sichtbarer vertikaler Schnitt.
 
 Geplant:
 
@@ -85,11 +91,11 @@ Geplant:
 - `CheckBox`
 - `RadioButton`
 - `ComboBox`
-- `ListView`
 - Commands/Actions
 - Menüs als semantisches Modell
 - Shortcuts
 - Clipboard-Basis
+- Binding-/Validation-Grundlagen dort, wo reale Anwendungsfälle sie rechtfertigen
 
 ## M5 – Model/View und datenreiche Widgets / v0.4.x
 
@@ -134,7 +140,7 @@ Langfristige Themen:
 - Printing
 - Theme/Appearance Integration
 
-## M8 – Entwicklerkomfort
+## M8 – Grundlagen für Entwicklerkomfort
 
 Erst wenn das Komponentenmodell stabil genug ist:
 
@@ -142,8 +148,10 @@ Erst wenn das Komponentenmodell stabil genug ist:
 - Serialisierung von UI-Beschreibungen
 - Resource-System
 - Designer-freundliche Properties
-- optionaler visueller Designer
-- IDE-/Tooling-Unterstützung
+- Design-Time-Validierungsmetadaten
+- IDE-/Tooling-Schnittstellen
+
+Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 
 ## Bewusst später
 
@@ -156,7 +164,10 @@ Nicht frühzeitig priorisieren:
 - vollständiger Rich-Text-Stack
 - Browser Engine
 - möglichst viele Widgets nur für eine lange Featureliste
+- stabile Binär-ABI, bevor die Architektur mehrere reale Backends überstanden hat
 
 ## Release-Prinzip
 
 Ein Release soll einen **nutzbaren, getesteten vertikalen Schnitt** liefern. Ein kleines Toolkit, dessen sechs Widgets auf zwei Backends sauber funktionieren, ist wertvoller als eine Liste von fünfzig halbfertigen Komponenten.
+
+Pre-1.0-Releases dürfen Source-Breaking-Changes enthalten, wenn diese notwendig sind, um Architekturfehler früh zu korrigieren. Solche Änderungen müssen klar dokumentiert werden.
