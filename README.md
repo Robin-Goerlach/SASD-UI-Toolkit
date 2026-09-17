@@ -58,6 +58,27 @@ The public API should describe **what a UI element means**, while the backend de
 
 A `Button`, for example, may become a native Windows/GTK/AppKit control, a rendered button in an SDL-backed window, or an interactive text element in a terminal. Application logic should not have to be rewritten for each representation.
 
+## Naming: the namespace carries the project name
+
+Public classes deliberately do **not** repeat `SASD` or `Sasd` in every type name. Modern C++ namespaces already provide library identity and collision avoidance.
+
+Preferred:
+
+```cpp
+sasd::ui::Window window;
+sasd::ui::Button okButton{"OK"};
+```
+
+A local alias can make application code even shorter:
+
+```cpp
+namespace ui = sasd::ui;
+ui::Window window;
+ui::Button okButton{"OK"};
+```
+
+Names such as `SasdWindow`, `SasdButton` or `SasdObject` are intentionally not part of the naming strategy. A universal `Object` base class will also not be introduced merely to imitate VCL or Java; it would need a concrete technical justification.
+
 ## Design principles
 
 ### Component-oriented, but modern C++
@@ -79,6 +100,8 @@ Component
         └── Window
 ```
 
+`Component` is a toolkit base for components that need component/lifecycle semantics; it is not intended to become an artificial root class for every value type in the library.
+
 ### AWT-style abstraction, without becoming an AWT clone
 
 Java AWT demonstrated the value of a common component hierarchy, layout managers, an event queue and platform-specific peers. SASD UI Toolkit uses these ideas as architectural input while avoiding Java-specific and legacy API constraints.
@@ -95,10 +118,15 @@ The project plans a Model/View-style architecture for lists, trees and tables so
 
 A terminal does not have pixels, native buttons or desktop window chrome. Instead of hiding this fact, the toolkit will use backend capabilities and backend-specific measurement while keeping shared semantics for layout, focus, commands and events.
 
+### Headless before visible backends
+
+Before the first real terminal or desktop backend, M1 includes a deterministic **headless/mock backend**. It exists to validate component trees, ownership, events, focus, layout and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
+
 ## Planned target environments
 
 | Environment | Intended strategy | Status |
 |---|---|---|
+| Headless / Mock | Deterministic contract and core testing | Planned for M1 |
 | Terminal / ANSI / VT | Rendered terminal backend | Planned for first usable preview |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
@@ -135,15 +163,17 @@ int main() {
 The project intentionally starts small.
 
 1. **M0 – Architecture and repository foundation**  
-   Document scope, backend boundaries, design principles and development rules.
-2. **M1 – Core skeleton**  
-   CMake, `Application`, `Component`, `Widget`, `Container`, events, layout foundations, backend contracts and CI.
+   Document scope, backend boundaries, design principles, ADRs and development rules.
+2. **M1 – Core skeleton and headless validation**  
+   CMake, `Application`, `Component`, `Widget`, `Container`, events, layout foundations, backend contracts, `BackendCapabilities`, deterministic mock backend, tests and CI.
 3. **M2 – Terminal Preview / v0.1.0**  
-   First usable backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
+   First user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
 4. **M3 – Rendered Desktop Preview / v0.2.0**  
    Demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
 5. **Later milestones**  
-   More form controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and eventually designer-oriented metadata/tooling.
+   More form controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
+
+A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 
 See the full [English roadmap](docs/en/ROADMAP.md) or [German roadmap](docs/de/ROADMAP.md).
 
@@ -168,6 +198,12 @@ Documentation is maintained in German and English.
 - [Entwicklungsrichtlinien](docs/de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](docs/de/ROADMAP.md)
 - [Vorbilder und Referenzen](docs/de/REFERENZEN.md)
+
+### Architecture decisions
+
+- [Architecture Decision Records (ADR)](docs/adr/README.md)
+
+The ADRs preserve not only **what** the current architecture is, but **why** major choices were made and which alternatives were rejected or deferred.
 
 See also the [documentation index](docs/README.md).
 
