@@ -1,12 +1,12 @@
 # SASD UI Toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Project status](https://img.shields.io/badge/status-architecture%20%2F%20bootstrap-orange)
+![Project status](https://img.shields.io/badge/status-M1%20core%20skeleton-orange)
 ![C++ target](https://img.shields.io/badge/C%2B%2B-20-blue)
 
 **Open-source C++ UI toolkit for building portable desktop and terminal applications across Windows, Linux and macOS.**
 
-> **Current status:** architecture and repository bootstrap. There is no stable toolkit release yet. The repository currently documents the intended architecture before implementation starts.
+> **Current status:** M1 core-skeleton development. The repository now contains the first platform-neutral C++ core, a deterministic headless/mock backend, unit tests and cross-platform CI. There is no stable toolkit release yet.
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 
@@ -28,6 +28,58 @@ The project explores a specific combination that is not the primary design goal 
 - architecture suitable for classic desktop, administration, engineering and data-oriented applications.
 
 The goal is **not** to clone VCL, Swing, Qt or wxWidgets. The goal is to learn from their strongest ideas and combine them into a coherent toolkit for modern C++.
+
+## Current M1 foundation
+
+The repository now contains the first working implementation slice:
+
+- CMake-based C++20 library target `SASD::UI`;
+- `Application`, `Component`, `Widget` and `Container` foundations;
+- explicit distinction between component ownership and visual parenting;
+- backend-neutral geometry (`Point`, `Size`, `Rect`, `SizeConstraints`);
+- backend capabilities model;
+- key, text, focus, resize and quit event types;
+- thread-safe FIFO `EventQueue`;
+- deterministic `MockBackend` for headless contract testing;
+- dependency-free unit-test harness integrated with CTest;
+- warnings-as-errors support;
+- AddressSanitizer/UndefinedBehaviorSanitizer support;
+- GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
+
+The visible terminal and desktop backends are intentionally not implemented yet.
+
+## Build and test
+
+A normal development build with tests:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+A stricter local build can turn warnings into errors:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_TESTS=ON \
+  -DSASD_UI_WARNINGS_AS_ERRORS=ON
+```
+
+On supported Clang/GCC environments, sanitizers can additionally be enabled:
+
+```bash
+cmake -S . -B build-sanitized \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_TESTS=ON \
+  -DSASD_UI_WARNINGS_AS_ERRORS=ON \
+  -DSASD_UI_ENABLE_SANITIZERS=ON
+cmake --build build-sanitized --parallel
+ctest --test-dir build-sanitized --output-on-failure
+```
 
 ## Architectural direction
 
@@ -56,7 +108,7 @@ The goal is **not** to clone VCL, Swing, Qt or wxWidgets. The goal is to learn f
 
 The public API should describe **what a UI element means**, while the backend decides **how that element is represented**.
 
-A `Button`, for example, may become a native Windows/GTK/AppKit control, a rendered button in an SDL-backed window, or an interactive text element in a terminal. Application logic should not have to be rewritten for each representation.
+A future `Button`, for example, may become a native Windows/GTK/AppKit control, a rendered button in an SDL-backed window, or an interactive text element in a terminal. Application logic should not have to be rewritten for each representation.
 
 ## Naming: the namespace carries the project name
 
@@ -102,6 +154,8 @@ Component
 
 `Component` is a toolkit base for components that need component/lifecycle semantics; it is not intended to become an artificial root class for every value type in the library.
 
+The M1 implementation also keeps **ownership** and **visual parenting** distinct: a non-visual component can have an owner without becoming a visual child.
+
 ### AWT-style abstraction, without becoming an AWT clone
 
 Java AWT demonstrated the value of a common component hierarchy, layout managers, an event queue and platform-specific peers. SASD UI Toolkit uses these ideas as architectural input while avoiding Java-specific and legacy API constraints.
@@ -120,58 +174,26 @@ A terminal does not have pixels, native buttons or desktop window chrome. Instea
 
 ### Headless before visible backends
 
-Before the first real terminal or desktop backend, M1 includes a deterministic **headless/mock backend**. It exists to validate component trees, ownership, events, focus, layout and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
+M1 includes a deterministic **headless/mock backend**. It validates component trees, ownership, events, lifecycle and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
 
 ## Planned target environments
 
 | Environment | Intended strategy | Status |
 |---|---|---|
-| Headless / Mock | Deterministic contract and core testing | Planned for M1 |
+| Headless / Mock | Deterministic contract and core testing | Implemented foundation |
 | Terminal / ANSI / VT | Rendered terminal backend | Planned for first usable preview |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |
 | SDL3 | Optional rendered desktop backend, hidden behind SASD API | Planned |
 
-This table describes the intended direction, **not currently implemented support**.
-
-## Early API direction
-
-The following is intentionally illustrative and will change as the first prototype validates ownership, event and layout decisions:
-
-```cpp
-#include <sasd/ui/application.hpp>
-#include <sasd/ui/button.hpp>
-#include <sasd/ui/label.hpp>
-#include <sasd/ui/layout/vbox.hpp>
-#include <sasd/ui/window.hpp>
-
-int main() {
-    sasd::ui::Application app;
-    sasd::ui::Window window{"SASD UI Toolkit"};
-
-    window.setLayout(sasd::ui::VBox{});
-    window.add<sasd::ui::Label>("Hello from SASD UI Toolkit");
-    window.add<sasd::ui::Button>("Close");
-
-    return app.run(window);
-}
-```
-
 ## Roadmap at a glance
 
-The project intentionally starts small.
-
-1. **M0 – Architecture and repository foundation**  
-   Document scope, backend boundaries, design principles, ADRs and development rules.
-2. **M1 – Core skeleton and headless validation**  
-   CMake, `Application`, `Component`, `Widget`, `Container`, events, layout foundations, backend contracts, `BackendCapabilities`, deterministic mock backend, tests and CI.
-3. **M2 – Terminal Preview / v0.1.0**  
-   First user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
-4. **M3 – Rendered Desktop Preview / v0.2.0**  
-   Demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
-5. **Later milestones**  
-   More form controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
+1. **M0 – Architecture and repository foundation** – complete enough to begin implementation.
+2. **M1 – Core skeleton and headless validation** – in progress; first core/test slice is implemented.
+3. **M2 – Terminal Preview / v0.1.0** – first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
+4. **M3 – Rendered Desktop Preview / v0.2.0** – demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
+5. **Later milestones** – more controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 
