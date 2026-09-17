@@ -34,11 +34,24 @@ public:
 
     void adopt(std::unique_ptr<Component> component);
 
+    /** Returns the number of components owned by this container, visual or non-visual. */
     [[nodiscard]] std::size_t componentCount() const noexcept { return components_.size(); }
     [[nodiscard]] Component& componentAt(std::size_t index) { return *components_.at(index); }
     [[nodiscard]] const Component& componentAt(std::size_t index) const {
         return *components_.at(index);
     }
+
+    /** Returns the number of visually parented Widget children. */
+    [[nodiscard]] std::size_t childCount() const noexcept;
+
+    /**
+     * Returns a visual child by its visual-child index.
+     *
+     * Non-visual owned components are deliberately skipped. The order follows adoption order among
+     * Widget-derived components. Throws std::out_of_range when index is outside the visual children.
+     */
+    [[nodiscard]] Widget& childAt(std::size_t index);
+    [[nodiscard]] const Widget& childAt(std::size_t index) const;
 
 private:
     std::vector<std::unique_ptr<Component>> components_;
