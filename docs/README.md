@@ -4,16 +4,7 @@ This directory contains the project documentation in **German** and **English**.
 
 > **Project status:** architecture/bootstrap phase. The documented API and roadmap describe the intended direction and are not yet a stability promise.
 
-## Deutsch
-
-- [Projektziele und Umfang](de/ZIELE_UND_UMFANG.md)
-- [Architektur](de/ARCHITEKTUR.md)
-- [Backend- und Plattformstrategie](de/BACKENDS.md)
-- [Entwicklungsrichtlinien](de/ENTWICKLUNGSRICHTLINIEN.md)
-- [Roadmap](de/ROADMAP.md)
-- [Vorbilder und Referenzen](de/REFERENZEN.md)
-
-## English
+## Content
 
 - [Goals and scope](en/GOALS_AND_SCOPE.md)
 - [Architecture](en/ARCHITECTURE.md)
