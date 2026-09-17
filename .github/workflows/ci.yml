@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux GCC
+            os: ubuntu-latest
+            compiler_args: -DCMAKE_CXX_COMPILER=g++
+          - name: Linux Clang
+            os: ubuntu-latest
+            compiler_args: -DCMAKE_CXX_COMPILER=clang++
+          - name: Windows MSVC
+            os: windows-latest
+            compiler_args: ""
+          - name: macOS AppleClang
+            os: macos-latest
+            compiler_args: -DCMAKE_CXX_COMPILER=clang++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          ${{ matrix.compiler_args }}
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
+
+  sanitizers:
+    name: Linux Clang ASan + UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build-sanitized
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=clang++
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          -DSASD_UI_ENABLE_SANITIZERS=ON
+
+      - name: Build
+        run: cmake --build build-sanitized --parallel
+
+      - name: Test
+        run: ctest --test-dir build-sanitized --output-on-failure
