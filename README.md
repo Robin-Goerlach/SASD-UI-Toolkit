@@ -40,6 +40,7 @@ The repository now contains the first working implementation slice:
 - backend capabilities model;
 - key, text, focus, resize and quit event types;
 - thread-safe FIFO `EventQueue`;\n- target-to-parent event routing with explicit handled/ignored semantics;\n- lifetime-safe logical keyboard `FocusManager`;\n- two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
+- separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;

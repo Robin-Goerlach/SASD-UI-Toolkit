@@ -268,7 +268,33 @@ Das vermeidet duplizierte Logik zwischen Menü, Button und Tastaturbedienung.
 
 ## Rendering
 
-Der Core soll keinen bestimmten Renderer vorschreiben. Rendered Backends erhalten eine abstrakte Zeichen-/Surface-Schicht oder kapseln ihre Renderer vollständig hinter dem Backend.
+Der Core schreibt keinen bestimmten Renderer vor. Rendered Backends erhalten eine abstrakte Zeichen-/Surface-Schicht oder kapseln ihren Renderer vollständig hinter dem Backend.
+
+### Visuelle Invalidierung im M1-Core
+
+Layout-Neuberechnung und reine Darstellungsänderung sind bewusst getrennt:
+
+```text
+Größe/Inhalt beeinflusst Layout        Nur Darstellung geändert
+             │                                  │
+             ▼                                  ▼
+   invalidateMeasure()                  invalidateVisual()
+             │                                  │
+             ▼                                  ▼
+    measure() erneut nötig              Visual update pending
+                                                │
+                                                ▼
+                                  Terminal / Renderer / Native Peer
+                                                │
+                                                ▼
+                                  acknowledgeVisualUpdate()
+```
+
+Ein neues Widget gilt zunächst als visuell nicht synchronisiert. `invalidateVisual()` setzt den Pending-Zustand und propagiert über den visuellen Parent-Pfad. Fokus, Enabled-Zustand und eine geänderte finale Geometrie können deshalb eine Darstellung aktualisieren, ohne die gecachte Wunschgröße ungültig zu machen. Visibility sowie das Hinzufügen/Entfernen visueller Kinder betreffen dagegen sowohl Layout als auch Darstellung.
+
+`acknowledgeVisualUpdate()` bestätigt nur das tatsächlich verarbeitete Widget und löscht nicht automatisch Dirty-Zustände von Nachfahren. Damit kann ein späterer Terminal- oder Desktop-Koordinator exakt bestätigen, was wirklich synchronisiert wurde.
+
+Dirty Rectangles, Frame Scheduling, Clipping, Display Lists und konkrete Render-/Terminal-Diff-Algorithmen bleiben bewusst außerhalb dieses M1-Vertrags.
 
 Ein optionales SDL3-Backend ist als früher grafischer Proof-of-Concept attraktiv, weil damit eine Render-/Input-Basis für mehrere Desktopplattformen verfügbar ist, ohne SDL zur öffentlichen SASD-API zu machen.
 

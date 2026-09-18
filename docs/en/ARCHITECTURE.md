@@ -270,6 +270,32 @@ This avoids duplicating application logic between menus, buttons and keyboard ha
 
 The core does not mandate a specific renderer. Rendered backends either receive an abstract drawing/surface layer or fully encapsulate their rendering technology behind the backend.
 
+### Visual invalidation in the M1 core
+
+Layout recomputation and presentation-only changes are deliberately separate:
+
+```text
+Size/content affects layout             Presentation only
+             │                                  │
+             ▼                                  ▼
+   invalidateMeasure()                  invalidateVisual()
+             │                                  │
+             ▼                                  ▼
+    re-measure required                 visual update pending
+                                                │
+                                                ▼
+                                  terminal / renderer / native peer
+                                                │
+                                                ▼
+                                  acknowledgeVisualUpdate()
+```
+
+A newly created widget initially requires visual synchronization. `invalidateVisual()` marks that state pending and propagates it along the visual parent path. Focus, enabled state and changed final geometry can therefore require presentation updates without invalidating the cached desired size. Visibility and insertion/removal of visual children affect both layout and presentation.
+
+`acknowledgeVisualUpdate()` acknowledges only the widget that was actually processed and does not automatically clear dirty descendants. A future terminal or desktop coordinator can therefore report exactly what it successfully synchronized.
+
+Dirty rectangles, frame scheduling, clipping, display lists and concrete renderer/terminal diff algorithms deliberately remain outside this M1 contract.
+
 An optional SDL3 backend is attractive as an early graphical proof of concept because it can provide a cross-platform window/input foundation without exposing SDL in the public SASD API.
 
 ## Text and Unicode
