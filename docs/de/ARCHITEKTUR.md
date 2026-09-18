@@ -145,6 +145,40 @@ Wichtig ist die Trennung von **Key Events** und **Text Input**. Ein Zeichen ist 
 
 Für UI-Events ist zunächst ein einzelner UI-Thread mit Event-Queue vorgesehen. Hintergrundarbeit soll über explizite Übergaben zurück in den UI-Thread integriert werden, statt Widgets beliebig thread-safe zu machen.
 
+### Routing und Fokus im aktuellen M1-Core
+
+Der implementierte M1-Core trennt Event-Pump, Zielauswahl, Routing und Fokus bewusst voneinander:
+
+```text
+Backend
+   │
+   ▼
+Application
+   │
+   ├── QuitEvent → Application-Lifecycle
+   │
+   └── semantisches Eingabe-Event
+             │
+             ▼
+      EventTargetResolver
+             │
+             ▼
+        Ziel-Widget
+             │
+             ▼
+      EventDispatcher
+             │
+             └── Target → Parent → ... → Root
+```
+
+`EventDispatcher` führt synchrones Bubbling über den **visuellen Parent-Pfad** aus. Ein Widget kann ein Event mit `EventResult::handled` konsumieren; bei `ignored` wird dasselbe Event dem visuellen Parent angeboten. Ownership-Beziehungen zu nicht-visuellen Komponenten gehören bewusst nicht zu diesem Routing-Pfad.
+
+Der `FocusManager` ist eine davon getrennte Zielauswahl-Komponente für logischen Tastaturfokus. Er besitzt Widgets nicht, sondern hält genau eine nicht-besitzende Referenz auf das aktuell fokussierte Widget. Widget und FocusManager lösen diese Referenz beim jeweiligen Zerstören gegenseitig, damit kein dangling Pointer bestehen bleibt.
+
+Widgets sind standardmäßig **nicht fokussierbar**. Für den M1-Core besteht die lokale Fokus-Eignung aus `focusable && visible && enabled`. Vererbte Zustände von späteren `Window`-/Container-Fokus-Scope-Regeln werden erst festgelegt, wenn reale Widgets und Backends diese Semantik validieren können.
+
+Ein vom `FocusManager` erzeugtes `FocusEvent` ist eine direkte Zustandsbenachrichtigung an genau das betroffene Widget. Der Fokuszustand ist bereits geändert, wenn der Handler aufgerufen wird. Diese Benachrichtigung ist nicht veto-fähig und wird nicht als normales Eingabe-Bubbling interpretiert. Gewöhnliche Tastatur- und Texteingabe verwendet weiterhin den `EventDispatcher`.
+
 ## Layout
 
 Layouts dürfen nicht direkt in Pixeln denken. Ein Terminal arbeitet mit Zellen, Desktop-UIs mit logischen Geräteeinheiten und Schriftmetriken.

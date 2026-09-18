@@ -148,3 +148,80 @@ TEST_CASE("Application reports routed events as unhandled when no target is reso
     CHECK(resolver_calls == 1);
     CHECK(unhandled_calls == 1);
 }
+
+
+TEST_CASE("Application composes with FocusManager as a keyboard target resolver") {
+    MockBackend backend;
+    Application application{backend};
+    Container root;
+    auto& first = root.emplace<KeyHandlingWidget>();
+    auto& second = root.emplace<KeyHandlingWidget>();
+    FocusManager focus;
+
+    first.setFocusable(true);
+    second.setFocusable(true);
+
+    CHECK(focus.requestFocus(first));
+
+    backend.postEvent(KeyEvent{Key::enter, true, KeyModifier::none});
+
+    std::size_t unhandled = 0;
+    const auto first_processed = application.processRoutedEvents(
+        [&](const Event& event) -> Widget* {
+            /*
+             * This lambda demonstrates the intended composition boundary: FocusManager chooses the
+             * keyboard target, while Application and EventDispatcher remain unaware of how focus was
+             * established. Pointer/window events can later use different target-selection policies.
+             */
+            if (std::holds_alternative<KeyEvent>(event) ||
+                std::holds_alternative<TextInputEvent>(event)) {
+                return focus.focusedWidget();
+            }
+            return nullptr;
+        },
+        [&](const Event&) {
+            ++unhandled;
+        });
+
+    CHECK(first_processed == 1);
+    CHECK(first.handledKeyCount() == 1);
+    CHECK(second.handledKeyCount() == 0);
+    CHECK(unhandled == 0);
+
+    CHECK(focus.requestFocus(second));
+    backend.postEvent(KeyEvent{Key::enter, true, KeyModifier::none});
+
+    const auto second_processed = application.processRoutedEvents(
+        [&](const Event&) -> Widget* {
+            return focus.focusedWidget();
+        },
+        [&](const Event&) {
+            ++unhandled;
+        });
+
+    CHECK(second_processed == 1);
+    CHECK(first.handledKeyCount() == 1);
+    CHECK(second.handledKeyCount() == 1);
+    CHECK(unhandled == 0);
+
+    /*
+     * Disabling the focused widget clears logical focus synchronously. The next key therefore has no
+     * resolved target and falls through to Application's unhandled hook instead of being delivered to
+     * a control that is no longer eligible for keyboard input.
+     */
+    second.setEnabled(false);
+    CHECK(focus.focusedWidget() == nullptr);
+
+    backend.postEvent(KeyEvent{Key::enter, true, KeyModifier::none});
+    const auto disabled_processed = application.processRoutedEvents(
+        [&](const Event&) -> Widget* {
+            return focus.focusedWidget();
+        },
+        [&](const Event&) {
+            ++unhandled;
+        });
+
+    CHECK(disabled_processed == 1);
+    CHECK(second.handledKeyCount() == 1);
+    CHECK(unhandled == 1);
+}
