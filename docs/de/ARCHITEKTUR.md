@@ -226,10 +226,15 @@ Deshalb soll der Layoutprozess auf folgenden Konzepten beruhen:
 - Padding/Margins/Spacing
 - backendabhängige Text- und Widget-Messung
 
-Erste geplante Layouts:
+Erste implementierte Layouts:
 
-- `HBox`
-- `VBox`
+- `HBox`: sichtbare Kinder horizontal, Querachse wird gestreckt;
+- `VBox`: sichtbare Kinder vertikal, Querachse wird gestreckt.
+
+Beide reichen den aktiven `MeasurementContext` an ihre Kinder weiter, unterstützen nichtnegatives Spacing nur zwischen sichtbaren Kindern und clippen bei zu kleinem finalen Hauptachsenplatz deterministisch in Adoptionsreihenfolge. Margin, Padding, Alignment und Flex-Gewichte sind noch nicht Teil des ersten Vertrags.
+
+Weitere geplante Layouts:
+
 - `GridLayout`
 - `FormLayout`
 - `StackLayout`

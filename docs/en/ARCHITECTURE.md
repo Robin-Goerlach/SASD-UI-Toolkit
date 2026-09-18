@@ -224,10 +224,15 @@ The layout process should therefore work with concepts such as:
 - padding, margins and spacing;
 - backend-specific text and widget measurement.
 
-Initial planned layouts:
+Initial implemented layouts:
 
-- `HBox`
-- `VBox`
+- `HBox`: visible children horizontally, stretching the cross axis;
+- `VBox`: visible children vertically, stretching the cross axis.
+
+Both forward the active `MeasurementContext` to children, support non-negative spacing only between visible children, and deterministically clip later children in adoption order when final main-axis space is insufficient. Margin, padding, alignment and flex weights are not part of the initial contract yet.
+
+Further planned layouts:
+
 - `GridLayout`
 - `FormLayout`
 - `StackLayout`

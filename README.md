@@ -44,6 +44,7 @@ The repository now contains the first working implementation slice:
 - lifetime-safe logical keyboard `FocusManager`;
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - backend-neutral `MeasurementContext` so content widgets can obtain terminal/font/native metrics without backend coupling;
+- first automatic layout containers `VBox` and `HBox`, with context propagation, spacing, visibility collapse and deterministic constrained arrangement;
 - separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
 - conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
