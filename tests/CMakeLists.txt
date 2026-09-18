@@ -6,6 +6,7 @@ add_executable(sasd_ui_tests
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
     layout_tests.cpp
+    visual_invalidation_tests.cpp
     application_tests.cpp
     mock_backend_tests.cpp
 )

@@ -33,6 +33,7 @@ void Container::adopt(std::unique_ptr<Component> component) {
          * after the parent link exists so propagation can continue through this container's ancestors.
          */
         invalidateMeasure();
+        invalidateVisual();
     }
 }
 
@@ -66,6 +67,7 @@ std::unique_ptr<Component> Container::release(Component& component) noexcept {
          * invalidate the container explicitly afterwards.
          */
         invalidateMeasure();
+        invalidateVisual();
     }
     released->setOwner(nullptr);
 

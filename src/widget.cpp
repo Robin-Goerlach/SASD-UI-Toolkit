@@ -32,6 +32,7 @@ void Widget::setVisible(bool visible) {
      * backend-neutral behavior.
      */
     invalidateMeasure();
+    invalidateVisual();
     clearFocusIfIneligible();
 }
 
@@ -41,6 +42,7 @@ void Widget::setEnabled(bool enabled) {
     }
 
     enabled_ = enabled;
+    invalidateVisual();
     clearFocusIfIneligible();
 }
 
@@ -101,11 +103,17 @@ void Widget::arrange(Rect final_bounds) {
     }
 
     /*
-     * Store the final rectangle first. Container::onArrange implementations can then query bounds()
-     * while assigning child rectangles. If a custom onArrange() throws, the widget intentionally
-     * retains the requested final bounds; arrangement is an applied state transition, not a preview.
+     * A geometry change affects presentation even when desired size remains valid. Remember the
+     * comparison before storing the new rectangle, then mark the visual state stale after the new
+     * geometry is visible through bounds().
      */
+    const bool geometry_changed = bounds_ != final_bounds;
     bounds_ = final_bounds;
+
+    if (geometry_changed) {
+        invalidateVisual();
+    }
+
     onArrange(final_bounds);
 }
 
@@ -127,6 +135,36 @@ void Widget::invalidateMeasure() noexcept {
      */
     if (parent_ != nullptr) {
         parent_->invalidateMeasure();
+    }
+}
+
+void Widget::invalidateVisual() noexcept {
+    visual_update_pending_ = true;
+
+    /*
+     * A child visual change can require an ancestor surface/container to be redrawn as well. This is
+     * deliberately the visual parent relation, not Component ownership: non-visual owned components
+     * do not form a presentation path.
+     *
+     * Do not stop propagation merely because this widget was already dirty. A renderer may have
+     * acknowledged the parent while leaving this child pending; a later child change must be able to
+     * mark that parent dirty again.
+     */
+    if (parent_ != nullptr) {
+        parent_->invalidateVisual();
+    }
+}
+
+void Widget::setFocusState(bool focused, FocusManager* focus_manager) noexcept {
+    const bool state_changed = focused_ != focused;
+
+    focused_ = focused;
+    focus_manager_ = focus_manager;
+
+    // Focus commonly affects visual state (focus ring, inverse terminal style, caret, etc.) but never
+    // requires re-measurement by itself.
+    if (state_changed) {
+        invalidateVisual();
     }
 }
 

@@ -129,6 +129,28 @@ public:
     [[nodiscard]] Rect bounds() const noexcept { return bounds_; }
 
     /**
+     * Returns whether this widget's visual representation needs to be synchronized by a backend.
+     *
+     * The flag is backend-neutral: for a terminal it may mean redrawing cells, for a rendered
+     * backend repainting a region, and for a native peer synchronizing native-control state.
+     */
+    [[nodiscard]] bool isVisualUpdatePending() const noexcept {
+        return visual_update_pending_;
+    }
+
+    /**
+     * Acknowledges that this widget's current visual state was successfully synchronized.
+     *
+     * This clears only the current widget. It deliberately does not clear descendants: a renderer
+     * that updates a subtree must acknowledge each widget it actually synchronized. Keeping the
+     * acknowledgement local prevents an ancestor repaint from silently claiming that a child update
+     * succeeded when that child was skipped or failed.
+     */
+    void acknowledgeVisualUpdate() noexcept {
+        visual_update_pending_ = false;
+    }
+
+    /**
      * Delivers one already-normalized semantic event to this widget.
      *
      * This method performs single-widget delivery only; parent traversal belongs to EventDispatcher.
@@ -165,6 +187,15 @@ protected:
     void invalidateMeasure() noexcept;
 
     /**
+     * Marks this widget's visual representation stale and propagates the request to its parent.
+     *
+     * Multiple invalidations may be coalesced by the eventual renderer/backend. Propagation always
+     * continues even when this widget is already dirty; this keeps the ancestor notification correct
+     * if a renderer acknowledged an ancestor independently from a still-dirty descendant.
+     */
+    void invalidateVisual() noexcept;
+
+    /**
      * Event hook for concrete widgets.
      *
      * Returning EventResult::handled consumes an ordinarily routed event. FocusManager-generated
@@ -187,10 +218,7 @@ private:
      * focus_manager_ is non-owning and is non-null only while focused_ is true. FocusManager and the
      * Widget destructor cooperate so neither side retains a pointer to an already-destroyed object.
      */
-    void setFocusState(bool focused, FocusManager* focus_manager) noexcept {
-        focused_ = focused;
-        focus_manager_ = focus_manager;
-    }
+    void setFocusState(bool focused, FocusManager* focus_manager) noexcept;
 
     /** Clears current focus after a local property change made this widget ineligible. */
     void clearFocusIfIneligible();
@@ -206,6 +234,9 @@ private:
     bool focusable_{false};
     bool focused_{false};
     bool measure_valid_{false};
+
+    // A newly created widget has never been synchronized to any presentation backend.
+    bool visual_update_pending_{true};
 };
 
 } // namespace sasd::ui
