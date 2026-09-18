@@ -1,12 +1,12 @@
 # SASD UI Toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Project status](https://img.shields.io/badge/status-M1%20core%20skeleton-orange)
+![Project status](https://img.shields.io/badge/status-M2%20terminal%20preview-orange)
 ![C++ target](https://img.shields.io/badge/C%2B%2B-20-blue)
 
 **Open-source C++ UI toolkit for building portable desktop and terminal applications across Windows, Linux and macOS.**
 
-> **Current status:** M1 core-skeleton development. The repository now contains the first platform-neutral C++ core, a deterministic headless/mock backend, unit tests and cross-platform CI. There is no stable toolkit release yet.
+> **Current status:** M1 is complete and M2 terminal-preview development has started. The platform-neutral C++ core, deterministic headless/mock validation, cross-platform CI and the first presentation contracts are in place. There is no stable toolkit release yet.
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 
@@ -195,8 +195,8 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 ## Roadmap at a glance
 
 1. **M0 – Architecture and repository foundation** – complete enough to begin implementation.
-2. **M1 – Core skeleton and headless validation** – in progress; first core/test slice is implemented.
-3. **M2 – Terminal Preview / v0.1.0** – first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
+2. **M1 – Core skeleton and headless validation** – complete; core contracts are validated headlessly across the compiler/OS matrix.
+3. **M2 – Terminal Preview / v0.1.0** – in progress; first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
 4. **M3 – Rendered Desktop Preview / v0.2.0** – demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
 5. **Later milestones** – more controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
 

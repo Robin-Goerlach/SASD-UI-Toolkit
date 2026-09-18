@@ -18,6 +18,8 @@ This roadmap describes technical direction, not release-date commitments. The pr
 
 ## M1 – Core skeleton and headless validation
 
+**Status: completed on 2026-09-18.** The planned core building blocks and exit criterion are satisfied; additional focus, layout and presentation contracts are also covered headlessly.
+
 **Goal:** make the platform-neutral core executable and testable without a real display backend.
 
 Planned:
@@ -43,6 +45,8 @@ The mock backend should validate component trees, ownership, events, focus, layo
 **Exit criterion:** the core builds with GCC, Clang and MSVC without requiring a concrete GUI framework, and representative core behavior passes against the headless/mock backend.
 
 ## M2 – Terminal Preview / v0.1.0
+
+**Status: in progress.** The first step is a separately linkable terminal layer with a testable off-screen cell surface; concrete terminal presentation and the first visible widgets follow on top.
 
 **Goal:** first genuinely usable user-visible vertical slice.
 

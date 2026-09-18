@@ -18,6 +18,8 @@ Die Roadmap ist eine technische Richtung, kein verbindlicher Veröffentlichungst
 
 ## M1 – Core Skeleton und Headless-Validierung
 
+**Status: abgeschlossen am 18.09.2026.** Die geplanten Core-Bausteine und das Exit-Kriterium sind erfüllt; zusätzliche Focus-, Layout- und Presentation-Verträge wurden ebenfalls headless abgesichert.
+
 **Ziel:** den plattformneutralen Kern ohne reales Anzeige-Backend ausführbar und testbar machen.
 
 Geplant:
@@ -43,6 +45,8 @@ Das Mock-Backend soll Component Tree, Ownership, Events, Fokus, Layout und Backe
 **Exit-Kriterium:** Der Core baut mit GCC, Clang und MSVC ohne konkrete GUI-Bibliothek, und repräsentatives Core-Verhalten besteht die Tests gegen das Headless-/Mock-Backend.
 
 ## M2 – Terminal Preview / v0.1.0
+
+**Status: in Arbeit.** Der erste Schritt ist eine separat linkbare Terminal-Schicht mit testbarer Off-Screen-Zellfläche; darauf folgen konkrete Terminal-Präsentation und die ersten sichtbaren Widgets.
 
 **Ziel:** erster tatsächlich nutzbarer und sichtbarer vertikaler Schnitt.
 
