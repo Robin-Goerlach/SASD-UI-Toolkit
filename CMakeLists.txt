@@ -14,6 +14,8 @@ add_library(sasd_ui_core
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp
+    src/focus_manager.cpp
+    src/widget.cpp
     src/testing/mock_backend.cpp
 )
 add_library(SASD::UI ALIAS sasd_ui_core)
