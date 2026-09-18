@@ -3,6 +3,7 @@ add_executable(sasd_ui_tests
     geometry_tests.cpp
     component_tests.cpp
     box_layout_tests.cpp
+    button_tests.cpp
     event_queue_tests.cpp
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
@@ -45,6 +46,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_screen_buffer_tests.cpp
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp
+    terminal_button_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
 )

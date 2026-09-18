@@ -1,5 +1,6 @@
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
 
+#include <sasd/ui/button.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
@@ -8,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <typeinfo>
 
@@ -79,33 +81,23 @@ void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
 }
 
 /**
- * Renders a Label using the current simple-cell Unicode policy.
+ * Paints UTF-8 into one already-resolved Widget rectangle.
  *
- * Unsupported zero-width/control semantics are detected before clearRect(), so returning deferred
- * preserves the previously synchronized representation instead of partially destroying it.
+ * Validation happens before clearRect(). This preserves the last successfully synchronized
+ * representation if the current simple Cell model cannot faithfully represent the new text.
  */
-PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
-                                     const Label& label,
-                                     AmbiguousWidthMode ambiguous_width) noexcept {
-    const AbsoluteRect rect = absoluteRectOf(label);
-
-    if (!label.isVisible() || rect.width <= 0 || rect.height <= 0) {
-        clearRect(buffer, rect);
-        return PresentationUpdateResult::synchronized;
-    }
-
-    const std::string_view text = label.text();
+PresentationUpdateResult renderUtf8(ScreenBuffer& buffer,
+                                    const AbsoluteRect& rect,
+                                    std::string_view text,
+                                    AmbiguousWidthMode ambiguous_width,
+                                    bool allow_multiline) noexcept {
     const TextMeasurement measurement = TextMetrics::measureUtf8(text, ambiguous_width);
 
-    if (!measurement.simpleCellRenderable()) {
+    if (!measurement.simpleCellRenderable() ||
+        (!allow_multiline && measurement.rows != 1)) {
         return PresentationUpdateResult::deferred;
     }
 
-    /*
-     * Clear before writing so a shorter replacement string removes stale trailing cells. Window no
-     * longer clears the entire surface on every descendant update; doing so would erase clean sibling
-     * widgets that PresentationCoordinator intentionally does not replay.
-     */
     clearRect(buffer, rect);
 
     std::int64_t x = 0;
@@ -133,7 +125,7 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
 
         const int width = TextMetrics::codePointWidth(decoded.value, ambiguous_width);
         if (width <= 0) {
-            // Preflight above guarantees this branch is unreachable for supported visible text.
+            // Preflight above guarantees this for supported visible text.
             continue;
         }
 
@@ -149,7 +141,7 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
                 }
             } else {
                 /*
-                 * Never emit half of a wide glyph. Both logical widget columns and both physical
+                 * Never emit half of a wide glyph. Both logical Widget columns and both physical
                  * ScreenBuffer cells must be available; otherwise leave the clipped region blank and
                  * still advance by the glyph's logical width.
                  */
@@ -180,6 +172,71 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
     return PresentationUpdateResult::synchronized;
 }
 
+PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
+                                     const Label& label,
+                                     AmbiguousWidthMode ambiguous_width) noexcept {
+    const AbsoluteRect rect = absoluteRectOf(label);
+
+    if (!label.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    return renderUtf8(buffer, rect, label.text(), ambiguous_width, true);
+}
+
+[[nodiscard]] std::string buttonPresentationText(const Button& button) {
+    char left = '[';
+    char right = ']';
+
+    if (!button.isEnabled()) {
+        left = '(';
+        right = ')';
+    } else if (button.hasFocus()) {
+        left = '>';
+        right = '<';
+    }
+
+    /*
+     * All three states deliberately keep identical width:
+     *
+     *   [ caption ]  normal
+     *   > caption <  focused
+     *   ( caption )  disabled
+     *
+     * Stable chrome width means focus/enable transitions never require re-measurement.
+     */
+    std::string result;
+    result.reserve(button.text().size() + 4);
+    result.push_back(left);
+    result.push_back(' ');
+    result.append(button.text());
+    result.push_back(' ');
+    result.push_back(right);
+    return result;
+}
+
+PresentationUpdateResult renderButton(ScreenBuffer& buffer,
+                                      const Button& button,
+                                      AmbiguousWidthMode ambiguous_width) {
+    const AbsoluteRect rect = absoluteRectOf(button);
+
+    if (!button.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    const std::string presentation = buttonPresentationText(button);
+
+    /*
+     * Initial terminal Buttons are intentionally single-line. Multi-line captions are accepted by the
+     * semantic Button but this backend defers them rather than inventing incomplete border/chrome
+     * rules. A later richer text/control layout can extend the backend without changing Button input
+     * semantics.
+     */
+    return renderUtf8(buffer, rect, presentation, ambiguous_width, false);
+}
+
 } // namespace
 
 PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& widget) {
@@ -196,14 +253,18 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
         return PresentationUpdateResult::synchronized;
     }
 
+    if (const auto* button = dynamic_cast<const Button*>(&widget)) {
+        return renderButton(buffer_, *button, ambiguous_width_);
+    }
+
     if (const auto* label = dynamic_cast<const Label*>(&widget)) {
         return renderLabel(buffer_, *label, ambiguous_width_);
     }
 
     /*
-     * Exact base objects are structural primitives with no terminal cells of their own. Do not
-     * generalize this to arbitrary subclasses: silently acknowledging a future Button before it has
-     * terminal rendering would lose a valid pending update.
+     * Exact base objects and current Box layouts are structural primitives with no terminal cells of
+     * their own. Do not generalize this to arbitrary subclasses: silently acknowledging a future
+     * control before it has terminal rendering would lose a valid pending update.
      */
     if (typeid(widget) == typeid(Widget) ||
         typeid(widget) == typeid(Container) ||

@@ -33,6 +33,15 @@ public:
 
     [[nodiscard]] Size measureText(std::string_view utf8_text) const override;
 
+    /**
+     * Measures terminal Button chrome exactly as TerminalPresentationSink renders it:
+     *
+     *     [ caption ]
+     *
+     * Focus/disabled variants use different ASCII delimiters but preserve the same cell footprint.
+     */
+    [[nodiscard]] Size measureButton(std::string_view utf8_text) const override;
+
     [[nodiscard]] std::uint64_t revision() const noexcept override {
         return ambiguous_width_ == AmbiguousWidthMode::narrow ? 0U : 1U;
     }

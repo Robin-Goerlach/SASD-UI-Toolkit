@@ -29,6 +29,17 @@ public:
     [[nodiscard]] virtual Size measureText(std::string_view utf8_text) const = 0;
 
     /**
+     * Measures the intrinsic presentation size of a Button carrying the supplied UTF-8 caption.
+     *
+     * The default deliberately falls back to plain text measurement so existing/custom contexts do
+     * not become source-incompatible when Button is introduced. Backends with visible button chrome
+     * should override this method to include that chrome in the returned logical Size.
+     */
+    [[nodiscard]] virtual Size measureButton(std::string_view utf8_text) const {
+        return measureText(utf8_text);
+    }
+
+    /**
      * Identifies all measurement-affecting state for cache purposes.
      *
      * Widgets combine the dynamic MeasurementContext type with this revision. Two instances of the
