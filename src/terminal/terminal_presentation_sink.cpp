@@ -1,7 +1,9 @@
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
 
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
 
 #include <cstddef>
@@ -203,7 +205,10 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
      * generalize this to arbitrary subclasses: silently acknowledging a future Button before it has
      * terminal rendering would lose a valid pending update.
      */
-    if (typeid(widget) == typeid(Widget) || typeid(widget) == typeid(Container)) {
+    if (typeid(widget) == typeid(Widget) ||
+        typeid(widget) == typeid(Container) ||
+        dynamic_cast<const VBox*>(&widget) != nullptr ||
+        dynamic_cast<const HBox*>(&widget) != nullptr) {
         return PresentationUpdateResult::synchronized;
     }
 
