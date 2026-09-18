@@ -6,6 +6,7 @@ project(SASD_UI_Toolkit
     LANGUAGES CXX)
 
 option(SASD_UI_BUILD_TESTS "Build SASD UI Toolkit tests" ON)
+option(SASD_UI_BUILD_EXAMPLES "Build SASD UI Toolkit example applications" ON)
 option(SASD_UI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(SASD_UI_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer where supported" OFF)
 
@@ -93,4 +94,8 @@ if(SASD_UI_BUILD_TESTS)
     include(CTest)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(SASD_UI_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
