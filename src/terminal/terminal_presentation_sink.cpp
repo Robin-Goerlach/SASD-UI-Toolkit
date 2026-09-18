@@ -183,10 +183,14 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
 PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& widget) {
     if (dynamic_cast<const Window*>(&widget) != nullptr) {
         /*
-         * Window is currently a structural presentation root. It deliberately does not clear the
-         * complete ScreenBuffer: a descendant invalidation propagates to ancestors, and clearing here
-         * would erase clean siblings that are not replayed in a pending-only coordinator pass.
+         * Window is the current terminal presentation root. Ordinary descendant state changes keep
+         * rendering incremental, but geometry/removal requests a conservative subtree refresh. In
+         * that case clearing the off-screen surface is safe because PresentationCoordinator will
+         * immediately replay every descendant, including otherwise-clean siblings.
          */
+        if (widget.isSubtreeRefreshPending()) {
+            buffer_.clear();
+        }
         return PresentationUpdateResult::synchronized;
     }
 

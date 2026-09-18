@@ -218,3 +218,78 @@ TEST_CASE("A clean tree produces an empty presentation request set") {
     CHECK(result.complete());
     CHECK(sink.synchronizedWidgets().empty());
 }
+
+
+TEST_CASE("Subtree refresh replays otherwise clean descendants") {
+    Container root;
+    auto& child = root.emplace<VisualProbe>();
+
+    RecordingPresentationSink initial_sink;
+    (void)PresentationCoordinator::synchronize(root, initial_sink);
+
+    // Geometry change requests a subtree rebuild at the root while child remains otherwise clean.
+    root.arrange({0, 0, 20, 5});
+    child.acknowledgeVisualUpdate();
+
+    RecordingPresentationSink sink;
+    const auto result = PresentationCoordinator::synchronize(root, sink);
+
+    CHECK(result.requested == 2);
+    CHECK(result.forced == 1);
+    CHECK(result.synchronized == 2);
+    CHECK(result.deferred == 0);
+    CHECK(sink.synchronizedWidgets() == std::vector<const Widget*>({&root, &child}));
+}
+
+TEST_CASE("Deferred forced descendants become normally pending for retry") {
+    Container root;
+    auto& child = root.emplace<VisualProbe>();
+
+    RecordingPresentationSink initial_sink;
+    (void)PresentationCoordinator::synchronize(root, initial_sink);
+
+    root.arrange({0, 0, 20, 5});
+    child.acknowledgeVisualUpdate();
+
+    RecordingPresentationSink first_sink{[&](const Widget& widget) {
+        if (&widget == &child) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
+    }};
+
+    const auto first = PresentationCoordinator::synchronize(root, first_sink);
+    CHECK(first.forced == 1);
+    CHECK(first.deferred == 1);
+    CHECK(child.isVisualUpdatePending());
+
+    RecordingPresentationSink retry_sink;
+    const auto retry = PresentationCoordinator::synchronize(root, retry_sink);
+    CHECK(retry.synchronized >= 1);
+    CHECK(!child.isVisualUpdatePending());
+}
+
+TEST_CASE("Deferred subtree refresh root blocks descendant replay") {
+    Container root;
+    auto& child = root.emplace<VisualProbe>();
+
+    RecordingPresentationSink initial_sink;
+    (void)PresentationCoordinator::synchronize(root, initial_sink);
+
+    root.arrange({0, 0, 10, 3});
+
+    RecordingPresentationSink sink{[&](const Widget& widget) {
+        if (&widget == &root) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
+    }};
+
+    const auto result = PresentationCoordinator::synchronize(root, sink);
+
+    CHECK(result.requested == 1);
+    CHECK(result.deferred == 1);
+    CHECK(sink.synchronizedWidgets() == std::vector<const Widget*>({&root}));
+    CHECK(child.isVisualUpdatePending() == false);
+    CHECK(root.isSubtreeRefreshPending());
+}

@@ -4,52 +4,88 @@
 #include <sasd/ui/presentation/presentation_sink.hpp>
 
 namespace sasd::ui {
-namespace {
 
-void synchronizeWidget(Widget& widget,
-                       PresentationSink& sink,
-                       PresentationPassResult& result) {
+void PresentationCoordinator::synchronizeWidget(Widget& widget,
+                                                PresentationSink& sink,
+                                                PresentationPassResult& result,
+                                                bool force) {
     ++result.visited;
+
+    const bool was_pending = widget.isVisualUpdatePending();
+    const bool refresh_requested = widget.isSubtreeRefreshPending();
+    const bool should_offer = was_pending || force;
+    bool refresh_descendants = force;
+    bool block_descendants = false;
 
     /*
      * Do not filter on visibility here. A widget that just became invisible can still require a
      * presentation update so a terminal/backend removes its previous representation.
      */
-    if (widget.isVisualUpdatePending()) {
+    if (should_offer) {
         ++result.requested;
+        if (force && !was_pending) {
+            ++result.forced;
+        }
 
-        /*
-         * Acknowledge only after the sink reports success. If synchronize() throws, or explicitly
-         * defers the update, the pending flag remains intact and a later pass can retry it.
-         */
-        if (sink.synchronize(widget) == PresentationUpdateResult::synchronized) {
-            widget.acknowledgeVisualUpdate();
-            ++result.synchronized;
-        } else {
-            ++result.deferred;
+        try {
+            const PresentationUpdateResult update = sink.synchronize(widget);
+
+            if (update == PresentationUpdateResult::synchronized) {
+                /*
+                 * Capture the stronger refresh request before acknowledgement clears it. A successful
+                 * subtree-root synchronization authorizes replay of clean descendants.
+                 */
+                refresh_descendants = refresh_descendants || refresh_requested;
+                widget.acknowledgeVisualUpdate();
+                ++result.synchronized;
+            } else {
+                ++result.deferred;
+
+                /*
+                 * A clean Widget can be offered only because an ancestor forced a replay. If that
+                 * replay is deferred, make the Widget normally pending so a later incremental pass
+                 * cannot forget it after the ancestor refresh flag is cleared.
+                 */
+                if (!was_pending) {
+                    widget.invalidateVisual();
+                }
+
+                /*
+                 * A subtree refresh is an ordered operation: the sink must first prepare/synchronize
+                 * the subtree root before descendants can be replayed coherently.
+                 */
+                if (refresh_requested) {
+                    block_descendants = true;
+                }
+            }
+        } catch (...) {
+            if (!was_pending) {
+                widget.invalidateVisual();
+            }
+            throw;
         }
     }
 
+    if (block_descendants) {
+        return;
+    }
+
     /*
-     * Presentation follows visual parenting rather than generic Component ownership. Container's
-     * child API already filters out non-visual Components and preserves visual adoption order.
-     *
-     * Sink callbacks must not mutate this tree during a pass; doing so could invalidate references
-     * that participate in traversal.
+     * Presentation follows visual parenting rather than generic Component ownership. During a forced
+     * subtree refresh every descendant is offered in adoption order so previously clean siblings are
+     * restored after the backend cleared/rebuilt the affected presentation surface.
      */
     if (auto* container = dynamic_cast<Container*>(&widget)) {
         const std::size_t children = container->childCount();
         for (std::size_t index = 0; index < children; ++index) {
-            synchronizeWidget(container->childAt(index), sink, result);
+            synchronizeWidget(container->childAt(index), sink, result, refresh_descendants);
         }
     }
 }
 
-} // namespace
-
 PresentationPassResult PresentationCoordinator::synchronize(Widget& root, PresentationSink& sink) {
     PresentationPassResult result;
-    synchronizeWidget(root, sink, result);
+    synchronizeWidget(root, sink, result, false);
     return result;
 }
 

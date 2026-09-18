@@ -253,3 +253,75 @@ TEST_CASE("Unknown concrete terminal widgets stay pending instead of being silen
     CHECK(unknown.isVisualUpdatePending());
     CHECK(!window.isVisualUpdatePending());
 }
+
+
+TEST_CASE("Moving a Label clears its old terminal representation") {
+    ScreenBuffer buffer{{20, 3}};
+
+    Window window;
+    window.arrange({0, 0, 20, 3});
+
+    auto& label = window.emplace<Label>("Move");
+    label.arrange({1, 1, 6, 1});
+
+    TerminalPresentationSink sink{buffer};
+    (void)PresentationCoordinator::synchronize(window, sink);
+    CHECK(buffer.at({1, 1}) == Cell{U'M'});
+
+    label.arrange({10, 1, 6, 1});
+    const auto moved = PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(moved.complete());
+    CHECK(buffer.at({1, 1}) == Cell{U' '});
+    CHECK(buffer.at({10, 1}) == Cell{U'M'});
+    CHECK(buffer.at({13, 1}) == Cell{U'e'});
+}
+
+TEST_CASE("Moving a Container replays clean descendants at their new absolute positions") {
+    ScreenBuffer buffer{{24, 5}};
+
+    Window window;
+    window.arrange({0, 0, 24, 5});
+
+    auto& panel = window.emplace<Container>();
+    panel.arrange({1, 1, 10, 2});
+    auto& label = panel.emplace<Label>("Child");
+    label.arrange({1, 0, 6, 1});
+
+    TerminalPresentationSink sink{buffer};
+    (void)PresentationCoordinator::synchronize(window, sink);
+    CHECK(buffer.at({2, 1}) == Cell{U'C'});
+
+    panel.arrange({10, 2, 10, 2});
+    const auto moved = PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(moved.complete());
+    CHECK(moved.forced >= 1);
+    CHECK(buffer.at({2, 1}) == Cell{U' '});
+    CHECK(buffer.at({11, 2}) == Cell{U'C'});
+}
+
+TEST_CASE("Removing a Label clears its old terminal representation and replays siblings") {
+    ScreenBuffer buffer{{24, 4}};
+
+    Window window;
+    window.arrange({0, 0, 24, 4});
+
+    auto& removed = window.emplace<Label>("Gone");
+    removed.arrange({1, 1, 6, 1});
+    auto& survivor = window.emplace<Label>("Stay");
+    survivor.arrange({12, 1, 6, 1});
+
+    TerminalPresentationSink sink{buffer};
+    (void)PresentationCoordinator::synchronize(window, sink);
+
+    auto released = window.release(removed);
+    CHECK(released != nullptr);
+
+    const auto pass = PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(pass.complete());
+    CHECK(buffer.at({1, 1}) == Cell{U' '});
+    CHECK(buffer.at({12, 1}) == Cell{U'S'});
+    CHECK(buffer.at({15, 1}) == Cell{U'y'});
+}

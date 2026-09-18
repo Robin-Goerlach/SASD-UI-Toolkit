@@ -175,3 +175,55 @@ TEST_CASE("Visual child insertion and removal invalidate the container presentat
     CHECK(released != nullptr);
     CHECK(root.isVisualUpdatePending());
 }
+
+
+TEST_CASE("Geometry changes request conservative subtree refresh through ancestors") {
+    Container root;
+    auto& child = root.emplace<Widget>();
+
+    root.acknowledgeVisualUpdate();
+    child.acknowledgeVisualUpdate();
+
+    child.arrange({4, 2, 10, 1});
+
+    CHECK(child.isVisualUpdatePending());
+    CHECK(child.isSubtreeRefreshPending());
+    CHECK(root.isVisualUpdatePending());
+    CHECK(root.isSubtreeRefreshPending());
+}
+
+TEST_CASE("Presentation acknowledgement clears subtree refresh state locally") {
+    Widget widget;
+    widget.arrange({1, 1, 2, 2});
+
+    CHECK(widget.isSubtreeRefreshPending());
+
+    widget.acknowledgeVisualUpdate();
+
+    CHECK(!widget.isVisualUpdatePending());
+    CHECK(!widget.isSubtreeRefreshPending());
+}
+
+TEST_CASE("Visual-only state changes do not request subtree refresh") {
+    Widget widget;
+    widget.acknowledgeVisualUpdate();
+
+    widget.setEnabled(false);
+
+    CHECK(widget.isVisualUpdatePending());
+    CHECK(!widget.isSubtreeRefreshPending());
+}
+
+TEST_CASE("Removing a visual child requests parent subtree refresh") {
+    Container root;
+    auto& child = root.emplace<Widget>();
+
+    root.acknowledgeVisualUpdate();
+    child.acknowledgeVisualUpdate();
+
+    auto released = root.release(child);
+
+    CHECK(released != nullptr);
+    CHECK(root.isVisualUpdatePending());
+    CHECK(root.isSubtreeRefreshPending());
+}

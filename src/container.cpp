@@ -67,7 +67,13 @@ std::unique_ptr<Component> Container::release(Component& component) noexcept {
          * invalidate the container explicitly afterwards.
          */
         invalidateMeasure();
-        invalidateVisual();
+
+        /*
+         * The removed Widget will no longer be traversed on the next presentation pass, so it cannot
+         * erase its old representation itself. Request a conservative rebuild of the remaining
+         * subtree/root before detaching the ownership completely.
+         */
+        invalidatePresentationSubtree();
     }
     released->setOwner(nullptr);
 

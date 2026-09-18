@@ -42,11 +42,12 @@ public:
     virtual ~PresentationSink() = default;
 
     /**
-     * Synchronizes the current visual state of one pending widget.
+     * Synchronizes the current visual state of one widget selected for presentation.
      *
-     * The coordinator calls this only when Widget::isVisualUpdatePending() is true. Returning
-     * synchronized causes the coordinator to acknowledge that widget; returning deferred keeps it
-     * pending. Exceptions propagate to the caller and leave the current widget unacknowledged.
+     * Normally the widget is pending. During a conservative subtree refresh the coordinator may also
+     * replay an otherwise-clean descendant so a sink can rebuild a cleared/damaged presentation
+     * surface deterministically. Returning synchronized acknowledges the widget; returning deferred
+     * keeps/marks it pending for retry. Exceptions propagate to the caller and leave it pending.
      */
     [[nodiscard]] virtual PresentationUpdateResult synchronize(const Widget& widget) = 0;
 };

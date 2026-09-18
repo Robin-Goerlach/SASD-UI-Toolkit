@@ -12,6 +12,7 @@ namespace sasd::ui {
 class Container;
 class FocusManager;
 class MeasurementContext;
+class PresentationCoordinator;
 
 /**
  * Base class for components that have a visual or interactively presentable representation.
@@ -153,6 +154,18 @@ public:
     }
 
     /**
+     * Returns whether presentation must conservatively rebuild this widget's visual subtree.
+     *
+     * This stronger invalidation is used for geometry/structural changes where repainting only the
+     * changed Widget can leave stale pixels/cells or fail to reveal content that used to be covered.
+     * PresentationCoordinator uses the flag to replay clean descendants after the owning sink
+     * successfully refreshes the subtree root.
+     */
+    [[nodiscard]] bool isSubtreeRefreshPending() const noexcept {
+        return subtree_refresh_pending_;
+    }
+
+    /**
      * Acknowledges that this widget's current visual state was successfully synchronized.
      *
      * This clears only the current widget. It deliberately does not clear descendants: a renderer
@@ -162,6 +175,7 @@ public:
      */
     void acknowledgeVisualUpdate() noexcept {
         visual_update_pending_ = false;
+        subtree_refresh_pending_ = false;
     }
 
     /**
@@ -220,6 +234,14 @@ protected:
     void invalidateVisual() noexcept;
 
     /**
+     * Requests a conservative rebuild of this Widget subtree and propagates that request upward.
+     *
+     * Geometry changes use this stronger form because old and new presentation regions can differ.
+     * The method also marks ordinary visual state pending.
+     */
+    void invalidatePresentationSubtree() noexcept;
+
+    /**
      * Event hook for concrete widgets.
      *
      * Returning EventResult::handled consumes an ordinarily routed event. FocusManager-generated
@@ -233,6 +255,7 @@ protected:
 private:
     friend class Container;
     friend class FocusManager;
+    friend class PresentationCoordinator;
 
     void setParent(Container* parent) noexcept { parent_ = parent; }
 
@@ -268,6 +291,7 @@ private:
     bool focusable_{false};
     bool focused_{false};
     bool measure_valid_{false};
+    bool subtree_refresh_pending_{false};
 
     // A newly created widget has never been synchronized to any presentation backend.
     bool visual_update_pending_{true};

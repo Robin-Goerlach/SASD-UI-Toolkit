@@ -146,7 +146,12 @@ void Widget::arrange(Rect final_bounds) {
     bounds_ = final_bounds;
 
     if (geometry_changed) {
-        invalidateVisual();
+        /*
+         * Moving/resizing can leave old presentation content behind and can uncover siblings that
+         * were previously occluded. A normal visual invalidation is therefore insufficient: request
+         * a conservative subtree rebuild at the presentation root.
+         */
+        invalidatePresentationSubtree();
     }
 
     onArrange(final_bounds);
@@ -191,6 +196,20 @@ void Widget::invalidateVisual() noexcept {
      */
     if (parent_ != nullptr) {
         parent_->invalidateVisual();
+    }
+}
+
+void Widget::invalidatePresentationSubtree() noexcept {
+    subtree_refresh_pending_ = true;
+    visual_update_pending_ = true;
+
+    /*
+     * Every ancestor must know that something below changed presentation geometry. The top-level
+     * sink can then rebuild from a known-clean surface while PresentationCoordinator replays the
+     * complete visual subtree, including otherwise-clean siblings.
+     */
+    if (parent_ != nullptr) {
+        parent_->invalidatePresentationSubtree();
     }
 }
 
