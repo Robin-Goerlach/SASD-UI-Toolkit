@@ -49,18 +49,19 @@ The repository now contains the first working implementation slice:
 - conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
-- semantic M2 widgets: `Window`, UTF-8 `Label` and the first interactive `Button`;
-- headless `TerminalPresentationSink` that renders `Window` / `Label` through `PresentationCoordinator` into terminal cells;
+- semantic M2 widgets: `Window`, UTF-8 `Label`, interactive `Button` and single-line editable `TextField`;
+- headless `TerminalPresentationSink` that renders `Window`, `Label`, `Button` and `TextField` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
-- `TerminalMeasurementContext`, giving `Label` and `Button` real terminal-cell desired sizes while keeping core widgets terminal-agnostic;
+- `TerminalMeasurementContext`, giving `Label`, `Button` and `TextField` real terminal-cell desired sizes while keeping core widgets terminal-agnostic;
 - keyboard-focusable `Button` activation through the existing `FocusManager` and `EventDispatcher`, with terminal `[ caption ]` / focus / disabled presentation;
+- `TextField` editing through `TextInputEvent` plus scalar cursor/navigation/delete semantics, shared UTF-8 decoding, terminal horizontal scrolling and separate hardware-caret position;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` is implemented headlessly and in terminal cells. ANSI/VT output, terminal device I/O, `TextField` editing/caret behavior and pointer interaction are still to be implemented. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT output, terminal device I/O/input translation, Tab focus traversal, richer Unicode grapheme editing and pointer interaction are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 
@@ -195,7 +196,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label/Button + layout + Unicode metrics |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label/Button/TextField + layout + Unicode metrics |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |

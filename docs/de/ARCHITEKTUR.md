@@ -335,6 +335,8 @@ Die öffentliche API soll Unicode von Anfang an berücksichtigen. Als Startpunkt
 
 Terminal-Rendering muss Zeichenbreiten, Combining Characters und später Grapheme Cluster berücksichtigen. Für `v0.1.0` darf der Umfang begrenzt sein, die Architektur darf aber nicht dauerhaft von „ein Byte = ein Zeichen = eine Zelle“ ausgehen.
 
+Mit `TextField` besitzt der Core nun zusätzlich eine gemeinsame `sasd::ui::utf8`-Utility für deterministisches Scalar-Decoding. TextField hält gültiges einzeiliges UTF-8; malformed Bytes werden als U+FFFD normalisiert, Line-/Control-Sequenzen für das Single-Line-Control entfernt. Die aktuelle Cursorposition ist bewusst ein Unicode-Scalar-Index. Combining-/ZWJ-Sequenzen bleiben erhalten, sind aber noch nicht Grapheme-aware navigierbar. Terminal-Viewport und Hardware-Caret bleiben Presentation-State und werden nicht im semantischen TextField gespeichert.
+
 ## Accessibility
 
 Accessibility wird als Architekturthema behandelt, nicht als spätes Zusatzfeature. Native Backends können Plattformdienste nutzen; gerenderte Backends benötigen langfristig eine semantische Accessibility-Bridge. Der Core soll daher semantische Rollen, Namen, Zustände und Aktionen nicht ausschließlich aus visuellen Details ableiten.

@@ -36,7 +36,9 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `Button` ist inzwischen als erstes interaktives Control integriert. Terminal-Measurement und -Presentation verwenden dieselbe feste vierzellige Chrome: normal `[ caption ]`, fokussiert `> caption <`, disabled `( caption )`. Enter/Space aktiviert den fokussierten Button auf Key-Press; das ist absichtlich terminaltauglich, weil ANSI/VT normalerweise keine zuverlässigen Key-Up-Ereignisse liefert.
 
-Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung, Pointer-/Hit-Test-Interaktion sowie `TextField`.
+`TextField` ist inzwischen als einzeiliger Editor integriert. Terminal-Measurement reserviert zwei Delimiter plus eine Caret-Zelle; bei zu kleinen Bounds scrollt die Presentation horizontal auf Unicode-Scalar-Grenzen. Der Hardware-Caret ist als separate optionale Position im `TerminalPresentationSink` modelliert und überschreibt keine Glyph-Zelle. Combining-/ZWJ-Inhalte bleiben im Core erhalten, werden vom aktuellen einfachen Cell-Modell aber weiterhin `deferred`.
+
+Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe und reale Terminal-I/O/Input-Übersetzung, Alternate-Screen-Steuerung, Tab-Fokusnavigation, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 

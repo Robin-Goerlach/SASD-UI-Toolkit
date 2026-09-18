@@ -333,6 +333,8 @@ Unicode must be considered from the beginning. UTF-8 is the preferred starting p
 
 Terminal rendering must eventually handle display widths, combining characters and grapheme clusters. `v0.1.0` may support a narrower subset, but the architecture must not permanently assume that one byte equals one character equals one terminal cell.
 
+With `TextField`, the core now also has a shared `sasd::ui::utf8` utility for deterministic scalar decoding. TextField maintains valid single-line UTF-8; malformed bytes normalize to U+FFFD and line/control sequences are removed for this single-line control. The current cursor is deliberately a Unicode-scalar index. Combining/ZWJ sequences are preserved but navigation is not yet grapheme-aware. Terminal viewport and hardware-caret state remain presentation concerns and are not stored in semantic TextField.
+
 ## Accessibility
 
 Accessibility is an architectural concern, not a late add-on. Native backends can use platform services; rendered backends will eventually require semantic accessibility bridges. The core should therefore preserve semantic roles, names, states and actions independently from visual rendering details.

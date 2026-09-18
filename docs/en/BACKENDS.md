@@ -36,7 +36,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `Button` is now integrated as the first interactive control. Terminal measurement and presentation share the same fixed four-cell chrome: normal `[ caption ]`, focused `> caption <`, disabled `( caption )`. Enter/Space activates the focused Button on key press; this is intentionally terminal-friendly because ANSI/VT normally cannot provide reliable key-up events.
 
-ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, full grapheme/ZWJ presentation, pointer/hit-test interaction and `TextField` are not implemented yet.
+`TextField` is now integrated as a single-line editor. Terminal measurement reserves two delimiters plus one caret cell; when arranged narrower than its natural size, presentation scrolls horizontally on Unicode-scalar boundaries. The hardware caret is modeled as a separate optional position in `TerminalPresentationSink` and never overwrites a glyph cell. Combining/ZWJ content remains preserved in the core but is still `deferred` by the current simple Cell model.
+
+ANSI/VT output and real terminal I/O/input translation, alternate-screen control, Tab focus traversal, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
 
 ### 2. SDL3 backend
 
