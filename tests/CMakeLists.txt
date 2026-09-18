@@ -46,6 +46,7 @@ add_test(NAME sasd_ui_core_tests COMMAND sasd_ui_tests)
 # platform-neutral contract test. CTest still runs both suites in every CI job.
 add_executable(sasd_ui_terminal_tests
     test_main.cpp
+    terminal_ansi_frame_encoder_tests.cpp
     terminal_screen_buffer_tests.cpp
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp

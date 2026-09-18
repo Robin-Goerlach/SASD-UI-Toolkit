@@ -30,6 +30,7 @@ add_library(SASD::UI ALIAS sasd_ui_core)
 # The first M2 backend lives in a separately linkable target. Applications that only need the
 # platform-neutral core do not acquire terminal-specific implementation code.
 add_library(sasd_ui_terminal
+    src/terminal/ansi_frame_encoder.cpp
     src/terminal/screen_buffer.cpp
     src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp

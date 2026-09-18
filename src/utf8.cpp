@@ -119,6 +119,38 @@ std::size_t byteOffsetForScalarIndex(std::string_view text,
     return offset;
 }
 
+void appendScalar(std::string& output, char32_t value) {
+    auto scalar = static_cast<std::uint32_t>(value);
+
+    if (scalar > 0x10FFFFU || (scalar >= 0xD800U && scalar <= 0xDFFFU)) {
+        appendReplacement(output);
+        return;
+    }
+
+    if (scalar <= 0x7FU) {
+        output.push_back(static_cast<char>(scalar));
+        return;
+    }
+
+    if (scalar <= 0x7FFU) {
+        output.push_back(static_cast<char>(0xC0U | (scalar >> 6U)));
+        output.push_back(static_cast<char>(0x80U | (scalar & 0x3FU)));
+        return;
+    }
+
+    if (scalar <= 0xFFFFU) {
+        output.push_back(static_cast<char>(0xE0U | (scalar >> 12U)));
+        output.push_back(static_cast<char>(0x80U | ((scalar >> 6U) & 0x3FU)));
+        output.push_back(static_cast<char>(0x80U | (scalar & 0x3FU)));
+        return;
+    }
+
+    output.push_back(static_cast<char>(0xF0U | (scalar >> 18U)));
+    output.push_back(static_cast<char>(0x80U | ((scalar >> 12U) & 0x3FU)));
+    output.push_back(static_cast<char>(0x80U | ((scalar >> 6U) & 0x3FU)));
+    output.push_back(static_cast<char>(0x80U | (scalar & 0x3FU)));
+}
+
 std::string sanitizeSingleLine(std::string_view text) {
     std::string result;
     result.reserve(text.size());

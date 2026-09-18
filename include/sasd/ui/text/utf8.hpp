@@ -39,6 +39,14 @@ struct DecodedScalar {
                                                    std::size_t scalar_index) noexcept;
 
 /**
+ * Appends one Unicode scalar as UTF-8.
+ *
+ * Invalid scalar values (surrogates or values above U+10FFFF) are encoded as U+FFFD. This gives
+ * terminal/device writers the same deterministic replacement policy as decodeOne().
+ */
+void appendScalar(std::string& output, char32_t value);
+
+/**
  * Produces valid single-line UTF-8 suitable for editable one-line controls.
  *
  * Malformed input bytes become UTF-8 U+FFFD. C0/C1 controls and Unicode line/paragraph separators are

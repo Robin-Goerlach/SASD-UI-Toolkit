@@ -45,3 +45,23 @@ TEST_CASE("UTF-8 single-line sanitizer replaces malformed bytes and removes cont
     CHECK(sanitized == std::string{"AB\xEF\xBF\xBD("});
     CHECK(utf8::scalarCount(sanitized) == 4);
 }
+
+
+TEST_CASE("UTF-8 utility appends valid Unicode scalars") {
+    std::string encoded;
+
+    utf8::appendScalar(encoded, U'A');
+    utf8::appendScalar(encoded, U'\u03A9');
+    utf8::appendScalar(encoded, U'\U0001F600');
+
+    CHECK(encoded == std::string{"A\xCE\xA9\xF0\x9F\x98\x80"});
+}
+
+TEST_CASE("UTF-8 utility replaces invalid Unicode scalar values") {
+    std::string encoded;
+
+    utf8::appendScalar(encoded, static_cast<char32_t>(0xD800));
+    utf8::appendScalar(encoded, static_cast<char32_t>(0x110000));
+
+    CHECK(encoded == std::string{"\xEF\xBF\xBD\xEF\xBF\xBD"});
+}
