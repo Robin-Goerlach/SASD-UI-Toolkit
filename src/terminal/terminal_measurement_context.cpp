@@ -31,16 +31,16 @@ Size TerminalMeasurementContext::measureTextField(std::string_view utf8_text) co
     const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
 
     /*
-     * TextField uses one left and one right delimiter. Even empty content reserves one interior cell
-     * so a focused empty field can expose a real terminal-cursor position.
+     * TextField uses two delimiter cells plus one interior caret cell. The caret cell is reserved even
+     * while unfocused so focus changes do not alter desired size or force immediate scrolling at the
+     * natural end-of-text position.
      */
-    constexpr Coordinate chrome_width = 2;
-    const Coordinate content_width = measured.columns > 0 ? measured.columns : 1;
+    constexpr Coordinate fixed_width = 3;
     const Coordinate maximum = std::numeric_limits<Coordinate>::max();
     const Coordinate width =
-        content_width > maximum - chrome_width
+        measured.columns > maximum - fixed_width
             ? maximum
-            : static_cast<Coordinate>(content_width + chrome_width);
+            : static_cast<Coordinate>(measured.columns + fixed_width);
 
     return {width, 1};
 }

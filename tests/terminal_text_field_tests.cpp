@@ -14,14 +14,14 @@
 using namespace sasd::ui;
 using namespace sasd::ui::terminal;
 
-TEST_CASE("TerminalMeasurementContext reserves TextField chrome and empty caret cell") {
+TEST_CASE("TerminalMeasurementContext reserves TextField chrome and end caret cell") {
     TerminalMeasurementContext context;
 
     TextField empty;
     CHECK(empty.measure(context) == Size{3, 1});
 
     TextField text{"abc"};
-    CHECK(text.measure(context) == Size{5, 1});
+    CHECK(text.measure(context) == Size{6, 1});
 }
 
 TEST_CASE("Terminal TextField renders normal focused and disabled chrome") {
@@ -41,22 +41,23 @@ TEST_CASE("Terminal TextField renders normal focused and disabled chrome") {
     CHECK(buffer.at({1, 1}) == Cell{U'['});
     CHECK(buffer.at({2, 1}) == Cell{U'a'});
     CHECK(buffer.at({4, 1}) == Cell{U'c'});
-    CHECK(buffer.at({5, 1}) == Cell{U']'});
+    CHECK(buffer.at({5, 1}) == Cell{U' '});
+    CHECK(buffer.at({6, 1}) == Cell{U']'});
     CHECK(!sink.caretPosition().has_value());
 
     CHECK(focus.requestFocus(field));
     (void)PresentationCoordinator::synchronize(window, sink);
 
     CHECK(buffer.at({1, 1}) == Cell{U'>'});
-    CHECK(buffer.at({5, 1}) == Cell{U'<'});
+    CHECK(buffer.at({6, 1}) == Cell{U'<'});
     CHECK(sink.caretPosition().has_value());
-    CHECK(*sink.caretPosition() == Point{4, 1});
+    CHECK(*sink.caretPosition() == Point{5, 1});
 
     field.setEnabled(false);
     (void)PresentationCoordinator::synchronize(window, sink);
 
     CHECK(buffer.at({1, 1}) == Cell{U'('});
-    CHECK(buffer.at({5, 1}) == Cell{U')'});
+    CHECK(buffer.at({6, 1}) == Cell{U')'});
     CHECK(!sink.caretPosition().has_value());
 }
 

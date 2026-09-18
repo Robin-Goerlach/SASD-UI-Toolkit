@@ -43,8 +43,11 @@ public:
     [[nodiscard]] Size measureButton(std::string_view utf8_text) const override;
 
     /**
-     * Measures terminal TextField chrome as two delimiter cells plus content, reserving at least one
-     * interior cell so an empty focused field still has a place for the terminal caret.
+     * Measures terminal TextField as two delimiter cells plus content and one reserved caret cell.
+     *
+     * Reserving caret room even for non-empty intrinsic fields keeps focus transitions layout-stable:
+     * a field measured exactly to its natural size can show the complete text and an end-of-text
+     * hardware caret without immediately scrolling.
      */
     [[nodiscard]] Size measureTextField(std::string_view utf8_text) const override;
 
