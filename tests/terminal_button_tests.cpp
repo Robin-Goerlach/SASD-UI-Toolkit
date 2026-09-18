@@ -46,15 +46,15 @@ TEST_CASE("Terminal Button renders normal focused and disabled ASCII chrome") {
     CHECK(focus.requestFocus(button));
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({1, 1}) == Cell{U'>'});
-    CHECK(buffer.at({6, 1}) == Cell{U'<'});
+    CHECK(buffer.at({1, 1}).code_point == U'>');
+    CHECK(buffer.at({6, 1}).code_point == U'<');
 
     button.setEnabled(false);
     (void)PresentationCoordinator::synchronize(window, sink);
 
     CHECK(!button.hasFocus());
-    CHECK(buffer.at({1, 1}) == Cell{U'('});
-    CHECK(buffer.at({6, 1}) == Cell{U')'});
+    CHECK(buffer.at({1, 1}).code_point == U'(');
+    CHECK(buffer.at({6, 1}).code_point == U')');
 }
 
 TEST_CASE("Terminal Button preserves wide caption cell occupancy") {

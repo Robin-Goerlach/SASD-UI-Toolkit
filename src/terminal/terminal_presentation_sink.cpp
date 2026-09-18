@@ -60,7 +60,9 @@ AbsoluteRect absoluteRectOf(const Widget& widget) noexcept {
     return result;
 }
 
-void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
+void clearRect(ScreenBuffer& buffer,
+               const AbsoluteRect& rect,
+               Cell fill = {}) noexcept {
     if (rect.width <= 0 || rect.height <= 0 || buffer.empty()) {
         return;
     }
@@ -82,7 +84,7 @@ void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
     for (std::int64_t y = top; y < bottom; ++y) {
         auto row = buffer.row(static_cast<Coordinate>(y));
         for (std::int64_t x = left; x < right; ++x) {
-            row[static_cast<std::size_t>(x)] = Cell{};
+            row[static_cast<std::size_t>(x)] = fill;
         }
     }
 }
@@ -325,14 +327,19 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
         return {PresentationUpdateResult::deferred, std::nullopt};
     }
 
-    clearRect(buffer, rect);
-
     TextStyle style = field.textStyle();
     if (!field.isEnabled()) {
         style.dim = true;
     } else if (field.hasFocus()) {
         style.inverse = true;
     }
+
+    /*
+     * The TextField's reserved caret/interior cells are part of the control presentation. Styling
+     * those blanks as well keeps inverse focus contiguous across text, caret room and chrome instead
+     * of introducing a one-cell visual hole.
+     */
+    clearRect(buffer, rect, Cell{U' ', CellRole::normal, style});
 
     char left = '[';
     char right = ']';

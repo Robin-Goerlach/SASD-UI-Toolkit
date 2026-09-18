@@ -48,16 +48,16 @@ TEST_CASE("Terminal TextField renders normal focused and disabled chrome") {
     CHECK(focus.requestFocus(field));
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({1, 1}) == Cell{U'>'});
-    CHECK(buffer.at({6, 1}) == Cell{U'<'});
+    CHECK(buffer.at({1, 1}).code_point == U'>');
+    CHECK(buffer.at({6, 1}).code_point == U'<');
     CHECK(sink.caretPosition().has_value());
     CHECK(*sink.caretPosition() == Point{5, 1});
 
     field.setEnabled(false);
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({1, 1}) == Cell{U'('});
-    CHECK(buffer.at({6, 1}) == Cell{U')'});
+    CHECK(buffer.at({1, 1}).code_point == U'(');
+    CHECK(buffer.at({6, 1}).code_point == U')');
     CHECK(!sink.caretPosition().has_value());
 }
 
@@ -77,7 +77,7 @@ TEST_CASE("Terminal TextField horizontal viewport follows scalar cursor") {
 
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({1, 0}) == Cell{U'>'});
+    CHECK(buffer.at({1, 0}).code_point == U'>');
     CHECK(buffer.at({2, 0}) == Cell{U'e'});
     CHECK(buffer.at({3, 0}) == Cell{U'f'});
     CHECK(buffer.at({5, 0}) == Cell{U'<'});
@@ -108,7 +108,7 @@ TEST_CASE("Terminal TextField viewport never renders half a wide scalar") {
     field.setCursorPosition(2); // immediately before B
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({0, 0}) == Cell{U'>'});
+    CHECK(buffer.at({0, 0}).code_point == U'>');
     // Scrolling starts on the wide scalar boundary rather than its continuation cell.
     CHECK(buffer.at({1, 0}) == Cell{U'\u754C', CellRole::wide_lead});
     CHECK(buffer.at({2, 0}) == Cell{U' ', CellRole::wide_continuation});
@@ -189,4 +189,31 @@ TEST_CASE("Combining TextField content is deferred without damaging previous cel
     CHECK(field.isVisualUpdatePending());
     CHECK(buffer.at({1, 0}) == Cell{U'['});
     CHECK(buffer.at({2, 0}) == Cell{U'o'});
+}
+
+
+TEST_CASE("Focused terminal TextField styles reserved caret space continuously") {
+    ScreenBuffer buffer{{10, 2}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 10, 2});
+
+    auto& field = window.emplace<TextField>("abc");
+    TextStyle style;
+    style.foreground = Color::cyan;
+    field.setTextStyle(style);
+    field.arrange({0, 0, field.measure(metrics).width, 1});
+
+    CHECK(focus.requestFocus(field));
+    (void)PresentationCoordinator::synchronize(window, sink);
+
+    TextStyle expected = style;
+    expected.inverse = true;
+
+    // x=4 is the reserved end-caret cell between "abc" and the right chrome delimiter.
+    CHECK(buffer.at({4, 0}).code_point == U' ');
+    CHECK(buffer.at({4, 0}).style == expected);
 }
