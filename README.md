@@ -49,17 +49,18 @@ The repository now contains the first working implementation slice:
 - conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
-- first semantic M2 widgets: `Window` and UTF-8 `Label`;
+- semantic M2 widgets: `Window`, UTF-8 `Label` and the first interactive `Button`;
 - headless `TerminalPresentationSink` that renders `Window` / `Label` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
-- `TerminalMeasurementContext`, giving `Label` real terminal-cell desired sizes while keeping the core widget terminal-agnostic;
+- `TerminalMeasurementContext`, giving `Label` and `Button` real terminal-cell desired sizes while keeping core widgets terminal-agnostic;
+- keyboard-focusable `Button` activation through the existing `FocusManager` and `EventDispatcher`, with terminal `[ caption ]` / focus / disabled presentation;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. ANSI/VT output, terminal device I/O and interactive controls are still to be implemented. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` is implemented headlessly and in terminal cells. ANSI/VT output, terminal device I/O, `TextField` editing/caret behavior and pointer interaction are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 
@@ -194,7 +195,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label + Unicode cell-width metrics |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label/Button + layout + Unicode metrics |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |

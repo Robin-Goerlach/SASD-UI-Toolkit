@@ -34,7 +34,9 @@ Zero-Width-/Combining-/Format-Sequenzen und gewöhnliche Terminal-Control-Zeiche
 
 Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen Subtree-Refresh: das Terminal-`Window` leert seinen Off-Screen-Buffer nur bei solchem Geometrie-/Strukturschaden, anschließend werden auch cleane Descendants deterministisch erneut gerendert. Normale Text-/Fokusänderungen bleiben inkrementell. Dirty Rectangles und Region-Merging sind bewusst spätere Optimierungen.
 
-Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie die konkrete Präsentation von `Button` und `TextField`.
+`Button` ist inzwischen als erstes interaktives Control integriert. Terminal-Measurement und -Presentation verwenden dieselbe feste vierzellige Chrome: normal `[ caption ]`, fokussiert `> caption <`, disabled `( caption )`. Enter/Space aktiviert den fokussierten Button auf Key-Press; das ist absichtlich terminaltauglich, weil ANSI/VT normalerweise keine zuverlässigen Key-Up-Ereignisse liefert.
+
+Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung, Pointer-/Hit-Test-Interaktion sowie `TextField`.
 
 ### 2. SDL3-Backend
 

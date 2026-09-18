@@ -32,6 +32,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0015](0015-backend-neutral-measurement-context.md) | Backend-neutral measurement context for intrinsic widget metrics | Accepted |
 | [0016](0016-conservative-presentation-subtree-refresh.md) | Conservative subtree refresh for geometry and structural presentation changes | Accepted |
 | [0017](0017-initial-vbox-hbox-layout-semantics.md) | Initial VBox/HBox layout semantics | Accepted |
+| [0018](0018-initial-button-semantics.md) | Initial Button activation, measurement and terminal presentation semantics | Accepted |
 
 ## ADR policy
 

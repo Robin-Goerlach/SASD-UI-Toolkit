@@ -34,7 +34,9 @@ Zero-width/combining/format sequences and ordinary terminal controls still canno
 
 Geometry changes and child removal now use a conservative subtree refresh: the terminal `Window` clears its off-screen buffer only for such geometry/structural damage, after which otherwise-clean descendants are deterministically replayed. Ordinary text/focus changes remain incremental. Dirty rectangles and region merging are deliberately later optimizations.
 
-ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, full grapheme/ZWJ presentation and concrete presentation of `Button` and `TextField` are not implemented yet.
+`Button` is now integrated as the first interactive control. Terminal measurement and presentation share the same fixed four-cell chrome: normal `[ caption ]`, focused `> caption <`, disabled `( caption )`. Enter/Space activates the focused Button on key press; this is intentionally terminal-friendly because ANSI/VT normally cannot provide reliable key-up events.
+
+ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, full grapheme/ZWJ presentation, pointer/hit-test interaction and `TextField` are not implemented yet.
 
 ### 2. SDL3 backend
 
