@@ -11,9 +11,10 @@ class Widget;
  * Widget and cooperates with Widget destruction to keep that observation safe. A Widget can be
  * focused by at most one FocusManager at a time.
  *
- * M1 deliberately implements explicit focus requests only. Tab/Shift+Tab traversal, focus order,
- * focus scopes rooted at Window and backend-specific activation belong to later steps built on this
- * small contract.
+ * FocusManager itself deliberately owns only focus state and explicit transitions. Deterministic
+ * Tab/Shift+Tab target selection is implemented separately by FocusTraversal so event policy and
+ * tree-order rules do not become hidden side effects of requestFocus(). Backend/window activation can
+ * remain a further layer on top of the same small lifetime-safe contract.
  */
 class FocusManager final {
 public:

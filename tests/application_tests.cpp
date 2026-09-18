@@ -2,8 +2,12 @@
 
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
+#include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/testing/mock_backend.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/vbox.hpp>
 
 #include <cstddef>
 #include <variant>
@@ -225,4 +229,83 @@ TEST_CASE("Application composes with FocusManager as a keyboard target resolver"
     CHECK(disabled_processed == 1);
     CHECK(second.handledKeyCount() == 1);
     CHECK(unhandled == 1);
+}
+
+
+TEST_CASE("Application composes unhandled Tab traversal with focused control routing") {
+    MockBackend backend;
+    Application application{backend};
+
+    VBox root;
+    auto& field = root.emplace<TextField>("name");
+    auto& button = root.emplace<Button>("Save");
+
+    FocusManager focus;
+    int activations = 0;
+    button.setOnActivated([&] { ++activations; });
+
+    /*
+     * Start without focus. The first Tab therefore has no normal widget target and reaches the
+     * unhandled policy, which assigns the first traversable control. The second Tab is first routed to
+     * TextField, which intentionally ignores Tab; only then does traversal move to Button. Enter is
+     * subsequently delivered to Button through the ordinary focused-widget resolver.
+     */
+    backend.postEvent(KeyEvent{Key::tab, true, KeyModifier::none});
+    backend.postEvent(KeyEvent{Key::tab, true, KeyModifier::none});
+    backend.postEvent(KeyEvent{Key::enter, true, KeyModifier::none});
+
+    std::size_t genuinely_unhandled = 0;
+
+    const auto processed = application.processRoutedEvents(
+        [&](const Event& event) -> Widget* {
+            if (std::holds_alternative<KeyEvent>(event) ||
+                std::holds_alternative<TextInputEvent>(event)) {
+                return focus.focusedWidget();
+            }
+            return nullptr;
+        },
+        [&](const Event& event) {
+            const EventResult traversal =
+                FocusTraversal::handleEvent(focus, root, event);
+
+            if (traversal == EventResult::ignored) {
+                ++genuinely_unhandled;
+            }
+        });
+
+    CHECK(processed == 3);
+    CHECK(focus.focusedWidget() == &button);
+    CHECK(!field.hasFocus());
+    CHECK(button.hasFocus());
+    CHECK(activations == 1);
+    CHECK(genuinely_unhandled == 0);
+}
+
+TEST_CASE("Application Shift Tab traversal works through the same unhandled policy") {
+    MockBackend backend;
+    Application application{backend};
+
+    VBox root;
+    auto& first = root.emplace<TextField>("first");
+    auto& second = root.emplace<Button>("second");
+    FocusManager focus;
+
+    CHECK(focus.requestFocus(first));
+    backend.postEvent(KeyEvent{Key::tab, true, KeyModifier::shift});
+
+    std::size_t genuinely_unhandled = 0;
+    const auto processed = application.processRoutedEvents(
+        [&](const Event&) -> Widget* {
+            return focus.focusedWidget();
+        },
+        [&](const Event& event) {
+            if (FocusTraversal::handleEvent(focus, root, event) ==
+                EventResult::ignored) {
+                ++genuinely_unhandled;
+            }
+        });
+
+    CHECK(processed == 1);
+    CHECK(focus.focusedWidget() == &second);
+    CHECK(genuinely_unhandled == 0);
 }
