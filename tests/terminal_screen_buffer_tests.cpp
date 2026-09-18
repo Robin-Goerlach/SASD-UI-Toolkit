@@ -27,12 +27,12 @@ TEST_CASE("Terminal ScreenBuffer stores Unicode code points without byte assumpt
     ScreenBuffer buffer{{3, 1}};
 
     buffer.set({0, 0}, Cell{U'A'});
-    buffer.set({1, 0}, Cell{U'Ω'});
-    buffer.set({2, 0}, Cell{U'界'});
+    buffer.set({1, 0}, Cell{U'\u03A9'});
+    buffer.set({2, 0}, Cell{U'\u754C'});
 
     CHECK(buffer.at({0, 0}).code_point == U'A');
-    CHECK(buffer.at({1, 0}).code_point == U'Ω');
-    CHECK(buffer.at({2, 0}).code_point == U'界');
+    CHECK(buffer.at({1, 0}).code_point == U'\u03A9');
+    CHECK(buffer.at({2, 0}).code_point == U'\u754C');
 
     /*
      * This test intentionally validates code-point storage only. It does not claim that every code
