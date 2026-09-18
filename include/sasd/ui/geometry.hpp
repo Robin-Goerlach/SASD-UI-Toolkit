@@ -88,11 +88,11 @@ struct Rect {
 };
 
 /**
- * Minimum, preferred and maximum size hints used by backend-neutral layout code.
+ * Minimum, preferred and maximum size hints owned by a widget.
  *
- * This remains a lightweight aggregate so callers can construct constraints naturally. Because an
- * aggregate cannot prevent a caller from supplying minimum > maximum, clamp() is defensive and
- * never delegates invalid bounds to std::clamp (whose contract requires an ordered range).
+ * These describe what the widget would like, not how much space its parent currently has available.
+ * Parent-provided measurement limits use MeasureConstraints below. Keeping both concepts separate is
+ * important: a TextField can prefer 30 columns while a narrow terminal parent may only offer 20.
  */
 struct SizeConstraints {
     Size minimum{0, 0};
@@ -109,8 +109,8 @@ struct SizeConstraints {
      *
      * A range with minimum > maximum is invalid and has no mathematically correct clamp result. To
      * keep this low-level value type deterministic and free of undefined behavior, that dimension
-     * collapses to its declared minimum. Higher-level layout code should detect invalid constraints
-     * with hasValidRange() and report/reject them rather than relying on this fallback.
+     * collapses to its declared minimum. Widget::setSizeConstraints() rejects invalid ranges before
+     * they become part of normal layout state.
      */
     [[nodiscard]] constexpr Size clamp(Size value) const noexcept {
         return {
@@ -118,6 +118,63 @@ struct SizeConstraints {
             clampDimension(value.height, minimum.height, maximum.height),
         };
     }
+
+    friend constexpr bool operator==(const SizeConstraints&, const SizeConstraints&) = default;
+
+private:
+    [[nodiscard]] static constexpr Coordinate clampDimension(Coordinate value,
+                                                             Coordinate minimum_value,
+                                                             Coordinate maximum_value) noexcept {
+        if (minimum_value > maximum_value) {
+            return minimum_value;
+        }
+        if (value < minimum_value) {
+            return minimum_value;
+        }
+        if (value > maximum_value) {
+            return maximum_value;
+        }
+        return value;
+    }
+};
+
+/**
+ * Space offered by a parent during the measure phase.
+ *
+ * Unlike SizeConstraints, this type has no preferred size because preference belongs to the child
+ * being measured. The parent only communicates a legal interval. Maximum defaults to effectively
+ * unbounded logical coordinates, which works for both desktop logical units and terminal cells.
+ */
+struct MeasureConstraints {
+    Size minimum{0, 0};
+    Size maximum{std::numeric_limits<Coordinate>::max(), std::numeric_limits<Coordinate>::max()};
+
+    /**
+     * Returns whether the measurement interval is usable by layout code.
+     *
+     * Layout extents cannot be negative. Requiring non-negative minimum/maximum values here prevents
+     * malformed dimensions from propagating into desired sizes or final arrangement.
+     */
+    [[nodiscard]] constexpr bool hasValidRange() const noexcept {
+        return minimum.width >= 0 && minimum.height >= 0 &&
+               maximum.width >= minimum.width && maximum.height >= minimum.height;
+    }
+
+    /**
+     * Clamps a size into the offered interval without relying on std::clamp preconditions.
+     *
+     * Widget::measure() rejects invalid MeasureConstraints, but keeping this value operation
+     * deterministic is useful for isolated tests and avoids making malformed values an undefined-
+     * behavior trap.
+     */
+    [[nodiscard]] constexpr Size clamp(Size value) const noexcept {
+        return {
+            clampDimension(value.width, minimum.width, maximum.width),
+            clampDimension(value.height, minimum.height, maximum.height),
+        };
+    }
+
+    friend constexpr bool operator==(const MeasureConstraints&, const MeasureConstraints&) = default;
 
 private:
     [[nodiscard]] static constexpr Coordinate clampDimension(Coordinate value,

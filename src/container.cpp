@@ -27,6 +27,12 @@ void Container::adopt(std::unique_ptr<Component> component) {
     adopted->setOwner(this);
     if (auto* widget = dynamic_cast<Widget*>(adopted)) {
         widget->setParent(this);
+
+        /*
+         * A new visual child may change the desired size of any layout-aware container. Invalidate
+         * after the parent link exists so propagation can continue through this container's ancestors.
+         */
+        invalidateMeasure();
     }
 }
 
@@ -53,6 +59,13 @@ std::unique_ptr<Component> Container::release(Component& component) noexcept {
     // important when the returned unique_ptr is immediately adopted by another Container.
     if (auto* widget = dynamic_cast<Widget*>(released.get())) {
         widget->setParent(nullptr);
+
+        /*
+         * Structural removal can change container measurement just like insertion. The detached child
+         * must no longer propagate later invalidations into its former parent, so detach first and
+         * invalidate the container explicitly afterwards.
+         */
+        invalidateMeasure();
     }
     released->setOwner(nullptr);
 
