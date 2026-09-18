@@ -3,6 +3,7 @@
 #include <sasd/ui/terminal/screen_buffer.hpp>
 
 #include <limits>
+#include <new>
 #include <stdexcept>
 
 using namespace sasd::ui;
@@ -156,18 +157,32 @@ TEST_CASE("Terminal ScreenBuffer fill handles coordinate-limit rectangles safely
     }
 }
 
-TEST_CASE("Terminal ScreenBuffer rejects dimensions that cannot form a vector") {
+TEST_CASE("Terminal ScreenBuffer oversized resize failure is transactional") {
     ScreenBuffer buffer;
     constexpr Coordinate maximum = std::numeric_limits<Coordinate>::max();
 
-    bool threw = false;
+    bool failed = false;
     try {
         buffer.resize({maximum, maximum});
     } catch (const std::length_error&) {
-        threw = true;
+        /*
+         * Some standard libraries report that the requested element count exceeds vector::max_size()
+         * before allocation is attempted.
+         */
+        failed = true;
+    } catch (const std::bad_alloc&) {
+        /*
+         * Other conforming implementations (notably libc++ on current macOS runners) can represent
+         * the element count in vector's theoretical limit but cannot satisfy the enormous allocation.
+         * ScreenBuffer documents both outcomes, so the test must not encode one STL implementation.
+         */
+        failed = true;
     }
 
-    CHECK(threw);
+    CHECK(failed);
+
+    // resize() constructs replacement storage before publishing dimensions, so either failure mode
+    // must leave the original empty buffer fully intact.
     CHECK(buffer.size() == Size{0, 0});
     CHECK(buffer.empty());
 }
