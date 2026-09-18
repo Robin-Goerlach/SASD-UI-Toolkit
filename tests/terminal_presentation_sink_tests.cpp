@@ -1,8 +1,11 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/button.hpp>
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
+#include <sasd/ui/terminal/terminal_measurement_context.hpp>
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
 #include <sasd/ui/window.hpp>
 
