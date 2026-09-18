@@ -65,4 +65,16 @@ struct ResizeEvent {
 
 using Event = std::variant<QuitEvent, FocusEvent, KeyEvent, TextInputEvent, ResizeEvent>;
 
+/**
+ * Result returned by a widget after receiving one semantic event.
+ *
+ * ignored means that the widget deliberately leaves the event available for further routing.
+ * handled stops propagation at that widget. Keeping this result explicit is preferable to a plain
+ * bool because call sites remain readable when more routing behavior is added later.
+ */
+enum class EventResult : std::uint8_t {
+    ignored,
+    handled,
+};
+
 } // namespace sasd::ui

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/component.hpp>
+#include <sasd/ui/events/event.hpp>
 #include <sasd/ui/geometry.hpp>
 
 namespace sasd::ui {
@@ -29,6 +30,32 @@ public:
 
     [[nodiscard]] Rect bounds() const noexcept { return bounds_; }
     void setBounds(Rect bounds) noexcept { bounds_ = bounds; }
+
+    /**
+     * Delivers one already-normalized semantic event to this widget.
+     *
+     * This method performs single-widget delivery only; parent traversal belongs to EventDispatcher.
+     * The default implementation ignores every event. Derived widgets normally override onEvent()
+     * rather than this public entry point so the dispatch boundary stays consistent.
+     *
+     * Visibility and enabled state are intentionally not interpreted here. A future focus/target
+     * selection policy decides whether a widget is eligible to become the target. Once an event is
+     * explicitly delivered to a widget, handleEvent() reports only that widget's semantic response.
+     */
+    [[nodiscard]] EventResult handleEvent(const Event& event) {
+        return onEvent(event);
+    }
+
+protected:
+    /**
+     * Event hook for concrete widgets.
+     *
+     * Returning EventResult::handled consumes the event for routing purposes. Returning ignored
+     * allows EventDispatcher to offer the same event to the visual parent.
+     */
+    [[nodiscard]] virtual EventResult onEvent(const Event&) {
+        return EventResult::ignored;
+    }
 
 private:
     friend class Container;
