@@ -33,6 +33,8 @@ add_library(sasd_ui_terminal
     src/terminal/ansi_frame_encoder.cpp
     src/terminal/ansi_input_decoder.cpp
     src/terminal/screen_buffer.cpp
+    src/terminal/terminal_backend.cpp
+    src/terminal/terminal_event_pump.cpp
     src/terminal/terminal_session.cpp
     src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp

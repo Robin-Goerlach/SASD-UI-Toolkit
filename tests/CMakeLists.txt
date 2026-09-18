@@ -48,6 +48,8 @@ add_executable(sasd_ui_terminal_tests
     test_main.cpp
     terminal_ansi_frame_encoder_tests.cpp
     terminal_ansi_input_decoder_tests.cpp
+    terminal_backend_tests.cpp
+    terminal_event_pump_tests.cpp
     terminal_screen_buffer_tests.cpp
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp
