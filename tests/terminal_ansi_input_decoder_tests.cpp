@@ -75,6 +75,21 @@ TEST_CASE("AnsiInputDecoder collapses CRLF into one Enter") {
     CHECK(keyAt(events, 0).key == Key::enter);
 }
 
+TEST_CASE("AnsiInputDecoder suppresses LF when CRLF is split across reads") {
+    AnsiInputDecoder decoder;
+
+    const auto first = decoder.feed("\r");
+    CHECK(first.size() == 1);
+    CHECK(keyAt(first, 0).key == Key::enter);
+
+    const auto second = decoder.feed("\n");
+    CHECK(second.empty());
+
+    const auto text = decoder.feed("x");
+    CHECK(text.size() == 1);
+    CHECK(textAt(text, 0).text == "x");
+}
+
 TEST_CASE("AnsiInputDecoder emits Space as key intent plus text input") {
     AnsiInputDecoder decoder;
 

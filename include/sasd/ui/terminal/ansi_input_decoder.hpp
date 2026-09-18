@@ -35,12 +35,18 @@ public:
     [[nodiscard]] std::string_view pendingBytes() const noexcept { return pending_; }
 
     /** Discards partial input state, for example when a terminal session is torn down. */
-    void reset() noexcept { pending_.clear(); }
+    void reset() noexcept {
+        pending_.clear();
+        suppress_next_lf_ = false;
+    }
 
 private:
     [[nodiscard]] std::vector<Event> decode(bool flush);
 
     std::string pending_;
+
+    // CR is emitted immediately as Enter; a following LF in the next device chunk is suppressed.
+    bool suppress_next_lf_{false};
 };
 
 } // namespace sasd::ui::terminal

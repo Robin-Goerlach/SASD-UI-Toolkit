@@ -160,7 +160,7 @@ struct CsiParameters {
 
     if (final_index >= input.size()) {
         if (!flush) {
-            return {.need_more = true};
+            return EscapeResult{0, true, std::nullopt};
         }
 
         /*
@@ -222,7 +222,7 @@ struct CsiParameters {
     // ESC O <final>, commonly emitted by application-cursor mode for arrows/Home/End.
     if (input.size() < 3) {
         if (!flush) {
-            return {.need_more = true};
+            return EscapeResult{0, true, std::nullopt};
         }
         return {1, false, KeyEvent{Key::escape, true, KeyModifier::none}};
     }
@@ -261,7 +261,7 @@ struct CsiParameters {
 [[nodiscard]] EscapeResult parseEscape(std::string_view input, bool flush) {
     if (input.size() == 1) {
         if (!flush) {
-            return {.need_more = true};
+            return EscapeResult{0, true, std::nullopt};
         }
         return {1, false, KeyEvent{Key::escape, true, KeyModifier::none}};
     }
@@ -300,6 +300,18 @@ std::vector<Event> AnsiInputDecoder::decode(bool flush) {
         const unsigned char byte = static_cast<unsigned char>(pending_[offset]);
         const std::string_view remaining{pending_.data() + offset, pending_.size() - offset};
 
+        /*
+         * A CR was already emitted as Enter in the previous chunk. If LF arrives immediately after
+         * it, consume only that translation byte. Any other next byte simply ends the suppression.
+         */
+        if (suppress_next_lf_) {
+            suppress_next_lf_ = false;
+            if (byte == static_cast<unsigned char>('\n')) {
+                ++offset;
+                continue;
+            }
+        }
+
         if (byte == escape_byte) {
             const EscapeResult parsed = parseEscape(remaining, flush);
             if (parsed.need_more) {
@@ -316,14 +328,18 @@ std::vector<Event> AnsiInputDecoder::decode(bool flush) {
         if (byte == static_cast<unsigned char>('\r') ||
             byte == static_cast<unsigned char>('\n')) {
             /*
-             * Treat CRLF as one Enter gesture if a device/session happens to deliver both bytes.
-             * Raw POSIX terminals normally deliver CR for Return, but the decoder should not create a
-             * duplicate activation merely because another environment translates to CRLF.
+             * Treat CRLF as one Enter gesture. If LF is already in this buffer consume both bytes;
+             * otherwise remember that a leading LF in the next nonblocking read belongs to the CR
+             * already emitted now.
              */
-            if (byte == static_cast<unsigned char>('\r') &&
-                offset + 1 < pending_.size() &&
-                pending_[offset + 1] == '\n') {
-                offset += 2;
+            if (byte == static_cast<unsigned char>('\r')) {
+                if (offset + 1 < pending_.size() &&
+                    pending_[offset + 1] == '\n') {
+                    offset += 2;
+                } else {
+                    ++offset;
+                    suppress_next_lf_ = true;
+                }
             } else {
                 ++offset;
             }
