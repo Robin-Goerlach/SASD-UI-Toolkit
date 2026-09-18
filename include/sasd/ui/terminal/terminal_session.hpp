@@ -3,6 +3,7 @@
 #include <sasd/ui/terminal/terminal_device.hpp>
 
 #include <optional>
+#include <string>
 
 namespace sasd::ui::terminal {
 
@@ -40,6 +41,14 @@ public:
      */
     void present(const ScreenBuffer& buffer,
                  std::optional<Point> caret = std::nullopt);
+
+    /**
+     * Polls bytes that are already available from the active device without blocking.
+     *
+     * Decoding those bytes into semantic Events belongs to AnsiInputDecoder, not to session
+     * lifetime/transport.
+     */
+    [[nodiscard]] std::string pollInputBytes();
 
     /**
      * Restores the device immediately.

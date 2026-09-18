@@ -44,6 +44,14 @@ void TerminalSession::present(const ScreenBuffer& buffer,
     device_.write(frame);
 }
 
+std::string TerminalSession::pollInputBytes() {
+    if (!active_) {
+        throw std::logic_error("TerminalSession::pollInputBytes requires an active session");
+    }
+
+    return device_.readAvailable();
+}
+
 void TerminalSession::close() noexcept {
     if (!active_) {
         return;

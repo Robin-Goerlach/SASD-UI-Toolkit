@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -126,6 +127,54 @@ public:
             throw std::logic_error("POSIX terminal write requires an active session");
         }
         writeAll(bytes);
+    }
+
+    [[nodiscard]] std::string readAvailable() override {
+        if (!active_) {
+            throw std::logic_error("POSIX terminal read requires an active session");
+        }
+
+        std::string result;
+        char buffer[256];
+
+        for (;;) {
+            struct pollfd descriptor {};
+            descriptor.fd = STDIN_FILENO;
+            descriptor.events = POLLIN;
+
+            int poll_result = 0;
+            do {
+                poll_result = ::poll(&descriptor, 1, 0);
+            } while (poll_result < 0 && errno == EINTR);
+
+            if (poll_result < 0) {
+                throw systemError("poll(stdin)");
+            }
+            if (poll_result == 0 || (descriptor.revents & POLLIN) == 0) {
+                break;
+            }
+
+            ssize_t count = 0;
+            do {
+                count = ::read(STDIN_FILENO, buffer, sizeof(buffer));
+            } while (count < 0 && errno == EINTR);
+
+            if (count < 0) {
+                throw systemError("read(stdin)");
+            }
+            if (count == 0) {
+                break;
+            }
+
+            result.append(buffer, static_cast<std::size_t>(count));
+
+            /*
+             * poll() is checked again rather than assuming a short read means "drained". TTY line
+             * disciplines and PTYs are allowed to return short chunks even when more bytes follow.
+             */
+        }
+
+        return result;
     }
 
 private:

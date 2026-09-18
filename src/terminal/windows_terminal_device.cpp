@@ -101,7 +101,16 @@ public:
         if (options.raw_input) {
             DWORD input_mode = pending.original_input_mode;
             input_mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-            input_mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+            /*
+             * This byte-oriented adapter intentionally disables record-oriented mouse/window input.
+             * Resize is queried through size(), and pointer support will get a dedicated semantic path
+             * later. Keeping only byte-producing input avoids a signaled console handle with no bytes
+             * for ReadFile().
+             */
+            input_mode &= ~(ENABLE_ECHO_INPUT |
+                            ENABLE_LINE_INPUT |
+                            ENABLE_MOUSE_INPUT |
+                            ENABLE_WINDOW_INPUT);
 
             if (::SetConsoleMode(input_, input_mode) == 0) {
                 rollback(pending);
@@ -153,6 +162,41 @@ public:
             throw std::logic_error("Windows terminal write requires an active session");
         }
         writeAll(bytes);
+    }
+
+    [[nodiscard]] std::string readAvailable() override {
+        if (!active_) {
+            throw std::logic_error("Windows terminal read requires an active session");
+        }
+
+        std::string result;
+        char buffer[256];
+
+        for (;;) {
+            const DWORD wait_result = ::WaitForSingleObject(input_, 0);
+            if (wait_result == WAIT_TIMEOUT) {
+                break;
+            }
+            if (wait_result != WAIT_OBJECT_0) {
+                throw win32Error("WaitForSingleObject(console input)");
+            }
+
+            DWORD read = 0;
+            if (::ReadFile(input_,
+                           buffer,
+                           static_cast<DWORD>(sizeof(buffer)),
+                           &read,
+                           nullptr) == 0) {
+                throw win32Error("ReadFile(console input)");
+            }
+            if (read == 0) {
+                break;
+            }
+
+            result.append(buffer, static_cast<std::size_t>(read));
+        }
+
+        return result;
     }
 
 private:

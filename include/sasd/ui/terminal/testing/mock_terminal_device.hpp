@@ -2,6 +2,7 @@
 
 #include <sasd/ui/terminal/terminal_device.hpp>
 
+#include <deque>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -63,16 +64,39 @@ public:
         writes_.emplace_back(bytes);
     }
 
+    [[nodiscard]] std::string readAvailable() override {
+        ++read_count_;
+        if (fail_read_) {
+            throw std::runtime_error("injected read failure");
+        }
+        if (!active_) {
+            throw std::logic_error("mock terminal read requires active session");
+        }
+        if (input_chunks_.empty()) {
+            return {};
+        }
+
+        std::string result = std::move(input_chunks_.front());
+        input_chunks_.pop_front();
+        return result;
+    }
+
+    void queueInput(std::string bytes) {
+        input_chunks_.push_back(std::move(bytes));
+    }
+
     void setInteractive(bool value) noexcept { interactive_ = value; }
     void setSize(Size value) noexcept { size_ = value; }
     void setFailBegin(bool value) noexcept { fail_begin_ = value; }
     void setFailWrite(bool value) noexcept { fail_write_ = value; }
+    void setFailRead(bool value) noexcept { fail_read_ = value; }
     void setFailSize(bool value) noexcept { fail_size_ = value; }
 
     [[nodiscard]] bool active() const noexcept { return active_; }
     [[nodiscard]] int beginCount() const noexcept { return begin_count_; }
     [[nodiscard]] int endCount() const noexcept { return end_count_; }
     [[nodiscard]] int writeCount() const noexcept { return write_count_; }
+    [[nodiscard]] int readCount() const noexcept { return read_count_; }
     [[nodiscard]] const TerminalSessionOptions& lastOptions() const noexcept {
         return last_options_;
     }
@@ -85,13 +109,16 @@ private:
     bool active_{false};
     bool fail_begin_{false};
     bool fail_write_{false};
+    bool fail_read_{false};
     bool fail_size_{false};
     Size size_{80, 24};
     TerminalSessionOptions last_options_{};
     int begin_count_{0};
     int end_count_{0};
     int write_count_{0};
+    int read_count_{0};
     std::vector<std::string> writes_;
+    std::deque<std::string> input_chunks_;
 };
 
 } // namespace sasd::ui::terminal::testing

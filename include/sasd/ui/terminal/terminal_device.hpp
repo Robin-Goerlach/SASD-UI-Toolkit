@@ -2,6 +2,7 @@
 
 #include <sasd/ui/geometry.hpp>
 
+#include <string>
 #include <string_view>
 
 namespace sasd::ui::terminal {
@@ -77,6 +78,15 @@ public:
      * exception operation so frame transport cannot silently truncate.
      */
     virtual void write(std::string_view bytes) = 0;
+
+    /**
+     * Returns all input bytes currently available without waiting for future input.
+     *
+     * An empty string means that no byte is currently ready, not end-of-session. Native
+     * implementations must keep this operation non-blocking even when the underlying terminal is not
+     * configured in raw mode.
+     */
+    [[nodiscard]] virtual std::string readAvailable() = 0;
 };
 
 } // namespace sasd::ui::terminal

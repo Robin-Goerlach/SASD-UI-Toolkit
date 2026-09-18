@@ -151,3 +151,49 @@ TEST_CASE("TerminalSession forwards explicit session options") {
 
     CHECK(device.lastOptions() == options);
 }
+
+
+TEST_CASE("TerminalSession polls currently available input bytes without decoding") {
+    MockTerminalDevice device;
+    TerminalSession session{device};
+
+    device.queueInput("\x1B[A");
+    device.queueInput("abc");
+
+    CHECK(session.pollInputBytes() == std::string{"\x1B[A"});
+    CHECK(session.pollInputBytes() == "abc");
+    CHECK(session.pollInputBytes().empty());
+    CHECK(device.readCount() == 3);
+}
+
+TEST_CASE("TerminalSession input failure leaves session active") {
+    MockTerminalDevice device;
+    TerminalSession session{device};
+    device.setFailRead(true);
+
+    bool threw = false;
+    try {
+        (void)session.pollInputBytes();
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+
+    CHECK(threw);
+    CHECK(session.active());
+    CHECK(device.active());
+}
+
+TEST_CASE("TerminalSession rejects input polling after close") {
+    MockTerminalDevice device;
+    TerminalSession session{device};
+    session.close();
+
+    bool threw = false;
+    try {
+        (void)session.pollInputBytes();
+    } catch (const std::logic_error&) {
+        threw = true;
+    }
+
+    CHECK(threw);
+}
