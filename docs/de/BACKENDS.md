@@ -32,6 +32,8 @@ Die Terminal-Schicht besitzt inzwischen eine eigene versionierte `TextMetrics`-A
 
 Zero-Width-/Combining-/Format-Sequenzen und gewöhnliche Terminal-Control-Zeichen werden vom heutigen einfachen Cell-Modell noch nicht verlustfrei repräsentiert. Solche Label-Updates werden deshalb vor jeder Buffer-Änderung `deferred`; die zuletzt erfolgreich synchronisierte Darstellung bleibt erhalten. Der plattformneutrale `Label`-Core berechnet weiterhin keine terminalspezifische intrinsische Textbreite. Vollständige Grapheme-Segmentierung und ein Upgrade der gepinnten Unicode-Daten bleiben eigene M2-Schritte.
 
+Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen Subtree-Refresh: das Terminal-`Window` leert seinen Off-Screen-Buffer nur bei solchem Geometrie-/Strukturschaden, anschließend werden auch cleane Descendants deterministisch erneut gerendert. Normale Text-/Fokusänderungen bleiben inkrementell. Dirty Rectangles und Region-Merging sind bewusst spätere Optimierungen.
+
 Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie die konkrete Präsentation von `Button` und `TextField`.
 
 ### 2. SDL3-Backend

@@ -45,6 +45,7 @@ The repository now contains the first working implementation slice:
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - backend-neutral `MeasurementContext` so content widgets can obtain terminal/font/native metrics without backend coupling;
 - separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
+- conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
 - first semantic M2 widgets: `Window` and UTF-8 `Label`;

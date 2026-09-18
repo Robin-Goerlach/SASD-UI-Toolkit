@@ -32,6 +32,8 @@ The terminal layer now has a dedicated versioned `TextMetrics` abstraction. UTF-
 
 Zero-width/combining/format sequences and ordinary terminal controls still cannot be preserved faithfully by the current simple Cell model. Those Label updates are therefore `deferred` before the buffer is modified, preserving the last successfully synchronized representation. The platform-neutral `Label` core still does not invent a terminal-specific intrinsic width. Full grapheme segmentation and an upgrade of the pinned Unicode data remain explicit M2 tasks.
 
+Geometry changes and child removal now use a conservative subtree refresh: the terminal `Window` clears its off-screen buffer only for such geometry/structural damage, after which otherwise-clean descendants are deterministically replayed. Ordinary text/focus changes remain incremental. Dirty rectangles and region merging are deliberately later optimizations.
+
 ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, full grapheme/ZWJ presentation and concrete presentation of `Button` and `TextField` are not implemented yet.
 
 ### 2. SDL3 backend

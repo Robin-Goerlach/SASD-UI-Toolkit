@@ -293,6 +293,8 @@ A newly created widget initially requires visual synchronization. `invalidateVis
 
 `acknowledgeVisualUpdate()` acknowledges only the widget that was actually processed and does not automatically clear dirty descendants.
 
+Geometry and structural changes additionally use a stronger `presentation subtree refresh`. `arrange()` requests it when bounds change, and removing a visual child requests it on the old container. The request propagates to the presentation root. After that root synchronizes successfully, `PresentationCoordinator` also replays otherwise-clean descendants. This removes stale old positions and restores previously covered siblings without introducing dirty-rectangle/occlusion machinery into the core yet.
+
 ### PresentationCoordinator and PresentationSink
 
 The M1 core now contains the backend-neutral bridge that consumes this pending state:

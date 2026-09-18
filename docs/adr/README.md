@@ -30,6 +30,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0013](0013-presentation-coordinator-and-sink.md) | Presentation synchronization coordinator and sink boundary | Accepted |
 | [0014](0014-terminal-unicode-cell-width-policy.md) | Versioned terminal Unicode cell-width policy | Accepted |
 | [0015](0015-backend-neutral-measurement-context.md) | Backend-neutral measurement context for intrinsic widget metrics | Accepted |
+| [0016](0016-conservative-presentation-subtree-refresh.md) | Conservative subtree refresh for geometry and structural presentation changes | Accepted |
 
 ## ADR policy
 

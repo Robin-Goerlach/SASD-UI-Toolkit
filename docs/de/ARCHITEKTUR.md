@@ -295,6 +295,8 @@ Ein neues Widget gilt zunächst als visuell nicht synchronisiert. `invalidateVis
 
 `acknowledgeVisualUpdate()` bestätigt nur das tatsächlich verarbeitete Widget und löscht nicht automatisch Dirty-Zustände von Nachfahren.
 
+Geometrie- und Strukturänderungen verwenden zusätzlich einen stärkeren `Presentation-Subtree-Refresh`. `arrange()` fordert ihn bei geänderten Bounds an; das Entfernen eines visuellen Kindes fordert ihn am alten Container an. Der Request propagiert bis zum Presentation-Root. Nach erfolgreicher Synchronisation dieses Roots bietet der `PresentationCoordinator` auch sonst cleane Descendants erneut an. Damit können alte Positionen gelöscht und zuvor verdeckte Geschwister korrekt wieder aufgebaut werden, ohne bereits Dirty-Rectangle-/Occlusion-Logik in den Core einzubauen.
+
 ### PresentationCoordinator und PresentationSink
 
 Der M1-Core besitzt inzwischen die backendneutrale Brücke, die diesen Pending-Zustand konsumiert:
