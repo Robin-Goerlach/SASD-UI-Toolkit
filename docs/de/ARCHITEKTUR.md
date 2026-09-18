@@ -209,11 +209,13 @@ Parent
 
 `SizeConstraints` gehören zum Widget selbst und beschreiben Minimum, Preferred und Maximum. `MeasureConstraints` kommen vom Parent und beschreiben ausschließlich den tatsächlich angebotenen Minimum-/Maximum-Bereich. Die intrinsische Größe aus `onMeasure()` wird zuerst durch die eigenen Widget-Hinweise und danach durch die Parent-Constraints begrenzt; damit kann ein Kind keinen Platz erzwingen, den der Parent nicht besitzt.
 
-`measure()` cached `desiredSize()` für identische Parent-Constraints. Größenrelevante Zustandsänderungen rufen `invalidateMeasure()` auf. Diese Invalidierung propagiert über den visuellen Parent-Pfad, sodass beispielsweise eine spätere Textänderung in einem `Label` auch `VBox` und `Window` als neu zu vermessen markieren kann. Auch das Hinzufügen oder Entfernen visueller Kinder invalidiert den Container.
+`measure()` cached `desiredSize()` für identische Parent-Constraints. Zusätzlich kann `measure(context, constraints)` einen backendneutralen `MeasurementContext` verwenden. Dadurch kann beispielsweise `Label` Textmetriken anfragen, ohne Terminal-, Font- oder native Typen zu kennen. Der Messcache unterscheidet contextlose und contextbasierte Messungen und identifiziert einen Context über dynamischen Typ plus `revision()`; das Widget hält keinen Context-Pointer. Der erste `TerminalMeasurementContext` liefert Spalten-/Zeilenmetriken aus derselben `TextMetrics`-Policy wie das Terminal-Rendering.
+
+Größenrelevante Zustandsänderungen rufen `invalidateMeasure()` auf. Diese Invalidierung propagiert über den visuellen Parent-Pfad, sodass beispielsweise eine spätere Textänderung in einem `Label` auch `VBox` und `Window` als neu zu vermessen markieren kann. Auch das Hinzufügen oder Entfernen visueller Kinder invalidiert den Container.
 
 `arrange()` weist das endgültige logische Rechteck zu. Die Bounds werden vor `onArrange()` gespeichert, damit ein Container beim Anordnen seiner Kinder seine eigene finale Geometrie verwenden kann. Nullgrößen sind erlaubt; negative Ausdehnungen werden abgelehnt. Direktes `setBounds()` läuft bewusst über denselben Arrange-Pfad.
 
-Noch offen bleiben konkrete Regeln für `VBox`/`HBox`, Margin/Padding/Spacing, den Layout-Effekt unsichtbarer Widgets und backendabhängige Textmessung. Diese Punkte sollen erst mit den ersten realen M2-Controls festgelegt werden.
+Noch offen bleiben konkrete Regeln für `VBox`/`HBox`, Margin/Padding/Spacing und den Layout-Effekt unsichtbarer Widgets. Die Backend-Grenze für Textmessung ist inzwischen über `MeasurementContext` festgelegt; reichere Font-/Style-Metriken werden erst ergänzt, wenn weitere Backends sie praktisch benötigen. Diese Punkte sollen erst mit den ersten realen M2-Controls festgelegt werden.
 
 Deshalb soll der Layoutprozess auf folgenden Konzepten beruhen:
 

@@ -209,11 +209,11 @@ Parent
 
 `SizeConstraints` belong to the widget and describe its minimum, preferred and maximum size hints. `MeasureConstraints` come from the parent and describe only the minimum/maximum interval actually offered. The intrinsic result from `onMeasure()` is constrained first by the widget's own hints and then by the parent's constraints, so a child cannot manufacture space that the parent does not have.
 
-`measure()` caches `desiredSize()` for identical parent constraints. Size-relevant state changes call `invalidateMeasure()`, which propagates along the visual parent path. A future text change in a `Label`, for example, can therefore mark its `VBox` and `Window` ancestors stale as well. Adding or removing visual children also invalidates the container.
+`measure()` caches `desiredSize()` for identical parent constraints. In addition, `measure(context, constraints)` can use a backend-neutral `MeasurementContext`. A `Label` can therefore request text metrics without knowing terminal, font or native types. The measurement cache separates context-free and context-aware measurements and identifies a context by dynamic type plus `revision()`; Widget retains no context pointer. The first `TerminalMeasurementContext` supplies column/row metrics from the same `TextMetrics` policy used by terminal presentation. Size-relevant state changes call `invalidateMeasure()`, which propagates along the visual parent path. A future text change in a `Label`, for example, can therefore mark its `VBox` and `Window` ancestors stale as well. Adding or removing visual children also invalidates the container.
 
 `arrange()` assigns the final logical rectangle. Bounds are stored before `onArrange()` runs so a container can use its own final geometry while arranging children. Zero-sized rectangles are valid; negative extents are rejected. Direct `setBounds()` intentionally follows the same arrangement path.
 
-Concrete `VBox`/`HBox` allocation, margin/padding/spacing APIs, the layout effect of invisible widgets and backend-specific text measurement remain deliberately open until the first real M2 controls exercise those cases.
+Concrete `VBox`/`HBox` allocation, margin/padding/spacing APIs and the layout effect of invisible widgets remain deliberately open. The backend boundary for text measurement is now defined through `MeasurementContext`; richer font/style metrics will be added only when additional backends demonstrate a concrete need.
 
 The layout process should therefore work with concepts such as:
 

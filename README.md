@@ -43,12 +43,14 @@ The repository now contains the first working implementation slice:
 - target-to-parent event routing with explicit handled/ignored semantics;
 - lifetime-safe logical keyboard `FocusManager`;
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
+- backend-neutral `MeasurementContext` so content widgets can obtain terminal/font/native metrics without backend coupling;
 - separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
 - first semantic M2 widgets: `Window` and UTF-8 `Label`;
 - headless `TerminalPresentationSink` that renders `Window` / `Label` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
+- `TerminalMeasurementContext`, giving `Label` real terminal-cell desired sizes while keeping the core widget terminal-agnostic;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
