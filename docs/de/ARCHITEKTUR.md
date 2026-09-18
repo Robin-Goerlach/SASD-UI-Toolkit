@@ -226,7 +226,6 @@ Deshalb soll der Layoutprozess auf folgenden Konzepten beruhen:
 
 Erste geplante Layouts:
 
-
 - `HBox`
 - `VBox`
 - `GridLayout`
@@ -292,7 +291,30 @@ Größe/Inhalt beeinflusst Layout        Nur Darstellung geändert
 
 Ein neues Widget gilt zunächst als visuell nicht synchronisiert. `invalidateVisual()` setzt den Pending-Zustand und propagiert über den visuellen Parent-Pfad. Fokus, Enabled-Zustand und eine geänderte finale Geometrie können deshalb eine Darstellung aktualisieren, ohne die gecachte Wunschgröße ungültig zu machen. Visibility sowie das Hinzufügen/Entfernen visueller Kinder betreffen dagegen sowohl Layout als auch Darstellung.
 
-`acknowledgeVisualUpdate()` bestätigt nur das tatsächlich verarbeitete Widget und löscht nicht automatisch Dirty-Zustände von Nachfahren. Damit kann ein späterer Terminal- oder Desktop-Koordinator exakt bestätigen, was wirklich synchronisiert wurde.
+`acknowledgeVisualUpdate()` bestätigt nur das tatsächlich verarbeitete Widget und löscht nicht automatisch Dirty-Zustände von Nachfahren.
+
+### PresentationCoordinator und PresentationSink
+
+Der M1-Core besitzt inzwischen die backendneutrale Brücke, die diesen Pending-Zustand konsumiert:
+
+```text
+Widget-Baum
+    │
+    │ dirty/clean traversal
+    ▼
+PresentationCoordinator
+    │
+    │ nur pending Widgets
+    ▼
+PresentationSink
+    │
+    ├── synchronized → Widget bestätigen
+    └── deferred     → Widget bleibt pending
+```
+
+Der Coordinator traversiert den vollständigen visuellen Teilbaum deterministisch in Preorder (Parent vor Kindern). Cleane Widgets werden nicht an die Senke geschickt, aber weiter traversiert, damit ein pending Descendant unter einem bereits bestätigten Parent nicht verloren geht. Unsichtbare pending Widgets werden ebenfalls angeboten, weil gerade das Entfernen ihrer bisherigen Darstellung ein notwendiges Update sein kann.
+
+Die Senke erhält ausschließlich `const Widget&` und darf den visuellen Baum während eines Passes nicht strukturell verändern. Terminal-, Rendered- und Native-Backends können denselben Vertrag verwenden, obwohl ihre konkrete Synchronisation völlig unterschiedlich ausfällt.
 
 Dirty Rectangles, Frame Scheduling, Clipping, Display Lists und konkrete Render-/Terminal-Diff-Algorithmen bleiben bewusst außerhalb dieses M1-Vertrags.
 

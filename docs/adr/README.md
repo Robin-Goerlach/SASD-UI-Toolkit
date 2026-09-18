@@ -24,8 +24,10 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0007](0007-terminal-first-class-backend.md) | Terminal as a first-class backend | Accepted |
 | [0008](0008-model-view-for-data-widgets.md) | Model/View for data-heavy widgets | Accepted |
 | [0009](0009-designer-as-separate-project.md) | Visual designer outside the core toolkit | Accepted |
-| [0010](0010-release-and-compatibility-strategy.md) | Small vertical releases and pre-1.0 compatibility policy | Accepted |\n| [0011](0011-two-phase-layout-measure-arrange.md) | Two-phase backend-neutral measure/arrange layout contract | Accepted |
+| [0010](0010-release-and-compatibility-strategy.md) | Small vertical releases and pre-1.0 compatibility policy | Accepted |
+| [0011](0011-two-phase-layout-measure-arrange.md) | Two-phase backend-neutral measure/arrange layout contract | Accepted |
 | [0012](0012-visual-update-invalidation.md) | Separate visual update invalidation from layout invalidation | Accepted |
+| [0013](0013-presentation-coordinator-and-sink.md) | Presentation synchronization coordinator and sink boundary | Accepted |
 
 ## ADR policy
 

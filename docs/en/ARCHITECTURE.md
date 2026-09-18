@@ -226,7 +226,6 @@ The layout process should therefore work with concepts such as:
 
 Initial planned layouts:
 
-
 - `HBox`
 - `VBox`
 - `GridLayout`
@@ -292,7 +291,30 @@ Size/content affects layout             Presentation only
 
 A newly created widget initially requires visual synchronization. `invalidateVisual()` marks that state pending and propagates it along the visual parent path. Focus, enabled state and changed final geometry can therefore require presentation updates without invalidating the cached desired size. Visibility and insertion/removal of visual children affect both layout and presentation.
 
-`acknowledgeVisualUpdate()` acknowledges only the widget that was actually processed and does not automatically clear dirty descendants. A future terminal or desktop coordinator can therefore report exactly what it successfully synchronized.
+`acknowledgeVisualUpdate()` acknowledges only the widget that was actually processed and does not automatically clear dirty descendants.
+
+### PresentationCoordinator and PresentationSink
+
+The M1 core now contains the backend-neutral bridge that consumes this pending state:
+
+```text
+Widget tree
+    │
+    │ dirty/clean traversal
+    ▼
+PresentationCoordinator
+    │
+    │ pending Widgets only
+    ▼
+PresentationSink
+    │
+    ├── synchronized → acknowledge Widget
+    └── deferred     → Widget remains pending
+```
+
+The coordinator traverses the complete visual subtree deterministically in preorder (parent before children). Clean widgets are not sent to the sink but are still traversed so a pending descendant below an independently acknowledged parent cannot be lost. Invisible pending widgets are offered as well because removing their previous representation can itself require synchronization.
+
+The sink receives only `const Widget&` and must not structurally mutate the visual tree during a pass. Terminal, rendered and native backends can use the same contract even though their concrete synchronization mechanisms differ completely.
 
 Dirty rectangles, frame scheduling, clipping, display lists and concrete renderer/terminal diff algorithms deliberately remain outside this M1 contract.
 
