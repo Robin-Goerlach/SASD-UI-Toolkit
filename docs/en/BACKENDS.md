@@ -28,7 +28,11 @@ The first terminal building block now exists as a separately linkable `SASD::UI:
 
 A `Cell` initially stores one Unicode code point as `char32_t`. This does **not** claim that every code point occupies exactly one terminal column. Wide characters, combining marks and grapheme clusters will be handled by a dedicated display-width/text layer in a later M2 step. The current representation merely avoids the much worse assumption that one UTF-8 byte equals one character equals one cell.
 
-ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, display-width calculation and concrete presentation of `Window`, `Label`, `Button` and `TextField` are not implemented yet.
+`Window` and `Label` now exist as the first semantic M2 widgets. A `TerminalPresentationSink` consumes their normal visual invalidation through `PresentationCoordinator` and renders deterministically into `ScreenBuffer`. UTF-8 is decoded safely, visual-parent offsets are resolved, widget/screen bounds are clipped, and malformed UTF-8 is replaced with U+FFFD. Unknown concrete widget types deliberately return `deferred` rather than silently losing their pending update.
+
+The current `Label` presentation advances one terminal cell per decoded Unicode code point as a temporary subset. This is explicitly **not** the final text metric. The platform-neutral `Label` core therefore does not yet invent an intrinsic text width either; a real display-width/text-measurement layer must model wide characters, combining marks and grapheme clusters correctly.
+
+ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, final display-width calculation and concrete presentation of `Button` and `TextField` are not implemented yet.
 
 ### 2. SDL3 backend
 

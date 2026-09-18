@@ -29,7 +29,7 @@ The project explores a specific combination that is not the primary design goal 
 
 The goal is **not** to clone VCL, Swing, Qt or wxWidgets. The goal is to learn from their strongest ideas and combine them into a coherent toolkit for modern C++.
 
-## Current M1 foundation
+## Current foundation
 
 The repository now contains the first working implementation slice:
 
@@ -46,13 +46,15 @@ The repository now contains the first working implementation slice:
 - separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
+- first semantic M2 widgets: `Window` and UTF-8 `Label`;
+- headless `TerminalPresentationSink` that renders `Window` / `Label` through `PresentationCoordinator` into terminal cells;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. Its first M2 slice provides the backend-separated off-screen cell buffer; ANSI/VT output, terminal device I/O and concrete widget presentation are still to be implemented. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer, including UTF-8 decoding, clipping and visibility updates. ANSI/VT output, terminal device I/O, real terminal text-width metrics and interactive controls are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 
@@ -187,7 +189,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | Planned for first usable preview |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label headless presentation |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |

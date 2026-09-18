@@ -28,7 +28,11 @@ Der erste Terminal-Baustein ist als separat linkbares `SASD::UI::Terminal`-Targe
 
 Eine `Cell` speichert zunächst genau einen Unicode-Codepoint als `char32_t`. Das ist **keine** Behauptung, dass jeder Codepoint genau eine Terminalspalte breit ist. Wide Characters, Combining Marks und Grapheme Cluster werden in einem späteren M2-Schritt durch eine eigene Display-Width-/Text-Schicht behandelt. Die aktuelle Darstellung verhindert lediglich die wesentlich problematischere Annahme „ein UTF-8-Byte = ein Zeichen = eine Zelle“.
 
-Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, Display-Width-Berechnung und die konkrete Präsentation von `Window`, `Label`, `Button` und `TextField`.
+`Window` und `Label` sind inzwischen als erste semantische M2-Widgets vorhanden. Ein `TerminalPresentationSink` konsumiert deren normale Visual-Invalidierung über den `PresentationCoordinator` und rendert deterministisch in den `ScreenBuffer`. Dabei werden UTF-8-Sequenzen sicher dekodiert, Parent-Offsets aufgelöst, Widget-/Screen-Grenzen geclippt und malformed UTF-8 durch U+FFFD ersetzt. Unbekannte konkrete Widget-Typen werden bewusst als `deferred` behandelt, statt ihre Updates still zu verlieren.
+
+Die aktuelle `Label`-Darstellung verwendet vorläufig einen Terminal-Cell-Schritt pro dekodiertem Unicode-Codepoint. Das ist ausdrücklich noch **keine** endgültige Textmetrik. Der plattformneutrale `Label`-Core berechnet deshalb auch noch keine intrinsische Textbreite; eine echte Display-Width-/Text-Messschicht muss erst Wide Characters, Combining Marks und Grapheme Cluster korrekt modellieren.
+
+Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, endgültige Display-Width-Berechnung sowie die konkrete Präsentation von `Button` und `TextField`.
 
 ### 2. SDL3-Backend
 

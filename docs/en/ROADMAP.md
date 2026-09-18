@@ -46,7 +46,7 @@ The mock backend should validate component trees, ownership, events, focus, layo
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Status: in progress.** The separate `SASD::UI::Terminal` target and headless-tested off-screen cell surface are implemented as the first step; concrete terminal presentation and the first visible widgets follow on top.
+**Status: in progress.** The separate `SASD::UI::Terminal` target, headless-tested off-screen cell surface and first vertical `Window`/`Label` presentation path are implemented. Real text metrics, additional widgets and finally terminal device I/O follow next.
 
 **Goal:** first genuinely usable user-visible vertical slice.
 
