@@ -26,13 +26,13 @@ Eine spätere Implementierung darf intern systemnahe Hilfen oder optionale Bibli
 
 Der erste Terminal-Baustein ist als separat linkbares `SASD::UI::Terminal`-Target angelegt. Er enthält eine vollständig headless testbare Off-Screen-`ScreenBuffer`-Abstraktion für Terminal-Zellen. Dadurch können Rendering-, Clipping- und Resize-Regeln auf allen CI-Plattformen geprüft werden, ohne bereits eine reale Konsole zu benötigen.
 
-Eine `Cell` speichert zunächst genau einen Unicode-Codepoint als `char32_t`. Das ist **keine** Behauptung, dass jeder Codepoint genau eine Terminalspalte breit ist. Wide Characters, Combining Marks und Grapheme Cluster werden in einem späteren M2-Schritt durch eine eigene Display-Width-/Text-Schicht behandelt. Die aktuelle Darstellung verhindert lediglich die wesentlich problematischere Annahme „ein UTF-8-Byte = ein Zeichen = eine Zelle“.
+Die Terminal-Schicht besitzt inzwischen eine eigene versionierte `TextMetrics`-Abstraktion. UTF-8 wird zentral dekodiert; Narrow/Wide/Fullwidth werden als 1/2 Zellen gemessen, East-Asian-Ambiguous ist explizit als Narrow- oder Wide-Policy wählbar. `CellRole::wide_lead` und `wide_continuation` halten Zwei-Spalten-Belegung auch im Off-Screen-Buffer sichtbar. Die aktuell generierten Tabellen sind bewusst auf Unicode 17.0.0 gepinnt und über die API als solche identifizierbar.
 
 `Window` und `Label` sind inzwischen als erste semantische M2-Widgets vorhanden. Ein `TerminalPresentationSink` konsumiert deren normale Visual-Invalidierung über den `PresentationCoordinator` und rendert deterministisch in den `ScreenBuffer`. Dabei werden UTF-8-Sequenzen sicher dekodiert, Parent-Offsets aufgelöst, Widget-/Screen-Grenzen geclippt und malformed UTF-8 durch U+FFFD ersetzt. Unbekannte konkrete Widget-Typen werden bewusst als `deferred` behandelt, statt ihre Updates still zu verlieren.
 
-Die aktuelle `Label`-Darstellung verwendet vorläufig einen Terminal-Cell-Schritt pro dekodiertem Unicode-Codepoint. Das ist ausdrücklich noch **keine** endgültige Textmetrik. Der plattformneutrale `Label`-Core berechnet deshalb auch noch keine intrinsische Textbreite; eine echte Display-Width-/Text-Messschicht muss erst Wide Characters, Combining Marks und Grapheme Cluster korrekt modellieren.
+Zero-Width-/Combining-/Format-Sequenzen und gewöhnliche Terminal-Control-Zeichen werden vom heutigen einfachen Cell-Modell noch nicht verlustfrei repräsentiert. Solche Label-Updates werden deshalb vor jeder Buffer-Änderung `deferred`; die zuletzt erfolgreich synchronisierte Darstellung bleibt erhalten. Der plattformneutrale `Label`-Core berechnet weiterhin keine terminalspezifische intrinsische Textbreite. Vollständige Grapheme-Segmentierung und ein Upgrade der gepinnten Unicode-Daten bleiben eigene M2-Schritte.
 
-Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, endgültige Display-Width-Berechnung sowie die konkrete Präsentation von `Button` und `TextField`.
+Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie die konkrete Präsentation von `Button` und `TextField`.
 
 ### 2. SDL3-Backend
 

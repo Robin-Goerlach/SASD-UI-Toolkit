@@ -28,6 +28,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0011](0011-two-phase-layout-measure-arrange.md) | Two-phase backend-neutral measure/arrange layout contract | Accepted |
 | [0012](0012-visual-update-invalidation.md) | Separate visual update invalidation from layout invalidation | Accepted |
 | [0013](0013-presentation-coordinator-and-sink.md) | Presentation synchronization coordinator and sink boundary | Accepted |
+| [0014](0014-terminal-unicode-cell-width-policy.md) | Versioned terminal Unicode cell-width policy | Accepted |
 
 ## ADR policy
 

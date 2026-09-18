@@ -48,13 +48,14 @@ The repository now contains the first working implementation slice:
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
 - first semantic M2 widgets: `Window` and UTF-8 `Label`;
 - headless `TerminalPresentationSink` that renders `Window` / `Label` through `PresentationCoordinator` into terminal cells;
+- versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer, including UTF-8 decoding, clipping and visibility updates. ANSI/VT output, terminal device I/O, real terminal text-width metrics and interactive controls are still to be implemented. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. ANSI/VT output, terminal device I/O and interactive controls are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 
@@ -189,7 +190,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label headless presentation |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label + Unicode cell-width metrics |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |
@@ -257,7 +258,7 @@ These are references, not compatibility targets.
 
 SASD UI Toolkit is released under the [MIT License](LICENSE).
 
-The intent is to make the toolkit easy to use in open-source, research, private and commercial applications without license fees for the toolkit itself. Dependencies used by optional backends may have their own licenses and will be documented explicitly.
+The intent is to make the toolkit easy to use in open-source, research, private and commercial applications without license fees for the toolkit itself. Dependencies/data used by optional backends may have their own licenses and are documented explicitly; see `docs/third-party/` for current notices.
 
 ## Contributing
 

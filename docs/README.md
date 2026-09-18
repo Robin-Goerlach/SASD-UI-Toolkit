@@ -37,3 +37,7 @@ Architecture decisions should be documented before they become difficult to reve
 ADRs are bilingual in a single file so their rationale cannot silently diverge between language versions.
 
 When implementation starts, API reference documentation should be generated from the C++ source (for example with Doxygen) while these Markdown documents remain the place for concepts, decisions, tutorials and contributor guidance.
+
+## Third-party notices
+
+- [Terminal Unicode width-table data](third-party/terminal-unicode-width-tables.md)
