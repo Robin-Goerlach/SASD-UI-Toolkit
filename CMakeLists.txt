@@ -15,6 +15,7 @@ add_library(sasd_ui_core
     src/event_dispatcher.cpp
     src/event_queue.cpp
     src/focus_manager.cpp
+    src/presentation_coordinator.cpp
     src/widget.cpp
     src/testing/mock_backend.cpp
 )
