@@ -2,6 +2,7 @@
 
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/testing/mock_backend.hpp>
 
 #include <cstddef>
