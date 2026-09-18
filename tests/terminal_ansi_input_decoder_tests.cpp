@@ -1,6 +1,12 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/button.hpp>
+#include <sasd/ui/events/event_dispatcher.hpp>
+#include <sasd/ui/focus_manager.hpp>
+#include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/terminal/ansi_input_decoder.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/vbox.hpp>
 
 #include <string>
 #include <variant>
@@ -204,4 +210,46 @@ TEST_CASE("AnsiInputDecoder reset discards partial sequence state") {
 
     CHECK(!decoder.hasPendingInput());
     CHECK(decoder.feed("A").size() == 1);
+}
+
+
+TEST_CASE("ANSI bytes drive TextField focus traversal and Button activation end to end") {
+    AnsiInputDecoder decoder;
+
+    VBox root;
+    auto& field = root.emplace<TextField>();
+    auto& button = root.emplace<Button>("OK");
+
+    FocusManager focus;
+    int activations = 0;
+    button.setOnActivated([&] { ++activations; });
+
+    /*
+     * Physical terminal bytes:
+     *   Tab  -> enter focus sequence at TextField
+     *   A    -> TextInputEvent inserts into TextField
+     *   Tab  -> TextField ignores it, FocusTraversal moves to Button
+     *   Space-> KeyEvent activates Button; accompanying TextInputEvent is ignored by Button
+     */
+    const auto events = decoder.feed("\tA\t ");
+
+    for (const Event& event : events) {
+        bool handled = false;
+
+        if (Widget* target = focus.focusedWidget()) {
+            handled = EventDispatcher::dispatch(*target, event).handled();
+        }
+
+        if (!handled) {
+            handled = FocusTraversal::handleEvent(focus, root, event) ==
+                      EventResult::handled;
+        }
+
+        (void)handled;
+    }
+
+    CHECK(field.text() == "A");
+    CHECK(focus.focusedWidget() == &button);
+    CHECK(button.hasFocus());
+    CHECK(activations == 1);
 }
