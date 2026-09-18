@@ -46,7 +46,7 @@ Das Mock-Backend soll Component Tree, Ownership, Events, Fokus, Layout und Backe
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Status: in Arbeit.** Der erste Schritt ist eine separat linkbare Terminal-Schicht mit testbarer Off-Screen-Zellfläche; darauf folgen konkrete Terminal-Präsentation und die ersten sichtbaren Widgets.
+**Status: in Arbeit.** Das separate `SASD::UI::Terminal`-Target und die headless getestete Off-Screen-Zellfläche sind als erster Schritt implementiert; darauf folgen konkrete Terminal-Präsentation und die ersten sichtbaren Widgets.
 
 **Ziel:** erster tatsächlich nutzbarer und sichtbarer vertikaler Schnitt.
 

@@ -45,13 +45,14 @@ The repository now contains the first working implementation slice:
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - separate backend-neutral visual-update invalidation so redraw/synchronization does not force re-measurement;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
+- separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal and desktop backends are intentionally not implemented yet.
+The visible terminal backend is now under development. Its first M2 slice provides the backend-separated off-screen cell buffer; ANSI/VT output, terminal device I/O and concrete widget presentation are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 

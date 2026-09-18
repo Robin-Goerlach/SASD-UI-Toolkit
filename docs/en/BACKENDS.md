@@ -22,6 +22,14 @@ Goals:
 
 An implementation may use system-specific helpers or optional libraries internally as long as they remain behind the backend boundary.
 
+### Current M2 implementation status
+
+The first terminal building block now exists as a separately linkable `SASD::UI::Terminal` target. It contains a fully headless-testable off-screen `ScreenBuffer` abstraction for terminal cells. Rendering, clipping and resize rules can therefore be validated across every CI platform before a real console device is involved.
+
+A `Cell` initially stores one Unicode code point as `char32_t`. This does **not** claim that every code point occupies exactly one terminal column. Wide characters, combining marks and grapheme clusters will be handled by a dedicated display-width/text layer in a later M2 step. The current representation merely avoids the much worse assumption that one UTF-8 byte equals one character equals one cell.
+
+ANSI/VT output, real terminal I/O, alternate-screen/cursor control, styles/colors, display-width calculation and concrete presentation of `Window`, `Label`, `Button` and `TextField` are not implemented yet.
+
 ### 2. SDL3 backend
 
 An SDL3 backend is planned as an early graphical proof of concept. It should demonstrate that the same component tree can be rendered in a desktop window across multiple platforms.

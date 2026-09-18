@@ -22,6 +22,14 @@ Ziele:
 
 Eine spätere Implementierung darf intern systemnahe Hilfen oder optionale Bibliotheken verwenden, solange sie hinter dem Backend bleiben.
 
+### Aktueller M2-Implementierungsstand
+
+Der erste Terminal-Baustein ist als separat linkbares `SASD::UI::Terminal`-Target angelegt. Er enthält eine vollständig headless testbare Off-Screen-`ScreenBuffer`-Abstraktion für Terminal-Zellen. Dadurch können Rendering-, Clipping- und Resize-Regeln auf allen CI-Plattformen geprüft werden, ohne bereits eine reale Konsole zu benötigen.
+
+Eine `Cell` speichert zunächst genau einen Unicode-Codepoint als `char32_t`. Das ist **keine** Behauptung, dass jeder Codepoint genau eine Terminalspalte breit ist. Wide Characters, Combining Marks und Grapheme Cluster werden in einem späteren M2-Schritt durch eine eigene Display-Width-/Text-Schicht behandelt. Die aktuelle Darstellung verhindert lediglich die wesentlich problematischere Annahme „ein UTF-8-Byte = ein Zeichen = eine Zelle“.
+
+Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe, reale Terminal-I/O, Alternate-Screen-/Cursor-Steuerung, Styles/Farben, Display-Width-Berechnung und die konkrete Präsentation von `Window`, `Label`, `Button` und `TextField`.
+
 ### 2. SDL3-Backend
 
 Ein SDL3-Backend ist als früher grafischer Proof-of-Concept vorgesehen. Es soll zeigen, dass derselbe Komponentenbaum auch in einem Desktop-Fenster gerendert werden kann.
