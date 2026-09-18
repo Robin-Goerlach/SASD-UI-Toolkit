@@ -42,10 +42,6 @@ template <std::size_t N>
     return scalar <= 0x10FFFFU && !(scalar >= 0xD800U && scalar <= 0xDFFFU);
 }
 
-[[nodiscard]] constexpr bool isContinuation(unsigned char value) noexcept {
-    return (value & 0xC0U) == 0x80U;
-}
-
 void addWidthSaturating(Coordinate& value, int width, bool& saturated) noexcept {
     const Coordinate maximum = std::numeric_limits<Coordinate>::max();
 
@@ -74,68 +70,12 @@ void incrementRowsSaturating(Coordinate& rows, bool& saturated) noexcept {
 } // namespace
 
 DecodedCodePoint TextMetrics::decodeOne(std::string_view text, std::size_t offset) noexcept {
-    if (offset >= text.size()) {
-        return {};
-    }
-
-    const auto first = static_cast<unsigned char>(text[offset]);
-
-    if (first <= 0x7FU) {
-        return {static_cast<char32_t>(first), 1, true};
-    }
-
-    if (first >= 0xC2U && first <= 0xDFU && offset + 1 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        if (isContinuation(second)) {
-            const char32_t value =
-                static_cast<char32_t>(((first & 0x1FU) << 6U) | (second & 0x3FU));
-            return {value, 2, true};
-        }
-    }
-
-    if (first >= 0xE0U && first <= 0xEFU && offset + 2 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        const auto third = static_cast<unsigned char>(text[offset + 2]);
-
-        const bool valid_second =
-            isContinuation(second) &&
-            !(first == 0xE0U && second < 0xA0U) && // overlong three-byte sequence
-            !(first == 0xEDU && second >= 0xA0U);  // UTF-16 surrogate range
-
-        if (valid_second && isContinuation(third)) {
-            const char32_t value = static_cast<char32_t>(
-                ((first & 0x0FU) << 12U) |
-                ((second & 0x3FU) << 6U) |
-                (third & 0x3FU));
-            return {value, 3, true};
-        }
-    }
-
-    if (first >= 0xF0U && first <= 0xF4U && offset + 3 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        const auto third = static_cast<unsigned char>(text[offset + 2]);
-        const auto fourth = static_cast<unsigned char>(text[offset + 3]);
-
-        const bool valid_second =
-            isContinuation(second) &&
-            !(first == 0xF0U && second < 0x90U) && // overlong four-byte sequence
-            !(first == 0xF4U && second > 0x8FU);   // above U+10FFFF
-
-        if (valid_second && isContinuation(third) && isContinuation(fourth)) {
-            const char32_t value = static_cast<char32_t>(
-                ((first & 0x07U) << 18U) |
-                ((second & 0x3FU) << 12U) |
-                ((third & 0x3FU) << 6U) |
-                (fourth & 0x3FU));
-            return {value, 4, true};
-        }
-    }
-
     /*
-     * Invalid/truncated UTF-8 consumes exactly one byte. This mirrors the previous terminal renderer
-     * behavior while centralizing decoding for measurement and presentation.
+     * UTF-8 syntax/navigation is a core text concern now that TextField edits Unicode scalars.
+     * Delegate to the shared utility so semantic editing and terminal measurement cannot disagree
+     * about malformed-sequence recovery or scalar boundaries.
      */
-    return {U'\uFFFD', 1, false};
+    return utf8::decodeOne(text, offset);
 }
 
 int TextMetrics::codePointWidth(char32_t value,

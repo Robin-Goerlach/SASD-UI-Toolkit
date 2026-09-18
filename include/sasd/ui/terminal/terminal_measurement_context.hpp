@@ -42,6 +42,12 @@ public:
      */
     [[nodiscard]] Size measureButton(std::string_view utf8_text) const override;
 
+    /**
+     * Measures terminal TextField chrome as two delimiter cells plus content, reserving at least one
+     * interior cell so an empty focused field still has a place for the terminal caret.
+     */
+    [[nodiscard]] Size measureTextField(std::string_view utf8_text) const override;
+
     [[nodiscard]] std::uint64_t revision() const noexcept override {
         return ambiguous_width_ == AmbiguousWidthMode::narrow ? 0U : 1U;
     }

@@ -49,6 +49,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp
     terminal_button_tests.cpp
+    terminal_text_field_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
 )

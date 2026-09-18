@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/text/utf8.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -27,11 +28,7 @@ enum class AmbiguousWidthMode : std::uint8_t {
  * deterministic and ensures a caller can always make forward progress without reading beyond the
  * supplied string.
  */
-struct DecodedCodePoint {
-    char32_t value{U'\uFFFD'};
-    std::size_t consumed{0};
-    bool valid{false};
-};
+using DecodedCodePoint = utf8::DecodedScalar;
 
 /**
  * Result of measuring UTF-8 text using the terminal cell-width policy.

@@ -4,14 +4,18 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <typeinfo>
+#include <vector>
 
 namespace sasd::ui::terminal {
 namespace {
@@ -21,6 +25,17 @@ struct AbsoluteRect {
     std::int64_t y{0};
     std::int64_t width{0};
     std::int64_t height{0};
+};
+
+struct TextFieldRenderResult {
+    PresentationUpdateResult update{PresentationUpdateResult::synchronized};
+    std::optional<Point> caret;
+};
+
+struct ScalarLayout {
+    char32_t value{U' '};
+    int width{1};
+    std::int64_t column{0};
 };
 
 /**
@@ -80,6 +95,39 @@ void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
            y < static_cast<std::int64_t>(buffer.size().height);
 }
 
+void writeNarrowCell(ScreenBuffer& buffer,
+                     std::int64_t x,
+                     std::int64_t y,
+                     char32_t value) {
+    if (isInsideBuffer(buffer, x, y)) {
+        buffer.set({static_cast<Coordinate>(x), static_cast<Coordinate>(y)},
+                   Cell{value, CellRole::normal});
+    }
+}
+
+/**
+ * Writes one already-measured scalar without ever emitting half of a wide glyph.
+ */
+void writeScalar(ScreenBuffer& buffer,
+                 std::int64_t x,
+                 std::int64_t y,
+                 char32_t value,
+                 int width) {
+    if (width == 1) {
+        writeNarrowCell(buffer, x, y, value);
+        return;
+    }
+
+    if (width == 2 &&
+        isInsideBuffer(buffer, x, y) &&
+        isInsideBuffer(buffer, x + 1, y)) {
+        buffer.set({static_cast<Coordinate>(x), static_cast<Coordinate>(y)},
+                   Cell{value, CellRole::wide_lead});
+        buffer.set({static_cast<Coordinate>(x + 1), static_cast<Coordinate>(y)},
+                   Cell{U' ', CellRole::wide_continuation});
+    }
+}
+
 /**
  * Paints UTF-8 into one already-resolved Widget rectangle.
  *
@@ -125,48 +173,21 @@ PresentationUpdateResult renderUtf8(ScreenBuffer& buffer,
 
         const int width = TextMetrics::codePointWidth(decoded.value, ambiguous_width);
         if (width <= 0) {
-            // Preflight above guarantees this for supported visible text.
+            // Preflight above guarantees this branch is unreachable for supported visible text.
             continue;
         }
 
         if (x < rect.width && y < rect.height) {
             const std::int64_t screen_x = rect.x + x;
             const std::int64_t screen_y = rect.y + y;
+            const bool fits_widget = width == 1 || x + 1 < rect.width;
 
-            if (width == 1) {
-                if (isInsideBuffer(buffer, screen_x, screen_y)) {
-                    buffer.set({static_cast<Coordinate>(screen_x),
-                                static_cast<Coordinate>(screen_y)},
-                               Cell{decoded.value, CellRole::normal});
-                }
-            } else {
-                /*
-                 * Never emit half of a wide glyph. Both logical Widget columns and both physical
-                 * ScreenBuffer cells must be available; otherwise leave the clipped region blank and
-                 * still advance by the glyph's logical width.
-                 */
-                const bool fits_widget = x + 1 < rect.width;
-                const bool fits_buffer =
-                    isInsideBuffer(buffer, screen_x, screen_y) &&
-                    isInsideBuffer(buffer, screen_x + 1, screen_y);
-
-                if (fits_widget && fits_buffer) {
-                    buffer.set({static_cast<Coordinate>(screen_x),
-                                static_cast<Coordinate>(screen_y)},
-                               Cell{decoded.value, CellRole::wide_lead});
-                    buffer.set({static_cast<Coordinate>(screen_x + 1),
-                                static_cast<Coordinate>(screen_y)},
-                               Cell{U' ', CellRole::wide_continuation});
-                }
+            if (fits_widget) {
+                writeScalar(buffer, screen_x, screen_y, decoded.value, width);
             }
         }
 
         x += width;
-
-        /*
-         * Continue decoding after the right edge until newline/end. Text does not wrap implicitly;
-         * arranged width is a clip boundary rather than a line-breaking request.
-         */
     }
 
     return PresentationUpdateResult::synchronized;
@@ -237,20 +258,182 @@ PresentationUpdateResult renderButton(ScreenBuffer& buffer,
     return renderUtf8(buffer, rect, presentation, ambiguous_width, false);
 }
 
+[[nodiscard]] std::vector<ScalarLayout> layoutTextScalars(
+    std::string_view text,
+    AmbiguousWidthMode ambiguous_width,
+    std::int64_t& total_columns) {
+    std::vector<ScalarLayout> result;
+    result.reserve(text.size());
+
+    total_columns = 0;
+
+    for (std::size_t offset = 0; offset < text.size();) {
+        const DecodedCodePoint decoded = TextMetrics::decodeOne(text, offset);
+        if (decoded.consumed == 0) {
+            break;
+        }
+        offset += decoded.consumed;
+
+        const int width = TextMetrics::codePointWidth(decoded.value, ambiguous_width);
+
+        /*
+         * TextField preflight rejects non-renderable controls/zero-width sequences. Keep this helper
+         * defensive anyway: invalid widths are omitted rather than corrupting column arithmetic.
+         */
+        if (width <= 0) {
+            continue;
+        }
+
+        result.push_back({decoded.value, width, total_columns});
+        total_columns += width;
+    }
+
+    return result;
+}
+
+TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
+                                      const TextField& field,
+                                      AmbiguousWidthMode ambiguous_width) {
+    const AbsoluteRect rect = absoluteRectOf(field);
+
+    if (!field.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return {PresentationUpdateResult::synchronized, std::nullopt};
+    }
+
+    const TextMeasurement measurement = TextMetrics::measureUtf8(field.text(), ambiguous_width);
+    if (!measurement.simpleCellRenderable() || measurement.rows != 1) {
+        /*
+         * Do not clear old cells before discovering unsupported Unicode. The semantic TextField keeps
+         * such Unicode losslessly; this backend stays pending until its Cell model can preserve it.
+         */
+        return {PresentationUpdateResult::deferred, std::nullopt};
+    }
+
+    clearRect(buffer, rect);
+
+    char left = '[';
+    char right = ']';
+
+    if (!field.isEnabled()) {
+        left = '(';
+        right = ')';
+    } else if (field.hasFocus()) {
+        left = '>';
+        right = '<';
+    }
+
+    writeNarrowCell(buffer, rect.x, rect.y, static_cast<char32_t>(left));
+    if (rect.width >= 2) {
+        writeNarrowCell(buffer, rect.x + rect.width - 1, rect.y, static_cast<char32_t>(right));
+    }
+
+    const std::int64_t viewport_width = rect.width > 2 ? rect.width - 2 : 0;
+    if (viewport_width <= 0) {
+        return {PresentationUpdateResult::synchronized, std::nullopt};
+    }
+
+    std::int64_t total_columns = 0;
+    const std::vector<ScalarLayout> scalars =
+        layoutTextScalars(field.text(), ambiguous_width, total_columns);
+
+    const std::size_t cursor_index = std::min(field.cursorPosition(), scalars.size());
+    const std::int64_t cursor_column =
+        cursor_index < scalars.size() ? scalars[cursor_index].column : total_columns;
+
+    /*
+     * Choose a scalar boundary that keeps the caret inside the visible interior. We never start in
+     * the second cell of a wide glyph, so horizontal scrolling cannot manufacture half-glyph state.
+     *
+     * The caret is a terminal cursor position between Unicode scalars. Requiring relative caret
+     * column < viewport_width reserves an actual terminal cell for it, including the end-of-text case.
+     */
+    std::size_t start_index = 0;
+    while (start_index < cursor_index) {
+        const std::int64_t candidate_column = scalars[start_index].column;
+        if (cursor_column - candidate_column < viewport_width) {
+            break;
+        }
+        ++start_index;
+    }
+
+    const std::int64_t start_column =
+        start_index < scalars.size() ? scalars[start_index].column : total_columns;
+
+    for (std::size_t index = start_index; index < scalars.size(); ++index) {
+        const ScalarLayout& scalar = scalars[index];
+        const std::int64_t relative = scalar.column - start_column;
+
+        if (relative >= viewport_width) {
+            break;
+        }
+
+        if (relative + scalar.width > viewport_width) {
+            // Do not skip a clipped wide glyph and collapse following text into its logical space.
+            break;
+        }
+
+        writeScalar(buffer,
+                    rect.x + 1 + relative,
+                    rect.y,
+                    scalar.value,
+                    scalar.width);
+    }
+
+    std::optional<Point> caret;
+    if (field.hasFocus()) {
+        const std::int64_t relative_caret = cursor_column - start_column;
+        const std::int64_t caret_x = rect.x + 1 + relative_caret;
+
+        if (relative_caret >= 0 &&
+            relative_caret < viewport_width &&
+            isInsideBuffer(buffer, caret_x, rect.y)) {
+            caret = Point{static_cast<Coordinate>(caret_x), static_cast<Coordinate>(rect.y)};
+        }
+    }
+
+    return {PresentationUpdateResult::synchronized, caret};
+}
+
 } // namespace
 
 PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& widget) {
     if (dynamic_cast<const Window*>(&widget) != nullptr) {
         /*
-         * Window is the current terminal presentation root. Ordinary descendant state changes keep
-         * rendering incremental, but geometry/removal requests a conservative subtree refresh. In
-         * that case clearing the off-screen surface is safe because PresentationCoordinator will
-         * immediately replay every descendant, including otherwise-clean siblings.
+         * A structural refresh rebuilds the whole terminal presentation. Any remembered caret owner
+         * may have moved or been removed, so clear it before forced descendants are replayed.
+         *
+         * For ordinary incremental updates we deliberately preserve caret state: the focused
+         * TextField may be clean while an unrelated sibling changes.
          */
         if (widget.isSubtreeRefreshPending()) {
             buffer_.clear();
+            caret_owner_ = nullptr;
+            caret_position_.reset();
         }
         return PresentationUpdateResult::synchronized;
+    }
+
+    if (const auto* field = dynamic_cast<const TextField*>(&widget)) {
+        const TextFieldRenderResult rendered =
+            renderTextField(buffer_, *field, ambiguous_width_);
+
+        if (field->hasFocus() &&
+            rendered.update == PresentationUpdateResult::synchronized &&
+            rendered.caret.has_value()) {
+            caret_owner_ = field;
+            caret_position_ = rendered.caret;
+        } else if (caret_owner_ == field) {
+            /*
+             * Clear only when this field owns the remembered caret. During focus transfer, traversal
+             * order may render the new focused field before the old one; the old field must not then
+             * erase the new owner's caret.
+             */
+            caret_owner_ = nullptr;
+            caret_position_.reset();
+        }
+
+        return rendered.update;
     }
 
     if (const auto* button = dynamic_cast<const Button*>(&widget)) {
