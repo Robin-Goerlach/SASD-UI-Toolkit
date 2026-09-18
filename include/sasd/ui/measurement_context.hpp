@@ -40,6 +40,17 @@ public:
     }
 
     /**
+     * Measures the intrinsic presentation size of a single-line TextField containing utf8_text.
+     *
+     * The default falls back to plain text measurement. Backends may override this to add control
+     * chrome, minimum caret room, font padding or native-peer metrics without leaking those details
+     * into the semantic TextField.
+     */
+    [[nodiscard]] virtual Size measureTextField(std::string_view utf8_text) const {
+        return measureText(utf8_text);
+    }
+
+    /**
      * Identifies all measurement-affecting state for cache purposes.
      *
      * Widgets combine the dynamic MeasurementContext type with this revision. Two instances of the

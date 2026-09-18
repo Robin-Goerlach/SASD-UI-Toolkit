@@ -27,6 +27,7 @@ enum class Key : std::uint16_t {
     escape,
     tab,
     backspace,
+    delete_forward,
     space,
     left,
     right,

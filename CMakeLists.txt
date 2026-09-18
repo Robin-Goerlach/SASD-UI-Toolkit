@@ -18,6 +18,8 @@ add_library(sasd_ui_core
     src/event_queue.cpp
     src/focus_manager.cpp
     src/label.cpp
+    src/text_field.cpp
+    src/utf8.cpp
     src/presentation_coordinator.cpp
     src/widget.cpp
     src/testing/mock_backend.cpp

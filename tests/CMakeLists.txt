@@ -8,6 +8,8 @@ add_executable(sasd_ui_tests
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
     layout_tests.cpp
+    text_field_tests.cpp
+    utf8_tests.cpp
     widget_controls_tests.cpp
     visual_invalidation_tests.cpp
     presentation_coordinator_tests.cpp
