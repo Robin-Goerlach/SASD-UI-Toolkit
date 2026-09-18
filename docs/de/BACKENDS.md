@@ -46,7 +46,9 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `TerminalEventPump` verbindet Größenabfrage, nichtblockierenden Input und Incomplete-Sequence-Timeout deterministisch zu semantischen Events. Größenänderungen werden als vorhandenes `ResizeEvent` erzeugt; der Startzustand erzeugt kein künstliches Resize. `TerminalBackend : Backend` integriert Session und EventPump in den normalen `Application`-Lifecycle. Die neue ausführbare `sasd_ui_terminal_demo` nutzt diesen Pfad mit TextField, Buttons, Tab-/Shift+Tab-Fokus, Resize und realer ANSI-Ausgabe. CI kompiliert die Demo auf Linux, macOS und Windows; ein manueller interaktiver Smoke-Test bleibt für das M2-Exit-Kriterium erforderlich.
 
-Noch offen sind insbesondere F-Tasten/erweiterte Keyboard-Protokolle, einfache Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
+`Color`/`TextStyle` ergänzen nun einen bewusst kleinen backendneutralen Stylevertrag für `Label`, `Button` und `TextField`. Unterstützt werden 16 benannte Vordergrundfarben sowie bold/dim/underline/inverse. Terminalzellen speichern den aufgelösten Style; der ANSI-Encoder erzeugt daraus SGR-Sequenzen. Fokus und Disabled werden nur als Terminal-Presentation-Overlay ergänzt. Hintergrundfarben, Cascade/Themes, RGB/Alpha und Fontmodelle bleiben bewusst später.
+
+Noch offen sind insbesondere F-Tasten/erweiterte Keyboard-Protokolle, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 

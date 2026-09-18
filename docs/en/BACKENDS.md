@@ -46,7 +46,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `TerminalEventPump` now combines size discovery, non-blocking input and incomplete-sequence timeout into deterministic semantic events. Size changes become the existing `ResizeEvent`; initial discovery does not synthesize a resize. `TerminalBackend : Backend` integrates session and event-pump lifecycle with the normal `Application` path. The runnable `sasd_ui_terminal_demo` exercises TextField, Buttons, Tab/Shift+Tab focus, resize and real ANSI output. CI compiles the demo on Linux, macOS and Windows; manual interactive smoke validation is still required for the M2 exit criterion.
 
-Function keys/extended keyboard protocols, simple styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
+`Color`/`TextStyle` now provide a deliberately small backend-neutral styling contract for `Label`, `Button` and `TextField`: 16 named foreground colors plus bold/dim/underline/inverse. Terminal cells retain resolved style and the ANSI encoder emits SGR transitions. Focus and disabled state are terminal-presentation overlays only. Background colors, cascade/themes, RGB/alpha and font models remain deliberately later.
+
+Function keys/extended keyboard protocols, full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
 
 ### 2. SDL3 backend
 
