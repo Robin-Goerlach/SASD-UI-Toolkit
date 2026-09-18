@@ -46,7 +46,7 @@ The mock backend should validate component trees, ownership, events, focus, layo
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Status: in progress.** The separate `SASD::UI::Terminal` target, off-screen cell surface, `Window`/`Label`, Unicode cell metrics, backend-neutral MeasurementContext, `VBox`/`HBox`, `Button`, and a single-line `TextField` with UTF-8 editing, cursor, horizontal viewport and separate terminal caret are implemented. Tab focus traversal and real terminal I/O/input translation follow next.
+**Status: in progress.** The separate `SASD::UI::Terminal` target, off-screen cell surface, `Window`/`Label`, Unicode cell metrics, backend-neutral MeasurementContext, `VBox`/`HBox`, `Button`, and a single-line `TextField` with UTF-8 editing, cursor, horizontal viewport and separate terminal caret are implemented. Tab/Shift+Tab focus traversal is also implemented. ANSI/VT frame output and real terminal I/O/input translation follow next.
 
 **Goal:** first genuinely usable user-visible vertical slice.
 

@@ -46,7 +46,7 @@ Das Mock-Backend soll Component Tree, Ownership, Events, Fokus, Layout und Backe
 
 ## M2 – Terminal Preview / v0.1.0
 
-**Status: in Arbeit.** Das separate `SASD::UI::Terminal`-Target, Off-Screen-Zellfläche, `Window`/`Label`, Unicode-Zellmetriken, backendneutraler MeasurementContext, `VBox`/`HBox`, `Button` sowie ein einzeiliges `TextField` mit UTF-8-Editing, Cursor, horizontalem Viewport und separatem Terminal-Caret sind implementiert. Als Nächstes folgen Tab-Fokusnavigation sowie reale Terminal-I/O/Input-Übersetzung.
+**Status: in Arbeit.** Das separate `SASD::UI::Terminal`-Target, Off-Screen-Zellfläche, `Window`/`Label`, Unicode-Zellmetriken, backendneutraler MeasurementContext, `VBox`/`HBox`, `Button` sowie ein einzeiliges `TextField` mit UTF-8-Editing, Cursor, horizontalem Viewport und separatem Terminal-Caret sind implementiert. Tab-/Shift+Tab-Fokusnavigation ist ebenfalls implementiert. Als Nächstes folgen ANSI-/VT-Frame-Ausgabe sowie reale Terminal-I/O/Input-Übersetzung.
 
 **Ziel:** erster tatsächlich nutzbarer und sichtbarer vertikaler Schnitt.
 

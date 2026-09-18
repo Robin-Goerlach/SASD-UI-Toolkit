@@ -34,6 +34,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0017](0017-initial-vbox-hbox-layout-semantics.md) | Initial VBox/HBox layout semantics | Accepted |
 | [0018](0018-initial-button-semantics.md) | Initial Button activation, measurement and terminal presentation semantics | Accepted |
 | [0019](0019-initial-textfield-editing-and-caret.md) | Initial TextField editing, cursor and terminal-caret semantics | Accepted |
+| [0020](0020-tab-focus-traversal.md) | Deterministic Tab/Shift+Tab focus traversal | Accepted |
 
 ## ADR policy
 

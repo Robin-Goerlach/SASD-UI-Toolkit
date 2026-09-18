@@ -179,6 +179,8 @@ Widgets sind standardmäßig **nicht fokussierbar**. Für den M1-Core besteht di
 
 Ein vom `FocusManager` erzeugtes `FocusEvent` ist eine direkte Zustandsbenachrichtigung an genau das betroffene Widget. Der Fokuszustand ist bereits geändert, wenn der Handler aufgerufen wird. Diese Benachrichtigung ist nicht veto-fähig und wird nicht als normales Eingabe-Bubbling interpretiert. Gewöhnliche Tastatur- und Texteingabe verwendet weiterhin den `EventDispatcher`.
 
+Für M2 ergänzt `FocusTraversal` die zustandsbehaftete Fokusverwaltung um deterministische Tab-/Shift+Tab-Zielauswahl. Traversal läuft in visueller Preorder/Adoptionsreihenfolge, wrappt an beiden Enden und überspringt hidden/disabled Teilbäume vollständig. Es ist bewusst als Unhandled-Event-Policy ausgelegt: Ein Control darf Tab zuerst selbst konsumieren; nur ein unhandled Tab wird anschließend als Fokusnavigation interpretiert. `Application` und `EventDispatcher` bleiben dadurch weiterhin frei von Fokusordnungswissen.
+
 ## Layout
 
 Layouts dürfen nicht direkt in Pixeln denken. Ein Terminal arbeitet mit Zellen, Desktop-UIs mit logischen Geräteeinheiten und Schriftmetriken.
