@@ -6,6 +6,7 @@ add_executable(sasd_ui_tests
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
     layout_tests.cpp
+    widget_controls_tests.cpp
     visual_invalidation_tests.cpp
     presentation_coordinator_tests.cpp
     application_tests.cpp
@@ -41,6 +42,7 @@ add_test(NAME sasd_ui_core_tests COMMAND sasd_ui_tests)
 add_executable(sasd_ui_terminal_tests
     test_main.cpp
     terminal_screen_buffer_tests.cpp
+    terminal_presentation_sink_tests.cpp
 )
 
 target_link_libraries(sasd_ui_terminal_tests PRIVATE SASD::UI::Terminal)

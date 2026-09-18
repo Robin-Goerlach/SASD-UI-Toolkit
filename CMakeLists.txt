@@ -15,6 +15,7 @@ add_library(sasd_ui_core
     src/event_dispatcher.cpp
     src/event_queue.cpp
     src/focus_manager.cpp
+    src/label.cpp
     src/presentation_coordinator.cpp
     src/widget.cpp
     src/testing/mock_backend.cpp
@@ -25,6 +26,7 @@ add_library(SASD::UI ALIAS sasd_ui_core)
 # platform-neutral core do not acquire terminal-specific implementation code.
 add_library(sasd_ui_terminal
     src/terminal/screen_buffer.cpp
+    src/terminal/terminal_presentation_sink.cpp
 )
 add_library(SASD::UI::Terminal ALIAS sasd_ui_terminal)
 target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
