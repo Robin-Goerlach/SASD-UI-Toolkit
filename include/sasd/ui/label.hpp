@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/style.hpp>
 #include <sasd/ui/widget.hpp>
 
 #include <string>
@@ -22,6 +23,17 @@ public:
 
     /** Returns the UTF-8 text currently represented by this label. */
     [[nodiscard]] std::string_view text() const noexcept { return text_; }
+
+    /** Returns the presentation-only text style for this label. */
+    [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
+
+    /**
+     * Replaces presentation-only text styling.
+     *
+     * Style changes never affect measurement in the current contract; only visual synchronization is
+     * invalidated.
+     */
+    void setTextStyle(TextStyle style);
 
     /**
      * Replaces the label text.
@@ -46,6 +58,7 @@ protected:
 
 private:
     std::string text_;
+    TextStyle text_style_{};
 };
 
 } // namespace sasd::ui

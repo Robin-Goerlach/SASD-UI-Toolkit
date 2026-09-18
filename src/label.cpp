@@ -6,6 +6,17 @@
 
 namespace sasd::ui {
 
+void Label::setTextStyle(TextStyle style) {
+    if (text_style_ == style) {
+        return;
+    }
+
+    text_style_ = style;
+
+    // TextStyle is presentation-only in M2: color/attributes do not alter logical text dimensions.
+    invalidateVisual();
+}
+
 void Label::setText(std::string text) {
     if (text_ == text) {
         return;

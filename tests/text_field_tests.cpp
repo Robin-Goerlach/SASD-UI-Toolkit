@@ -167,3 +167,21 @@ TEST_CASE("TextField cursor movement invalidates presentation but not measuremen
     CHECK(field.isMeasureValid());
     CHECK(field.isVisualUpdatePending());
 }
+
+
+TEST_CASE("TextField text style is presentation-only") {
+    TextField field{"abc"};
+    TextFieldMeasurementContext context;
+
+    (void)field.measure(context);
+    field.acknowledgeVisualUpdate();
+
+    TextStyle style;
+    style.foreground = Color::yellow;
+    style.underline = true;
+    field.setTextStyle(style);
+
+    CHECK(field.textStyle() == style);
+    CHECK(field.isMeasureValid());
+    CHECK(field.isVisualUpdatePending());
+}

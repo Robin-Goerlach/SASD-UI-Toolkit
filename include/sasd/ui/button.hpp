@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/style.hpp>
 #include <sasd/ui/widget.hpp>
 
 #include <functional>
@@ -27,6 +28,12 @@ public:
 
     /** Returns the UTF-8 caption represented by the button. */
     [[nodiscard]] std::string_view text() const noexcept { return text_; }
+
+    /** Returns presentation-only text/chrome styling for this button. */
+    [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
+
+    /** Changes style without affecting intrinsic size. */
+    void setTextStyle(TextStyle style);
 
     /**
      * Replaces the UTF-8 caption.
@@ -70,6 +77,7 @@ protected:
 
 private:
     std::string text_;
+    TextStyle text_style_{};
     ActivationHandler on_activated_;
 };
 

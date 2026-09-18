@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/style.hpp>
 #include <sasd/ui/widget.hpp>
 
 #include <cstddef>
@@ -27,6 +28,12 @@ public:
 
     /** Returns guaranteed-valid, single-line UTF-8 content. */
     [[nodiscard]] std::string_view text() const noexcept { return text_; }
+
+    /** Returns presentation-only text/chrome styling for this field. */
+    [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
+
+    /** Changes style without affecting text metrics or cursor position. */
+    void setTextStyle(TextStyle style);
 
     /**
      * Replaces content after single-line UTF-8 sanitization.
@@ -65,6 +72,7 @@ private:
     void textChanged() noexcept;
 
     std::string text_;
+    TextStyle text_style_{};
     std::size_t cursor_position_{0};
 };
 

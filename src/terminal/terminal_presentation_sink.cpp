@@ -98,10 +98,11 @@ void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
 void writeNarrowCell(ScreenBuffer& buffer,
                      std::int64_t x,
                      std::int64_t y,
-                     char32_t value) {
+                     char32_t value,
+                     TextStyle style = {}) {
     if (isInsideBuffer(buffer, x, y)) {
         buffer.set({static_cast<Coordinate>(x), static_cast<Coordinate>(y)},
-                   Cell{value, CellRole::normal});
+                   Cell{value, CellRole::normal, style});
     }
 }
 
@@ -112,9 +113,10 @@ void writeScalar(ScreenBuffer& buffer,
                  std::int64_t x,
                  std::int64_t y,
                  char32_t value,
-                 int width) {
+                 int width,
+                 TextStyle style = {}) {
     if (width == 1) {
-        writeNarrowCell(buffer, x, y, value);
+        writeNarrowCell(buffer, x, y, value, style);
         return;
     }
 
@@ -122,9 +124,9 @@ void writeScalar(ScreenBuffer& buffer,
         isInsideBuffer(buffer, x, y) &&
         isInsideBuffer(buffer, x + 1, y)) {
         buffer.set({static_cast<Coordinate>(x), static_cast<Coordinate>(y)},
-                   Cell{value, CellRole::wide_lead});
+                   Cell{value, CellRole::wide_lead, style});
         buffer.set({static_cast<Coordinate>(x + 1), static_cast<Coordinate>(y)},
-                   Cell{U' ', CellRole::wide_continuation});
+                   Cell{U' ', CellRole::wide_continuation, style});
     }
 }
 
@@ -138,7 +140,8 @@ PresentationUpdateResult renderUtf8(ScreenBuffer& buffer,
                                     const AbsoluteRect& rect,
                                     std::string_view text,
                                     AmbiguousWidthMode ambiguous_width,
-                                    bool allow_multiline) noexcept {
+                                    bool allow_multiline,
+                                    TextStyle style) noexcept {
     const TextMeasurement measurement = TextMetrics::measureUtf8(text, ambiguous_width);
 
     if (!measurement.simpleCellRenderable() ||
@@ -183,7 +186,7 @@ PresentationUpdateResult renderUtf8(ScreenBuffer& buffer,
             const bool fits_widget = width == 1 || x + 1 < rect.width;
 
             if (fits_widget) {
-                writeScalar(buffer, screen_x, screen_y, decoded.value, width);
+                writeScalar(buffer, screen_x, screen_y, decoded.value, width, style);
             }
         }
 
@@ -203,7 +206,7 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
         return PresentationUpdateResult::synchronized;
     }
 
-    return renderUtf8(buffer, rect, label.text(), ambiguous_width, true);
+    return renderUtf8(buffer, rect, label.text(), ambiguous_width, true, label.textStyle());
 }
 
 [[nodiscard]] std::string buttonPresentationText(const Button& button) {
@@ -250,12 +253,24 @@ PresentationUpdateResult renderButton(ScreenBuffer& buffer,
     const std::string presentation = buttonPresentationText(button);
 
     /*
+     * Focus/disabled appearance is a terminal presentation overlay, not semantic widget state.
+     * User-provided TextStyle remains the base; backend state can strengthen it without changing
+     * measurement or mutating the Button.
+     */
+    TextStyle style = button.textStyle();
+    if (!button.isEnabled()) {
+        style.dim = true;
+    } else if (button.hasFocus()) {
+        style.inverse = true;
+    }
+
+    /*
      * Initial terminal Buttons are intentionally single-line. Multi-line captions are accepted by the
      * semantic Button but this backend defers them rather than inventing incomplete border/chrome
      * rules. A later richer text/control layout can extend the backend without changing Button input
      * semantics.
      */
-    return renderUtf8(buffer, rect, presentation, ambiguous_width, false);
+    return renderUtf8(buffer, rect, presentation, ambiguous_width, false, style);
 }
 
 [[nodiscard]] std::vector<ScalarLayout> layoutTextScalars(
@@ -312,6 +327,13 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
 
     clearRect(buffer, rect);
 
+    TextStyle style = field.textStyle();
+    if (!field.isEnabled()) {
+        style.dim = true;
+    } else if (field.hasFocus()) {
+        style.inverse = true;
+    }
+
     char left = '[';
     char right = ']';
 
@@ -323,9 +345,9 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
         right = '<';
     }
 
-    writeNarrowCell(buffer, rect.x, rect.y, static_cast<char32_t>(left));
+    writeNarrowCell(buffer, rect.x, rect.y, static_cast<char32_t>(left), style);
     if (rect.width >= 2) {
-        writeNarrowCell(buffer, rect.x + rect.width - 1, rect.y, static_cast<char32_t>(right));
+        writeNarrowCell(buffer, rect.x + rect.width - 1, rect.y, static_cast<char32_t>(right), style);
     }
 
     const std::int64_t viewport_width = rect.width > 2 ? rect.width - 2 : 0;
@@ -377,7 +399,8 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
                     rect.x + 1 + relative,
                     rect.y,
                     scalar.value,
-                    scalar.width);
+                    scalar.width,
+                    style);
     }
 
     std::optional<Point> caret;

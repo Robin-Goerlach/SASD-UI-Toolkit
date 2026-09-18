@@ -325,3 +325,62 @@ TEST_CASE("Removing a Label clears its old terminal representation and replays s
     CHECK(buffer.at({12, 1}) == Cell{U'S'});
     CHECK(buffer.at({15, 1}) == Cell{U'y'});
 }
+
+
+TEST_CASE("TerminalPresentationSink stores Label TextStyle in rendered cells") {
+    ScreenBuffer buffer{{12, 2}};
+
+    Window window;
+    window.arrange({0, 0, 12, 2});
+
+    auto& label = window.emplace<Label>("Styled");
+    TextStyle style;
+    style.foreground = Color::bright_cyan;
+    style.bold = true;
+    style.underline = true;
+    label.setTextStyle(style);
+    label.arrange({1, 0, 8, 1});
+
+    TerminalPresentationSink sink{buffer};
+    (void)PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(buffer.at({1, 0}).code_point == U'S');
+    CHECK(buffer.at({1, 0}).style == style);
+    CHECK(buffer.at({6, 0}).style == style);
+}
+
+TEST_CASE("TerminalPresentationSink overlays focus and disabled attributes on Button style") {
+    ScreenBuffer buffer{{14, 2}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 14, 2});
+
+    auto& button = window.emplace<Button>("Go");
+    TextStyle base;
+    base.foreground = Color::green;
+    base.bold = true;
+    button.setTextStyle(base);
+    button.arrange({0, 0, button.measure(metrics).width, 1});
+
+    (void)PresentationCoordinator::synchronize(window, sink);
+    CHECK(buffer.at({0, 0}).style == base);
+
+    CHECK(focus.requestFocus(button));
+    (void)PresentationCoordinator::synchronize(window, sink);
+
+    TextStyle focused = base;
+    focused.inverse = true;
+    CHECK(buffer.at({0, 0}).style == focused);
+    CHECK(buffer.at({2, 0}).style == focused);
+
+    button.setEnabled(false);
+    (void)PresentationCoordinator::synchronize(window, sink);
+
+    TextStyle disabled = base;
+    disabled.dim = true;
+    CHECK(buffer.at({0, 0}).style == disabled);
+    CHECK(buffer.at({2, 0}).style == disabled);
+}

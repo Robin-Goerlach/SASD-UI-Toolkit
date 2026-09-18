@@ -69,14 +69,38 @@ int main() {
         auto& form = window.emplace<VBox>();
         form.setSpacing(1);
 
-        form.emplace<Label>("SASD UI Toolkit - Terminal M2 Demo");
-        form.emplace<Label>("Name:");
+        auto& title = form.emplace<Label>("SASD UI Toolkit - Terminal M2 Demo");
+        TextStyle title_style;
+        title_style.foreground = Color::bright_cyan;
+        title_style.bold = true;
+        title.setTextStyle(title_style);
+
+        auto& name_label = form.emplace<Label>("Name:");
+        TextStyle name_label_style;
+        name_label_style.foreground = Color::bright_blue;
+        name_label.setTextStyle(name_label_style);
+
         auto& name = form.emplace<TextField>();
+        TextStyle field_style;
+        field_style.foreground = Color::bright_white;
+        name.setTextStyle(field_style);
 
         auto& greet = form.emplace<Button>("Greet");
+        TextStyle greet_style;
+        greet_style.foreground = Color::bright_green;
+        greet_style.bold = true;
+        greet.setTextStyle(greet_style);
+
         auto& status = form.emplace<Label>(
             "Tab/Shift+Tab changes focus. Escape exits.");
+        TextStyle status_style;
+        status_style.foreground = Color::yellow;
+        status.setTextStyle(status_style);
+
         auto& exit = form.emplace<Button>("Exit");
+        TextStyle exit_style;
+        exit_style.foreground = Color::bright_red;
+        exit.setTextStyle(exit_style);
 
         FocusManager focus;
 

@@ -16,6 +16,15 @@ Button::Button(std::string text)
     text_ = std::move(text);
 }
 
+void Button::setTextStyle(TextStyle style) {
+    if (text_style_ == style) {
+        return;
+    }
+
+    text_style_ = style;
+    invalidateVisual();
+}
+
 void Button::setText(std::string text) {
     if (text_ == text) {
         return;

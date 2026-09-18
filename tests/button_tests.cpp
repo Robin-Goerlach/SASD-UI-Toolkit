@@ -73,6 +73,27 @@ TEST_CASE("Assigning identical Button caption preserves cached state") {
     CHECK(!button.isVisualUpdatePending());
 }
 
+TEST_CASE("Button text style invalidates presentation without invalidating measurement") {
+    Button button{"Styled"};
+    ButtonMeasurementContext context;
+
+    (void)button.measure(context);
+    button.acknowledgeVisualUpdate();
+
+    TextStyle style;
+    style.foreground = Color::cyan;
+    style.bold = true;
+    button.setTextStyle(style);
+
+    CHECK(button.textStyle() == style);
+    CHECK(button.isMeasureValid());
+    CHECK(button.isVisualUpdatePending());
+
+    button.acknowledgeVisualUpdate();
+    button.setTextStyle(style);
+    CHECK(!button.isVisualUpdatePending());
+}
+
 TEST_CASE("Button uses control-specific MeasurementContext hook") {
     Button button{"Measure"};
     ButtonMeasurementContext context;

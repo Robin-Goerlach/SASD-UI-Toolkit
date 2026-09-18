@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sasd/ui/style.hpp>
+
 #include <cstdint>
 
 namespace sasd::ui::terminal {
@@ -26,13 +28,15 @@ enum class CellRole : std::uint8_t {
 /**
  * One logical terminal cell.
  *
- * The cell stores a Unicode scalar for ordinary/wide-lead content plus an occupancy role. This is
- * sufficient for narrow and two-column glyphs. It intentionally does not pretend to solve grapheme
- * clusters: combining/ZWJ sequences are currently deferred before they reach ScreenBuffer.
+ * Besides Unicode occupancy, a cell stores the already-resolved backend-neutral TextStyle that must
+ * apply when its glyph is emitted. Keeping style in the off-screen model lets presentation tests stay
+ * independent from ANSI serialization and gives a later diff encoder enough information to compare
+ * both glyph and appearance.
  */
 struct Cell {
     char32_t code_point{U' '};
     CellRole role{CellRole::normal};
+    TextStyle style{};
 
     friend constexpr bool operator==(const Cell&, const Cell&) = default;
 };

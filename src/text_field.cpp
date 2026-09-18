@@ -19,6 +19,15 @@ TextField::TextField(std::string text)
     cursor_position_ = utf8::scalarCount(text_);
 }
 
+void TextField::setTextStyle(TextStyle style) {
+    if (text_style_ == style) {
+        return;
+    }
+
+    text_style_ = style;
+    invalidateVisual();
+}
+
 void TextField::setText(std::string text) {
     std::string sanitized = utf8::sanitizeSingleLine(text);
 
