@@ -40,7 +40,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `FocusTraversal` now provides deterministic Tab/Shift+Tab navigation across visible/enabled controls. In addition, `AnsiFrameEncoder` serializes the complete `ScreenBuffer` plus optional hardware caret into deterministic UTF-8/ANSI-VT frames. The encoder is intentionally I/O-free and manages neither raw mode, alternate screen nor OS handles.
 
-Real terminal I/O/input translation, alternate-screen/raw-mode session control, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
+`TerminalDevice`/`TerminalSession` now form the real device/session boundary. POSIX uses TTY detection, `termios`, `TIOCGWINSZ` and retry-safe `write`; Windows saves/restores console modes and code pages, enables Virtual Terminal processing and writes through `WriteFile`. Alternate screen and raw input are RAII-owned with transactional rollback. Hosted CI validates session semantics deterministically through `MockTerminalDevice` while native adapters are compiled on their respective platforms.
+
+Byte input/read APIs and escape-sequence translation, ResizeEvent production, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
 
 ### 2. SDL3 backend
 

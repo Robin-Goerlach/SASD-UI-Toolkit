@@ -40,7 +40,9 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `FocusTraversal` liefert inzwischen deterministische Tab-/Shift+Tab-Navigation über sichtbare/enabled Controls. Zusätzlich serialisiert `AnsiFrameEncoder` den vollständigen `ScreenBuffer` samt optionalem Hardware-Caret in deterministische UTF-8-/ANSI-VT-Frames. Der Encoder ist absichtlich I/O-frei und behandelt weder Raw Mode noch Alternate Screen oder OS-Handles.
 
-Noch nicht implementiert sind insbesondere reale Terminal-I/O/Input-Übersetzung, Alternate-Screen-/Raw-Mode-Sessionsteuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
+`TerminalDevice`/`TerminalSession` bilden nun die reale Device-/Session-Grenze. POSIX verwendet TTY-Erkennung, `termios`, `TIOCGWINSZ` und retry-sicheres `write`; Windows speichert/wiederherstellt Console Modes und Codepages, aktiviert Virtual Terminal Processing und schreibt über `WriteFile`. Alternate Screen und Raw Input werden RAII-sicher mit transaktionalem Rollback verwaltet. Hosted-CI testet die Session-Semantik deterministisch über `MockTerminalDevice`, während die nativen Adapter auf ihren jeweiligen Plattformen kompiliert werden.
+
+Noch nicht implementiert sind insbesondere Byte-Input/Read-API und Escape-Sequenz-Übersetzung, ResizeEvent-Produktion, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 
