@@ -26,6 +26,7 @@ add_library(SASD::UI ALIAS sasd_ui_core)
 # platform-neutral core do not acquire terminal-specific implementation code.
 add_library(sasd_ui_terminal
     src/terminal/screen_buffer.cpp
+    src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp
     src/terminal/text_metrics.cpp
 )

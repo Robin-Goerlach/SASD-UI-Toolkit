@@ -2,8 +2,10 @@
 
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
+#include <sasd/ui/measurement_context.hpp>
 
 #include <stdexcept>
+#include <typeinfo>
 
 namespace sasd::ui {
 
@@ -75,23 +77,56 @@ Size Widget::measure(const MeasureConstraints& constraints) {
     }
 
     /*
-     * Measurement may be expensive once text shaping and native/backend metrics are involved. The
-     * cache key is therefore the complete parent constraint interval. Widget-specific state changes
-     * must call invalidateMeasure(), which also propagates staleness to the visual parent.
+     * Context-free and context-aware measurements intentionally occupy different cache domains. A
+     * Label measured without presentation metrics must never be reused as if it had been measured by
+     * a terminal/font context later.
      */
-    if (measure_valid_ && last_measure_constraints_ == constraints) {
+    if (measure_valid_ && !last_measure_used_context_ &&
+        last_measure_constraints_ == constraints) {
         return desired_size_;
     }
 
-    /*
-     * A concrete widget reports its intrinsic/content desire. Its own size hints shape that result,
-     * then the parent's offered range wins last. This order is intentional: a child may prefer or
-     * even declare a minimum wider than a narrow terminal/window can actually provide.
-     */
     const Size intrinsic = onMeasure(constraints);
     const Size widget_constrained = size_constraints_.clamp(intrinsic);
     desired_size_ = constraints.clamp(widget_constrained);
     last_measure_constraints_ = constraints;
+    last_measure_context_type_ = nullptr;
+    last_measure_context_revision_ = 0;
+    last_measure_used_context_ = false;
+    measure_valid_ = true;
+
+    return desired_size_;
+}
+
+Size Widget::measure(const MeasurementContext& context,
+                     const MeasureConstraints& constraints) {
+    if (!constraints.hasValidRange()) {
+        throw std::invalid_argument(
+            "Widget::measure requires non-negative, ordered MeasureConstraints");
+    }
+
+    const std::type_info* context_type = &typeid(context);
+    const std::uint64_t context_revision = context.revision();
+
+    /*
+     * Do not retain &context. Measurement contexts can be short-lived stack objects. Dynamic
+     * std::type_info has static lifetime, while revision identifies the concrete context's complete
+     * metric policy. This makes the cache lifetime-safe without forcing ownership into Widget.
+     */
+    if (measure_valid_ && last_measure_used_context_ &&
+        last_measure_context_type_ == context_type &&
+        last_measure_context_revision_ == context_revision &&
+        last_measure_constraints_ == constraints) {
+        return desired_size_;
+    }
+
+    const Size intrinsic = onMeasure(context, constraints);
+    const Size widget_constrained = size_constraints_.clamp(intrinsic);
+    desired_size_ = constraints.clamp(widget_constrained);
+    last_measure_constraints_ = constraints;
+    last_measure_context_type_ = context_type;
+    last_measure_context_revision_ = context_revision;
+    last_measure_used_context_ = true;
     measure_valid_ = true;
 
     return desired_size_;
@@ -119,6 +154,10 @@ void Widget::arrange(Rect final_bounds) {
 
 Size Widget::onMeasure(const MeasureConstraints&) {
     return size_constraints_.preferred;
+}
+
+Size Widget::onMeasure(const MeasurementContext&, const MeasureConstraints& constraints) {
+    return onMeasure(constraints);
 }
 
 void Widget::onArrange(Rect) {

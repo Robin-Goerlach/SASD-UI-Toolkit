@@ -4,10 +4,14 @@
 #include <sasd/ui/events/event.hpp>
 #include <sasd/ui/geometry.hpp>
 
+#include <cstdint>
+#include <typeinfo>
+
 namespace sasd::ui {
 
 class Container;
 class FocusManager;
+class MeasurementContext;
 
 /**
  * Base class for components that have a visual or interactively presentable representation.
@@ -109,6 +113,16 @@ public:
     [[nodiscard]] Size measure(const MeasureConstraints& constraints = {});
 
     /**
+     * Measures using presentation-specific services while keeping Widget itself backend-neutral.
+     *
+     * Cache identity is the dynamic context type plus context.revision(), not the address/lifetime of
+     * the context object. A concrete MeasurementContext must therefore change revision whenever any
+     * measurement-affecting policy changes.
+     */
+    [[nodiscard]] Size measure(const MeasurementContext& context,
+                               const MeasureConstraints& constraints = {});
+
+    /**
      * Assigns the final rectangle produced by layout and invokes the arrangement hook.
      *
      * The bounds are stored before onArrange() runs so container implementations can query their own
@@ -171,6 +185,16 @@ protected:
     [[nodiscard]] virtual Size onMeasure(const MeasureConstraints& constraints);
 
     /**
+     * Context-aware intrinsic measurement hook.
+     *
+     * The default implementation delegates to the legacy/context-free hook, so existing structural
+     * Widgets need no backend knowledge. Text/content Widgets override this form when real metrics are
+     * available through MeasurementContext.
+     */
+    [[nodiscard]] virtual Size onMeasure(const MeasurementContext& context,
+                                         const MeasureConstraints& constraints);
+
+    /**
      * Called after final bounds have been stored.
      *
      * Leaf widgets normally need no implementation. Containers/layout-aware widgets can override this
@@ -229,6 +253,16 @@ private:
     SizeConstraints size_constraints_{};
     Size desired_size_{};
     MeasureConstraints last_measure_constraints_{};
+
+    /*
+     * Measurement caches never retain a MeasurementContext pointer. std::type_info objects have
+     * static lifetime; pairing the dynamic type with the context-provided revision avoids dangling
+     * context references while still allowing reusable measurements.
+     */
+    const std::type_info* last_measure_context_type_{nullptr};
+    std::uint64_t last_measure_context_revision_{0};
+    bool last_measure_used_context_{false};
+
     bool visible_{true};
     bool enabled_{true};
     bool focusable_{false};
