@@ -2,6 +2,7 @@
 
 #include <sasd/ui/presentation/presentation_sink.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
+#include <sasd/ui/terminal/text_metrics.hpp>
 
 namespace sasd::ui::terminal {
 
@@ -13,26 +14,34 @@ namespace sasd::ui::terminal {
  * -> terminal-cell path run deterministically in unit tests on every supported operating system.
  *
  * Current M2 support is deliberately narrow:
- * - Window establishes/clears its rectangular terminal canvas;
+ * - Window is a structural top-level root and has no terminal cells of its own;
  * - Label paints UTF-8 text into its arranged rectangle;
  * - exact base Widget/Container instances are structural and require no cells;
  * - unknown concrete widget types are deferred rather than silently acknowledged.
  *
- * Label rendering currently advances one cell per decoded Unicode code point. That is a temporary
- * M2 subset, not the final terminal-width model; grapheme clusters, combining marks and wide
- * characters require a dedicated display-width layer before v0.1.0 is considered complete.
+ * Width is delegated to TextMetrics. Narrow and two-column glyphs are represented explicitly in
+ * ScreenBuffer. Text containing zero-width/combining/control semantics that the current Cell model
+ * cannot preserve is deferred before the existing buffer is modified.
  */
 class TerminalPresentationSink final : public PresentationSink {
 public:
-    explicit TerminalPresentationSink(ScreenBuffer& buffer) noexcept : buffer_{buffer} {}
+    explicit TerminalPresentationSink(
+        ScreenBuffer& buffer,
+        AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) noexcept
+        : buffer_{buffer}, ambiguous_width_{ambiguous_width} {}
 
     [[nodiscard]] ScreenBuffer& buffer() noexcept { return buffer_; }
     [[nodiscard]] const ScreenBuffer& buffer() const noexcept { return buffer_; }
+
+    [[nodiscard]] AmbiguousWidthMode ambiguousWidthMode() const noexcept {
+        return ambiguous_width_;
+    }
 
     [[nodiscard]] PresentationUpdateResult synchronize(const Widget& widget) override;
 
 private:
     ScreenBuffer& buffer_;
+    AmbiguousWidthMode ambiguous_width_{AmbiguousWidthMode::narrow};
 };
 
 } // namespace sasd::ui::terminal

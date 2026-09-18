@@ -27,6 +27,7 @@ add_library(SASD::UI ALIAS sasd_ui_core)
 add_library(sasd_ui_terminal
     src/terminal/screen_buffer.cpp
     src/terminal/terminal_presentation_sink.cpp
+    src/terminal/text_metrics.cpp
 )
 add_library(SASD::UI::Terminal ALIAS sasd_ui_terminal)
 target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)

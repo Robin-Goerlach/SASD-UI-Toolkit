@@ -12,8 +12,6 @@
 namespace sasd::ui::terminal {
 namespace {
 
-constexpr char32_t replacement_character = U'\uFFFD';
-
 struct AbsoluteRect {
     std::int64_t x{0};
     std::int64_t y{0};
@@ -70,104 +68,58 @@ void clearRect(ScreenBuffer& buffer, const AbsoluteRect& rect) noexcept {
     }
 }
 
-struct DecodedCodePoint {
-    char32_t value{replacement_character};
-    std::size_t consumed{1};
-};
-
-bool isContinuation(unsigned char value) noexcept {
-    return (value & 0xC0U) == 0x80U;
+[[nodiscard]] bool isInsideBuffer(const ScreenBuffer& buffer,
+                                  std::int64_t x,
+                                  std::int64_t y) noexcept {
+    return x >= 0 && y >= 0 &&
+           x < static_cast<std::int64_t>(buffer.size().width) &&
+           y < static_cast<std::int64_t>(buffer.size().height);
 }
 
 /**
- * Decodes exactly one UTF-8 scalar value.
+ * Renders a Label using the current simple-cell Unicode policy.
  *
- * Malformed, overlong, surrogate and out-of-range sequences consume one byte and yield U+FFFD. The
- * one-byte recovery rule is intentionally deterministic and prevents malformed input from making the
- * renderer read past the supplied string.
+ * Unsupported zero-width/control semantics are detected before clearRect(), so returning deferred
+ * preserves the previously synchronized representation instead of partially destroying it.
  */
-DecodedCodePoint decodeOne(std::string_view text, std::size_t offset) noexcept {
-    const auto first = static_cast<unsigned char>(text[offset]);
-
-    if (first <= 0x7FU) {
-        return {static_cast<char32_t>(first), 1};
-    }
-
-    if (first >= 0xC2U && first <= 0xDFU && offset + 1 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        if (isContinuation(second)) {
-            const char32_t value =
-                static_cast<char32_t>(((first & 0x1FU) << 6U) | (second & 0x3FU));
-            return {value, 2};
-        }
-    }
-
-    if (first >= 0xE0U && first <= 0xEFU && offset + 2 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        const auto third = static_cast<unsigned char>(text[offset + 2]);
-
-        const bool valid_second =
-            isContinuation(second) &&
-            !(first == 0xE0U && second < 0xA0U) && // overlong
-            !(first == 0xEDU && second >= 0xA0U);  // UTF-16 surrogate range
-
-        if (valid_second && isContinuation(third)) {
-            const char32_t value = static_cast<char32_t>(
-                ((first & 0x0FU) << 12U) |
-                ((second & 0x3FU) << 6U) |
-                (third & 0x3FU));
-            return {value, 3};
-        }
-    }
-
-    if (first >= 0xF0U && first <= 0xF4U && offset + 3 < text.size()) {
-        const auto second = static_cast<unsigned char>(text[offset + 1]);
-        const auto third = static_cast<unsigned char>(text[offset + 2]);
-        const auto fourth = static_cast<unsigned char>(text[offset + 3]);
-
-        const bool valid_second =
-            isContinuation(second) &&
-            !(first == 0xF0U && second < 0x90U) && // overlong
-            !(first == 0xF4U && second > 0x8FU);   // above U+10FFFF
-
-        if (valid_second && isContinuation(third) && isContinuation(fourth)) {
-            const char32_t value = static_cast<char32_t>(
-                ((first & 0x07U) << 18U) |
-                ((second & 0x3FU) << 12U) |
-                ((third & 0x3FU) << 6U) |
-                (fourth & 0x3FU));
-            return {value, 4};
-        }
-    }
-
-    return {};
-}
-
-void renderLabel(ScreenBuffer& buffer, const Label& label) noexcept {
+PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
+                                     const Label& label,
+                                     AmbiguousWidthMode ambiguous_width) noexcept {
     const AbsoluteRect rect = absoluteRectOf(label);
 
+    if (!label.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    const std::string_view text = label.text();
+    const TextMeasurement measurement = TextMetrics::measureUtf8(text, ambiguous_width);
+
+    if (!measurement.simpleCellRenderable()) {
+        return PresentationUpdateResult::deferred;
+    }
+
     /*
-     * Clear the current label rectangle before writing. This removes stale trailing characters when
-     * text becomes shorter and also handles the simple visible -> hidden case without requiring the
-     * ScreenBuffer to remember previous text.
+     * Clear before writing so a shorter replacement string removes stale trailing cells. Window no
+     * longer clears the entire surface on every descendant update; doing so would erase clean sibling
+     * widgets that PresentationCoordinator intentionally does not replay.
      */
     clearRect(buffer, rect);
 
-    if (!label.isVisible() || rect.width <= 0 || rect.height <= 0) {
-        return;
-    }
-
     std::int64_t x = 0;
     std::int64_t y = 0;
-    const std::string_view text = label.text();
 
     for (std::size_t offset = 0; offset < text.size();) {
-        const DecodedCodePoint decoded = decodeOne(text, offset);
+        const DecodedCodePoint decoded = TextMetrics::decodeOne(text, offset);
+        if (decoded.consumed == 0) {
+            break;
+        }
         offset += decoded.consumed;
 
         if (decoded.value == U'\r') {
             continue;
         }
+
         if (decoded.value == U'\n') {
             x = 0;
             ++y;
@@ -177,49 +129,75 @@ void renderLabel(ScreenBuffer& buffer, const Label& label) noexcept {
             continue;
         }
 
+        const int width = TextMetrics::codePointWidth(decoded.value, ambiguous_width);
+        if (width <= 0) {
+            // Preflight above guarantees this branch is unreachable for supported visible text.
+            continue;
+        }
+
         if (x < rect.width && y < rect.height) {
             const std::int64_t screen_x = rect.x + x;
             const std::int64_t screen_y = rect.y + y;
 
-            if (screen_x >= 0 && screen_y >= 0 &&
-                screen_x < static_cast<std::int64_t>(buffer.size().width) &&
-                screen_y < static_cast<std::int64_t>(buffer.size().height)) {
-                buffer.set({static_cast<Coordinate>(screen_x), static_cast<Coordinate>(screen_y)},
-                           Cell{decoded.value});
+            if (width == 1) {
+                if (isInsideBuffer(buffer, screen_x, screen_y)) {
+                    buffer.set({static_cast<Coordinate>(screen_x),
+                                static_cast<Coordinate>(screen_y)},
+                               Cell{decoded.value, CellRole::normal});
+                }
+            } else {
+                /*
+                 * Never emit half of a wide glyph. Both logical widget columns and both physical
+                 * ScreenBuffer cells must be available; otherwise leave the clipped region blank and
+                 * still advance by the glyph's logical width.
+                 */
+                const bool fits_widget = x + 1 < rect.width;
+                const bool fits_buffer =
+                    isInsideBuffer(buffer, screen_x, screen_y) &&
+                    isInsideBuffer(buffer, screen_x + 1, screen_y);
+
+                if (fits_widget && fits_buffer) {
+                    buffer.set({static_cast<Coordinate>(screen_x),
+                                static_cast<Coordinate>(screen_y)},
+                               Cell{decoded.value, CellRole::wide_lead});
+                    buffer.set({static_cast<Coordinate>(screen_x + 1),
+                                static_cast<Coordinate>(screen_y)},
+                               Cell{U' ', CellRole::wide_continuation});
+                }
             }
         }
 
-        ++x;
+        x += width;
 
         /*
-         * Continue decoding after the right edge until a newline or end-of-string. That preserves
-         * logical line semantics without wrapping: text outside the arranged width is clipped.
+         * Continue decoding after the right edge until newline/end. Text does not wrap implicitly;
+         * arranged width is a clip boundary rather than a line-breaking request.
          */
     }
+
+    return PresentationUpdateResult::synchronized;
 }
 
 } // namespace
 
 PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& widget) {
-    if (const auto* window = dynamic_cast<const Window*>(&widget)) {
+    if (dynamic_cast<const Window*>(&widget) != nullptr) {
         /*
-         * Window establishes a clean background for its current client rectangle. Descendants are
-         * visited after the Window by PresentationCoordinator's preorder traversal and paint on top.
-         * Hidden Window still clears its rectangle so previously presented cells disappear.
+         * Window is currently a structural presentation root. It deliberately does not clear the
+         * complete ScreenBuffer: a descendant invalidation propagates to ancestors, and clearing here
+         * would erase clean siblings that are not replayed in a pending-only coordinator pass.
          */
-        clearRect(buffer_, absoluteRectOf(*window));
         return PresentationUpdateResult::synchronized;
     }
 
     if (const auto* label = dynamic_cast<const Label*>(&widget)) {
-        renderLabel(buffer_, *label);
-        return PresentationUpdateResult::synchronized;
+        return renderLabel(buffer_, *label, ambiguous_width_);
     }
 
     /*
-     * Exact base objects are structural primitives with no terminal pixels/cells of their own. Do
-     * not generalize this to arbitrary subclasses: silently acknowledging a future Button before it
-     * has terminal rendering would lose a valid pending update.
+     * Exact base objects are structural primitives with no terminal cells of their own. Do not
+     * generalize this to arbitrary subclasses: silently acknowledging a future Button before it has
+     * terminal rendering would lose a valid pending update.
      */
     if (typeid(widget) == typeid(Widget) || typeid(widget) == typeid(Container)) {
         return PresentationUpdateResult::synchronized;
