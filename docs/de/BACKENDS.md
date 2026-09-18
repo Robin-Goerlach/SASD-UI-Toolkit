@@ -42,7 +42,9 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `TerminalDevice`/`TerminalSession` bilden nun die reale Device-/Session-Grenze. POSIX verwendet TTY-Erkennung, `termios`, `TIOCGWINSZ` und retry-sicheres `write`; Windows speichert/wiederherstellt Console Modes und Codepages, aktiviert Virtual Terminal Processing und schreibt über `WriteFile`. Alternate Screen und Raw Input werden RAII-sicher mit transaktionalem Rollback verwaltet. Hosted-CI testet die Session-Semantik deterministisch über `MockTerminalDevice`, während die nativen Adapter auf ihren jeweiligen Plattformen kompiliert werden.
 
-Noch nicht implementiert sind insbesondere Byte-Input/Read-API und Escape-Sequenz-Übersetzung, ResizeEvent-Produktion, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
+`TerminalDevice::readAvailable()` liefert nun nichtblockierend verfügbare Inputbytes. `AnsiInputDecoder` verarbeitet gesplittete UTF-8-/CSI-/SS3-Sequenzen inkrementell und übersetzt Enter, Tab, Backspace, Space, Pfeile, Home/End, Delete, PageUp/PageDown, Shift+Tab und ausgewählte xterm-Modifier in die bestehenden semantischen Events. Ein einzelnes ESC bleibt bis zum expliziten Eventloop-Flush gepuffert.
+
+Noch nicht implementiert sind insbesondere Eventloop-Escape-Timeout, ResizeEvent-Produktion, F-Tasten/erweiterte Keyboard-Protokolle, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 

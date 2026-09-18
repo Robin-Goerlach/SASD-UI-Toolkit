@@ -37,6 +37,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0020](0020-tab-focus-traversal.md) | Deterministic Tab/Shift+Tab focus traversal | Accepted |
 | [0021](0021-deterministic-ansi-frame-encoding.md) | Deterministic ANSI/VT frame encoding before terminal device I/O | Accepted |
 | [0022](0022-native-terminal-device-session-boundary.md) | Native terminal device/session boundary with transactional restoration | Accepted |
+| [0023](0023-nonblocking-terminal-input-decoding.md) | Non-blocking terminal byte input and incremental ANSI decoding | Accepted |
 
 ## ADR policy
 

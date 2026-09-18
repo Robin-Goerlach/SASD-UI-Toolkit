@@ -42,7 +42,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `TerminalDevice`/`TerminalSession` now form the real device/session boundary. POSIX uses TTY detection, `termios`, `TIOCGWINSZ` and retry-safe `write`; Windows saves/restores console modes and code pages, enables Virtual Terminal processing and writes through `WriteFile`. Alternate screen and raw input are RAII-owned with transactional rollback. Hosted CI validates session semantics deterministically through `MockTerminalDevice` while native adapters are compiled on their respective platforms.
 
-Byte input/read APIs and escape-sequence translation, ResizeEvent production, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
+`TerminalDevice::readAvailable()` now returns currently available input bytes without blocking. `AnsiInputDecoder` incrementally handles split UTF-8/CSI/SS3 sequences and translates Enter, Tab, Backspace, Space, arrows, Home/End, Delete, PageUp/PageDown, Shift+Tab and selected xterm modifiers into the existing semantic events. A lone ESC remains pending until an explicit event-loop flush.
+
+Escape-timeout event-loop integration, ResizeEvent production, function keys/extended keyboard protocols, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
 
 ### 2. SDL3 backend
 
