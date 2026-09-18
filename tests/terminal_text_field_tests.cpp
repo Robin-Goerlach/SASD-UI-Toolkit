@@ -78,18 +78,18 @@ TEST_CASE("Terminal TextField horizontal viewport follows scalar cursor") {
     (void)PresentationCoordinator::synchronize(window, sink);
 
     CHECK(buffer.at({1, 0}).code_point == U'>');
-    CHECK(buffer.at({2, 0}) == Cell{U'e'});
-    CHECK(buffer.at({3, 0}) == Cell{U'f'});
-    CHECK(buffer.at({5, 0}) == Cell{U'<'});
+    CHECK(buffer.at({2, 0}).code_point == U'e');
+    CHECK(buffer.at({3, 0}).code_point == U'f');
+    CHECK(buffer.at({5, 0}).code_point == U'<');
     CHECK(sink.caretPosition().has_value());
     CHECK(*sink.caretPosition() == Point{4, 0});
 
     field.setCursorPosition(0);
     (void)PresentationCoordinator::synchronize(window, sink);
 
-    CHECK(buffer.at({2, 0}) == Cell{U'a'});
-    CHECK(buffer.at({3, 0}) == Cell{U'b'});
-    CHECK(buffer.at({4, 0}) == Cell{U'c'});
+    CHECK(buffer.at({2, 0}).code_point == U'a');
+    CHECK(buffer.at({3, 0}).code_point == U'b');
+    CHECK(buffer.at({4, 0}).code_point == U'c');
     CHECK(*sink.caretPosition() == Point{2, 0});
 }
 
@@ -110,9 +110,11 @@ TEST_CASE("Terminal TextField viewport never renders half a wide scalar") {
 
     CHECK(buffer.at({0, 0}).code_point == U'>');
     // Scrolling starts on the wide scalar boundary rather than its continuation cell.
-    CHECK(buffer.at({1, 0}) == Cell{U'\u754C', CellRole::wide_lead});
-    CHECK(buffer.at({2, 0}) == Cell{U' ', CellRole::wide_continuation});
-    CHECK(buffer.at({3, 0}) == Cell{U'B'});
+    CHECK(buffer.at({1, 0}).code_point == U'\u754C');
+    CHECK(buffer.at({1, 0}).role == CellRole::wide_lead);
+    CHECK(buffer.at({2, 0}).code_point == U' ');
+    CHECK(buffer.at({2, 0}).role == CellRole::wide_continuation);
+    CHECK(buffer.at({3, 0}).code_point == U'B');
     CHECK(sink.caretPosition().has_value());
     CHECK(*sink.caretPosition() == Point{3, 0});
 }
