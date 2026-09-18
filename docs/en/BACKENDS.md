@@ -44,7 +44,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `TerminalDevice::readAvailable()` now returns currently available input bytes without blocking. `AnsiInputDecoder` incrementally handles split UTF-8/CSI/SS3 sequences and translates Enter, Tab, Backspace, Space, arrows, Home/End, Delete, PageUp/PageDown, Shift+Tab and selected xterm modifiers into the existing semantic events. A lone ESC remains pending until an explicit event-loop flush.
 
-Escape-timeout event-loop integration, ResizeEvent production, function keys/extended keyboard protocols, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
+`TerminalEventPump` now combines size discovery, non-blocking input and incomplete-sequence timeout into deterministic semantic events. Size changes become the existing `ResizeEvent`; initial discovery does not synthesize a resize. `TerminalBackend : Backend` integrates session and event-pump lifecycle with the normal `Application` path. The runnable `sasd_ui_terminal_demo` exercises TextField, Buttons, Tab/Shift+Tab focus, resize and real ANSI output. CI compiles the demo on Linux, macOS and Windows; manual interactive smoke validation is still required for the M2 exit criterion.
+
+Function keys/extended keyboard protocols, simple styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
 
 ### 2. SDL3 backend
 

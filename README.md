@@ -58,13 +58,15 @@ The repository now contains the first working implementation slice:
 - deterministic `AnsiFrameEncoder` converting `ScreenBuffer` plus optional caret into tested full-frame UTF-8/ANSI-VT bytes without OS I/O;
 - RAII `TerminalSession` / `TerminalDevice` boundary with deterministic mock tests and native POSIX/Windows adapters for TTY/console sizing, raw/VT session state, alternate screen and byte transport;
 - non-blocking terminal input polling plus incremental `AnsiInputDecoder` translating split UTF-8/CSI/SS3 streams into existing `KeyEvent` / `TextInputEvent` semantics;
+- `TerminalEventPump` and concrete `TerminalBackend : Backend` integrating resize, input timing and terminal session lifecycle with the normal `Application` event path;
+- buildable `sasd_ui_terminal_demo` exercising real terminal input/output, resize, TextField editing, Tab/Shift+Tab focus, Buttons and RAII terminal restoration;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT frame encoding is now implemented deterministically, and Tab/Shift+Tab focus traversal is available through the existing unhandled-event composition boundary. Native terminal output/session handling is now implemented behind a portable RAII device boundary. Native byte input and core ANSI/VT escape-sequence translation are now implemented. Resize-event production, Escape-timeout event-loop integration, a runnable terminal sample, richer Unicode grapheme editing and pointer interaction remain. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT frame encoding is now implemented deterministically, and Tab/Shift+Tab focus traversal is available through the existing unhandled-event composition boundary. Native terminal output/session handling is now implemented behind a portable RAII device boundary. Native byte input and core ANSI/VT escape-sequence translation are now implemented. Resize-event production, incomplete-sequence timing and a runnable terminal sample are now implemented. A real interactive Linux/Windows terminal smoke test, simple styling, richer Unicode grapheme editing and pointer interaction remain before the M2 exit criterion can be claimed. Desktop backends remain planned.
 
 ## Build and test
 
@@ -98,6 +100,32 @@ cmake -S . -B build-sanitized \
 cmake --build build-sanitized --parallel
 ctest --test-dir build-sanitized --output-on-failure
 ```
+
+### Run the terminal demo
+
+Examples are built by default (`SASD_UI_BUILD_EXAMPLES=ON`).
+
+Linux/macOS with a single-config generator:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build --parallel
+./build/examples/sasd_ui_terminal_demo
+```
+
+Windows with Visual Studio 2022:
+
+```powershell
+cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build-msvc --config Debug --parallel
+.\build-msvc\examples\Debug\sasd_ui_terminal_demo.exe
+```
+
+The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to move focus, activate buttons with Enter/Space, resize the terminal, and press Escape or the Exit button to leave. Terminal state is restored through RAII on normal exit and exceptions.
+
+CI compiles this example on Linux, macOS and Windows, but hosted CI is not treated as an interactive terminal smoke test. Manual execution in a Linux/xterm-like terminal and Windows Terminal remains part of the M2 exit validation.
 
 ## Architectural direction
 
@@ -199,7 +227,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: widgets + layout + Unicode metrics + ANSI frame encoding |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: widgets + layout + input/output + resize + runnable demo |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |
