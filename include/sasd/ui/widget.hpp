@@ -128,6 +128,17 @@ public:
 
     [[nodiscard]] Rect bounds() const noexcept { return bounds_; }
 
+    /**
+     * Delivers one already-normalized semantic event to this widget.
+     *
+     * This method performs single-widget delivery only; parent traversal belongs to EventDispatcher.
+     * Derived widgets override onEvent() rather than this public entry point so routing, focus and
+     * future dispatch instrumentation all share one stable delivery boundary.
+     */
+    [[nodiscard]] EventResult handleEvent(const Event& event) {
+        return onEvent(event);
+    }
+
 protected:
     /**
      * Computes this widget's intrinsic desired size before framework clamping.
