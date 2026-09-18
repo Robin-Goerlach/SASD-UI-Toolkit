@@ -54,6 +54,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_text_field_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
+    terminal_session_tests.cpp
 )
 
 target_link_libraries(sasd_ui_terminal_tests PRIVATE SASD::UI::Terminal)

@@ -32,10 +32,19 @@ add_library(SASD::UI ALIAS sasd_ui_core)
 add_library(sasd_ui_terminal
     src/terminal/ansi_frame_encoder.cpp
     src/terminal/screen_buffer.cpp
+    src/terminal/terminal_session.cpp
     src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp
     src/terminal/text_metrics.cpp
 )
+# Native device implementations are intentionally selected inside the backend target so public
+# terminal headers remain free of POSIX termios and Win32 HANDLE types.
+if(WIN32)
+    target_sources(sasd_ui_terminal PRIVATE src/terminal/windows_terminal_device.cpp)
+else()
+    target_sources(sasd_ui_terminal PRIVATE src/terminal/posix_terminal_device.cpp)
+endif()
+
 add_library(SASD::UI::Terminal ALIAS sasd_ui_terminal)
 target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
 
