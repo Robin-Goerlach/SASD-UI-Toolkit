@@ -36,10 +36,10 @@ The repository now contains the first working implementation slice:
 - CMake-based C++20 library target `SASD::UI`;
 - `Application`, `Component`, `Widget` and `Container` foundations;
 - explicit distinction between component ownership and visual parenting;
-- backend-neutral geometry (`Point`, `Size`, `Rect`, `SizeConstraints`);
+- backend-neutral geometry and sizing (`Point`, `Size`, `Rect`, `SizeConstraints`, `MeasureConstraints`);
 - backend capabilities model;
 - key, text, focus, resize and quit event types;
-- thread-safe FIFO `EventQueue`;
+- thread-safe FIFO `EventQueue`;\n- target-to-parent event routing with explicit handled/ignored semantics;\n- lifetime-safe logical keyboard `FocusManager`;\n- two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
@@ -174,7 +174,7 @@ A terminal does not have pixels, native buttons or desktop window chrome. Instea
 
 ### Headless before visible backends
 
-M1 includes a deterministic **headless/mock backend**. It validates component trees, ownership, events, lifecycle and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
+M1 includes a deterministic **headless/mock backend**. It validates component trees, ownership, events, focus, layout/lifecycle behavior and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
 
 ## Planned target environments
 

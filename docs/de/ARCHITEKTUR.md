@@ -183,6 +183,38 @@ Ein vom `FocusManager` erzeugtes `FocusEvent` ist eine direkte Zustandsbenachric
 
 Layouts dürfen nicht direkt in Pixeln denken. Ein Terminal arbeitet mit Zellen, Desktop-UIs mit logischen Geräteeinheiten und Schriftmetriken.
 
+### Measure/Arrange-Vertrag im M1-Core
+
+Der implementierte Core verwendet einen zweiphasigen, backendneutralen Layout-Lebenszyklus:
+
+```text
+Parent
+  │
+  ├── measure(MeasureConstraints)
+  │        │
+  │        ▼
+  │   onMeasure(...)
+  │        │
+  │        ▼
+  │   desiredSize
+  │
+  └── arrange(final Rect)
+           │
+           ▼
+      bounds werden gesetzt
+           │
+           ▼
+      onArrange(...)
+```
+
+`SizeConstraints` gehören zum Widget selbst und beschreiben Minimum, Preferred und Maximum. `MeasureConstraints` kommen vom Parent und beschreiben ausschließlich den tatsächlich angebotenen Minimum-/Maximum-Bereich. Die intrinsische Größe aus `onMeasure()` wird zuerst durch die eigenen Widget-Hinweise und danach durch die Parent-Constraints begrenzt; damit kann ein Kind keinen Platz erzwingen, den der Parent nicht besitzt.
+
+`measure()` cached `desiredSize()` für identische Parent-Constraints. Größenrelevante Zustandsänderungen rufen `invalidateMeasure()` auf. Diese Invalidierung propagiert über den visuellen Parent-Pfad, sodass beispielsweise eine spätere Textänderung in einem `Label` auch `VBox` und `Window` als neu zu vermessen markieren kann. Auch das Hinzufügen oder Entfernen visueller Kinder invalidiert den Container.
+
+`arrange()` weist das endgültige logische Rechteck zu. Die Bounds werden vor `onArrange()` gespeichert, damit ein Container beim Anordnen seiner Kinder seine eigene finale Geometrie verwenden kann. Nullgrößen sind erlaubt; negative Ausdehnungen werden abgelehnt. Direktes `setBounds()` läuft bewusst über denselben Arrange-Pfad.
+
+Noch offen bleiben konkrete Regeln für `VBox`/`HBox`, Margin/Padding/Spacing, den Layout-Effekt unsichtbarer Widgets und backendabhängige Textmessung. Diese Punkte sollen erst mit den ersten realen M2-Controls festgelegt werden.
+
 Deshalb soll der Layoutprozess auf folgenden Konzepten beruhen:
 
 - Minimum Size
@@ -193,6 +225,7 @@ Deshalb soll der Layoutprozess auf folgenden Konzepten beruhen:
 - backendabhängige Text- und Widget-Messung
 
 Erste geplante Layouts:
+
 
 - `HBox`
 - `VBox`
