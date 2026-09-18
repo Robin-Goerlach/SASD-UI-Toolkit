@@ -55,13 +55,14 @@ The repository now contains the first working implementation slice:
 - `TerminalMeasurementContext`, giving `Label`, `Button` and `TextField` real terminal-cell desired sizes while keeping core widgets terminal-agnostic;
 - keyboard-focusable `Button` activation through the existing `FocusManager` and `EventDispatcher`, with terminal `[ caption ]` / focus / disabled presentation;
 - `TextField` editing through `TextInputEvent` plus scalar cursor/navigation/delete semantics, shared UTF-8 decoding, terminal horizontal scrolling and separate hardware-caret position;
+- deterministic `AnsiFrameEncoder` converting `ScreenBuffer` plus optional caret into tested full-frame UTF-8/ANSI-VT bytes without OS I/O;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT output, terminal device I/O/input translation, richer Unicode grapheme editing and pointer interaction are still to be implemented. Tab/Shift+Tab focus traversal is now available through the existing unhandled-event composition boundary. Desktop backends remain planned.
+The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT frame encoding is now implemented deterministically, and Tab/Shift+Tab focus traversal is available through the existing unhandled-event composition boundary. Real terminal device I/O/input translation, alternate-screen/raw-mode handling, richer Unicode grapheme editing and pointer interaction are still to be implemented. Desktop backends remain planned.
 
 ## Build and test
 
@@ -196,7 +197,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: buffer + Window/Label/Button/TextField + layout + Unicode metrics |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: widgets + layout + Unicode metrics + ANSI frame encoding |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |

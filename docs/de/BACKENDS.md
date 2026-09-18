@@ -38,7 +38,9 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `TextField` ist inzwischen als einzeiliger Editor integriert. Terminal-Measurement reserviert zwei Delimiter plus eine Caret-Zelle; bei zu kleinen Bounds scrollt die Presentation horizontal auf Unicode-Scalar-Grenzen. Der Hardware-Caret ist als separate optionale Position im `TerminalPresentationSink` modelliert und überschreibt keine Glyph-Zelle. Combining-/ZWJ-Inhalte bleiben im Core erhalten, werden vom aktuellen einfachen Cell-Modell aber weiterhin `deferred`.
 
-Noch nicht implementiert sind insbesondere ANSI-/VT-Ausgabe und reale Terminal-I/O/Input-Übersetzung, Alternate-Screen-Steuerung, Tab-Fokusnavigation, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
+`FocusTraversal` liefert inzwischen deterministische Tab-/Shift+Tab-Navigation über sichtbare/enabled Controls. Zusätzlich serialisiert `AnsiFrameEncoder` den vollständigen `ScreenBuffer` samt optionalem Hardware-Caret in deterministische UTF-8-/ANSI-VT-Frames. Der Encoder ist absichtlich I/O-frei und behandelt weder Raw Mode noch Alternate Screen oder OS-Handles.
+
+Noch nicht implementiert sind insbesondere reale Terminal-I/O/Input-Übersetzung, Alternate-Screen-/Raw-Mode-Sessionsteuerung, Styles/Farben, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 

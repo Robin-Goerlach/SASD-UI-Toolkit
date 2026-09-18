@@ -38,7 +38,9 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `TextField` is now integrated as a single-line editor. Terminal measurement reserves two delimiters plus one caret cell; when arranged narrower than its natural size, presentation scrolls horizontally on Unicode-scalar boundaries. The hardware caret is modeled as a separate optional position in `TerminalPresentationSink` and never overwrites a glyph cell. Combining/ZWJ content remains preserved in the core but is still `deferred` by the current simple Cell model.
 
-ANSI/VT output and real terminal I/O/input translation, alternate-screen control, Tab focus traversal, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
+`FocusTraversal` now provides deterministic Tab/Shift+Tab navigation across visible/enabled controls. In addition, `AnsiFrameEncoder` serializes the complete `ScreenBuffer` plus optional hardware caret into deterministic UTF-8/ANSI-VT frames. The encoder is intentionally I/O-free and manages neither raw mode, alternate screen nor OS handles.
+
+Real terminal I/O/input translation, alternate-screen/raw-mode session control, styles/colors, full grapheme/ZWJ presentation and pointer/hit-test interaction are not implemented yet.
 
 ### 2. SDL3 backend
 

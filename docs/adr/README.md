@@ -35,6 +35,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0018](0018-initial-button-semantics.md) | Initial Button activation, measurement and terminal presentation semantics | Accepted |
 | [0019](0019-initial-textfield-editing-and-caret.md) | Initial TextField editing, cursor and terminal-caret semantics | Accepted |
 | [0020](0020-tab-focus-traversal.md) | Deterministic Tab/Shift+Tab focus traversal | Accepted |
+| [0021](0021-deterministic-ansi-frame-encoding.md) | Deterministic ANSI/VT frame encoding before terminal device I/O | Accepted |
 
 ## ADR policy
 
