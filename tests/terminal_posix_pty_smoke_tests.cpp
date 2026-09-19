@@ -10,6 +10,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <poll.h>
+#include <signal.h>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -118,6 +120,19 @@ bool equivalentTerminalState(const termios& left, const termios& right) {
 
 int childMain(int slave, int ready_pipe_write) {
     try {
+        /*
+         * Become a session leader and attach the PTY slave as our controlling terminal. Linux is
+         * permissive enough for many termios operations without this step; macOS more closely follows
+         * traditional terminal job-control rules. This also models a real interactive shell process
+         * more faithfully than merely dup2()-ing an arbitrary tty descriptor.
+         */
+        if (::setsid() < 0) {
+            return 18;
+        }
+        if (::ioctl(slave, TIOCSCTTY, 0) != 0) {
+            return 19;
+        }
+
         if (::dup2(slave, STDIN_FILENO) < 0 ||
             ::dup2(slave, STDOUT_FILENO) < 0) {
             return 20;
@@ -171,10 +186,65 @@ int childMain(int slave, int ready_pipe_write) {
          */
         ::close(ready_pipe_write);
         return 0;
-    } catch (...) {
+    } catch (const std::exception& error) {
+        std::cerr << "PTY child failure: " << error.what() << '\n';
         ::close(ready_pipe_write);
         return 22;
+    } catch (...) {
+        std::cerr << "PTY child failure: unknown exception\n";
+        ::close(ready_pipe_write);
+        return 23;
     }
+}
+
+bool waitReadable(int descriptor, int timeout_ms) {
+    struct pollfd entry {};
+    entry.fd = descriptor;
+    entry.events = POLLIN | POLLHUP;
+
+    int result = 0;
+    do {
+        result = ::poll(&entry, 1, timeout_ms);
+    } while (result < 0 && errno == EINTR);
+
+    if (result < 0) {
+        throw std::runtime_error(systemMessage("poll readiness pipe"));
+    }
+
+    return result > 0;
+}
+
+int waitForChild(pid_t child, std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    int status = 0;
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        const pid_t result = ::waitpid(child, &status, WNOHANG);
+        if (result == child) {
+            return status;
+        }
+        if (result < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            throw std::runtime_error(systemMessage("waitpid"));
+        }
+
+        std::this_thread::sleep_for(1ms);
+    }
+
+    /*
+     * Do not leave a wedged PTY child behind on a CI worker. SIGKILL is test-process cleanup only; it
+     * is not part of toolkit terminal-session behavior.
+     */
+    (void)::kill(child, SIGKILL);
+
+    pid_t result = 0;
+    do {
+        result = ::waitpid(child, &status, 0);
+    } while (result < 0 && errno == EINTR);
+
+    fail("native terminal child exceeded internal 2 second timeout");
 }
 
 } // namespace
@@ -241,24 +311,28 @@ int main() {
 
         ::close(ready_pipe[1]);
 
+        check(waitReadable(ready_pipe[0], 2000),
+              "child did not reach native terminal session within 2 seconds");
+
         char ready = 0;
         ssize_t ready_count = 0;
         do {
             ready_count = ::read(ready_pipe[0], &ready, 1);
         } while (ready_count < 0 && errno == EINTR);
 
-        check(ready_count == 1 && ready == 'R',
-              "child did not enter native terminal session successfully");
+        if (ready_count != 1 || ready != 'R') {
+            const int status = waitForChild(child, 2000ms);
+            if (WIFEXITED(status)) {
+                throw std::runtime_error(
+                    "native terminal child failed before readiness with exit code " +
+                    std::to_string(WEXITSTATUS(status)));
+            }
+            fail("native terminal child failed before readiness");
+        }
 
         writeAll(master, "\x1B[Aq");
 
-        int status = 0;
-        pid_t waited = 0;
-        do {
-            waited = ::waitpid(child, &status, 0);
-        } while (waited < 0 && errno == EINTR);
-
-        check(waited == child, "waitpid failed");
+        const int status = waitForChild(child, 2000ms);
         check(WIFEXITED(status), "native terminal child did not exit normally");
         check(WEXITSTATUS(status) == 0, "native terminal child reported failure");
 
