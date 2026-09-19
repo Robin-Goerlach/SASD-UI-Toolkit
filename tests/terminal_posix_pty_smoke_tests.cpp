@@ -197,11 +197,26 @@ int childMain(int slave, int ready_pipe_write) {
             check(input == std::string{"\x1B[Aq"},
                   "native PTY input bytes must survive raw non-blocking transport");
 
+            const char input_read = '4';
+            if (::write(ready_pipe_write, &input_read, 1) != 1) {
+                return 28;
+            }
+
             ScreenBuffer buffer{{2, 1}};
             buffer.set({0, 0}, Cell{U'O'});
             buffer.set({1, 0}, Cell{U'K'});
 
             session.present(buffer, Point{1, 0});
+
+            const char frame_presented = '5';
+            if (::write(ready_pipe_write, &frame_presented, 1) != 1) {
+                return 29;
+            }
+        }
+
+        const char session_restored = '6';
+        if (::write(ready_pipe_write, &session_restored, 1) != 1) {
+            return 30;
         }
 
         /*
@@ -221,13 +236,40 @@ int childMain(int slave, int ready_pipe_write) {
     }
 }
 
-int waitForChild(pid_t child, std::chrono::milliseconds timeout) {
+int waitForChild(pid_t child,
+                 int stage_descriptor,
+                 std::chrono::milliseconds timeout) {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     int status = 0;
+    char last_stage = 'R';
+
+    const int flags = ::fcntl(stage_descriptor, F_GETFL, 0);
+    if (flags >= 0) {
+        (void)::fcntl(stage_descriptor, F_SETFL, flags | O_NONBLOCK);
+    }
 
     while (std::chrono::steady_clock::now() < deadline) {
-        const pid_t result = ::waitpid(child, &status, WNOHANG);
+        for (;;) {
+            char stage = 0;
+            const ssize_t count = ::read(stage_descriptor, &stage, 1);
+            if (count == 1) {
+                last_stage = stage;
+                continue;
+            }
+            if (count < 0 && errno == EINTR) {
+                continue;
+            }
+            break;
+        }
+
+        const pid_t result = ::waitpid(child, &status, WNOHANG | WUNTRACED);
         if (result == child) {
+            if (WIFSTOPPED(status)) {
+                throw std::runtime_error(
+                    "native terminal child stopped by signal " +
+                    std::to_string(WSTOPSIG(status)) +
+                    "; last stage=" + std::string{last_stage});
+            }
             return status;
         }
         if (result < 0) {
@@ -251,7 +293,9 @@ int waitForChild(pid_t child, std::chrono::milliseconds timeout) {
         result = ::waitpid(child, &status, 0);
     } while (result < 0 && errno == EINTR);
 
-    fail("native terminal child exceeded internal 2 second timeout");
+    throw std::runtime_error(
+        "native terminal child exceeded internal 2 second timeout; last stage=" +
+        std::string{last_stage});
 }
 
 char waitForReady(pid_t child, int descriptor, std::chrono::milliseconds timeout) {
@@ -287,7 +331,7 @@ char waitForReady(pid_t child, int descriptor, std::chrono::milliseconds timeout
         }
 
         if (count == 0) {
-            const int status = waitForChild(child, 500ms);
+            const int status = waitForChild(child, descriptor, 500ms);
             if (WIFEXITED(status)) {
                 throw std::runtime_error(
                     "native terminal child exited before readiness; last stage=" +
@@ -388,7 +432,7 @@ int main() {
 
         writeAll(master, "\x1B[Aq");
 
-        const int status = waitForChild(child, 2000ms);
+        const int status = waitForChild(child, ready_pipe[0], 2000ms);
         check(WIFEXITED(status), "native terminal child did not exit normally");
         check(WEXITSTATUS(status) == 0, "native terminal child reported failure");
 
