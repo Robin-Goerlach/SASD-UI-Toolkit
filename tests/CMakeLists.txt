@@ -82,3 +82,37 @@ if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
 endif()
 
 add_test(NAME sasd_ui_terminal_tests COMMAND sasd_ui_terminal_tests)
+
+
+# Exercise the real POSIX terminal adapter against a kernel pseudo-terminal. This is intentionally a
+# separate process-level smoke test: it mutates stdin/stdout termios state and forks a child, concerns
+# that should not leak into the ordinary deterministic unit-test executable.
+if(UNIX AND NOT WIN32)
+    add_executable(sasd_ui_posix_pty_smoke_tests
+        terminal_posix_pty_smoke_tests.cpp
+    )
+
+    target_link_libraries(sasd_ui_posix_pty_smoke_tests PRIVATE SASD::UI::Terminal)
+    target_compile_features(sasd_ui_posix_pty_smoke_tests PRIVATE cxx_std_20)
+
+    # glibc exposes posix_openpt/grantpt/unlockpt/ptsname under the XSI feature set. The definition is
+    # harmless on macOS and keeps the test source free of Linux-only openpty/libutil dependencies.
+    target_compile_definitions(sasd_ui_posix_pty_smoke_tests PRIVATE _XOPEN_SOURCE=600)
+
+    target_compile_options(sasd_ui_posix_pty_smoke_tests PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_posix_pty_smoke_tests PRIVATE -Werror)
+    endif()
+
+    if(SASD_UI_ENABLE_SANITIZERS)
+        target_compile_options(sasd_ui_posix_pty_smoke_tests
+            PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(sasd_ui_posix_pty_smoke_tests PRIVATE -fsanitize=address,undefined)
+    endif()
+
+    add_test(NAME sasd_ui_posix_pty_smoke_tests COMMAND sasd_ui_posix_pty_smoke_tests)
+
+    # A PTY regression must fail fast instead of hanging the complete CI worker if a raw-mode/read
+    # invariant breaks. Normal execution is far below this limit.
+    set_tests_properties(sasd_ui_posix_pty_smoke_tests PROPERTIES TIMEOUT 10)
+endif()
