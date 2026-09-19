@@ -149,6 +149,21 @@ void writeAll(HANDLE handle, std::string_view bytes) {
     }
 }
 
+[[nodiscard]] std::string hexBytes(std::string_view bytes) {
+    constexpr char digits[] = "0123456789ABCDEF";
+    std::string result;
+
+    for (const unsigned char byte : bytes) {
+        if (!result.empty()) {
+            result.push_back(' ');
+        }
+        result.push_back(digits[(byte >> 4U) & 0x0FU]);
+        result.push_back(digits[byte & 0x0FU]);
+    }
+
+    return result;
+}
+
 void writeConsoleMarker(std::string_view marker) {
     const HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
     check(output != nullptr && output != INVALID_HANDLE_VALUE,
@@ -319,15 +334,31 @@ int childMain() {
             writeConsoleMarker(ready_marker);
 
             std::string input_bytes;
-            for (int attempt = 0; attempt < 1000 && input_bytes.empty(); ++attempt) {
-                input_bytes = session.pollInputBytes();
-                if (input_bytes.empty()) {
+            const std::string expected_input{"\x1B[Aq"};
+
+            /*
+             * Console input is record-oriented internally. ConPTY may expose the arrow-key record and
+             * the following printable key on separate ReadFile/poll cycles even though the host wrote
+             * one contiguous VT byte sequence. Accumulate exactly as TerminalEventPump/AnsiInputDecoder
+             * are designed to tolerate split native reads.
+             */
+            for (int attempt = 0;
+                 attempt < 1000 && input_bytes.size() < expected_input.size();
+                 ++attempt) {
+                const std::string chunk = session.pollInputBytes();
+                input_bytes.append(chunk);
+
+                if (chunk.empty()) {
                     std::this_thread::sleep_for(1ms);
                 }
             }
 
-            check(input_bytes == std::string{"\x1B[Aq"},
-                  "native ConPTY input bytes must survive raw VT transport");
+            if (input_bytes != expected_input) {
+                throw std::runtime_error(
+                    "native ConPTY input mismatch; expected [" +
+                    hexBytes(expected_input) + "] received [" +
+                    hexBytes(input_bytes) + "]");
+            }
 
             ScreenBuffer buffer{{2, 1}};
             buffer.set({0, 0}, Cell{U'O'});
