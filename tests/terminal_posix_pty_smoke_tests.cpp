@@ -133,6 +133,20 @@ int childMain(int slave, int ready_pipe_write) {
             return 19;
         }
 
+        /*
+         * tcsetattr() is a job-control operation on a controlling terminal. Make this new session's
+         * process group foreground explicitly so macOS cannot stop the child with SIGTTOU while
+         * TerminalSession applies raw mode.
+         */
+        if (::tcsetpgrp(slave, ::getpgrp()) != 0) {
+            return 24;
+        }
+
+        const char attached = '1';
+        if (::write(ready_pipe_write, &attached, 1) != 1) {
+            return 25;
+        }
+
         if (::dup2(slave, STDIN_FILENO) < 0 ||
             ::dup2(slave, STDOUT_FILENO) < 0) {
             return 20;
@@ -146,16 +160,26 @@ int childMain(int slave, int ready_pipe_write) {
         check(device != nullptr, "native terminal factory returned null");
         check(device->isInteractive(), "PTY-backed stdin/stdout must be interactive");
 
+        const char interactive = '2';
+        if (::write(ready_pipe_write, &interactive, 1) != 1) {
+            return 26;
+        }
+
         {
             TerminalSession session{*device};
+
+            const char session_started = '3';
+            if (::write(ready_pipe_write, &session_started, 1) != 1) {
+                return 27;
+            }
 
             check(session.size() == Size{42, 11},
                   "native terminal size must come from PTY window dimensions");
 
             /*
-             * Signal readiness only after TerminalSession has switched the slave into raw mode and
-             * entered the alternate screen. The parent can now inject bytes without canonical line
-             * buffering hiding them from readAvailable().
+             * Signal readiness only after TerminalSession has switched the slave into raw mode,
+             * entered the alternate screen and proved size discovery works. The parent can now inject
+             * bytes without canonical line buffering hiding them from readAvailable().
              */
             const char ready = 'R';
             if (::write(ready_pipe_write, &ready, 1) != 1) {
@@ -197,23 +221,6 @@ int childMain(int slave, int ready_pipe_write) {
     }
 }
 
-bool waitReadable(int descriptor, int timeout_ms) {
-    struct pollfd entry {};
-    entry.fd = descriptor;
-    entry.events = POLLIN | POLLHUP;
-
-    int result = 0;
-    do {
-        result = ::poll(&entry, 1, timeout_ms);
-    } while (result < 0 && errno == EINTR);
-
-    if (result < 0) {
-        throw std::runtime_error(systemMessage("poll readiness pipe"));
-    }
-
-    return result > 0;
-}
-
 int waitForChild(pid_t child, std::chrono::milliseconds timeout) {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     int status = 0;
@@ -247,6 +254,64 @@ int waitForChild(pid_t child, std::chrono::milliseconds timeout) {
     fail("native terminal child exceeded internal 2 second timeout");
 }
 
+char waitForReady(pid_t child, int descriptor, std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    char last_stage = '0';
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        struct pollfd entry {};
+        entry.fd = descriptor;
+        entry.events = POLLIN | POLLHUP;
+
+        int result = 0;
+        do {
+            result = ::poll(&entry, 1, 50);
+        } while (result < 0 && errno == EINTR);
+
+        if (result < 0) {
+            throw std::runtime_error(systemMessage("poll readiness pipe"));
+        }
+        if (result == 0) {
+            continue;
+        }
+
+        char stage = 0;
+        const ssize_t count = ::read(descriptor, &stage, 1);
+
+        if (count == 1) {
+            last_stage = stage;
+            if (stage == 'R') {
+                return stage;
+            }
+            continue;
+        }
+
+        if (count == 0) {
+            const int status = waitForChild(child, 500ms);
+            if (WIFEXITED(status)) {
+                throw std::runtime_error(
+                    "native terminal child exited before readiness; last stage=" +
+                    std::string{last_stage} +
+                    ", exit code=" + std::to_string(WEXITSTATUS(status)));
+            }
+            fail("native terminal child ended before readiness");
+        }
+
+        if (errno != EINTR) {
+            throw std::runtime_error(systemMessage("read readiness pipe"));
+        }
+    }
+
+    (void)::kill(child, SIGKILL);
+    int status = 0;
+    while (::waitpid(child, &status, 0) < 0 && errno == EINTR) {
+    }
+
+    throw std::runtime_error(
+        "native terminal child timed out before readiness; last stage=" +
+        std::string{last_stage});
+}
+
 } // namespace
 
 int main() {
@@ -272,8 +337,9 @@ int main() {
             ::close(master);
             throw std::runtime_error(message);
         }
+        const std::string slave_path{slave_name};
 
-        const int slave = ::open(slave_name, O_RDWR | O_NOCTTY);
+        const int slave = ::open(slave_path.c_str(), O_RDWR | O_NOCTTY);
         if (slave < 0) {
             const std::string message = systemMessage("open PTY slave");
             ::close(master);
@@ -311,24 +377,14 @@ int main() {
 
         ::close(ready_pipe[1]);
 
-        check(waitReadable(ready_pipe[0], 2000),
-              "child did not reach native terminal session within 2 seconds");
+        /*
+         * The parent must not keep the PTY slave open while testing child lifetime. This more closely
+         * matches a real terminal session and lets master EOF/EIO reflect the child closing its tty.
+         * Re-open the slave later only to verify that termios restoration persisted.
+         */
+        ::close(slave);
 
-        char ready = 0;
-        ssize_t ready_count = 0;
-        do {
-            ready_count = ::read(ready_pipe[0], &ready, 1);
-        } while (ready_count < 0 && errno == EINTR);
-
-        if (ready_count != 1 || ready != 'R') {
-            const int status = waitForChild(child, 2000ms);
-            if (WIFEXITED(status)) {
-                throw std::runtime_error(
-                    "native terminal child failed before readiness with exit code " +
-                    std::to_string(WEXITSTATUS(status)));
-            }
-            fail("native terminal child failed before readiness");
-        }
+        (void)waitForReady(child, ready_pipe[0], 2000ms);
 
         writeAll(master, "\x1B[Aq");
 
@@ -358,16 +414,22 @@ int main() {
         check(output.find("\x1B[?25h\x1B[?1049l") != std::string::npos,
               "native session must restore cursor and leave alternate screen");
 
+        const int restored_slave = ::open(slave_path.c_str(), O_RDWR | O_NOCTTY);
+        if (restored_slave < 0) {
+            throw std::runtime_error(systemMessage("re-open PTY slave for restoration check"));
+        }
+
         termios restored{};
-        if (::tcgetattr(slave, &restored) != 0) {
+        if (::tcgetattr(restored_slave, &restored) != 0) {
+            ::close(restored_slave);
             throw std::runtime_error(systemMessage("tcgetattr restored PTY state"));
         }
 
         check(equivalentTerminalState(original, restored),
               "TerminalSession must restore original PTY termios state");
 
+        ::close(restored_slave);
         ::close(ready_pipe[0]);
-        ::close(slave);
         ::close(master);
 
         std::cout << "[PASS] native POSIX PTY terminal smoke test\n";
