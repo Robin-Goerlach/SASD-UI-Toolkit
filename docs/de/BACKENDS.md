@@ -166,3 +166,5 @@ Beispiele:
 - Textinput und Key Events werden getrennt transportiert
 
 Zusätzlich erhält jedes Backend plattformspezifische Integrations- und Smoke-Tests.
+
+Für das aktuelle Terminal-Backend existieren nun echte Prozess-Smoke-Tests statt reiner Mock-/Compilerabdeckung: Linux und macOS starten den nativen POSIX-Adapter in einem Kernel-PTY, Windows startet den nativen Adapter in einer ConPTY-Pseudokonsole. Geprüft werden dabei unter anderem Größenabfrage, Raw-/VT-Input, Frame-Output, Alternate-Screen-/Cursor-Sequenzen sowie die Wiederherstellung von `termios` beziehungsweise Windows Console Modes und Codepages. Diese automatisierten Pseudoterminaltests ergänzen, ersetzen aber nicht den manuellen Emulator-Smoke-Test unter Linux/xterm und Windows Terminal.

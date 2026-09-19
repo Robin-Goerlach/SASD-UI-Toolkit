@@ -65,6 +65,7 @@ The repository now contains the first working implementation slice:
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
 - AddressSanitizer/UndefinedBehaviorSanitizer support;
+- native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
 The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT frame encoding is now implemented deterministically, and Tab/Shift+Tab focus traversal is available through the existing unhandled-event composition boundary. Native terminal output/session handling is now implemented behind a portable RAII device boundary. Native byte input and core ANSI/VT escape-sequence translation are now implemented. Resize-event production, incomplete-sequence timing and a runnable terminal sample are now implemented. Simple portable styling is now implemented. A real interactive Linux/Windows terminal smoke test, richer Unicode grapheme editing and pointer interaction remain before the M2 exit criterion can be claimed. Desktop backends remain planned.
@@ -126,7 +127,7 @@ cmake --build build-msvc --config Debug --parallel
 
 The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to move focus, activate buttons with Enter/Space, resize the terminal, and press Escape or the Exit button to leave. Terminal state is restored through RAII on normal exit and exceptions.
 
-CI compiles this example on Linux, macOS and Windows, but hosted CI is not treated as an interactive terminal smoke test. Manual execution in a Linux/xterm-like terminal and Windows Terminal remains part of the M2 exit validation.
+CI now goes beyond compilation: Linux/macOS run the native POSIX adapter inside a real kernel PTY, while Windows runs the native adapter inside a real ConPTY pseudoconsole. These process-level tests verify native size discovery, raw/VT input, frame output and terminal-state restoration. They still do not replace manual execution in a real Linux/xterm-like emulator and Windows Terminal, which remains part of the M2 exit validation.
 
 ## Architectural direction
 

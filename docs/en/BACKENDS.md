@@ -166,3 +166,5 @@ Examples:
 - text input and key events remain distinct.
 
 Each backend additionally receives platform-specific integration and smoke tests.
+
+The terminal backend now has real process-level smoke tests rather than only mock/compiler coverage: Linux and macOS run the native POSIX adapter inside a kernel PTY, while Windows runs the native adapter inside a ConPTY pseudoconsole. The tests cover size discovery, raw/VT input, frame output, alternate-screen/cursor sequences and restoration of `termios` or Windows console modes/code pages. These automated pseudoterminal tests complement rather than replace manual emulator validation in Linux/xterm and Windows Terminal.
