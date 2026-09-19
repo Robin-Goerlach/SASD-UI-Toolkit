@@ -116,3 +116,32 @@ if(UNIX AND NOT WIN32)
     # invariant breaks. Normal execution is far below this limit.
     set_tests_properties(sasd_ui_posix_pty_smoke_tests PROPERTIES TIMEOUT 10)
 endif()
+
+
+# Exercise the real Windows terminal adapter against a Windows Pseudoconsole (ConPTY). Like the
+# POSIX PTY test above, this is a separate process-level smoke test because it changes native console
+# modes/code pages and launches a child attached to a real kernel terminal endpoint.
+if(WIN32)
+    add_executable(sasd_ui_windows_conpty_smoke_tests
+        terminal_windows_conpty_smoke_tests.cpp
+    )
+
+    target_link_libraries(sasd_ui_windows_conpty_smoke_tests PRIVATE SASD::UI::Terminal)
+    target_compile_features(sasd_ui_windows_conpty_smoke_tests PRIVATE cxx_std_20)
+
+    # CreatePseudoConsole/PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE are Windows 10 APIs.
+    target_compile_definitions(sasd_ui_windows_conpty_smoke_tests
+        PRIVATE _WIN32_WINNT=0x0A00 NOMINMAX)
+
+    target_compile_options(sasd_ui_windows_conpty_smoke_tests PRIVATE /W4 /permissive-)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_windows_conpty_smoke_tests PRIVATE /WX)
+    endif()
+
+    add_test(NAME sasd_ui_windows_conpty_smoke_tests
+             COMMAND sasd_ui_windows_conpty_smoke_tests)
+
+    # ConPTY teardown is process/pipe based. A regression must fail the test rather than hang the
+    # hosted Windows runner indefinitely.
+    set_tests_properties(sasd_ui_windows_conpty_smoke_tests PROPERTIES TIMEOUT 15)
+endif()
