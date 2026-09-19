@@ -238,6 +238,8 @@ int childMain(int slave, int ready_pipe_write) {
 
 int waitForChild(pid_t child,
                  int stage_descriptor,
+                 int master,
+                 std::string& master_output,
                  std::chrono::milliseconds timeout) {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     int status = 0;
@@ -249,6 +251,15 @@ int waitForChild(pid_t child,
     }
 
     while (std::chrono::steady_clock::now() < deadline) {
+        /*
+         * A real terminal emulator consumes output continuously. Do the same while waiting for the
+         * child so macOS tcsetattr(TCSAFLUSH) cannot deadlock behind pending PTY output during
+         * TerminalSession restoration.
+         */
+        if (master >= 0) {
+            master_output += drainMaster(master);
+        }
+
         for (;;) {
             char stage = 0;
             const ssize_t count = ::read(stage_descriptor, &stage, 1);
@@ -287,6 +298,9 @@ int waitForChild(pid_t child,
      * is not part of toolkit terminal-session behavior.
      */
     (void)::kill(child, SIGKILL);
+    if (master >= 0) {
+        master_output += drainMaster(master);
+    }
 
     pid_t result = 0;
     do {
@@ -331,7 +345,9 @@ char waitForReady(pid_t child, int descriptor, std::chrono::milliseconds timeout
         }
 
         if (count == 0) {
-            const int status = waitForChild(child, descriptor, 500ms);
+            std::string discarded_output;
+            const int status =
+                waitForChild(child, descriptor, -1, discarded_output, 500ms);
             if (WIFEXITED(status)) {
                 throw std::runtime_error(
                     "native terminal child exited before readiness; last stage=" +
@@ -432,20 +448,23 @@ int main() {
 
         writeAll(master, "\x1B[Aq");
 
-        const int status = waitForChild(child, ready_pipe[0], 2000ms);
-        check(WIFEXITED(status), "native terminal child did not exit normally");
-        check(WEXITSTATUS(status) == 0, "native terminal child reported failure");
-
         /*
-         * Make master reads non-blocking only after the child is gone; all output is now queued and
-         * drainMaster() cannot hang while looking for an EOF/EIO termination condition.
+         * From this point on the parent acts like a terminal emulator: keep the master non-blocking
+         * and continuously consume child output while waiting. This matters on macOS because restoring
+         * termios with TCSAFLUSH may wait for already-written terminal output to drain.
          */
         const int current_flags = ::fcntl(master, F_GETFL, 0);
         if (current_flags >= 0) {
             (void)::fcntl(master, F_SETFL, current_flags | O_NONBLOCK);
         }
 
-        const std::string output = drainMaster(master);
+        std::string output;
+        const int status =
+            waitForChild(child, ready_pipe[0], master, output, 2000ms);
+        check(WIFEXITED(status), "native terminal child did not exit normally");
+        check(WEXITSTATUS(status) == 0, "native terminal child reported failure");
+
+        output += drainMaster(master);
 
         check(output.find("\x1B[?1049h") != std::string::npos,
               "native session must enter alternate screen");
