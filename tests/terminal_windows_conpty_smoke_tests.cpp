@@ -235,22 +235,48 @@ void writeConsoleMarker(std::string_view marker) {
     return result;
 }
 
+[[nodiscard]] UniqueHandle openConsoleHandle(const wchar_t* name) {
+    HANDLE handle = ::CreateFileW(name,
+                                  GENERIC_READ | GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                  nullptr,
+                                  OPEN_EXISTING,
+                                  0,
+                                  nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw win32Error("CreateFileW(console handle)");
+    }
+    return UniqueHandle{handle};
+}
+
 int childMain() {
     try {
+        /*
+         * CTest itself redirects standard streams. A ConPTY-attached child can therefore enter with
+         * inherited/redirected standard-handle table entries even though it owns a real console
+         * session. Open CONIN$/CONOUT$ explicitly and publish them as this test child's standard
+         * handles before constructing WindowsTerminalDevice. This models a normal interactive launch
+         * while still letting the parent observe the ConPTY transport pipes.
+         */
+        UniqueHandle console_input = openConsoleHandle(L"CONIN$");
+        UniqueHandle console_output = openConsoleHandle(L"CONOUT$");
+
+        check(::SetStdHandle(STD_INPUT_HANDLE, console_input.get()) != 0,
+              "SetStdHandle(STDIN -> CONIN$) failed");
+        check(::SetStdHandle(STD_OUTPUT_HANDLE, console_output.get()) != 0,
+              "SetStdHandle(STDOUT -> CONOUT$) failed");
+        check(::SetStdHandle(STD_ERROR_HANDLE, console_output.get()) != 0,
+              "SetStdHandle(STDERR -> CONOUT$) failed");
+
         const HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
         const HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
-
-        check(input != nullptr && input != INVALID_HANDLE_VALUE,
-              "ConPTY child stdin handle is invalid");
-        check(output != nullptr && output != INVALID_HANDLE_VALUE,
-              "ConPTY child stdout handle is invalid");
 
         DWORD original_input_mode = 0;
         DWORD original_output_mode = 0;
         check(::GetConsoleMode(input, &original_input_mode) != 0,
-              "ConPTY child stdin is not a console handle");
+              "CONIN$ is not a usable console input handle");
         check(::GetConsoleMode(output, &original_output_mode) != 0,
-              "ConPTY child stdout is not a console handle");
+              "CONOUT$ is not a usable console output handle");
 
         const UINT original_input_cp = ::GetConsoleCP();
         const UINT original_output_cp = ::GetConsoleOutputCP();
