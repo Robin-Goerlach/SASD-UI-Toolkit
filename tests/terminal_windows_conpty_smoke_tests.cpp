@@ -526,17 +526,24 @@ int parentMain() {
     }
 
     /*
-     * Keep draining while the pseudo console is alive. ClosePseudoConsole with synchronous pipes can
-     * otherwise wait for pending output that nobody is consuming, the Windows analogue of the PTY
-     * teardown issue already covered by the POSIX smoke test.
+     * Child-process exit and ConPTY pipe delivery are not the same event. conhost may still have a
+     * final small output batch queued after the client process has terminated. In particular, the
+     * restoration marker is written only after TerminalSession has restored console state. Continue
+     * draining for a bounded period instead of treating one temporarily-empty PeekNamedPipe result as
+     * end-of-stream.
+     *
+     * This also keeps the pipe actively consumed before ClosePseudoConsole(), avoiding the documented
+     * synchronous-pipe teardown deadlock class.
      */
-    for (int attempt = 0; attempt < 100; ++attempt) {
+    const auto drain_deadline = std::chrono::steady_clock::now() + 1000ms;
+    while (std::chrono::steady_clock::now() < drain_deadline &&
+           output.find(restored_marker) == std::string::npos) {
         const std::string chunk = drainPipe(output_read.get());
         output += chunk;
+
         if (chunk.empty()) {
-            break;
+            std::this_thread::sleep_for(1ms);
         }
-        std::this_thread::sleep_for(1ms);
     }
 
     check(input_sent, "ConPTY child never reached raw/VT readiness marker");
