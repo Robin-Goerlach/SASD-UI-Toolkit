@@ -68,6 +68,8 @@ Planned:
 
 **Exit criterion:** a small interactive application runs in at least a Linux/xterm-like environment and a modern Windows console/terminal with substantially identical application code.
 
+The binding manual completion procedure is documented in the [M2 terminal smoke test](M2_TERMINAL_SMOKE_TEST.md).
+
 ## M3 – Rendered Desktop Preview / v0.2.0
 
 **Goal:** demonstrate the same public API graphically across desktop platforms.

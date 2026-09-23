@@ -129,6 +129,8 @@ The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to mov
 
 CI now goes beyond compilation: Linux/macOS run the native POSIX adapter inside a real kernel PTY, while Windows runs the native adapter inside a real ConPTY pseudoconsole. These process-level tests verify native size discovery, raw/VT input, frame output and terminal-state restoration. They still do not replace manual execution in a real Linux/xterm-like emulator and Windows Terminal, which remains part of the M2 exit validation.
 
+The exact release-gate procedure is documented in the [English M2 terminal smoke test](docs/en/M2_TERMINAL_SMOKE_TEST.md) and [German M2-Terminal-Smoke-Test](docs/de/M2_TERMINAL_SMOKE_TEST.md).
+
 ## Architectural direction
 
 ```text

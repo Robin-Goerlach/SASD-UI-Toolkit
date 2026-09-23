@@ -68,6 +68,8 @@ Geplant:
 
 **Exit-Kriterium:** Eine kleine interaktive Anwendung läuft unter mindestens Linux/xterm-artiger Umgebung und moderner Windows-Konsole/Terminal mit weitgehend identischem Anwendungscode.
 
+Die verbindliche manuelle Abschlussprüfung ist im [M2-Terminal-Smoke-Test](M2_TERMINAL_SMOKE_TEST.md) dokumentiert.
+
 ## M3 – Rendered Desktop Preview / v0.2.0
 
 **Ziel:** dieselbe öffentliche API grafisch auf mehreren Desktopplattformen demonstrieren.

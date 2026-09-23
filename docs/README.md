@@ -2,7 +2,7 @@
 
 This directory contains the project documentation in **German** and **English**.
 
-> **Project status:** architecture/bootstrap phase. The documented API and roadmap describe the intended direction and are not yet a stability promise.
+> **Project status:** M1 is complete and M2 Terminal Preview is in release-validation work. The documented API is still pre-1.0 and not yet a stability promise.
 
 ## Content
 
@@ -13,6 +13,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend and platform strategy](en/BACKENDS.md)
 - [Development guidelines](en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](en/ROADMAP.md)
+- [M2 terminal smoke test](en/M2_TERMINAL_SMOKE_TEST.md)
 - [Inspirations and references](en/REFERENCES.md)
 
 ### Deutsch
@@ -22,6 +23,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend- und Plattformstrategie](de/BACKENDS.md)
 - [Entwicklungsrichtlinien](de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](de/ROADMAP.md)
+- [M2-Terminal-Smoke-Test](de/M2_TERMINAL_SMOKE_TEST.md)
 - [Vorbilder und Referenzen](de/REFERENZEN.md)
 
 ### Architecture Decision Records
