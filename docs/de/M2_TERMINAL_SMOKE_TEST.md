@@ -1,6 +1,6 @@
 # M2 Terminal-Smoke-Test
 
-Stand: 23.09.2026
+Stand: 27.09.2026
 
 Dieses Dokument beschreibt die **manuelle Exit-Validierung für M2 / v0.1.0**.
 
@@ -95,11 +95,12 @@ Prüfen:
 4. **Editing:** Left/Right/Home/End/Backspace/Delete prüfen.
 5. **Fokus:** Tab vorwärts, Shift+Tab rückwärts; Caret nur im fokussierten TextField.
 6. **Buttons:** Greet mit Enter und anschließend mit Space aktivieren; jeweils genau eine Aktivierung.
-7. **Resize:** Terminal deutlich verkleinern und wieder vergrößern; keine alten Zeichenreste, Text und
+7. **Funktionstasten:** F1 drücken; der Status muss die Hilfe anzeigen. Demo erneut starten und mit F10 beenden; Prompt, Cursor, Echo und Zeilenbearbeitung müssen sofort wieder normal sein.
+8. **Resize:** Terminal deutlich verkleinern und wieder vergrößern; keine alten Zeichenreste, Text und
    Fokus logisch erhalten.
-8. **Escape:** Demo erneut starten und mit Escape beenden; Prompt, Cursor, Echo und Zeilenbearbeitung
+9. **Escape:** Demo erneut starten und mit Escape beenden; Prompt, Cursor, Echo und Zeilenbearbeitung
    sofort wieder normal; `stty -g` vor/nach dem Lauf identisch.
-9. **Exit-Button:** Demo erneut starten und über Exit beenden; identische saubere Restoration.
+10. **Exit-Button:** Demo erneut starten und über Exit beenden; identische saubere Restoration.
 
 Terminal-Themes dürfen die konkreten Farbtöne verändern. Rohe Escape-Sequenzen oder auslaufende
 SGR-Zustände sind dagegen Fehler.
@@ -130,6 +131,7 @@ Dieselben funktionalen Schritte wie unter Linux prüfen:
 - Editing-/Navigationstasten;
 - Tab/Shift+Tab;
 - Enter-/Space-Aktivierung;
+- F1-Hilfe und F10-Ende;
 - Resize kleiner/größer;
 - Escape-Ende;
 - Exit-Button;
@@ -144,7 +146,7 @@ wird:
 
 - vollständige Combining-/ZWJ-/Emoji-Grapheme-Zellen;
 - Maus-/Pointer-Interaktion;
-- F1..Fn und erweiterte Keyboard-Protokolle;
+- F13+ und erweiterte Keyboard-Protokolle;
 - Kitty Keyboard Protocol / vollständiges CSI-u;
 - Bracketed Paste;
 - RGB-/True-Color-Styles;

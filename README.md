@@ -57,7 +57,7 @@ The repository now contains the first working implementation slice:
 - `TextField` editing through `TextInputEvent` plus scalar cursor/navigation/delete semantics, shared UTF-8 decoding, terminal horizontal scrolling and separate hardware-caret position;
 - deterministic `AnsiFrameEncoder` converting `ScreenBuffer` plus optional caret into tested full-frame UTF-8/ANSI-VT bytes without OS I/O;
 - RAII `TerminalSession` / `TerminalDevice` boundary with deterministic mock tests and native POSIX/Windows adapters for TTY/console sizing, raw/VT session state, alternate screen and byte transport;
-- non-blocking terminal input polling plus incremental `AnsiInputDecoder` translating split UTF-8/CSI/SS3 streams into existing `KeyEvent` / `TextInputEvent` semantics;
+- non-blocking terminal input polling plus incremental `AnsiInputDecoder` translating split UTF-8/CSI/SS3 streams into existing `KeyEvent` / `TextInputEvent` semantics, including portable F1–F12 function-key identities and xterm modifiers;
 - `TerminalEventPump` and concrete `TerminalBackend : Backend` integrating resize, input timing and terminal session lifecycle with the normal `Application` event path;
 - buildable `sasd_ui_terminal_demo` exercising real terminal input/output, resize, TextField editing, Tab/Shift+Tab focus, Buttons and RAII terminal restoration;
 - minimal backend-neutral `Color` / `TextStyle` support for Label/Button/TextField with 16 portable foreground colors plus bold/dim/underline/inverse, carried through terminal cells into ANSI SGR;
@@ -125,7 +125,7 @@ cmake --build build-msvc --config Debug --parallel
 .\build-msvc\examples\Debug\sasd_ui_terminal_demo.exe
 ```
 
-The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to move focus, activate buttons with Enter/Space, resize the terminal, and press Escape or the Exit button to leave. Terminal state is restored through RAII on normal exit and exceptions.
+The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to move focus, activate buttons with Enter/Space, press F1 for help, resize the terminal, and press F10, Escape or the Exit button to leave. Terminal state is restored through RAII on normal exit and exceptions.
 
 CI now goes beyond compilation: Linux/macOS run the native POSIX adapter inside a real kernel PTY, while Windows runs the native adapter inside a real ConPTY pseudoconsole. These process-level tests verify native size discovery, raw/VT input, frame output and terminal-state restoration. They still do not replace manual execution in a real Linux/xterm-like emulator and Windows Terminal, which remains part of the M2 exit validation.
 

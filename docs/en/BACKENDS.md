@@ -42,13 +42,13 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 `TerminalDevice`/`TerminalSession` now form the real device/session boundary. POSIX uses TTY detection, `termios`, `TIOCGWINSZ` and retry-safe `write`; Windows saves/restores console modes and code pages, enables Virtual Terminal processing and writes through `WriteFile`. Alternate screen and raw input are RAII-owned with transactional rollback. Hosted CI validates session semantics deterministically through `MockTerminalDevice` while native adapters are compiled on their respective platforms.
 
-`TerminalDevice::readAvailable()` now returns currently available input bytes without blocking. `AnsiInputDecoder` incrementally handles split UTF-8/CSI/SS3 sequences and translates Enter, Tab, Backspace, Space, arrows, Home/End, Delete, PageUp/PageDown, Shift+Tab and selected xterm modifiers into the existing semantic events. A lone ESC remains pending until an explicit event-loop flush.
+`TerminalDevice::readAvailable()` now returns currently available input bytes without blocking. `AnsiInputDecoder` incrementally handles split UTF-8/CSI/SS3 sequences and translates Enter, Tab, Backspace, Space, arrows, Home/End, Delete, PageUp/PageDown, Shift+Tab and F1–F12, including selected xterm modifiers, into the existing semantic events. A lone ESC remains pending until an explicit event-loop flush.
 
 `TerminalEventPump` now combines size discovery, non-blocking input and incomplete-sequence timeout into deterministic semantic events. Size changes become the existing `ResizeEvent`; initial discovery does not synthesize a resize. `TerminalBackend : Backend` integrates session and event-pump lifecycle with the normal `Application` path. The runnable `sasd_ui_terminal_demo` exercises TextField, Buttons, Tab/Shift+Tab focus, resize and real ANSI output. CI compiles the demo on Linux, macOS and Windows; manual interactive smoke validation is still required for the M2 exit criterion.
 
 `Color`/`TextStyle` now provide a deliberately small backend-neutral styling contract for `Label`, `Button` and `TextField`: 16 named foreground colors plus bold/dim/underline/inverse. Terminal cells retain resolved style and the ANSI encoder emits SGR transitions. Focus and disabled state are terminal-presentation overlays only. Background colors, cascade/themes, RGB/alpha and font models remain deliberately later.
 
-Function keys/extended keyboard protocols, full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
+F1–F12 are now backend-neutral `Key` identities decoded from common SS3/CSI/xterm forms. Extended keyboard protocols (F13+, Kitty/CSI-u/modifyOtherKeys), full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
 
 ### 2. SDL3 backend
 

@@ -42,13 +42,13 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `TerminalDevice`/`TerminalSession` bilden nun die reale Device-/Session-Grenze. POSIX verwendet TTY-Erkennung, `termios`, `TIOCGWINSZ` und retry-sicheres `write`; Windows speichert/wiederherstellt Console Modes und Codepages, aktiviert Virtual Terminal Processing und schreibt über `WriteFile`. Alternate Screen und Raw Input werden RAII-sicher mit transaktionalem Rollback verwaltet. Hosted-CI testet die Session-Semantik deterministisch über `MockTerminalDevice`, während die nativen Adapter auf ihren jeweiligen Plattformen kompiliert werden.
 
-`TerminalDevice::readAvailable()` liefert nun nichtblockierend verfügbare Inputbytes. `AnsiInputDecoder` verarbeitet gesplittete UTF-8-/CSI-/SS3-Sequenzen inkrementell und übersetzt Enter, Tab, Backspace, Space, Pfeile, Home/End, Delete, PageUp/PageDown, Shift+Tab und ausgewählte xterm-Modifier in die bestehenden semantischen Events. Ein einzelnes ESC bleibt bis zum expliziten Eventloop-Flush gepuffert.
+`TerminalDevice::readAvailable()` liefert nun nichtblockierend verfügbare Inputbytes. `AnsiInputDecoder` verarbeitet gesplittete UTF-8-/CSI-/SS3-Sequenzen inkrementell und übersetzt Enter, Tab, Backspace, Space, Pfeile, Home/End, Delete, PageUp/PageDown, Shift+Tab sowie F1–F12 einschließlich ausgewählter xterm-Modifier in die bestehenden semantischen Events. Ein einzelnes ESC bleibt bis zum expliziten Eventloop-Flush gepuffert.
 
 `TerminalEventPump` verbindet Größenabfrage, nichtblockierenden Input und Incomplete-Sequence-Timeout deterministisch zu semantischen Events. Größenänderungen werden als vorhandenes `ResizeEvent` erzeugt; der Startzustand erzeugt kein künstliches Resize. `TerminalBackend : Backend` integriert Session und EventPump in den normalen `Application`-Lifecycle. Die neue ausführbare `sasd_ui_terminal_demo` nutzt diesen Pfad mit TextField, Buttons, Tab-/Shift+Tab-Fokus, Resize und realer ANSI-Ausgabe. CI kompiliert die Demo auf Linux, macOS und Windows; ein manueller interaktiver Smoke-Test bleibt für das M2-Exit-Kriterium erforderlich.
 
 `Color`/`TextStyle` ergänzen nun einen bewusst kleinen backendneutralen Stylevertrag für `Label`, `Button` und `TextField`. Unterstützt werden 16 benannte Vordergrundfarben sowie bold/dim/underline/inverse. Terminalzellen speichern den aufgelösten Style; der ANSI-Encoder erzeugt daraus SGR-Sequenzen. Fokus und Disabled werden nur als Terminal-Presentation-Overlay ergänzt. Hintergrundfarben, Cascade/Themes, RGB/Alpha und Fontmodelle bleiben bewusst später.
 
-Noch offen sind insbesondere F-Tasten/erweiterte Keyboard-Protokolle, vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
+F1–F12 sind nun als backendneutrale `Key`-Identitäten implementiert und werden aus verbreiteten SS3-/CSI-/xterm-Sequenzen dekodiert. Noch offen sind insbesondere erweiterte Keyboard-Protokolle (F13+, Kitty/CSI-u/modifyOtherKeys), vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
 ### 2. SDL3-Backend
 

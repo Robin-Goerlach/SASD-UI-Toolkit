@@ -1,6 +1,6 @@
 # M2 Terminal Smoke Test
 
-Status: 2026-09-23
+Status: 2026-09-27
 
 This document defines the **manual exit validation for M2 / v0.1.0**.
 
@@ -76,7 +76,7 @@ fi
 ```
 
 Validate clean startup, style/color presentation, `Robin AΩ界` input, editing/navigation keys,
-Tab/Shift+Tab, Enter/Space button activation, shrink/enlarge resize, Escape exit, Exit-button exit and
+Tab/Shift+Tab, Enter/Space button activation, F1 Help, F10 exit, shrink/enlarge resize, Escape exit, Exit-button exit and
 normal cursor/echo/shell editing after termination. `stty -g` should match before and after.
 
 Terminal themes may map named colors differently; leaking SGR state or raw escape text is not
@@ -100,7 +100,7 @@ $after = (chcp)
 ```
 
 Repeat the Linux functional validation: clean startup, styles, `Robin AΩ界`, editing/navigation,
-Tab/Shift+Tab, Enter/Space activation, resize, Escape, Exit button, and normal shell behavior after
+Tab/Shift+Tab, Enter/Space activation, F1 Help, F10 exit, resize, Escape, Exit button, and normal shell behavior after
 termination. The console code page must be restored to its pre-run state.
 
 ## 5. Deliberately outside the M2 release gate
@@ -109,7 +109,7 @@ Not M2 failures when the documented conservative behavior is preserved:
 
 - complete combining/ZWJ/emoji grapheme-cell editing;
 - mouse/pointer interaction;
-- F1..Fn and extended keyboard protocols;
+- F13+ and extended keyboard protocols;
 - Kitty Keyboard Protocol / complete CSI-u;
 - bracketed paste;
 - arbitrary RGB/true-color styling;
