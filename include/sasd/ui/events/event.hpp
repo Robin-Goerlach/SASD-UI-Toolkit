@@ -37,6 +37,23 @@ enum class Key : std::uint16_t {
     end,
     page_up,
     page_down,
+
+    /*
+     * Function-key identity is semantic and backend-neutral. Terminal backends map VT/ANSI escape
+     * sequences here; later desktop backends can map their native key codes to the same values.
+     */
+    f1,
+    f2,
+    f3,
+    f4,
+    f5,
+    f6,
+    f7,
+    f8,
+    f9,
+    f10,
+    f11,
+    f12,
 };
 
 enum class KeyModifier : std::uint8_t {

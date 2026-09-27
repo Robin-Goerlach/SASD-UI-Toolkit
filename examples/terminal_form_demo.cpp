@@ -92,7 +92,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab/Shift+Tab changes focus. Escape exits.");
+            "Tab/Shift+Tab focus. F1 help. F10/Escape exits.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -165,9 +165,21 @@ int main() {
                     if (const auto* key = std::get_if<KeyEvent>(&event);
                         key != nullptr &&
                         key->pressed &&
-                        key->key == Key::escape &&
                         key->modifiers == KeyModifier::none) {
-                        application.requestExit();
+                        if (key->key == Key::f1) {
+                            /*
+                             * Function keys are ordinary semantic KeyEvents. The sample deliberately
+                             * handles F1 at application scope instead of baking Help behavior into the
+                             * terminal backend or a Widget base class.
+                             */
+                            status.setText(
+                                "Help: type a name, Tab to Greet/Exit, Enter or Space activates.");
+                            return;
+                        }
+
+                        if (key->key == Key::f10 || key->key == Key::escape) {
+                            application.requestExit();
+                        }
                     }
                 });
 

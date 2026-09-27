@@ -253,3 +253,92 @@ TEST_CASE("ANSI bytes drive TextField focus traversal and Button activation end 
     CHECK(button.hasFocus());
     CHECK(activations == 1);
 }
+
+
+TEST_CASE("AnsiInputDecoder decodes SS3 and legacy CSI function keys F1 through F12") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1BOP"   // F1: common SS3 form
+        "\x1BOQ"   // F2
+        "\x1BOR"   // F3
+        "\x1BOS"   // F4
+        "\x1B[15~" // F5
+        "\x1B[17~" // F6
+        "\x1B[18~" // F7
+        "\x1B[19~" // F8
+        "\x1B[20~" // F9
+        "\x1B[21~" // F10
+        "\x1B[23~" // F11
+        "\x1B[24~" // F12
+    );
+
+    CHECK(events.size() == 12);
+    CHECK(keyAt(events, 0).key == Key::f1);
+    CHECK(keyAt(events, 1).key == Key::f2);
+    CHECK(keyAt(events, 2).key == Key::f3);
+    CHECK(keyAt(events, 3).key == Key::f4);
+    CHECK(keyAt(events, 4).key == Key::f5);
+    CHECK(keyAt(events, 5).key == Key::f6);
+    CHECK(keyAt(events, 6).key == Key::f7);
+    CHECK(keyAt(events, 7).key == Key::f8);
+    CHECK(keyAt(events, 8).key == Key::f9);
+    CHECK(keyAt(events, 9).key == Key::f10);
+    CHECK(keyAt(events, 10).key == Key::f11);
+    CHECK(keyAt(events, 11).key == Key::f12);
+}
+
+TEST_CASE("AnsiInputDecoder accepts legacy CSI tilde encodings for F1 through F4") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1B[11~"
+        "\x1B[12~"
+        "\x1B[13~"
+        "\x1B[14~");
+
+    CHECK(events.size() == 4);
+    CHECK(keyAt(events, 0).key == Key::f1);
+    CHECK(keyAt(events, 1).key == Key::f2);
+    CHECK(keyAt(events, 2).key == Key::f3);
+    CHECK(keyAt(events, 3).key == Key::f4);
+}
+
+TEST_CASE("AnsiInputDecoder preserves xterm modifiers on function keys") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1B[1;2P"  // Shift+F1
+        "\x1B[1;5Q"  // Ctrl+F2
+        "\x1B[15;3~" // Alt+F5
+        "\x1B[24;6~" // Shift+Ctrl+F12
+    );
+
+    CHECK(events.size() == 4);
+
+    CHECK(keyAt(events, 0).key == Key::f1);
+    CHECK(keyAt(events, 0).modifiers == KeyModifier::shift);
+
+    CHECK(keyAt(events, 1).key == Key::f2);
+    CHECK(keyAt(events, 1).modifiers == KeyModifier::control);
+
+    CHECK(keyAt(events, 2).key == Key::f5);
+    CHECK(keyAt(events, 2).modifiers == KeyModifier::alt);
+
+    CHECK(keyAt(events, 3).key == Key::f12);
+    CHECK(keyAt(events, 3).modifiers ==
+          (KeyModifier::shift | KeyModifier::control));
+}
+
+TEST_CASE("AnsiInputDecoder keeps split function-key escape sequences incremental") {
+    AnsiInputDecoder decoder;
+
+    CHECK(decoder.feed("\x1B").empty());
+    CHECK(decoder.feed("[21").empty());
+
+    const auto events = decoder.feed("~");
+
+    CHECK(events.size() == 1);
+    CHECK(keyAt(events, 0).key == Key::f10);
+    CHECK(!decoder.hasPendingInput());
+}

@@ -141,6 +141,35 @@ struct CsiParameters {
         return Key::page_up;
     case 6:
         return Key::page_down;
+
+    /*
+     * VT/xterm families commonly encode F1-F4 either as SS3 P..S or as the older CSI 11~..14~
+     * family. Supporting both is inexpensive and avoids tying semantic Key identity to one emulator.
+     */
+    case 11:
+        return Key::f1;
+    case 12:
+        return Key::f2;
+    case 13:
+        return Key::f3;
+    case 14:
+        return Key::f4;
+    case 15:
+        return Key::f5;
+    case 17:
+        return Key::f6;
+    case 18:
+        return Key::f7;
+    case 19:
+        return Key::f8;
+    case 20:
+        return Key::f9;
+    case 21:
+        return Key::f10;
+    case 23:
+        return Key::f11;
+    case 24:
+        return Key::f12;
     default:
         return std::nullopt;
     }
@@ -179,6 +208,30 @@ struct CsiParameters {
     std::optional<Key> key;
 
     switch (final) {
+    case 'P':
+        /*
+         * xterm uses CSI 1;<modifier>P for modified F1. Some terminals also send bare CSI P;
+         * accept both empty parameters and primary=1, but do not reinterpret unrelated CSI P forms.
+         */
+        if (!parsed.primary || *parsed.primary == 1U) {
+            key = Key::f1;
+        }
+        break;
+    case 'Q':
+        if (!parsed.primary || *parsed.primary == 1U) {
+            key = Key::f2;
+        }
+        break;
+    case 'R':
+        if (!parsed.primary || *parsed.primary == 1U) {
+            key = Key::f3;
+        }
+        break;
+    case 'S':
+        if (!parsed.primary || *parsed.primary == 1U) {
+            key = Key::f4;
+        }
+        break;
     case 'A':
         key = Key::up;
         break;
@@ -229,6 +282,18 @@ struct CsiParameters {
 
     std::optional<Key> key;
     switch (input[2]) {
+    case 'P':
+        key = Key::f1;
+        break;
+    case 'Q':
+        key = Key::f2;
+        break;
+    case 'R':
+        key = Key::f3;
+        break;
+    case 'S':
+        key = Key::f4;
+        break;
     case 'A':
         key = Key::up;
         break;
