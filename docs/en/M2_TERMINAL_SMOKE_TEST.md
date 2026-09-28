@@ -64,6 +64,11 @@ On Windows the smoke runner first looks for CMake/CTest on `PATH`. If they are n
 it uses Visual Studio's `vswhere.exe` to locate the CMake tools installed with Visual Studio. Only
 when neither source provides the tools does the runner stop with an installation hint.
 
+Windows PowerShell 5.1 interprets UTF-8 script files without a BOM through the legacy ANSI code page.
+The Windows runner therefore deliberately keeps its source ASCII-only and constructs the
+`Robin AΩ界` test sample from Unicode code points at runtime. This makes the smoke test validate
+terminal presentation rather than accidental source-file decoding.
+
 WSL/Linux and native Windows deliberately use **different CMake build directories**:
 `build-smoke-posix/` and `build-smoke-windows/`. A CMake cache contains absolute source/build
 paths plus generator/toolchain state, so the same checkout must not reuse one smoke build tree from

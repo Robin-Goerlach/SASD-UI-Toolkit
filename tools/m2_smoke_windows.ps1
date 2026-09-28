@@ -6,6 +6,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Windows PowerShell 5.1 interprets UTF-8 script files without a BOM through the legacy ANSI code
+# page. Keep this .ps1 source intentionally ASCII-only and construct the non-ASCII test sample from
+# Unicode code points at runtime. This tests the terminal instead of accidentally testing how the
+# script file itself was decoded.
+$UnicodeSample = "Robin A" + [char]0x03A9 + [char]0x754C
+
 # Manual M2 terminal release-gate helper for Windows Terminal / modern Windows consoles.
 #
 # Automated ConPTY tests already cover the native adapter. This helper prepares the exact local
@@ -14,6 +20,10 @@ $ErrorActionPreference = "Stop"
 # human observations.
 
 if ($ValidateOnly) {
+    if ([int]$UnicodeSample[7] -ne 0x03A9 -or [int]$UnicodeSample[8] -ne 0x754C) {
+        throw "Unicode smoke sample construction failed."
+    }
+
     Write-Host "M2 Windows smoke runner syntax/argument validation: PASS"
     exit 0
 }
@@ -156,7 +166,7 @@ Write-Host "Code page:        $($OriginalCodePage.Text)"
 Write-Host ""
 Write-Host "Manual observations during the first demo run:"
 Write-Host "  1. Styles/colors render without raw escape text."
-Write-Host "  2. Enter: Robin AΩ界 ; verify Unicode and wide-cell layout."
+Write-Host "  2. Enter: $UnicodeSample ; verify Unicode and wide-cell layout."
 Write-Host "  3. Left/Right/Home/End/Backspace/Delete edit correctly."
 Write-Host "  4. Tab/Shift+Tab traverse focus; caret belongs only to TextField."
 Write-Host "  5. Greet activates exactly once with Enter and Space."
@@ -258,7 +268,7 @@ else {
     Write-Host "Human validation is part of the M2 release gate."
     Write-Host "Confirm only if ALL visual/interaction checks from Run 1 succeeded:"
     Write-Host "  - styles/focus were plausible and no raw ANSI escapes were visible;"
-    Write-Host "  - Robin AΩ界 remained intact, including the wide CJK cell;"
+    Write-Host "  - $UnicodeSample remained intact, including the wide CJK cell;"
     Write-Host "  - editing/navigation, Tab/Shift+Tab and TextField caret behaved correctly;"
     Write-Host "  - Enter/Space activated Greet exactly once and F1 showed Help;"
     Write-Host "  - shrink/enlarge resize left no stale cells and preserved logical state."

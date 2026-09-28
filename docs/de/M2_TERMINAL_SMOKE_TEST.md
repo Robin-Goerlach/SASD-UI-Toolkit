@@ -75,6 +75,11 @@ Unter Windows versucht der Smoke-Runner CMake/CTest zuerst über `PATH` zu finde
 gelingt, sucht er über Visual Studios `vswhere.exe` nach den mit Visual Studio installierten
 CMake-Werkzeugen. Erst wenn auch diese fehlen, bricht er mit einem Installationshinweis ab.
 
+Windows PowerShell 5.1 interpretiert UTF-8-Skriptdateien ohne BOM über die ältere ANSI-Codepage. Der
+Windows-Runner bleibt deshalb absichtlich auf ASCII-Quelltext beschränkt und erzeugt den Prüftext
+`Robin AΩ界` zur Laufzeit aus Unicode-Codepunkten. So prüft der Smoke-Test die Terminaldarstellung
+und nicht versehentlich die Quelltext-Decodierung des Hilfsskripts.
+
 WSL/Linux und natives Windows verwenden absichtlich **verschiedene CMake-Build-Verzeichnisse**:
 `build-smoke-posix/` bzw. `build-smoke-windows/`. Ein CMake-Cache enthält absolute Quell- und
 Build-Pfade sowie Generator-/Toolchain-Informationen. Derselbe Checkout darf daher nicht denselben

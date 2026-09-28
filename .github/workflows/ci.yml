@@ -38,8 +38,15 @@ jobs:
 
       - name: Validate Windows smoke helper
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\tools\m2_smoke_windows.ps1 -SingleRun -ValidateOnly
+        shell: powershell
+        run: |
+          # Windows PowerShell 5.1 treats UTF-8-without-BOM scripts as ANSI. The smoke helper is
+          # deliberately ASCII-only and constructs Unicode test text from code points at runtime.
+          $bytes = [System.IO.File]::ReadAllBytes("tools/m2_smoke_windows.ps1")
+          if ($bytes | Where-Object { $_ -gt 0x7F }) {
+              throw "tools/m2_smoke_windows.ps1 must remain ASCII-only for Windows PowerShell 5.1."
+          }
+          .\tools\m2_smoke_windows.ps1 -SingleRun -ValidateOnly
 
       - name: Configure
         run: >-
