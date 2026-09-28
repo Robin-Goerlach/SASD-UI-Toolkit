@@ -84,11 +84,58 @@ struct TextInputEvent {
     std::string text;
 };
 
+/**
+ * Semantic pointer action independent of a concrete mouse/touch/pen API.
+ *
+ * M3 initially maps desktop mouse movement and button transitions. Wheel/gesture/composition-style
+ * pointer data remains a later extension rather than being squeezed into an inaccurate first model.
+ */
+enum class PointerAction : std::uint8_t {
+    move,
+    press,
+    release,
+};
+
+/**
+ * Backend-neutral identity for the common desktop pointer buttons.
+ *
+ * "other" preserves the fact that a native button transition happened even when the platform offers
+ * a button identity outside this initial portable set. "none" is used for pure movement.
+ */
+enum class PointerButton : std::uint8_t {
+    none,
+    primary,
+    middle,
+    secondary,
+    auxiliary1,
+    auxiliary2,
+    other,
+};
+
+/**
+ * Pointer input in logical UI coordinates.
+ *
+ * position uses the same logical coordinate space as top-level Widget layout, not physical device
+ * pixels. Backend adapters are responsible for applying their DPI/logical-presentation transform
+ * before constructing this event.
+ *
+ * click_count is meaningful for press/release events when the native backend can provide it; zero is
+ * used for movement. Target selection is intentionally not embedded in the event and is handled by
+ * HitTest plus the normal EventDispatcher routing boundary.
+ */
+struct PointerEvent {
+    Point position{};
+    PointerAction action{PointerAction::move};
+    PointerButton button{PointerButton::none};
+    std::uint8_t click_count{0};
+};
+
 struct ResizeEvent {
     Size size{};
 };
 
-using Event = std::variant<QuitEvent, FocusEvent, KeyEvent, TextInputEvent, ResizeEvent>;
+using Event =
+    std::variant<QuitEvent, FocusEvent, KeyEvent, TextInputEvent, PointerEvent, ResizeEvent>;
 
 /**
  * Result returned by a widget after receiving one semantic event.

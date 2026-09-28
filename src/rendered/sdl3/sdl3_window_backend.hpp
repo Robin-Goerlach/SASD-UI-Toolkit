@@ -80,11 +80,13 @@ public:
 
     [[nodiscard]] BackendCapabilities capabilities() const noexcept override {
         /*
-         * SDL can provide more than we advertise here, but capabilities describe what the toolkit
-         * adapter currently exposes semantically. Pointer/IME become true only after those semantic
-         * event contracts exist rather than merely because SDL has native APIs for them.
+         * Capabilities describe semantic facilities exposed by this SASD adapter, not everything SDL
+         * can do natively. Pointer input becomes true now that Mouse motion/button transitions are
+         * normalized to PointerEvent. IME remains false until composition semantics exist in Core.
          */
-        return {};
+        BackendCapabilities result;
+        result.pointer_input = true;
+        return result;
     }
 
     void initialize() override;
@@ -125,8 +127,9 @@ public:
      *
      * The target is cleared first, then list is replayed in order and finally SDL_RenderPresent()
      * swaps/publishes the result. Callers must provide a full current frame, not only incremental
-     * commands. The M3 demo obtains that frame by requesting a conservative subtree refresh before
-     * synchronization. This favors correctness while dirty-region/back-buffer policy is still open.
+     * commands. The M3 demo obtains that frame through PresentationCoordinator::replay(), which
+     * reconstructs a clean semantic tree without manufacturing Widget invalidation. This favors
+     * correctness while dirty-region/back-buffer policy is still open.
      *
      * Returns the number of commands successfully replayed.
      */

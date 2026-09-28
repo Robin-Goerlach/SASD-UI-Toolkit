@@ -65,6 +65,42 @@ namespace {
     return result;
 }
 
+[[nodiscard]] std::optional<Point> translatePointerPosition(float x, float y) noexcept {
+    /*
+     * Pointer coordinates are continuous floats in SDL. Core geometry currently uses integer logical
+     * units, so choose the containing logical unit by flooring rather than C++ truncation: -0.25 must
+     * remain just outside coordinate 0 instead of incorrectly becoming 0.
+     */
+    if (!std::isfinite(x) || !std::isfinite(y)) {
+        return std::nullopt;
+    }
+
+    const double logical_x = std::floor(static_cast<double>(x));
+    const double logical_y = std::floor(static_cast<double>(y));
+    const double minimum = static_cast<double>(std::numeric_limits<Coordinate>::min());
+    const double maximum = static_cast<double>(std::numeric_limits<Coordinate>::max());
+
+    if (logical_x < minimum || logical_x > maximum ||
+        logical_y < minimum || logical_y > maximum) {
+        return std::nullopt;
+    }
+
+    return Point{
+        static_cast<Coordinate>(logical_x),
+        static_cast<Coordinate>(logical_y)};
+}
+
+[[nodiscard]] PointerButton translatePointerButton(Uint8 button) noexcept {
+    switch (button) {
+    case SDL_BUTTON_LEFT:   return PointerButton::primary;
+    case SDL_BUTTON_MIDDLE: return PointerButton::middle;
+    case SDL_BUTTON_RIGHT:  return PointerButton::secondary;
+    case SDL_BUTTON_X1:     return PointerButton::auxiliary1;
+    case SDL_BUTTON_X2:     return PointerButton::auxiliary2;
+    default:                return PointerButton::other;
+    }
+}
+
 [[nodiscard]] std::optional<Key> translateKey(SDL_Keycode key) noexcept {
     switch (key) {
     case SDLK_RETURN:
@@ -403,11 +439,54 @@ struct Sdl3WindowBackend::Impl {
                 }
                 break;
 
+            case SDL_EVENT_MOUSE_MOTION:
+                if (belongsToWindow(event.motion.windowID)) {
+                    /*
+                     * Native mouse coordinates are window coordinates. Convert the event with the
+                     * renderer's current logical-presentation transform before exposing Core
+                     * PointerEvent, otherwise high-DPI/scaled windows would route against a different
+                     * coordinate system from Widget::bounds().
+                     */
+                    if (!SDL_ConvertEventToRenderCoordinates(renderer, &event)) {
+                        throwSdlError("SDL_ConvertEventToRenderCoordinates(mouse motion)");
+                    }
+
+                    if (const auto position =
+                            translatePointerPosition(event.motion.x, event.motion.y)) {
+                        return Event{PointerEvent{
+                            *position,
+                            PointerAction::move,
+                            PointerButton::none,
+                            0}};
+                    }
+                }
+                break;
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                if (belongsToWindow(event.button.windowID)) {
+                    if (!SDL_ConvertEventToRenderCoordinates(renderer, &event)) {
+                        throwSdlError("SDL_ConvertEventToRenderCoordinates(mouse button)");
+                    }
+
+                    if (const auto position =
+                            translatePointerPosition(event.button.x, event.button.y)) {
+                        return Event{PointerEvent{
+                            *position,
+                            event.type == SDL_EVENT_MOUSE_BUTTON_DOWN
+                                ? PointerAction::press
+                                : PointerAction::release,
+                            translatePointerButton(event.button.button),
+                            event.button.clicks}};
+                    }
+                }
+                break;
+
             default:
                 /*
-                 * Window focus, mouse/pointer, composition and other SDL events are intentionally not
-                 * converted yet. In particular SDL window focus is not Widget FocusEvent: logical
-                 * widget focus remains owned by FocusManager.
+                 * Window focus, wheel/touch/pen, composition and other SDL events are intentionally
+                 * not converted yet. In particular SDL window focus is not Widget FocusEvent:
+                 * logical widget focus remains owned by FocusManager.
                  */
                 break;
             }

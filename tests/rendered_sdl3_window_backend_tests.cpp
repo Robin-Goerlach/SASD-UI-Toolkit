@@ -162,6 +162,53 @@ TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic e
     CHECK(!hasModifier(key.modifiers, KeyModifier::alt));
 }
 
+TEST_CASE("SDL3 window backend exposes logical pointer motion and button transitions") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    CHECK(backend.capabilities().pointer_input);
+
+    SDL_Event motion{};
+    motion.type = SDL_EVENT_MOUSE_MOTION;
+    motion.motion.type = SDL_EVENT_MOUSE_MOTION;
+    motion.motion.windowID = 0;
+    motion.motion.x = 42.75F;
+    motion.motion.y = 18.25F;
+    pushEvent(motion);
+
+    const auto translated_motion = backend.pollEvent();
+    CHECK(translated_motion.has_value());
+    CHECK(std::holds_alternative<PointerEvent>(*translated_motion));
+
+    const auto& pointer_motion = std::get<PointerEvent>(*translated_motion);
+    CHECK(pointer_motion.action == PointerAction::move);
+    CHECK(pointer_motion.button == PointerButton::none);
+    CHECK(pointer_motion.position == Point{42, 18});
+    CHECK(pointer_motion.click_count == 0);
+
+    SDL_Event button{};
+    button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    button.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    button.button.windowID = 0;
+    button.button.button = SDL_BUTTON_LEFT;
+    button.button.down = true;
+    button.button.clicks = 2;
+    button.button.x = 75.9F;
+    button.button.y = 30.1F;
+    pushEvent(button);
+
+    const auto translated_button = backend.pollEvent();
+    CHECK(translated_button.has_value());
+    CHECK(std::holds_alternative<PointerEvent>(*translated_button));
+
+    const auto& pointer_button = std::get<PointerEvent>(*translated_button);
+    CHECK(pointer_button.action == PointerAction::press);
+    CHECK(pointer_button.button == PointerButton::primary);
+    CHECK(pointer_button.position == Point{75, 30});
+    CHECK(pointer_button.click_count == 2);
+}
+
 TEST_CASE("SDL3 window backend separates committed UTF-8 text from physical key input") {
     Sdl3WindowBackend backend{testConfig()};
     backend.initialize();
