@@ -30,7 +30,8 @@ struct PointerRouteResult {
  *
  * - HitTest chooses the initial visual target from logical coordinates.
  * - EventDispatcher performs normal target-to-parent bubbling.
- * - PointerRouter preserves the original press target across move/release by capture.
+ * - PointerRouter captures the Widget that actually handled a button press and preserves that
+ *   interaction target across move/release.
  *
  * The router does not own Widgets, choose keyboard focus, activate controls or translate native
  * mouse/touch APIs. Concrete controls decide what PointerEvent means to them.
@@ -52,20 +53,20 @@ public:
     /**
      * Routes one semantic PointerEvent inside root's visual subtree.
      *
-     * On the first button press, the deepest hit target is temporarily captured before dispatch.
-     * Registering capture before application/widget code runs is important: if the target is destroyed
-     * synchronously, Widget::~Widget() can notify this router and clear the observation safely.
+     * On an uncaptured button press, HitTest chooses the deepest geometric target and normal
+     * EventDispatcher bubbling runs first. The Widget that actually handles that press owns capture.
+     * This matters for future composite controls whose child may ignore input handled by the parent.
      *
-     * If the complete press route ignores the event, capture is released immediately. A handled
-     * press keeps capture until the matching button release. Motion and other transitions are routed
-     * to the captured target even when the pointer leaves its bounds.
+     * A handled press keeps capture until the matching button release. Motion and other transitions
+     * are routed directly to the captured handler even after leaving its bounds. An ignored press
+     * never creates capture.
      *
-     * A captured Widget detached from root is released before the next event; capture never routes
-     * input into an unrelated visual tree.
+     * Detachment from root releases capture before the next event. Releasing capture invokes the
+     * Widget's noexcept capture-lost hook so transient pressed/dragging state cannot remain stale.
      */
     [[nodiscard]] PointerRouteResult route(Widget& root, const PointerEvent& event);
 
-    /** Explicitly releases the current capture, if any. Safe to call repeatedly. */
+    /** Explicitly releases capture and performs noexcept control-state cleanup. Safe repeatedly. */
     void releaseCapture() noexcept;
 
 private:

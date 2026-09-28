@@ -218,19 +218,24 @@ PresentationUpdateResult renderLabel(ScreenBuffer& buffer,
     if (!button.isEnabled()) {
         left = '(';
         right = ')';
+    } else if (button.isPressed()) {
+        left = '*';
+        right = '*';
     } else if (button.hasFocus()) {
         left = '>';
         right = '<';
     }
 
     /*
-     * All three states deliberately keep identical width:
+     * All states deliberately keep identical width:
      *
      *   [ caption ]  normal
      *   > caption <  focused
+     *   * caption *  pressed
      *   ( caption )  disabled
      *
-     * Stable chrome width means focus/enable transitions never require re-measurement.
+     * Pressed temporarily takes visual precedence over focus, but stable chrome width means no
+     * interaction transition requires re-measurement.
      */
     std::string result;
     result.reserve(button.text().size() + 4);

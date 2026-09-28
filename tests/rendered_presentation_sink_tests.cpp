@@ -4,6 +4,7 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
@@ -216,6 +217,34 @@ TEST_CASE("RenderedPresentationSink renders Button chrome without mutating seman
 
     // Focus is a presentation overlay. User-supplied semantic style remains unchanged.
     CHECK(button.textStyle() == base);
+}
+
+TEST_CASE("RenderedPresentationSink offsets Button caption while pressed") {
+    DisplayList display;
+    RenderedPresentationSink sink{display, Color::black};
+    PointerRouter pointer;
+
+    Window window;
+    window.arrange({0, 0, 200, 80});
+
+    auto& button = window.emplace<Button>("Run");
+    button.arrange({10, 10, 80, 30});
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    display.clear();
+    CHECK(pointer.route(
+        window,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::primary, 1}).handled);
+    CHECK(button.isPressed());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto commands = display.commands();
+    CHECK(commands.size() == 3);
+    const auto& text = std::get<DrawTextCommand>(commands[2]);
+    CHECK(text.origin == Point{12, 12});
+    CHECK(text.clip_bounds == std::optional<Rect>{Rect{11, 11, 78, 28}});
+    CHECK(button.textStyle() == TextStyle{});
 }
 
 TEST_CASE("RenderedPresentationSink erases a hidden Label without drawing stale text") {

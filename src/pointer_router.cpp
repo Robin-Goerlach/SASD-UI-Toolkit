@@ -13,31 +13,20 @@ PointerRouter::~PointerRouter() {
 
 PointerRouteResult PointerRouter::route(Widget& root, const PointerEvent& event) {
     /*
-     * Capture is valid only while the observed Widget still belongs to this routing scope. A Widget
-     * may be released/reparented without being destroyed, so the destructor handshake alone is not
-     * sufficient.
+     * A captured Widget may be detached without being destroyed. Do not route into an unrelated
+     * visual tree; releaseCapture() also clears the control's transient gesture state.
      */
     if (captured_ != nullptr && !belongsToRoot(root, *captured_)) {
         releaseCapture();
     }
 
+    const bool had_capture = captured_ != nullptr;
     Widget* target = captured_;
-    bool capture_started_for_this_event = false;
 
     if (target == nullptr) {
         target = HitTest::deepestAt(root, event.position);
         if (target == nullptr) {
             return {};
-        }
-
-        if (event.action == PointerAction::press &&
-            event.button != PointerButton::none) {
-            /*
-             * Capture the geometric target, not whichever ancestor eventually handles the event.
-             * This preserves the original event route: if a child ignores press and its parent Button
-             * handles it, the matching release again starts at the same child and bubbles to Button.
-             */
-            capture_started_for_this_event = beginCapture(*target, event.button);
         }
     }
 
@@ -45,26 +34,34 @@ PointerRouteResult PointerRouter::route(Widget& root, const PointerEvent& event)
         EventDispatcher::dispatch(*target, Event{event});
 
     /*
-     * An event handler can synchronously destroy the captured target. Widget::~Widget() clears
-     * captured_ in that case, so every post-dispatch decision checks current state rather than
-     * assuming the pointer still exists.
+     * Capture belongs to the semantic handler, not necessarily the deepest geometric target. The
+     * current EventDispatcher contract requires the returned handler to remain alive for synchronous
+     * dispatch. If it detached itself or capture cannot be established, immediately deliver the
+     * noexcept cleanup hook so a control cannot remain armed without a matching future release.
      */
-    if (capture_started_for_this_event && !dispatch.handled() && captured_ != nullptr) {
-        releaseCapture();
+    if (!had_capture &&
+        event.action == PointerAction::press &&
+        event.button != PointerButton::none &&
+        dispatch.handled() &&
+        dispatch.handler != nullptr) {
+        Widget& handler = *dispatch.handler;
+        if (!belongsToRoot(root, handler) ||
+            !beginCapture(handler, event.button)) {
+            handler.onPointerCaptureLost();
+        }
     }
 
+    /*
+     * Only the button that established capture terminates it. Other simultaneous button transitions
+     * may be routed to the active control without canceling the original gesture.
+     */
     if (event.action == PointerAction::release &&
         captured_ != nullptr &&
         event.button == captured_button_) {
         releaseCapture();
     }
 
-    return {
-        true,
-        dispatch.handled(),
-        dispatch.visited,
-        captured_ != nullptr,
-    };
+    return {true, dispatch.handled(), dispatch.visited, captured_ != nullptr};
 }
 
 void PointerRouter::releaseCapture() noexcept {
@@ -80,6 +77,12 @@ void PointerRouter::releaseCapture() noexcept {
     if (previous->pointer_router_ == this) {
         previous->pointer_router_ = nullptr;
     }
+
+    /*
+     * Clear the relation before notification. The virtual hook is noexcept and restricted to
+     * transient-state cleanup/presentation invalidation, so router destruction remains safe.
+     */
+    previous->onPointerCaptureLost();
 }
 
 void PointerRouter::widgetDestroyed(Widget& widget) noexcept {

@@ -151,26 +151,43 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         return PresentationUpdateResult::deferred;
     }
 
-    eraseWidget(display_list, *absolute, background_color);
-
     if (!button.isVisible() || absolute->isEmpty()) {
+        eraseWidget(display_list, *absolute, background_color);
         return PresentationUpdateResult::synchronized;
     }
 
-    const TextStyle style = controlTextStyle(button, button.textStyle());
-    display_list.strokeRect(*absolute, style.foreground, 1);
-
+    /*
+     * Preflight all pressed-state coordinate arithmetic before mutating DisplayList. A failure must
+     * not erase a previous good frame and then return deferred with no rollback mechanism.
+     */
     const auto content = insetOne(*absolute);
     if (!content.has_value()) {
         return PresentationUpdateResult::deferred;
     }
 
+    Point text_origin{content->x, content->y};
+    if (button.isPressed() && content->width > 1 && content->height > 1) {
+        const auto pressed_x =
+            narrowCoordinate(static_cast<std::int64_t>(content->x) + 1);
+        const auto pressed_y =
+            narrowCoordinate(static_cast<std::int64_t>(content->y) + 1);
+        if (!pressed_x.has_value() || !pressed_y.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+        text_origin = {*pressed_x, *pressed_y};
+    }
+
+    const TextStyle style = controlTextStyle(button, button.textStyle());
+
+    eraseWidget(display_list, *absolute, background_color);
+    display_list.strokeRect(*absolute, style.foreground, 1);
+
     if (!content->isEmpty()) {
-        display_list.drawText(
-            {content->x, content->y},
-            button.text(),
-            style,
-            *content);
+        /*
+         * One logical unit of caption offset is the first rendered pressed cue. It changes no
+         * measurement and introduces no premature theme/brush contract.
+         */
+        display_list.drawText(text_origin, button.text(), style, *content);
     }
 
     return PresentationUpdateResult::synchronized;

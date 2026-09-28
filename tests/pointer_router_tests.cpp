@@ -19,6 +19,8 @@ public:
         return events_;
     }
 
+    [[nodiscard]] bool captureLost() const noexcept { return capture_lost_; }
+
 protected:
     EventResult onEvent(const Event& event) override {
         if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
@@ -28,9 +30,23 @@ protected:
         return EventResult::ignored;
     }
 
+    void onPointerCaptureLost() noexcept override {
+        capture_lost_ = true;
+    }
+
 private:
     bool handle_;
+    bool capture_lost_{false};
     std::vector<PointerEvent> events_;
+};
+
+class PointerHandlingContainer final : public Container {
+protected:
+    EventResult onEvent(const Event& event) override {
+        return std::holds_alternative<PointerEvent>(event)
+                   ? EventResult::handled
+                   : EventResult::ignored;
+    }
 };
 
 } // namespace
@@ -53,6 +69,24 @@ TEST_CASE("PointerRouter hit-tests the initial target and captures a handled pre
     CHECK(press.visited == 1);
     CHECK(press.capture_active);
     CHECK(router.capturedWidget() == &target);
+}
+
+TEST_CASE("PointerRouter captures the Widget that handled a bubbled press") {
+    PointerHandlingContainer root;
+    root.arrange({0, 0, 100, 100});
+
+    auto& child = root.emplace<PointerProbe>(false);
+    child.arrange({10, 10, 40, 40});
+
+    PointerRouter router;
+    const auto press = router.route(
+        root,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::primary, 1});
+
+    CHECK(press.targeted);
+    CHECK(press.handled);
+    CHECK(press.visited == 2);
+    CHECK(router.capturedWidget() == &root);
 }
 
 TEST_CASE("PointerRouter keeps motion and matching release on the captured press target") {
@@ -146,6 +180,7 @@ TEST_CASE("PointerRouter never keeps routing to a Widget detached from the suppl
         PointerEvent{{90, 90}, PointerAction::move, PointerButton::none, 0});
 
     CHECK(!router.hasCapture());
+    CHECK(target.captureLost());
     CHECK(move.targeted); // the root itself is now the geometric target
     CHECK(!move.handled);
 }

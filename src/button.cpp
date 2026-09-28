@@ -59,6 +59,25 @@ Size Button::onMeasure(const MeasurementContext& context, const MeasureConstrain
     return context.measureButton(text_);
 }
 
+void Button::setPointerGestureState(bool armed, bool inside) noexcept {
+    const bool was_pressed = isPressed();
+    pointer_armed_ = armed;
+    pointer_inside_ = inside;
+
+    /*
+     * Pressed state is visual state, not intrinsic geometry. Repeated motion within the same region
+     * therefore does not invalidate presentation unless the externally observable state changed.
+     */
+    if (was_pressed != isPressed()) {
+        invalidateVisual();
+    }
+}
+
+void Button::onPointerCaptureLost() noexcept {
+    // Capture can disappear without a release event; never leave the Button visually depressed.
+    setPointerGestureState(false, false);
+}
+
 EventResult Button::onEvent(const Event& event) {
     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
         if (pointer->button != PointerButton::primary &&
@@ -67,28 +86,26 @@ EventResult Button::onEvent(const Event& event) {
         }
 
         if (pointer->action == PointerAction::press) {
-            /*
-             * EventDispatcher normally receives this press through HitTest/PointerRouter. Re-check
-             * geometry defensively so manually targeted pointer events cannot arm a Button from
-             * outside its visual bounds.
-             */
             if (!isEnabled() || !isVisible() ||
                 !HitTest::contains(*this, pointer->position)) {
-                pointer_armed_ = false;
+                setPointerGestureState(false, false);
                 return EventResult::ignored;
             }
 
-            pointer_armed_ = true;
+            setPointerGestureState(true, true);
             return EventResult::handled;
         }
 
         if (pointer->action == PointerAction::move) {
-            /*
-             * While captured, movement still belongs to the gesture even though the first visual
-             * model does not expose hover/pressed styling yet. Consuming it prevents an ancestor from
-             * interpreting the same captured gesture independently.
-             */
-            return pointer_armed_ ? EventResult::handled : EventResult::ignored;
+            if (!pointer_armed_) {
+                return EventResult::ignored;
+            }
+
+            const bool inside =
+                isEnabled() && isVisible() &&
+                HitTest::contains(*this, pointer->position);
+            setPointerGestureState(true, inside);
+            return EventResult::handled;
         }
 
         if (pointer->action == PointerAction::release) {
@@ -96,21 +113,19 @@ EventResult Button::onEvent(const Event& event) {
                 return EventResult::ignored;
             }
 
-            /*
-             * Clear transient state before invoking application code. activate() may synchronously
-             * release/reparent this Button, so no Button member may be required afterwards.
-             */
-            pointer_armed_ = false;
-
             const bool completes_inside =
                 isEnabled() && isVisible() &&
                 HitTest::contains(*this, pointer->position);
 
+            /*
+             * Clear state before application code. activate() may synchronously release/reparent the
+             * Button, so no Button member may be required afterwards.
+             */
+            setPointerGestureState(false, false);
+
             if (completes_inside) {
                 (void)activate();
             }
-
-            // A captured primary gesture remains ours even when release cancels outside.
             return EventResult::handled;
         }
 

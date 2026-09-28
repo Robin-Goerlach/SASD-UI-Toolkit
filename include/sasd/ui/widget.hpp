@@ -253,6 +253,15 @@ protected:
         return EventResult::ignored;
     }
 
+    /**
+     * Notifies a control that active pointer capture ended without another PointerEvent.
+     *
+     * This is noexcept lifecycle cleanup, not an application event. Implementations may only clear
+     * transient interaction state and invalidate presentation; they must not invoke application
+     * callbacks. PointerRouter uses it for explicit release, routing-scope detachment and teardown.
+     */
+    virtual void onPointerCaptureLost() noexcept {}
+
 private:
     friend class Container;
     friend class FocusManager;

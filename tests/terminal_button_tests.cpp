@@ -3,6 +3,7 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
@@ -55,6 +56,41 @@ TEST_CASE("Terminal Button renders normal focused and disabled ASCII chrome") {
     CHECK(!button.hasFocus());
     CHECK(buffer.at({1, 1}).code_point == U'(');
     CHECK(buffer.at({6, 1}).code_point == U')');
+}
+
+TEST_CASE("Terminal Button renders fixed-width pressed chrome") {
+    ScreenBuffer buffer{{16, 3}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    PointerRouter pointer;
+
+    Window window;
+    window.arrange({0, 0, 16, 3});
+
+    auto& button = window.emplace<Button>("OK");
+    const Size desired = button.measure(metrics);
+    button.arrange({1, 1, desired.width, desired.height});
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    CHECK(pointer.route(
+        window,
+        PointerEvent{{2, 1}, PointerAction::press, PointerButton::primary, 1}).handled);
+    CHECK(button.isPressed());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    CHECK(buffer.at({1, 1}).code_point == U'*');
+    CHECK(buffer.at({6, 1}).code_point == U'*');
+    CHECK(button.measure(metrics) == desired);
+
+    CHECK(pointer.route(
+        window,
+        PointerEvent{{15, 2}, PointerAction::move, PointerButton::none, 0}).handled);
+    CHECK(!button.isPressed());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    CHECK(buffer.at({1, 1}).code_point == U'[');
+    CHECK(buffer.at({6, 1}).code_point == U']');
 }
 
 TEST_CASE("Terminal Button preserves wide caption cell occupancy") {

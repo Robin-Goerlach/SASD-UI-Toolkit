@@ -36,6 +36,17 @@ public:
     /** Returns presentation-only text/chrome styling for this button. */
     [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
 
+    /**
+     * Returns the transient semantic pressed state consumed by presentation backends.
+     *
+     * It is true only while a primary pointer gesture is armed, the captured pointer remains inside
+     * this Button's clipped bounds, and the Button is visible/enabled. Keyboard activation remains
+     * stateless because terminal input cannot reliably provide paired key-up events.
+     */
+    [[nodiscard]] bool isPressed() const noexcept {
+        return pointer_armed_ && pointer_inside_ && isVisible() && isEnabled();
+    }
+
     /** Changes style without affecting intrinsic size. */
     void setTextStyle(TextStyle style);
 
@@ -78,17 +89,21 @@ protected:
      * unexpectedly bubble into a parent on desktop backends that do provide them.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
+    void onPointerCaptureLost() noexcept override;
 
 private:
+    void setPointerGestureState(bool armed, bool inside) noexcept;
+
     std::string text_;
     TextStyle text_style_{};
     ActivationHandler on_activated_;
 
     /*
-     * Internal interaction state only. The first pointer slice does not yet expose a pressed-state
-     * styling API; keeping this private avoids prematurely freezing a public visual-state contract.
+     * Armed records ownership of the gesture; inside records its current geometric position.
+     * Presentation observes only isPressed(), keeping capture mechanics private.
      */
     bool pointer_armed_{false};
+    bool pointer_inside_{false};
 };
 
 } // namespace sasd::ui
