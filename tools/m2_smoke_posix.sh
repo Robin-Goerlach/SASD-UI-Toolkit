@@ -17,7 +17,7 @@ usage() {
     cat <<'EOF'
 Usage: tools/m2_smoke_posix.sh [--skip-build] [--single-run] [--validate-only]
 
-  --skip-build     Reuse an existing build-smoke directory.
+  --skip-build     Reuse an existing build-smoke-posix directory.
   --single-run     Launch the demo once for quick diagnostics instead of the full three-exit gate.
   --validate-only  Parse/validate the helper without building or opening a terminal UI.
 EOF
@@ -52,7 +52,10 @@ while (($# > 0)); do
 done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-build_dir="$repo_root/build-smoke"
+# WSL and native Windows can share the same checkout. Their CMake caches cannot: cache entries
+# contain absolute source/build paths and generator/toolchain state. Keep a POSIX-specific build
+# tree so running this helper from WSL never poisons the native Windows smoke build (and vice versa).
+build_dir="$repo_root/build-smoke-posix"
 demo="$build_dir/examples/sasd_ui_terminal_demo"
 
 if "$validate_only"; then
@@ -67,7 +70,7 @@ fi
 
 # A release-gate result must describe an exact repository state. Building from tracked or untracked
 # local edits would make a PASS impossible to reproduce later, so fail early and show the offending
-# paths. build-smoke/ is ignored by the repository and therefore does not make repeated runs dirty.
+# paths. Platform-specific smoke build directories are ignored by the repository and therefore do not make repeated runs dirty.
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=normal)"
 if [[ -n "$worktree_status" ]]; then
     echo "ERROR: the M2 release smoke test requires a clean Git worktree." >&2

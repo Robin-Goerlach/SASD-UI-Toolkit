@@ -57,8 +57,8 @@ werden. Die Runner stellen den ursprünglichen TTY-/Codepage-Zustand defensiv wi
 Abweichung aber trotzdem als Fehler.
 
 Für einen Release-Gate-Lauf verlangen beide Runner außerdem einen **sauberen Git-Worktree**. So ist
-das Ergebnis eindeutig dem protokollierten Commit zuordenbar. Das von den Runnern erzeugte
-`build-smoke/` ist deshalb repositoryweit ignoriert.
+das Ergebnis eindeutig dem protokollierten Commit zuordenbar. Die von den Runnern erzeugten platform-spezifischen Verzeichnisse `build-smoke-posix/` und
+`build-smoke-windows/` sind deshalb repositoryweit ignoriert.
 
 Nach den drei regulären Läufen muss die menschliche Sicht-/Interaktionsprüfung ausdrücklich mit
 `PASS` bestätigt werden. Erst dann meldet der Runner `M2 environment result: PASS`. Der
@@ -75,6 +75,11 @@ Unter Windows versucht der Smoke-Runner CMake/CTest zuerst über `PATH` zu finde
 gelingt, sucht er über Visual Studios `vswhere.exe` nach den mit Visual Studio installierten
 CMake-Werkzeugen. Erst wenn auch diese fehlen, bricht er mit einem Installationshinweis ab.
 
+WSL/Linux und natives Windows verwenden absichtlich **verschiedene CMake-Build-Verzeichnisse**:
+`build-smoke-posix/` bzw. `build-smoke-windows/`. Ein CMake-Cache enthält absolute Quell- und
+Build-Pfade sowie Generator-/Toolchain-Informationen. Derselbe Checkout darf daher nicht denselben
+Smoke-Buildbaum aus WSL und Windows wiederverwenden.
+
 ## 2. Automatisierte Basis manuell ausführen
 
 Falls die Hilfsskripte nicht verwendet werden, muss vor dem manuellen Test der aktuelle `main` grün
@@ -87,22 +92,22 @@ cmake -S . -B build-smoke \
   -DSASD_UI_BUILD_EXAMPLES=ON \
   -DSASD_UI_WARNINGS_AS_ERRORS=ON
 
-cmake --build build-smoke --parallel
-ctest --test-dir build-smoke --output-on-failure
+cmake --build build-smoke-posix --parallel
+ctest --test-dir build-smoke-posix --output-on-failure
 ```
 
 Unter Windows mit Visual Studio:
 
 ```powershell
-cmake -S . -B build-smoke ^
+cmake -S . -B build-smoke-windows ^
   -G "Visual Studio 17 2022" ^
   -A x64 ^
   -DSASD_UI_BUILD_TESTS=ON ^
   -DSASD_UI_BUILD_EXAMPLES=ON ^
   -DSASD_UI_WARNINGS_AS_ERRORS=ON
 
-cmake --build build-smoke --config Debug --parallel
-ctest --test-dir build-smoke -C Debug --output-on-failure
+cmake --build build-smoke-windows --config Debug --parallel
+ctest --test-dir build-smoke-windows -C Debug --output-on-failure
 ```
 
 ## 3. Testumgebung protokollieren
@@ -123,7 +128,7 @@ Optional den POSIX-Terminalzustand vor/nach dem Lauf vergleichen:
 
 ```bash
 before="$(stty -g)"
-./build-smoke/examples/sasd_ui_terminal_demo
+./build-smoke-posix/examples/sasd_ui_terminal_demo
 after="$(stty -g)"
 
 if [ "$before" = "$after" ]; then
@@ -157,14 +162,14 @@ SGR-Zustände sind dagegen Fehler.
 Start:
 
 ```powershell
-.\build-smoke\examples\Debug\sasd_ui_terminal_demo.exe
+.\build-smoke-windows\examples\Debug\sasd_ui_terminal_demo.exe
 ```
 
 Optional Codepage vor/nach dem Lauf dokumentieren:
 
 ```powershell
 $before = (chcp)
-.\build-smoke\examples\Debug\sasd_ui_terminal_demo.exe
+.\build-smoke-windows\examples\Debug\sasd_ui_terminal_demo.exe
 $after = (chcp)
 
 "Before: $before"

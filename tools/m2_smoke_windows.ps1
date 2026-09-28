@@ -19,11 +19,14 @@ if ($ValidateOnly) {
 }
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$BuildDir = Join-Path $RepoRoot "build-smoke"
+# WSL and native Windows may address the same checkout through different absolute paths. CMake
+# caches those paths together with generator/toolchain state, so sharing one smoke build directory
+# between WSL and Windows produces an invalid cache. Keep the native Windows build isolated.
+$BuildDir = Join-Path $RepoRoot "build-smoke-windows"
 $Demo = Join-Path $BuildDir "examples\Debug\sasd_ui_terminal_demo.exe"
 
 # A release-gate PASS must be reproducible from the recorded commit. Refuse to validate a checkout
-# containing local tracked or untracked files. build-smoke/ is ignored by the repository, so repeated
+# containing local tracked or untracked files. Platform-specific smoke build directories are ignored, so repeated
 # smoke runs do not make an otherwise clean checkout fail this preflight check.
 $WorktreeStatus = (& git -C $RepoRoot status --porcelain --untracked-files=normal) -join [Environment]::NewLine
 if ($LASTEXITCODE -ne 0) {

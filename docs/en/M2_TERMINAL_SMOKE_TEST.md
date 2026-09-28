@@ -46,7 +46,7 @@ After an already successful build, use `--skip-build` or `-SkipBuild`. The helpe
 the original TTY/code-page state while still reporting any mismatch as a failure.
 
 For a release-gate run both helpers also require a **clean Git worktree**, making the result
-unambiguously attributable to the recorded commit. The generated `build-smoke/` directory is
+unambiguously attributable to the recorded commit. The generated platform-specific `build-smoke-posix/` and `build-smoke-windows/` directories are
 therefore ignored repository-wide.
 
 After the three normal runs the human visual/interaction check must be explicitly confirmed by typing
@@ -64,6 +64,11 @@ On Windows the smoke runner first looks for CMake/CTest on `PATH`. If they are n
 it uses Visual Studio's `vswhere.exe` to locate the CMake tools installed with Visual Studio. Only
 when neither source provides the tools does the runner stop with an installation hint.
 
+WSL/Linux and native Windows deliberately use **different CMake build directories**:
+`build-smoke-posix/` and `build-smoke-windows/`. A CMake cache contains absolute source/build
+paths plus generator/toolchain state, so the same checkout must not reuse one smoke build tree from
+both WSL and Windows.
+
 ## 2. Verify the automated baseline manually
 
 ```bash
@@ -73,22 +78,22 @@ cmake -S . -B build-smoke \
   -DSASD_UI_BUILD_EXAMPLES=ON \
   -DSASD_UI_WARNINGS_AS_ERRORS=ON
 
-cmake --build build-smoke --parallel
-ctest --test-dir build-smoke --output-on-failure
+cmake --build build-smoke-posix --parallel
+ctest --test-dir build-smoke-posix --output-on-failure
 ```
 
 Windows / Visual Studio:
 
 ```powershell
-cmake -S . -B build-smoke ^
+cmake -S . -B build-smoke-windows ^
   -G "Visual Studio 17 2022" ^
   -A x64 ^
   -DSASD_UI_BUILD_TESTS=ON ^
   -DSASD_UI_BUILD_EXAMPLES=ON ^
   -DSASD_UI_WARNINGS_AS_ERRORS=ON
 
-cmake --build build-smoke --config Debug --parallel
-ctest --test-dir build-smoke -C Debug --output-on-failure
+cmake --build build-smoke-windows --config Debug --parallel
+ctest --test-dir build-smoke-windows -C Debug --output-on-failure
 ```
 
 ## 3. Record the environment
@@ -109,7 +114,7 @@ Optional POSIX TTY state comparison:
 
 ```bash
 before="$(stty -g)"
-./build-smoke/examples/sasd_ui_terminal_demo
+./build-smoke-posix/examples/sasd_ui_terminal_demo
 after="$(stty -g)"
 
 if [ "$before" = "$after" ]; then
@@ -129,14 +134,14 @@ acceptable.
 ## 5. Windows Terminal
 
 ```powershell
-.\build-smoke\examples\Debug\sasd_ui_terminal_demo.exe
+.\build-smoke-windows\examples\Debug\sasd_ui_terminal_demo.exe
 ```
 
 Optional visible code-page comparison:
 
 ```powershell
 $before = (chcp)
-.\build-smoke\examples\Debug\sasd_ui_terminal_demo.exe
+.\build-smoke-windows\examples\Debug\sasd_ui_terminal_demo.exe
 $after = (chcp)
 
 "Before: $before"
