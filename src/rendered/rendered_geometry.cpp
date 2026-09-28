@@ -1,4 +1,4 @@
-#include "rendered/rendered_geometry.hpp"
+#include "rendered_geometry.hpp"
 
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/widget.hpp>

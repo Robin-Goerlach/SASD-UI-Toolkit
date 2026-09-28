@@ -1,7 +1,7 @@
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 
-#include "rendered/rendered_geometry.hpp"
-#include "rendered/rendered_text_field_viewport.hpp"
+#include "rendered_geometry.hpp"
+#include "rendered_text_field_viewport.hpp"
 
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/container.hpp>

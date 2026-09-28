@@ -1,6 +1,6 @@
-#include "rendered/rendered_text_field_viewport.hpp"
+#include "rendered_text_field_viewport.hpp"
 
-#include "rendered/rendered_geometry.hpp"
+#include "rendered_geometry.hpp"
 
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/text/utf8.hpp>
