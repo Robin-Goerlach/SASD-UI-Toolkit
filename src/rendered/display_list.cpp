@@ -11,14 +11,14 @@ void DisplayList::validateRect(Rect bounds) {
     }
 }
 
-void DisplayList::fillRect(Rect bounds, Color color) {
+void DisplayList::fillRect(Rect bounds, Color color, FillRole role) {
     validateRect(bounds);
 
     if (bounds.isEmpty()) {
         return;
     }
 
-    commands_.emplace_back(FillRectCommand{bounds, color});
+    commands_.emplace_back(FillRectCommand{bounds, color, role});
 }
 
 void DisplayList::strokeRect(Rect bounds, Color color, Coordinate thickness) {

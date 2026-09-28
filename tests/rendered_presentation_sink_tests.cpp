@@ -284,7 +284,10 @@ TEST_CASE("RenderedPresentationSink renders focused TextField with clipped text 
      * context instead of filling an arbitrarily stretched TextField.
      */
     CHECK(std::get<FillRectCommand>(commands[4]) ==
-          FillRectCommand{Rect{35, 11, 1, 12}, Color::default_color});
+          FillRectCommand{
+              Rect{35, 11, 1, 12},
+              Color::default_color,
+              FillRole::foreground});
     CHECK(!field.isVisualUpdatePending());
 }
 
@@ -363,7 +366,8 @@ TEST_CASE("RenderedPresentationSink conservatively defers visible TextField") {
 
     /*
      * The root surface can still be cleared safely, but no partial TextField commands are emitted.
-     * The field remains pending until rendered font metrics/caret geometry are implemented.
+     * The metrics-free sink deliberately leaves the field pending; callers that need editable-text
+     * presentation provide a RenderedMeasurementContext.
      */
     CHECK(display.size() == 1);
     CHECK(std::get<FillRectCommand>(display.commands()[0]).bounds ==

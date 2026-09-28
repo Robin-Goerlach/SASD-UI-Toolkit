@@ -14,6 +14,19 @@
 namespace sasd::ui::rendered {
 
 /**
+ * Semantic role of a filled rectangle when Color::default_color is used.
+ *
+ * Named colors are absolute palette choices and ignore this role. The role exists specifically so a
+ * concrete renderer can distinguish "default surface/background" from "default foreground ink".
+ * That distinction became observable as soon as the rendered TextField used FillRect both to erase
+ * its background and to paint its insertion caret.
+ */
+enum class FillRole {
+    background,
+    foreground,
+};
+
+/**
  * Paints a logical rectangle with one portable toolkit color.
  *
  * The command deliberately stores semantic Color rather than device RGB pixels. A concrete renderer
@@ -23,6 +36,7 @@ namespace sasd::ui::rendered {
 struct FillRectCommand {
     Rect bounds{};
     Color color{Color::default_color};
+    FillRole role{FillRole::background};
 
     friend bool operator==(const FillRectCommand&, const FillRectCommand&) = default;
 };
@@ -85,7 +99,9 @@ public:
      * Negative extents are malformed and rejected. Zero-area rectangles are valid no-ops: keeping
      * them out of the command stream makes later renderers simpler and deterministic.
      */
-    void fillRect(Rect bounds, Color color = Color::default_color);
+    void fillRect(Rect bounds,
+                  Color color = Color::default_color,
+                  FillRole role = FillRole::background);
 
     /**
      * Appends a rectangle outline.

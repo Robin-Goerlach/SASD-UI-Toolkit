@@ -362,7 +362,15 @@ struct TextFieldLayout {
     }
 
     if (layout->caret.has_value()) {
-        display_list.fillRect(*layout->caret, layout->style.foreground);
+        /*
+         * A caret is foreground ink even though it happens to use the generic filled-rectangle
+         * primitive. Preserve that semantic role so Color::default_color resolves to the device's
+         * default foreground rather than disappearing into the control background.
+         */
+        display_list.fillRect(
+            *layout->caret,
+            layout->style.foreground,
+            FillRole::foreground);
     }
 
     return PresentationUpdateResult::synchronized;

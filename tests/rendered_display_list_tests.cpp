@@ -32,6 +32,19 @@ TEST_CASE("Rendered DisplayList preserves command order and payload") {
           DrawTextCommand{Point{5, 6}, std::string{"Hello"}, style, std::nullopt});
 }
 
+TEST_CASE("Rendered DisplayList preserves default-color fill role") {
+    DisplayList list;
+
+    list.fillRect({0, 0, 20, 10});
+    list.fillRect({3, 2, 1, 8}, Color::default_color, FillRole::foreground);
+
+    CHECK(list.size() == 2);
+
+    const auto commands = list.commands();
+    CHECK(std::get<FillRectCommand>(commands[0]).role == FillRole::background);
+    CHECK(std::get<FillRectCommand>(commands[1]).role == FillRole::foreground);
+}
+
 TEST_CASE("Rendered DisplayList ignores zero-area drawing operations") {
     DisplayList list;
 
