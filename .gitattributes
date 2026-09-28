@@ -1,0 +1,6 @@
+# Keep cross-platform scripts executable by their native interpreters.
+# POSIX shebangs require LF; CRLF turns "#!/usr/bin/env bash" into a request for "bash\\r".
+*.sh text eol=lf
+
+# PowerShell accepts both line-ending styles; use the Windows-native form in worktrees.
+*.ps1 text eol=crlf

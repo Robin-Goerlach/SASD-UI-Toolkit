@@ -22,8 +22,55 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $BuildDir = Join-Path $RepoRoot "build-smoke"
 $Demo = Join-Path $BuildDir "examples\Debug\sasd_ui_terminal_demo.exe"
 
+function Resolve-CMakeTools {
+    # Prefer PATH because it is the least surprising developer setup.
+    # Visual Studio also ships CMake/CTest, but normal PowerShell sessions do not always expose
+    # those binaries on PATH. Fall back to vswhere so the runner also works outside a Developer
+    # PowerShell prompt.
+    $CMakeCommand = Get-Command cmake.exe -ErrorAction SilentlyContinue
+    $CTestCommand = Get-Command ctest.exe -ErrorAction SilentlyContinue
+
+    if ($null -ne $CMakeCommand -and $null -ne $CTestCommand) {
+        return [pscustomobject]@{
+            CMake = $CMakeCommand.Source
+            CTest = $CTestCommand.Source
+            Source = "PATH"
+        }
+    }
+
+    $VsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path -LiteralPath $VsWhere) {
+        $VisualStudioCMake = (& $VsWhere -latest -products * `
+            -find "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" `
+            2>$null | Select-Object -First 1)
+
+        if ($VisualStudioCMake) {
+            $VisualStudioCTest = Join-Path (Split-Path -Parent $VisualStudioCMake) "ctest.exe"
+            if (Test-Path -LiteralPath $VisualStudioCTest) {
+                return [pscustomobject]@{
+                    CMake = $VisualStudioCMake
+                    CTest = $VisualStudioCTest
+                    Source = "Visual Studio"
+                }
+            }
+        }
+    }
+
+    throw @"
+CMake/CTest could not be found.
+
+Install CMake or add it to PATH. If Visual Studio 2022 is already installed, open Visual Studio
+Installer -> Modify and make sure the C++/CMake tooling is installed, then run this script again.
+"@
+}
+
 if (-not $SkipBuild) {
-    & cmake -S $RepoRoot -B $BuildDir `
+    $CMakeTools = Resolve-CMakeTools
+    Write-Host "Build tools:       $($CMakeTools.Source)"
+    Write-Host "CMake:             $($CMakeTools.CMake)"
+    Write-Host "CTest:             $($CMakeTools.CTest)"
+
+    & $CMakeTools.CMake -S $RepoRoot -B $BuildDir `
         -G "Visual Studio 17 2022" `
         -A x64 `
         -DSASD_UI_BUILD_TESTS=ON `
@@ -31,10 +78,10 @@ if (-not $SkipBuild) {
         -DSASD_UI_WARNINGS_AS_ERRORS=ON
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    & cmake --build $BuildDir --config Debug --parallel
+    & $CMakeTools.CMake --build $BuildDir --config Debug --parallel
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    & ctest --test-dir $BuildDir -C Debug --output-on-failure
+    & $CMakeTools.CTest --test-dir $BuildDir -C Debug --output-on-failure
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

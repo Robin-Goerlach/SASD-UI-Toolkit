@@ -56,6 +56,17 @@ Nach einem bereits erfolgreichen Build kann `--skip-build` beziehungsweise `-Ski
 werden. Die Runner stellen den ursprünglichen TTY-/Codepage-Zustand defensiv wieder her, melden eine
 Abweichung aber trotzdem als Fehler.
 
+## Fehlerbehebung bei der lokalen Vorbereitung
+
+Wenn Linux beim Start des Shell-Skripts `/usr/bin/env: ‘bash\\r’: No such file or directory` meldet,
+enthält die lokale Datei CRLF-Zeilenenden. Das Repository erzwingt für `*.sh` deshalb LF über
+`.gitattributes`. In einem älteren Checkout müssen lokale Änderungen zuerst gesichert bzw. bereinigt
+und anschließend der aktuelle `main` erneut ausgecheckt werden.
+
+Unter Windows versucht der Smoke-Runner CMake/CTest zuerst über `PATH` zu finden. Falls das nicht
+gelingt, sucht er über Visual Studios `vswhere.exe` nach den mit Visual Studio installierten
+CMake-Werkzeugen. Erst wenn auch diese fehlen, bricht er mit einem Installationshinweis ab.
+
 ## 2. Automatisierte Basis manuell ausführen
 
 Falls die Hilfsskripte nicht verwendet werden, muss vor dem manuellen Test der aktuelle `main` grün

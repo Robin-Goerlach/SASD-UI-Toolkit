@@ -45,6 +45,17 @@ single run alone is not sufficient to close the M2 release gate.
 After an already successful build, use `--skip-build` or `-SkipBuild`. The helpers defensively restore
 the original TTY/code-page state while still reporting any mismatch as a failure.
 
+## Troubleshooting local preparation
+
+If Linux reports `/usr/bin/env: ‘bash\\r’: No such file or directory` when starting the shell helper,
+the local file has CRLF line endings. The repository therefore enforces LF for `*.sh` through
+`.gitattributes`. In an older checkout, preserve or discard local changes as appropriate and check
+out the current `main` again.
+
+On Windows the smoke runner first looks for CMake/CTest on `PATH`. If they are not available there,
+it uses Visual Studio's `vswhere.exe` to locate the CMake tools installed with Visual Studio. Only
+when neither source provides the tools does the runner stop with an installation hint.
+
 ## 2. Verify the automated baseline manually
 
 ```bash
