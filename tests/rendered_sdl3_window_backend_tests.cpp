@@ -3,7 +3,13 @@
 #include "rendered/sdl3/sdl3_window_backend.hpp"
 
 #include <sasd/ui/application.hpp>
+#include <sasd/ui/focus_manager.hpp>
+#include <sasd/ui/label.hpp>
+#include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
+#include <sasd/ui/rendered/rendered_presentation_sink.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/window.hpp>
 
 #include <SDL3/SDL.h>
 
@@ -78,6 +84,55 @@ TEST_CASE("SDL3 window backend initializes transactionally and presents a comple
 
     // shutdown() is intentionally idempotent for Application/destructor safety.
     backend.shutdown();
+}
+
+TEST_CASE("SDL3 window backend presents a real semantic rendered widget tree end to end") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList display;
+    RenderedPresentationSink sink{display, backend, Color::black};
+    FocusManager focus;
+
+    Window window;
+    const Size size = backend.windowSize();
+    window.arrange({0, 0, size.width, size.height});
+
+    auto& label = window.emplace<Label>("Rendered through a real SDL3 window");
+    label.arrange({12, 12, 240, 24});
+
+    auto& field = window.emplace<TextField>("A\xCE\xA9");
+    field.arrange({12, 48, 180, 32});
+    CHECK(focus.requestFocus(field));
+
+    /*
+     * replay() is the important architectural part of this test. A window back buffer can need a
+     * complete redraw independently from semantic Widget dirty state, so reconstruction must not
+     * require application code to reach into Widget's protected invalidation machinery.
+     */
+    const auto first_replay = PresentationCoordinator::replay(window, sink);
+
+    CHECK(first_replay.complete());
+    CHECK(first_replay.requested == 3);
+    CHECK(display.size() >= 6);
+
+    const std::size_t first_command_count = display.size();
+    CHECK(backend.presentFrame(display) == first_command_count);
+    CHECK(!backend.presentationRequested());
+
+    /*
+     * Present the same now-clean tree again. This proves surface recovery is independent of normal
+     * incremental invalidation: replay still walks every current visual Widget and produces a fresh
+     * complete frame.
+     */
+    display.clear();
+    const auto second_replay = PresentationCoordinator::replay(window, sink);
+
+    CHECK(second_replay.complete());
+    CHECK(second_replay.forced == 3);
+    CHECK(display.size() > 0);
+    CHECK(backend.presentFrame(display) == display.size());
 }
 
 TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic events") {
