@@ -16,6 +16,7 @@ set(required_files
     "include/sasd/ui/terminal/terminal_backend.hpp"
     "include/sasd/ui/terminal/screen_buffer.hpp"
     "include/sasd/ui/rendered/display_list.hpp"
+    "include/sasd/ui/rendered/rendered_measurement_context.hpp"
     "include/sasd/ui/rendered/rendered_presentation_sink.hpp"
     "lib/cmake/SASDUIToolkit/SASDUIToolkitConfig.cmake"
     "lib/cmake/SASDUIToolkit/SASDUIToolkitConfigVersion.cmake"

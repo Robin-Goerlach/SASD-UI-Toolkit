@@ -72,7 +72,7 @@ Die verbindliche manuelle Abschlussprüfung ist im [M2-Terminal-Smoke-Test](M2_T
 
 ## M3 – Rendered Desktop Preview / v0.2.0
 
-**Status: in Arbeit (seit 28.09.2026).** v0.1.0/M2 ist veröffentlicht. Das separate `SASD::UI::Rendered`-Target, eine deterministische `rendered::DisplayList` sowie der erste `RenderedPresentationSink` sind implementiert und plattformübergreifend getestet. Window-Refresh, Label und Button werden bereits in geordnete, geclippte Renderbefehle übersetzt; sichtbare TextFields bleiben bewusst `deferred`, bis Font-Metriken, Viewport und Caret korrekt berechnet werden können. Ein optionaler SDL3-Adapter soll darauf aufsetzen, ohne SDL-Typen in die öffentliche Core-API zu tragen.
+**Status: in Arbeit (seit 28.09.2026).** v0.1.0/M2 ist veröffentlicht. Das separate `SASD::UI::Rendered`-Target, die deterministische `rendered::DisplayList`, `RenderedPresentationSink` und `RenderedMeasurementContext` sind implementiert und plattformübergreifend getestet. Window, Label und Button werden in geordnete, geclippte Renderbefehle übersetzt. TextField besitzt nun einen metrisch korrekten horizontalen Viewport- und Caret-Pfad: vollständiger UTF-8-Text bleibt für späteres Shaping erhalten, Scalar-Grenzen kommen aus der Rendered-Metrikschicht und nicht darstellbare Caret-Mappings bleiben bewusst `deferred`. Als nächster M3-Schritt fehlt ein konkreter Desktop-Font-/Device-Adapter; SDL3 bleibt dafür optional und darf nicht in die öffentliche Core-API durchsickern.
 
 **Ziel:** dieselbe öffentliche API grafisch auf mehreren Desktopplattformen demonstrieren.
 
