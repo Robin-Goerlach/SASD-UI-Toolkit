@@ -124,6 +124,7 @@ if(SASD_UI_BUILD_SDL3_ADAPTER AND NOT SASD_UI_SDL3_TEST_FONT STREQUAL "")
     add_executable(sasd_ui_sdl3_tests
         test_main.cpp
         rendered_sdl3_software_device_tests.cpp
+        rendered_sdl3_window_backend_tests.cpp
     )
 
     target_link_libraries(sasd_ui_sdl3_tests PRIVATE SASD::UI::Rendered::SDL3)
@@ -155,6 +156,12 @@ if(SASD_UI_BUILD_SDL3_ADAPTER AND NOT SASD_UI_SDL3_TEST_FONT STREQUAL "")
     endif()
 
     add_test(NAME sasd_ui_sdl3_tests COMMAND sasd_ui_sdl3_tests)
+
+    # The window-backed tests create an actual SDL_Window/SDL_Renderer. SDL's offscreen video driver
+    # gives CI the same lifecycle/event code without requiring an X11/Wayland server.
+    set_tests_properties(sasd_ui_sdl3_tests PROPERTIES
+        ENVIRONMENT "SDL_VIDEODRIVER=offscreen"
+    )
 endif()
 
 # Exercise the real POSIX terminal adapter against a kernel pseudo-terminal. This is intentionally a

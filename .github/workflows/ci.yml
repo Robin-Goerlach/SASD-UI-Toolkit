@@ -167,10 +167,12 @@ jobs:
           -DSASD_UI_SDL3_TEST_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
           -DSDL_UNIX_CONSOLE_BUILD=ON
 
-      - name: Build SDL3 adapter tests
-        run: cmake --build build-sdl3 --target sasd_ui_sdl3_tests --parallel
+      - name: Build SDL3 adapter tests and desktop demo
+        run: cmake --build build-sdl3 --target sasd_ui_sdl3_tests sasd_ui_sdl3_demo --parallel
 
       - name: Test SDL3 adapter
+        env:
+          SDL_VIDEODRIVER: offscreen
         run: ctest --test-dir build-sdl3 -R sasd_ui_sdl3_tests --output-on-failure
 
   sanitizers:
