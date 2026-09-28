@@ -49,7 +49,7 @@ The repository now contains the first working implementation slice:
 - conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
-- separately linkable `SASD::UI::Rendered` M3 target with a deterministic backend-neutral `DisplayList` for rendered drawing commands;
+- separately linkable `SASD::UI::Rendered` M3 target with a deterministic backend-neutral `DisplayList` and `RenderedPresentationSink` for rendered drawing commands;
 - semantic M2 widgets: `Window`, UTF-8 `Label`, interactive `Button` and single-line editable `TextField`;
 - headless `TerminalPresentationSink` that renders `Window`, `Label`, `Button` and `TextField` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
@@ -69,7 +69,7 @@ The repository now contains the first working implementation slice:
 - native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. Richer Unicode grapheme editing, pointer input and desktop-specific presentation features remain incremental work.
+The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` already translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands. Visible TextField synchronization deliberately remains deferred until rendered text/font metrics can place its viewport and caret correctly; it is not approximated silently. Richer Unicode grapheme editing, pointer input and desktop-specific presentation features remain incremental work.
 
 ## Build and test
 

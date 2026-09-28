@@ -13,6 +13,8 @@ they improve the architecture before compatibility commitments become expensive.
 - Separate `SASD::UI::Rendered` target with a deterministic, SDL-independent `rendered::DisplayList`.
 - Initial rendered command vocabulary for filled rectangles, stroked rectangles and owned UTF-8 text.
 - Cross-platform tests for command ordering, malformed geometry, ownership and package/export behavior.
+- Optional per-text-command clipping bounds for safe widget-local rendering without a premature graphics-state stack.
+- `RenderedPresentationSink` for Window refreshes, Label and Button presentation, including incremental repaint and conservative subtree rebuild behavior.
 
 ## [0.1.0] - 2026-09-28
 
