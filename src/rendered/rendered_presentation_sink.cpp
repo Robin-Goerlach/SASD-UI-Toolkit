@@ -4,18 +4,43 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/widget.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
 #include <typeinfo>
+#include <vector>
 
 namespace sasd::ui::rendered {
 namespace {
+
+/**
+ * Narrows one widened coordinate only when it is representable by the public Coordinate type.
+ *
+ * Rendered presentation routinely combines parent offsets with measured text advances. Performing
+ * that arithmetic directly in int32_t would make deeply nested or deliberately extreme test input
+ * vulnerable to signed overflow. Deferring an unrepresentable visual state is safer than wrapping it
+ * to an unrelated location.
+ */
+[[nodiscard]] std::optional<Coordinate> narrowCoordinate(std::int64_t value) noexcept {
+    constexpr auto minimum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::min());
+    constexpr auto maximum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max());
+
+    if (value < minimum || value > maximum) {
+        return std::nullopt;
+    }
+
+    return static_cast<Coordinate>(value);
+}
 
 /**
  * Resolves parent-relative Widget bounds into the rendered root coordinate system.
@@ -34,18 +59,15 @@ namespace {
         y += static_cast<std::int64_t>(parent->bounds().y);
     }
 
-    constexpr auto minimum = static_cast<std::int64_t>(
-        std::numeric_limits<Coordinate>::min());
-    constexpr auto maximum = static_cast<std::int64_t>(
-        std::numeric_limits<Coordinate>::max());
-
-    if (x < minimum || x > maximum || y < minimum || y > maximum) {
+    const auto narrowed_x = narrowCoordinate(x);
+    const auto narrowed_y = narrowCoordinate(y);
+    if (!narrowed_x.has_value() || !narrowed_y.has_value()) {
         return std::nullopt;
     }
 
     return Rect{
-        static_cast<Coordinate>(x),
-        static_cast<Coordinate>(y),
+        *narrowed_x,
+        *narrowed_y,
         widget.bounds().width,
         widget.bounds().height,
     };
@@ -62,18 +84,15 @@ namespace {
         return Rect{bounds.x, bounds.y, 0, 0};
     }
 
-    const std::int64_t x = static_cast<std::int64_t>(bounds.x) + 1;
-    const std::int64_t y = static_cast<std::int64_t>(bounds.y) + 1;
-    const std::int64_t maximum =
-        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max());
-
-    if (x > maximum || y > maximum) {
+    const auto x = narrowCoordinate(static_cast<std::int64_t>(bounds.x) + 1);
+    const auto y = narrowCoordinate(static_cast<std::int64_t>(bounds.y) + 1);
+    if (!x.has_value() || !y.has_value()) {
         return std::nullopt;
     }
 
     return Rect{
-        static_cast<Coordinate>(x),
-        static_cast<Coordinate>(y),
+        *x,
+        *y,
         static_cast<Coordinate>(bounds.width - 2),
         static_cast<Coordinate>(bounds.height - 2),
     };
@@ -82,10 +101,25 @@ namespace {
 void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color) {
     /*
      * The first rendered widgets are intentionally opaque inside their arranged bounds. Repainting
-     * the background before current content prevents shorter Label/Button text from leaving stale
-     * glyphs in an incremental frame. Rich background inheritance/compositing is a later theme step.
+     * the background before current content prevents shorter Label/Button/TextField content from
+     * leaving stale glyphs in an incremental frame. Rich background inheritance/compositing is a
+     * later theme step.
      */
     display_list.fillRect(bounds, background_color);
+}
+
+[[nodiscard]] TextStyle controlTextStyle(const Widget& widget, TextStyle base) noexcept {
+    /*
+     * Focus and disabled appearance are presentation overlays. Never mutate the semantic style
+     * stored by Button/TextField merely because one backend currently has focus.
+     */
+    if (!widget.isEnabled()) {
+        base.dim = true;
+    } else if (widget.hasFocus()) {
+        base.inverse = true;
+    }
+
+    return base;
 }
 
 [[nodiscard]] PresentationUpdateResult renderLabel(DisplayList& display_list,
@@ -123,17 +157,7 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         return PresentationUpdateResult::synchronized;
     }
 
-    /*
-     * Keep focus/disabled appearance a backend presentation overlay. The semantic Button's TextStyle
-     * remains untouched, matching the terminal backend's rule that focus does not mutate user state.
-     */
-    TextStyle style = button.textStyle();
-    if (!button.isEnabled()) {
-        style.dim = true;
-    } else if (button.hasFocus()) {
-        style.inverse = true;
-    }
-
+    const TextStyle style = controlTextStyle(button, button.textStyle());
     display_list.strokeRect(*absolute, style.foreground, 1);
 
     const auto content = insetOne(*absolute);
@@ -147,6 +171,188 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
             button.text(),
             style,
             *content);
+    }
+
+    return PresentationUpdateResult::synchronized;
+}
+
+struct TextFieldLayout {
+    Rect bounds{};
+    Rect content{};
+    Point text_origin{};
+    TextStyle style{};
+    std::optional<Rect> caret;
+};
+
+/**
+ * Computes the complete TextField frame before mutating DisplayList.
+ *
+ * This preflight is important. A metric provider may report an invalid/non-monotonic caret advance
+ * or coordinate arithmetic may become unrepresentable. In either case the field must remain
+ * deferred *without first erasing its previous good pixels*. DisplayList currently has no rollback
+ * transaction, so all fallible calculations happen before the first command is appended.
+ */
+[[nodiscard]] std::optional<TextFieldLayout> layoutTextField(
+    const TextField& field,
+    Rect bounds,
+    const RenderedMeasurementContext& metrics) {
+    const auto content = insetOne(bounds);
+    if (!content.has_value()) {
+        return std::nullopt;
+    }
+
+    TextFieldLayout result{
+        bounds,
+        *content,
+        Point{content->x, content->y},
+        controlTextStyle(field, field.textStyle()),
+        std::nullopt,
+    };
+
+    /*
+     * A very small arranged field can still represent its border/focus state. There is simply no
+     * interior in which text or a caret can be placed, so no font query is necessary.
+     */
+    if (content->isEmpty()) {
+        return result;
+    }
+
+    const Coordinate line_height = metrics.lineHeight();
+    if (line_height <= 0) {
+        // RenderedMeasurementContext documents a positive line height; reject broken providers.
+        return std::nullopt;
+    }
+
+    const std::size_t scalar_count = utf8::scalarCount(field.text());
+    const std::size_t cursor = std::min(field.cursorPosition(), scalar_count);
+
+    /*
+     * Ask the font/shaping provider for scalar-boundary positions in the *complete* text run. We do
+     * not measure independent substrings: doing so can lose kerning/ligature context and make the
+     * caret disagree with the text renderer. The first implementation is intentionally simple and
+     * may query O(cursor) boundaries; a later optimization can cache a shaped run without changing
+     * this contract.
+     */
+    std::vector<Coordinate> advances;
+    advances.reserve(cursor + 1);
+
+    for (std::size_t index = 0; index <= cursor; ++index) {
+        const Coordinate advance = metrics.textAdvanceToScalar(field.text(), index);
+        if (advance < 0 || (!advances.empty() && advance < advances.back())) {
+            return std::nullopt;
+        }
+        advances.push_back(advance);
+    }
+
+    const Coordinate cursor_advance = advances.back();
+
+    /*
+     * Reserve one logical interior unit for the insertion caret even while unfocused. This keeps the
+     * viewport stable across focus transitions and matches RenderedMeasurementContext::measureTextField().
+     */
+    const Coordinate text_capacity =
+        content->width > 0 ? static_cast<Coordinate>(content->width - 1) : 0;
+
+    std::size_t start_index = 0;
+    while (start_index < cursor) {
+        const std::int64_t visible_advance =
+            static_cast<std::int64_t>(cursor_advance) -
+            static_cast<std::int64_t>(advances[start_index]);
+
+        if (visible_advance <= static_cast<std::int64_t>(text_capacity)) {
+            break;
+        }
+        ++start_index;
+    }
+
+    const Coordinate start_advance = advances[start_index];
+    const std::int64_t relative_caret =
+        static_cast<std::int64_t>(cursor_advance) -
+        static_cast<std::int64_t>(start_advance);
+
+    /*
+     * Draw the complete shaped string and shift its origin left by the viewport start advance. The
+     * per-command clip then exposes only the field interior. Keeping the complete string intact is
+     * deliberate: a future renderer can shape it once with full context instead of reshaping a
+     * suffix whose kerning/ligatures may differ.
+     */
+    const auto text_x = narrowCoordinate(
+        static_cast<std::int64_t>(content->x) -
+        static_cast<std::int64_t>(start_advance));
+    if (!text_x.has_value()) {
+        return std::nullopt;
+    }
+    result.text_origin.x = *text_x;
+
+    if (field.hasFocus()) {
+        const auto caret_x = narrowCoordinate(
+            static_cast<std::int64_t>(content->x) + relative_caret);
+        if (!caret_x.has_value() ||
+            relative_caret < 0 ||
+            relative_caret >= static_cast<std::int64_t>(content->width)) {
+            return std::nullopt;
+        }
+
+        const Coordinate caret_height = std::min(line_height, content->height);
+        if (caret_height > 0) {
+            result.caret = Rect{
+                *caret_x,
+                content->y,
+                1,
+                caret_height,
+            };
+        }
+    }
+
+    return result;
+}
+
+[[nodiscard]] PresentationUpdateResult renderTextField(
+    DisplayList& display_list,
+    const TextField& field,
+    const RenderedMeasurementContext* metrics,
+    Color background_color) {
+    const auto absolute = absoluteRectOf(field);
+    if (!absolute.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    if (!field.isVisible() || absolute->isEmpty()) {
+        eraseWidget(display_list, *absolute, background_color);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    /*
+     * The metrics-free constructor remains useful for Window/Label/Button consumers. A visible
+     * editable field, however, cannot be acknowledged without a coherent viewport/caret metric.
+     */
+    if (metrics == nullptr) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const auto layout = layoutTextField(field, *absolute, *metrics);
+    if (!layout.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    /*
+     * Everything fallible was preflighted above. From this point onward the commands form one
+     * coherent field repaint: clear old pixels, draw chrome, draw clipped full-context text, then
+     * place the caret last so it remains visible over the glyph run.
+     */
+    eraseWidget(display_list, layout->bounds, background_color);
+    display_list.strokeRect(layout->bounds, layout->style.foreground, 1);
+
+    if (!layout->content.isEmpty()) {
+        display_list.drawText(
+            layout->text_origin,
+            field.text(),
+            layout->style,
+            layout->content);
+    }
+
+    if (layout->caret.has_value()) {
+        display_list.fillRect(*layout->caret, layout->style.foreground);
     }
 
     return PresentationUpdateResult::synchronized;
@@ -175,23 +381,11 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
     }
 
     if (const auto* field = dynamic_cast<const TextField*>(&widget)) {
-        const auto absolute = absoluteRectOf(*field);
-        if (!absolute.has_value()) {
-            return PresentationUpdateResult::deferred;
-        }
-
-        if (!field->isVisible() || absolute->isEmpty()) {
-            eraseWidget(display_list_, *absolute, background_color_);
-            return PresentationUpdateResult::synchronized;
-        }
-
-        /*
-         * Visible TextField rendering is deliberately not approximated yet. Correct desktop
-         * presentation needs measured glyph advances for horizontal viewport/caret placement.
-         * Deferring keeps the Widget pending until the rendered text-metrics slice supplies that
-         * information, rather than acknowledging an incomplete focus/caret representation.
-         */
-        return PresentationUpdateResult::deferred;
+        return renderTextField(
+            display_list_,
+            *field,
+            measurement_context_,
+            background_color_);
     }
 
     if (const auto* button = dynamic_cast<const Button*>(&widget)) {
