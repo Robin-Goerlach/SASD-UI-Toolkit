@@ -45,6 +45,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0028](0028-rendered-text-metrics-and-textfield-caret.md) | Rendered text metrics and TextField caret/viewport contract | Accepted |
 | [0029](0029-render-device-replay-boundary.md) | Render device replay boundary below DisplayList | Accepted |
 | [0030](0030-headless-sdl3-software-adapter.md) | Headless SDL3 software adapter before desktop-window lifecycle | Accepted |
+| [0031](0031-window-backed-sdl3-host-and-presentation-replay.md) | Window-backed SDL3 host, presentation replay and desktop event boundary | Accepted |
 
 ## ADR policy
 

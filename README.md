@@ -52,7 +52,8 @@ The repository now contains the first working implementation slice:
 - separately linkable `SASD::UI::Rendered` M3 target with a deterministic backend-neutral `DisplayList` and `RenderedPresentationSink` for rendered drawing commands;
 - `RenderedMeasurementContext` for coherent rendered font line-height/scalar-boundary metrics shared by layout and TextField viewport/caret presentation;
 - `RenderDevice` plus `DisplayListExecutor` as the SDL/native-free execution boundary that replays immutable drawing commands into a concrete renderer;
-- experimental build-tree-only `SASD::UI::Rendered::SDL3` software device using real SDL3 + SDL_ttf for headless pixel rendering, clipping, UTF-8 font metrics and shaped TextField caret-boundary validation;
+- experimental build-tree-only `SASD::UI::Rendered::SDL3` adapter with headless software rendering plus a real window-backed backend using SDL3 + SDL_ttf;
+- explicit `PresentationCoordinator::replay()` for rebuilding an exposed/lost presentation surface without abusing semantic Widget invalidation;
 - semantic M2 widgets: `Window`, UTF-8 `Label`, interactive `Button` and single-line editable `TextField`;
 - headless `TerminalPresentationSink` that renders `Window`, `Label`, `Button` and `TextField` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
@@ -72,7 +73,7 @@ The repository now contains the first working implementation slice:
 - native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands and can render TextFields when supplied with a `RenderedMeasurementContext`. `DisplayListExecutor` replays those commands through the SDL/native-free `RenderDevice` boundary. The first concrete adapter now implements that boundary with a real headless SDL3 software renderer plus SDL_ttf, including UTF-8 rasterization, clipping, font metrics and shaped scalar-boundary queries. It remains experimental and build-tree-only; the next M3 step is the window-backed SDL3 host with frame/event/resize/input lifecycle, not another semantic-widget rewrite. Without usable caret metrics, a field deliberately remains `deferred` instead of being approximated silently.
+The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands and can render TextFields when supplied with a `RenderedMeasurementContext`. `DisplayListExecutor` replays those commands through the SDL/native-free `RenderDevice` boundary. The concrete adapter now covers both headless SDL3 software rendering and a real window-backed SDL3 host. The window path reuses the existing semantic Widgets and Rendered pipeline, performs complete-frame replay, translates close/resize/key/committed-text events, and separates logical size from physical pixel size/display scale. It remains experimental and build-tree-only; pointer/hit-testing and wider desktop-platform validation are the next M3 work. Without usable caret metrics, a field deliberately remains `deferred` instead of being approximated silently.
 
 ## Build and test
 
@@ -146,7 +147,7 @@ To let CMake fetch the pinned SDL3/SDL_ttf versions used by the dedicated CI job
 cmake -S . -B build-sdl3 \
   -DCMAKE_BUILD_TYPE=Debug \
   -DSASD_UI_BUILD_TESTS=ON \
-  -DSASD_UI_BUILD_EXAMPLES=OFF \
+  -DSASD_UI_BUILD_EXAMPLES=ON \
   -DSASD_UI_BUILD_SDL3_ADAPTER=ON \
   -DSASD_UI_FETCH_SDL3=ON \
   -DSASD_UI_SDL3_TEST_FONT=/path/to/a/test-font.ttf

@@ -52,19 +52,25 @@ F1–F12 are now backend-neutral `Key` identities decoded from common SS3/CSI/xt
 
 ### 2. Rendered desktop / experimental SDL3 adapter
 
-M3 now has a concrete SDL3 proof below the generic Rendered layer. The experimental
-`SASD::UI::Rendered::SDL3` target implements `RenderDevice` and `RenderedMeasurementContext`
-using an off-screen SDL3 software renderer plus SDL_ttf. It exercises real fill/stroke execution,
-UTF-8 rasterization, clipping, font metrics and shaped TextField caret-boundary queries without
-requiring a display server or desktop window.
+M3 now has both a headless SDL3 proof and a real window-backed backend below the generic Rendered
+layer. `SASD::UI::Rendered::SDL3` reuses one private SDL3 render/metric policy for software-surface
+tests and desktop-window presentation.
 
-This target is deliberately opt-in and build-tree-only. SDL3/SDL_ttf are not dependencies of the
-Core, Terminal backend or generic `SASD::UI::Rendered` target, and SDL types do not appear in those
-public APIs. Dedicated CI builds the adapter headlessly; the normal compiler/release matrix remains
-SDL-independent.
+`Sdl3WindowBackend` implements `Backend`, `RenderDevice` and
+`RenderedMeasurementContext`. Window/Renderer/Font creation is transactional, complete DisplayList
+frames are presented, close/resize/key/committed-text events are translated, and logical layout size
+remains separate from physical pixel size/display scale. SDL types remain absent from Core and the
+generic Rendered API.
 
-The next M3 slice is a window-backed SDL3 host that reuses the same DisplayList/RenderDevice/metric
-contracts and adds real frame presentation, resize/DPI, event pumping and input translation.
+`PresentationCoordinator::replay()` reconstructs a presentation surface from a clean semantic
+Widget tree without exposing protected Widget invalidation.
+
+Dedicated CI builds the SDL3 adapter and desktop demo, runs a hidden real SDL window through the
+offscreen video driver, and exercises the end-to-end semantic Widget -> RenderedPresentationSink ->
+DisplayList -> SDL3 window path.
+
+The adapter remains opt-in and build-tree-only. Pointer/hit-testing, richer IME composition and wider
+desktop validation remain later M3 slices.
 
 ### 3. Native Windows backend
 

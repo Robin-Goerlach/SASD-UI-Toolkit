@@ -52,20 +52,25 @@ F1–F12 sind nun als backendneutrale `Key`-Identitäten implementiert und werde
 
 ### 2. Rendered Desktop / experimenteller SDL3-Adapter
 
-M3 besitzt nun einen konkreten SDL3-Proof unterhalb der generischen Rendered-Schicht. Das
-experimentelle Target `SASD::UI::Rendered::SDL3` implementiert `RenderDevice` und
-`RenderedMeasurementContext` mit einem Off-Screen-SDL3-Software-Renderer plus SDL_ttf. Damit werden
-echte Fill-/Stroke-Ausführung, UTF-8-Rasterung, Clipping, Fontmetriken und geformte
-TextField-Caret-Grenzen geprüft, ohne bereits Display Server oder Desktopfenster vorauszusetzen.
+M3 besitzt nun sowohl den headless SDL3-Proof als auch ein reales fenstergebundenes Backend unterhalb
+der generischen Rendered-Schicht. `SASD::UI::Rendered::SDL3` verwendet für Software-Surface-Tests und
+Desktopfenster dieselbe private SDL3-Render-/Metrik-Policy.
 
-Das Target ist bewusst opt-in und nur im Build-Tree verfügbar. SDL3/SDL_ttf sind keine Abhängigkeiten
-von Core, Terminal-Backend oder generischem `SASD::UI::Rendered`; SDL-Typen erscheinen nicht in
-deren öffentlichen APIs. Eine dedizierte CI baut den Adapter headless, während die normale
-Compiler-/Release-Matrix SDL-unabhängig bleibt.
+`Sdl3WindowBackend` implementiert `Backend`, `RenderDevice` und
+`RenderedMeasurementContext`. Window/Renderer/Font werden transaktional erzeugt, vollständige
+DisplayList-Frames präsentiert, Close/Resize/Key/Committed-Text-Events übersetzt und logische
+Layoutgröße von physischer Pixelgröße/Display Scale getrennt gehalten. SDL-Typen bleiben aus Core und
+generischer Rendered-API heraus.
 
-Der nächste M3-Schnitt ist ein fenstergebundener SDL3-Host, der dieselben
-DisplayList-/RenderDevice-/Metrikverträge wiederverwendet und reale Frame-Presentation, Resize/DPI,
-Event-Pump und Input-Übersetzung ergänzt.
+`PresentationCoordinator::replay()` rekonstruiert eine Presentation-Surface aus einem cleanen
+semantischen Widgetbaum, ohne geschützte Widget-Invalidierung offenzulegen.
+
+Die dedizierte CI baut SDL3-Adapter und Desktop-Demo, verwendet ein reales verstecktes SDL-Fenster
+über den Offscreen-Videotreiber und prüft den End-to-End-Pfad Semantic Widget ->
+RenderedPresentationSink -> DisplayList -> SDL3-Window.
+
+Der Adapter bleibt opt-in und nur im Build-Tree verfügbar. Pointer/Hit-Testing, reichhaltigere
+IME-Composition und breitere Desktopvalidierung folgen in weiteren M3-Schnitten.
 
 ### 3. Native Windows-Backend
 
