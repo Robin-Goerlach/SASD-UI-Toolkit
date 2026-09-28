@@ -94,6 +94,7 @@ add_executable(sasd_ui_rendered_tests
     rendered_display_list_tests.cpp
     rendered_display_list_executor_tests.cpp
     rendered_presentation_sink_tests.cpp
+    rendered_text_field_hit_test_tests.cpp
 )
 
 target_link_libraries(sasd_ui_rendered_tests PRIVATE SASD::UI::Rendered)

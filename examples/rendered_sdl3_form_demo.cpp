@@ -10,6 +10,7 @@
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
+#include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -216,9 +217,26 @@ int main(int argc, char** argv) {
                          */
                         if (pointer->action == PointerAction::press &&
                             pointer->button == PointerButton::primary) {
-                            if (Widget* hit = HitTest::deepestAt(window, pointer->position);
-                                hit != nullptr && hit->canReceiveFocus()) {
+                            Widget* hit = HitTest::deepestAt(window, pointer->position);
+
+                            if (hit != nullptr && hit->canReceiveFocus()) {
                                 (void)focus.requestFocus(*hit);
+                            }
+
+                            /*
+                             * TextField cursor placement is rendered-presentation geometry, not Core
+                             * editing geometry. Use the same viewport/font metrics as painting; when
+                             * a shaping boundary is not representable, keep the existing cursor
+                             * instead of guessing.
+                             */
+                            if (auto* field = dynamic_cast<TextField*>(hit)) {
+                                if (const auto scalar =
+                                        RenderedTextFieldHitTest::caretIndexAt(
+                                            *field,
+                                            pointer->position,
+                                            backend)) {
+                                    field->setCursorPosition(*scalar);
+                                }
                             }
                         }
 
