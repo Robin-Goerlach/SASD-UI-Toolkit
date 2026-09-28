@@ -38,10 +38,11 @@ The repository now contains the first working implementation slice:
 - explicit distinction between component ownership and visual parenting;
 - backend-neutral geometry and sizing (`Point`, `Size`, `Rect`, `SizeConstraints`, `MeasureConstraints`);
 - backend capabilities model;
-- key, text, focus, resize and quit event types;
+- key, text, focus, pointer, resize and quit event types;
 - thread-safe FIFO `EventQueue`;
 - target-to-parent event routing with explicit handled/ignored semantics;
 - lifetime-safe logical keyboard `FocusManager` plus deterministic visual-tree `FocusTraversal` for Tab/Shift+Tab;
+- backend-neutral `HitTest` and lifetime-safe `PointerRouter` with handler-owned pointer capture;
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - backend-neutral `MeasurementContext` so content widgets can obtain terminal/font/native metrics without backend coupling;
 - first automatic layout containers `VBox` and `HBox`, with context propagation, spacing, visibility collapse and deterministic constrained arrangement;
@@ -58,7 +59,7 @@ The repository now contains the first working implementation slice:
 - headless `TerminalPresentationSink` that renders `Window`, `Label`, `Button` and `TextField` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
 - `TerminalMeasurementContext`, giving `Label`, `Button` and `TextField` real terminal-cell desired sizes while keeping core widgets terminal-agnostic;
-- keyboard-focusable `Button` activation through the existing `FocusManager` and `EventDispatcher`, with terminal `[ caption ]` / focus / disabled presentation;
+- keyboard- and pointer-activatable `Button` with semantic pressed state, capture-safe press/release behavior and Terminal/Rendered pressed presentation;
 - `TextField` editing through `TextInputEvent` plus scalar cursor/navigation/delete semantics, shared UTF-8 decoding, terminal horizontal scrolling and separate hardware-caret position;
 - deterministic `AnsiFrameEncoder` converting `ScreenBuffer` plus optional caret into tested full-frame UTF-8/ANSI-VT bytes without OS I/O;
 - RAII `TerminalSession` / `TerminalDevice` boundary with deterministic mock tests and native POSIX/Windows adapters for TTY/console sizing, raw/VT session state, alternate screen and byte transport;
@@ -73,7 +74,7 @@ The repository now contains the first working implementation slice:
 - native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands and can render TextFields when supplied with a `RenderedMeasurementContext`. `DisplayListExecutor` replays those commands through the SDL/native-free `RenderDevice` boundary. The concrete adapter now covers both headless SDL3 software rendering and a real window-backed SDL3 host. The window path reuses the existing semantic Widgets and Rendered pipeline, performs complete-frame replay, translates close/resize/key/committed-text events, and separates logical size from physical pixel size/display scale. It remains experimental and build-tree-only; pointer/hit-testing and wider desktop-platform validation are the next M3 work. Without usable caret metrics, a field deliberately remains `deferred` instead of being approximated silently.
+The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands and can render TextFields when supplied with a `RenderedMeasurementContext`. `DisplayListExecutor` replays those commands through the SDL/native-free `RenderDevice` boundary. The concrete adapter now covers both headless SDL3 software rendering and a real window-backed SDL3 host. The window path reuses the existing semantic Widgets and Rendered pipeline, performs complete-frame replay, translates close/resize/key/committed-text events, and separates logical size from physical pixel size/display scale. It remains experimental and build-tree-only. Pointer events, hit-testing, handler-owned capture and Button press/release semantics are now implemented; TextField click-to-caret and wider desktop-platform validation are the next M3 work. Without usable caret metrics, a field deliberately remains `deferred` instead of being approximated silently.
 
 ## Build and test
 

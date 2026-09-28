@@ -24,6 +24,9 @@ they improve the architecture before compatibility commitments become expensive.
 - Window-backed experimental SDL3 backend with transactional lifecycle, complete-frame presentation, resize/close/key/text event translation and logical/pixel/display-scale separation.
 - `PresentationCoordinator::replay()` for deterministic full-tree reconstruction after native presentation-surface loss/expose without mutating semantic dirty state.
 - Runnable `sasd_ui_sdl3_demo` plus end-to-end offscreen SDL window tests.
+- Backend-neutral `PointerEvent`, visual-tree `HitTest` and lifetime-safe `PointerRouter` with capture assigned to the Widget that handles the press.
+- Semantic `Button::isPressed()` state with capture-loss cleanup, release-inside activation / release-outside cancellation, and Terminal/Rendered pressed presentation.
+- SDL3 pointer coordinate conversion and private deterministic semantic translation seam; the SDL3 backend now advertises pointer input capability.
 
 ## [0.1.0] - 2026-09-28
 
