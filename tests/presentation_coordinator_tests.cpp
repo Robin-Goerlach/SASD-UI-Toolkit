@@ -220,6 +220,65 @@ TEST_CASE("A clean tree produces an empty presentation request set") {
 }
 
 
+TEST_CASE("PresentationCoordinator replay offers an entirely clean tree without dirtying it first") {
+    Container root;
+    auto& first = root.emplace<VisualProbe>();
+    auto& nested_container = root.emplace<Container>();
+    auto& nested = nested_container.emplace<VisualProbe>();
+
+    RecordingPresentationSink initial_sink;
+    CHECK(PresentationCoordinator::synchronize(root, initial_sink).complete());
+
+    CHECK(!root.isVisualUpdatePending());
+    CHECK(!first.isVisualUpdatePending());
+    CHECK(!nested_container.isVisualUpdatePending());
+    CHECK(!nested.isVisualUpdatePending());
+
+    RecordingPresentationSink replay_sink;
+    const auto replay = PresentationCoordinator::replay(root, replay_sink);
+
+    CHECK(replay.visited == 4);
+    CHECK(replay.requested == 4);
+    CHECK(replay.synchronized == 4);
+    CHECK(replay.forced == 4);
+    CHECK(replay.deferred == 0);
+    CHECK(replay.complete());
+    CHECK(replay_sink.synchronizedWidgets() ==
+          std::vector<const Widget*>({&root, &first, &nested_container, &nested}));
+
+    // Surface recovery is presentation policy; a successful replay leaves semantic state clean.
+    CHECK(!root.isVisualUpdatePending());
+    CHECK(!first.isVisualUpdatePending());
+    CHECK(!nested_container.isVisualUpdatePending());
+    CHECK(!nested.isVisualUpdatePending());
+}
+
+TEST_CASE("PresentationCoordinator replay turns a deferred clean widget into pending retry state") {
+    Container root;
+    auto& child = root.emplace<VisualProbe>();
+
+    RecordingPresentationSink initial_sink;
+    CHECK(PresentationCoordinator::synchronize(root, initial_sink).complete());
+
+    RecordingPresentationSink replay_sink{[&](const Widget& widget) {
+        if (&widget == &child) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
+    }};
+
+    const auto replay = PresentationCoordinator::replay(root, replay_sink);
+
+    CHECK(!replay.complete());
+    CHECK(replay.deferred == 1);
+    CHECK(child.isVisualUpdatePending());
+
+    RecordingPresentationSink retry_sink;
+    const auto retry = PresentationCoordinator::synchronize(root, retry_sink);
+    CHECK(retry.complete());
+    CHECK(!child.isVisualUpdatePending());
+}
+
 TEST_CASE("Subtree refresh replays otherwise clean descendants") {
     Container root;
     auto& child = root.emplace<VisualProbe>();

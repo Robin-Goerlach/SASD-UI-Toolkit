@@ -89,4 +89,16 @@ PresentationPassResult PresentationCoordinator::synchronize(Widget& root, Presen
     return result;
 }
 
+PresentationPassResult PresentationCoordinator::replay(Widget& root, PresentationSink& sink) {
+    PresentationPassResult result;
+
+    /*
+     * force=true is deliberately a traversal policy, not a mutation of Widget invalidation state.
+     * The same helper already uses this mode for clean descendants beneath an acknowledged subtree
+     * refresh. Starting at root extends that proven behavior to presentation-surface recovery.
+     */
+    synchronizeWidget(root, sink, result, true);
+    return result;
+}
+
 } // namespace sasd::ui

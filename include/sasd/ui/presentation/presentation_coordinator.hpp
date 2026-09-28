@@ -65,6 +65,25 @@ public:
      */
     [[nodiscard]] static PresentationPassResult synchronize(Widget& root, PresentationSink& sink);
 
+    /**
+     * Replays the complete current visual subtree regardless of ordinary dirty flags.
+     *
+     * This is a presentation-recovery operation rather than semantic invalidation. It is intended
+     * for a backend whose drawing surface/back buffer has been recreated, exposed or otherwise lost
+     * while the Widget tree itself remains unchanged and clean.
+     *
+     * Every visual Widget rooted at root is offered to sink in the same deterministic preorder used
+     * by synchronize(). Existing pending state is acknowledged only after successful synchronization.
+     * A previously-clean Widget that the sink defers is made normally pending so a later incremental
+     * pass cannot forget the incomplete replay.
+     *
+     * replay() does not clear or prepare the backend surface and does not manufacture a
+     * subtree-refresh flag on root. The caller/sink must establish the clean presentation target
+     * appropriate to that backend before consuming the replay. This separation keeps surface loss
+     * out of Widget's semantic invalidation model.
+     */
+    [[nodiscard]] static PresentationPassResult replay(Widget& root, PresentationSink& sink);
+
 private:
     static void synchronizeWidget(Widget& widget,
                                   PresentationSink& sink,

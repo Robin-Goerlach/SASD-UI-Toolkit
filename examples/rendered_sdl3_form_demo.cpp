@@ -65,18 +65,18 @@ void synchronizeTextInput(Sdl3WindowBackend& backend, const FocusManager& focus)
  * Builds and presents a complete rendered frame.
  *
  * RenderedPresentationSink supports incremental synchronization, but an SDL window back buffer is not
- * treated as persistent state after SDL_RenderPresent(). Until M3 grows an explicit retained backing
- * store/dirty-region policy, the window adapter therefore asks the existing conservative subtree
- * invalidation mechanism for a complete frame. This is intentionally correctness-first.
+ * treated as persistent state after SDL_RenderPresent(). PresentationCoordinator::replay() therefore
+ * reconstructs the complete current visual tree without pretending that the semantic Widgets became
+ * dirty merely because the native presentation surface needs a new frame. This is intentionally
+ * correctness-first until M3 grows an explicit retained backing-store/dirty-region policy.
  */
 void presentFullFrame(Window& window,
                       DisplayList& display_list,
                       RenderedPresentationSink& presentation,
                       Sdl3WindowBackend& backend) {
     display_list.clear();
-    window.invalidatePresentationSubtree();
 
-    const auto pass = PresentationCoordinator::synchronize(window, presentation);
+    const auto pass = PresentationCoordinator::replay(window, presentation);
     if (!pass.complete()) {
         throw std::runtime_error{
             "SDL3 demo contains presentation state the current rendered model cannot represent"};
