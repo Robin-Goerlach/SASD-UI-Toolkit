@@ -203,7 +203,7 @@ wird:
 
 | Umgebung | Commit | Ergebnis | Bemerkungen |
 |---|---|---|---|
-| Linux / xterm-artig | | PASS | |
+| Linux / xterm-artig | `25c3522` | PASS | WSL2 Linux 5.15.167.4, `TERM=xterm-256color`; Build/CTest, drei Exit-Pfade, TTY-Restoration und menschliche Sicht-/Interaktionsprüfung bestanden. |
 | Windows Terminal | | PASS | |
 
 Erst wenn beide Zeilen PASS sind und keine kritischen Fehler offen sind, sollte die Roadmap das

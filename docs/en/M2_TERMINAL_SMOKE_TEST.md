@@ -163,7 +163,7 @@ Not M2 failures when the documented conservative behavior is preserved:
 
 | Environment | Commit | Result | Notes |
 |---|---|---|---|
-| Linux / xterm-like | | PASS | |
+| Linux / xterm-like | `25c3522` | PASS | WSL2 Linux 5.15.167.4, `TERM=xterm-256color`; build/CTest, all three exit paths, TTY restoration and the human visual/interaction check passed. |
 | Windows Terminal | | PASS | |
 
 Only after both rows pass with no critical failures should the roadmap mark the M2 exit criterion as
