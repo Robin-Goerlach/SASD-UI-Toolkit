@@ -22,10 +22,10 @@ or GitHub release is created only after explicit approval.
 ## Still verify before publication
 
 - [ ] Record the final `main` HEAD and confirm the complete CI run for that exact HEAD is green.
-- [ ] Produce a Release build from a fresh checkout locally or in CI.
-- [ ] Spot-check installed contents: headers, libraries, CMake config, license/README/changelog.
-- [ ] Finalize release notes from `CHANGELOG.md`.
-- [ ] Verify no accidental build artifacts or local files are tracked.
+- [x] Produced and tested Release builds from fresh CI checkouts on Linux, macOS and Windows.
+- [x] Automatically verified installed public headers, Core/Terminal libraries, CMake config, license/README/changelog.
+- [x] Finalized bilingual release notes from `CHANGELOG.md`.
+- [x] Release CI verifies repository hygiene; no generated build/linker artifacts are tracked.
 - [ ] Only after explicit approval: create tag `v0.1.0`.
 - [ ] Only after explicit approval: publish the GitHub Release.
 

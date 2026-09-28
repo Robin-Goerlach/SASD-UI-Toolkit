@@ -298,6 +298,7 @@ Documentation is maintained in German and English.
 - [Backend and platform strategy](docs/en/BACKENDS.md)
 - [Development guidelines](docs/en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](docs/en/ROADMAP.md)
+- [v0.1.0 release notes](docs/en/V0_1_0_RELEASE_NOTES.md)
 - [Inspirations and references](docs/en/REFERENCES.md)
 
 ### Deutsch
@@ -307,6 +308,7 @@ Documentation is maintained in German and English.
 - [Backend- und Plattformstrategie](docs/de/BACKENDS.md)
 - [Entwicklungsrichtlinien](docs/de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](docs/de/ROADMAP.md)
+- [v0.1.0-Release-Notes](docs/de/V0_1_0_RELEASE_NOTES.md)
 - [Vorbilder und Referenzen](docs/de/REFERENZEN.md)
 
 ### Architecture decisions

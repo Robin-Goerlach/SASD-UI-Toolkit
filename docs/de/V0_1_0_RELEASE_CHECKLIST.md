@@ -22,10 +22,10 @@ Ein Git-Tag oder GitHub-Release wird erst nach ausdrücklicher Freigabe erstellt
 ## Vor Veröffentlichung noch prüfen
 
 - [ ] Letzten `main`-HEAD festhalten und vollständige CI dieses HEADs grün bestätigen.
-- [ ] Release-Build lokal bzw. in CI aus einem frischen Checkout erzeugen.
-- [ ] Installationsinhalt stichprobenartig prüfen: Header, Libraries, CMake-Config, Lizenz/README/Changelog.
-- [ ] Release Notes aus `CHANGELOG.md` final redigieren.
-- [ ] Prüfen, dass keine unbeabsichtigten Build-Artefakte oder lokalen Dateien versioniert sind.
+- [x] Release-Build in CI aus einem frischen Checkout auf Linux, macOS und Windows erzeugt und getestet.
+- [x] Installationsinhalt automatisiert geprüft: öffentliche Header, Core-/Terminal-Libraries, CMake-Config sowie Lizenz/README/Changelog.
+- [x] Release Notes aus `CHANGELOG.md` zweisprachig final redigiert.
+- [x] Repository-Hygiene in der Release-CI geprüft; keine generierten Build-/Linker-Artefakte versioniert.
 - [ ] Erst nach ausdrücklicher Freigabe: Tag `v0.1.0` erstellen.
 - [ ] Erst nach ausdrücklicher Freigabe: GitHub Release veröffentlichen.
 

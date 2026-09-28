@@ -15,6 +15,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Roadmap](en/ROADMAP.md)
 - [M2 terminal smoke test](en/M2_TERMINAL_SMOKE_TEST.md)
 - [v0.1.0 release checklist](en/V0_1_0_RELEASE_CHECKLIST.md)
+- [v0.1.0 release notes](en/V0_1_0_RELEASE_NOTES.md)
 - [Inspirations and references](en/REFERENCES.md)
 
 ### Deutsch
@@ -26,6 +27,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Roadmap](de/ROADMAP.md)
 - [M2-Terminal-Smoke-Test](de/M2_TERMINAL_SMOKE_TEST.md)
 - [v0.1.0-Release-Checkliste](de/V0_1_0_RELEASE_CHECKLIST.md)
+- [v0.1.0-Release-Notes](de/V0_1_0_RELEASE_NOTES.md)
 - [Vorbilder und Referenzen](de/REFERENZEN.md)
 
 ### Architecture Decision Records
