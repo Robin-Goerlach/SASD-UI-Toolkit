@@ -127,7 +127,14 @@ if(SASD_UI_BUILD_SDL3_ADAPTER AND NOT SASD_UI_SDL3_TEST_FONT STREQUAL "")
         rendered_sdl3_window_backend_tests.cpp
     )
 
-    target_link_libraries(sasd_ui_sdl3_tests PRIVATE SASD::UI::Rendered::SDL3)
+    target_link_libraries(sasd_ui_sdl3_tests
+        PRIVATE
+            SASD::UI::Rendered::SDL3
+            # The window-backend tests intentionally use SDL_PushEvent() to inject native events.
+            # Keep that native test dependency local instead of making SDL3 a PUBLIC dependency of
+            # the experimental adapter target merely to expose SDL headers to tests.
+            SDL3::SDL3
+    )
     target_compile_features(sasd_ui_sdl3_tests PRIVATE cxx_std_20)
     target_include_directories(sasd_ui_sdl3_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
