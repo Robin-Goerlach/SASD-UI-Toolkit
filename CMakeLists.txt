@@ -59,6 +59,7 @@ target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
 # SDL3 adapter consumes this target instead of exposing SDL handles/types through the Core API.
 add_library(sasd_ui_rendered
     src/rendered/display_list.cpp
+    src/rendered/rendered_presentation_sink.cpp
 )
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
