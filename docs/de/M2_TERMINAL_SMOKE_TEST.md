@@ -56,6 +56,14 @@ Nach einem bereits erfolgreichen Build kann `--skip-build` beziehungsweise `-Ski
 werden. Die Runner stellen den ursprünglichen TTY-/Codepage-Zustand defensiv wieder her, melden eine
 Abweichung aber trotzdem als Fehler.
 
+Für einen Release-Gate-Lauf verlangen beide Runner außerdem einen **sauberen Git-Worktree**. So ist
+das Ergebnis eindeutig dem protokollierten Commit zuordenbar. Das von den Runnern erzeugte
+`build-smoke/` ist deshalb repositoryweit ignoriert.
+
+Nach den drei regulären Läufen muss die menschliche Sicht-/Interaktionsprüfung ausdrücklich mit
+`PASS` bestätigt werden. Erst dann meldet der Runner `M2 environment result: PASS`. Der
+`--single-run`-/`-SingleRun`-Modus bleibt ein Diagnosewerkzeug und bestätigt das Release-Gate nicht.
+
 ## Fehlerbehebung bei der lokalen Vorbereitung
 
 Wenn Linux beim Start des Shell-Skripts `/usr/bin/env: ‘bash\\r’: No such file or directory` meldet,

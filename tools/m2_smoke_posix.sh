@@ -65,6 +65,17 @@ if [[ ! -t 0 || ! -t 1 ]]; then
     exit 2
 fi
 
+# A release-gate result must describe an exact repository state. Building from tracked or untracked
+# local edits would make a PASS impossible to reproduce later, so fail early and show the offending
+# paths. build-smoke/ is ignored by the repository and therefore does not make repeated runs dirty.
+worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=normal)"
+if [[ -n "$worktree_status" ]]; then
+    echo "ERROR: the M2 release smoke test requires a clean Git worktree." >&2
+    echo "Commit/stash/discard the following local changes before retrying:" >&2
+    printf '%s\n' "$worktree_status" >&2
+    exit 2
+fi
+
 if ! "$skip_build"; then
     cmake -S "$repo_root" -B "$build_dir" \
         -DCMAKE_BUILD_TYPE=Debug \
@@ -184,10 +195,42 @@ else
     echo "Objective runner checks: FAIL ($run_failures run(s) reported a problem)"
 fi
 
-echo "Visual/interaction judgment is still manual."
-echo "Record the result in docs/de/M2_TERMINAL_SMOKE_TEST.md"
-echo "or paste the observations back into the development chat."
+manual_status=0
+if "$single_run"; then
+    echo "Manual visual gate:       NOT EVALUATED (--single-run is diagnostic only)"
+else
+    echo
+    echo "Human validation is part of the M2 release gate."
+    echo "Confirm only if ALL visual/interaction checks from Run 1 succeeded:"
+    echo "  - styles/focus were plausible and no raw ANSI escapes were visible;"
+    echo "  - Robin AΩ界 remained intact, including the wide CJK cell;"
+    echo "  - editing/navigation, Tab/Shift+Tab and TextField caret behaved correctly;"
+    echo "  - Enter/Space activated Greet exactly once and F1 showed Help;"
+    echo "  - shrink/enlarge resize left no stale cells and preserved logical state."
+    read -r -p "Type PASS to confirm the human visual/interaction check: " manual_confirmation
 
-if ((run_failures != 0)); then
+    if [[ "$manual_confirmation" == "PASS" ]]; then
+        echo "Manual visual gate:       PASS"
+    else
+        echo "Manual visual gate:       NOT CONFIRMED"
+        manual_status=1
+    fi
+fi
+
+echo
+if ((run_failures == 0 && manual_status == 0)); then
+    if "$single_run"; then
+        echo "Diagnostic smoke result: PASS"
+    else
+        echo "M2 environment result: PASS"
+    fi
+else
+    echo "M2 environment result: FAIL / INCOMPLETE"
+fi
+
+echo "Record the result in docs/de/M2_TERMINAL_SMOKE_TEST.md"
+echo "or paste the complete output back into the development chat."
+
+if ((run_failures != 0 || manual_status != 0)); then
     exit 1
 fi

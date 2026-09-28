@@ -45,6 +45,14 @@ single run alone is not sufficient to close the M2 release gate.
 After an already successful build, use `--skip-build` or `-SkipBuild`. The helpers defensively restore
 the original TTY/code-page state while still reporting any mismatch as a failure.
 
+For a release-gate run both helpers also require a **clean Git worktree**, making the result
+unambiguously attributable to the recorded commit. The generated `build-smoke/` directory is
+therefore ignored repository-wide.
+
+After the three normal runs the human visual/interaction check must be explicitly confirmed by typing
+`PASS`. Only then does the helper report `M2 environment result: PASS`. The `--single-run` /
+`-SingleRun` mode remains diagnostic and does not confirm the release gate.
+
 ## Troubleshooting local preparation
 
 If Linux reports `/usr/bin/env: ‘bash\\r’: No such file or directory` when starting the shell helper,

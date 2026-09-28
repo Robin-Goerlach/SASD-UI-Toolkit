@@ -89,6 +89,20 @@ if (-not (Test-Path -LiteralPath $Demo)) {
     throw "Terminal demo not found: $Demo. Run without -SkipBuild first."
 }
 
+# A release-gate PASS must be reproducible from the recorded commit. Refuse to validate a checkout
+# containing local tracked or untracked files. build-smoke/ is ignored by the repository, so repeated
+# smoke runs do not make an otherwise clean checkout fail this preflight check.
+$WorktreeStatus = (& git -C $RepoRoot status --porcelain --untracked-files=normal) -join [Environment]::NewLine
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to inspect the Git worktree before the M2 smoke test."
+}
+if ($WorktreeStatus) {
+    Write-Host "ERROR: the M2 release smoke test requires a clean Git worktree." -ForegroundColor Red
+    Write-Host "Commit/stash/discard the following local changes before retrying:"
+    Write-Host $WorktreeStatus
+    exit 2
+}
+
 function Get-CodePageSnapshot {
     $Text = (& cmd /c chcp) -join " "
     $Number = if ($Text -match '(\d+)') { [int]$Matches[1] } else { $null }
@@ -232,10 +246,46 @@ else {
     Write-Host "Objective runner checks: FAIL ($($script:RunFailures) run(s) reported a problem)"
 }
 
-Write-Host "Visual/interaction judgment is still manual."
-Write-Host "Record the result in docs\de\M2_TERMINAL_SMOKE_TEST.md"
-Write-Host "or paste the observations back into the development chat."
+$ManualFailed = $false
+if ($SingleRun) {
+    Write-Host "Manual visual gate:       NOT EVALUATED (-SingleRun is diagnostic only)"
+}
+else {
+    Write-Host ""
+    Write-Host "Human validation is part of the M2 release gate."
+    Write-Host "Confirm only if ALL visual/interaction checks from Run 1 succeeded:"
+    Write-Host "  - styles/focus were plausible and no raw ANSI escapes were visible;"
+    Write-Host "  - Robin AΩ界 remained intact, including the wide CJK cell;"
+    Write-Host "  - editing/navigation, Tab/Shift+Tab and TextField caret behaved correctly;"
+    Write-Host "  - Enter/Space activated Greet exactly once and F1 showed Help;"
+    Write-Host "  - shrink/enlarge resize left no stale cells and preserved logical state."
 
-if ($script:RunFailures -ne 0) {
+    $ManualConfirmation = Read-Host "Type PASS to confirm the human visual/interaction check"
+    if ($ManualConfirmation -ceq "PASS") {
+        Write-Host "Manual visual gate:       PASS"
+    }
+    else {
+        Write-Host "Manual visual gate:       NOT CONFIRMED"
+        $ManualFailed = $true
+    }
+}
+
+Write-Host ""
+if ($script:RunFailures -eq 0 -and -not $ManualFailed) {
+    if ($SingleRun) {
+        Write-Host "Diagnostic smoke result: PASS"
+    }
+    else {
+        Write-Host "M2 environment result: PASS"
+    }
+}
+else {
+    Write-Host "M2 environment result: FAIL / INCOMPLETE"
+}
+
+Write-Host "Record the result in docs\de\M2_TERMINAL_SMOKE_TEST.md"
+Write-Host "or paste the complete output back into the development chat."
+
+if ($script:RunFailures -ne 0 -or $ManualFailed) {
     exit 1
 }
