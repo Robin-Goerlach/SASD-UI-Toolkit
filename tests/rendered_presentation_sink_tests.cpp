@@ -5,10 +5,14 @@
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
+#include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
+#include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <string>
@@ -16,6 +20,62 @@
 
 using namespace sasd::ui;
 using namespace sasd::ui::rendered;
+
+namespace {
+
+/**
+ * Deterministic proportional-ish font metrics for rendered presentation tests.
+ *
+ * The fake deliberately reports a wider CJK scalar and a zero-advance combining mark. That is enough
+ * to prove RenderedPresentationSink consumes scalar-boundary advances supplied by a shaping/metric
+ * provider instead of assuming UTF-8 byte count, scalar count or terminal cell width.
+ */
+class TestRenderedMeasurementContext final : public RenderedMeasurementContext {
+public:
+    [[nodiscard]] Size measureText(std::string_view utf8_text) const override {
+        return {textAdvanceToScalar(utf8_text, utf8::scalarCount(utf8_text)), lineHeight()};
+    }
+
+    [[nodiscard]] Coordinate lineHeight() const noexcept override {
+        return 12;
+    }
+
+    [[nodiscard]] Coordinate textAdvanceToScalar(
+        std::string_view utf8_text,
+        std::size_t scalar_index) const override {
+        const std::size_t wanted = std::min(scalar_index, utf8::scalarCount(utf8_text));
+
+        Coordinate advance = 0;
+        std::size_t offset = 0;
+        std::size_t scalar = 0;
+
+        while (offset < utf8_text.size() && scalar < wanted) {
+            const utf8::DecodedScalar decoded = utf8::decodeOne(utf8_text, offset);
+            if (decoded.consumed == 0) {
+                break;
+            }
+
+            offset += decoded.consumed;
+            ++scalar;
+
+            if (decoded.value == U'\u0301') {
+                // Combining acute accent extends the previous glyph without advancing the caret.
+                continue;
+            }
+
+            advance = static_cast<Coordinate>(
+                advance + (decoded.value == U'\u754C' ? 16 : 8));
+        }
+
+        return advance;
+    }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept override {
+        return 1;
+    }
+};
+
+} // namespace
 
 TEST_CASE("RenderedPresentationSink builds deterministic Window and Label commands") {
     DisplayList display;
@@ -163,6 +223,89 @@ TEST_CASE("RenderedPresentationSink erases a hidden Label without drawing stale 
     CHECK(display.size() == 1);
     CHECK(std::get<FillRectCommand>(display.commands()[0]) ==
           FillRectCommand{Rect{15, 20, 100, 20}, Color::black});
+}
+
+TEST_CASE("RenderedMeasurementContext keeps rendered control chrome consistent with metrics") {
+    TestRenderedMeasurementContext metrics;
+
+    Button button{"abc"};
+    CHECK(button.measure(metrics) == Size{26, 14});
+
+    TextField field{"abc"};
+    CHECK(field.measure(metrics) == Size{27, 14});
+
+    TextField empty;
+    CHECK(empty.measure(metrics) == Size{3, 14});
+}
+
+TEST_CASE("RenderedPresentationSink renders focused TextField with clipped text and caret") {
+    DisplayList display;
+    TestRenderedMeasurementContext metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 200, 80});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({10, 10, 30, 14});
+    CHECK(focus.requestFocus(field));
+
+    const auto pass = PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(pass.complete());
+    CHECK(display.size() == 5);
+
+    const auto commands = display.commands();
+    CHECK(std::get<FillRectCommand>(commands[1]).bounds == Rect{10, 10, 30, 14});
+    CHECK(std::get<StrokeRectCommand>(commands[2]).bounds == Rect{10, 10, 30, 14});
+
+    const auto& text = std::get<DrawTextCommand>(commands[3]);
+    CHECK(text.origin == Point{11, 11});
+    CHECK(text.text == "abc");
+    CHECK(text.style.inverse);
+    CHECK(text.clip_bounds == std::optional<Rect>{Rect{11, 11, 28, 12}});
+
+    /*
+     * Three 8-unit advances put the end caret at x=11+24. Caret height comes from the rendered font
+     * context instead of filling an arbitrarily stretched TextField.
+     */
+    CHECK(std::get<FillRectCommand>(commands[4]) ==
+          FillRectCommand{Rect{35, 11, 1, 12}, Color::default_color});
+    CHECK(!field.isVisualUpdatePending());
+}
+
+TEST_CASE("RenderedPresentationSink scrolls TextField at scalar boundaries using full-run metrics") {
+    DisplayList display;
+    TestRenderedMeasurementContext metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 120, 50});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
+    field.arrange({10, 10, 20, 14}); // 18-unit interior, 17 units reserved for text.
+    CHECK(focus.requestFocus(field));
+    field.setCursorPosition(2); // immediately after the 16-unit CJK scalar
+
+    const auto pass = PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(pass.complete());
+
+    const auto commands = display.commands();
+    const auto& text = std::get<DrawTextCommand>(commands[3]);
+
+    /*
+     * Full-run advances are A=8, 界=16. The 24-unit prefix cannot fit, so the viewport begins at the
+     * scalar boundary after A. We still emit the complete text run and shift its origin left by 8;
+     * clipping exposes the viewport without reshaping a suffix.
+     */
+    CHECK(text.origin == Point{3, 11});
+    CHECK(text.text == std::string{"A\xE7\x95\x8C" "B"});
+    CHECK(text.clip_bounds == std::optional<Rect>{Rect{11, 11, 18, 12}});
+
+    CHECK(std::get<FillRectCommand>(commands[4]).bounds == Rect{27, 11, 1, 12});
 }
 
 TEST_CASE("RenderedPresentationSink conservatively defers visible TextField") {
