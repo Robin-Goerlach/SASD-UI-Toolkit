@@ -9,6 +9,8 @@
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <limits>
+#include <optional>
 #include <string>
 #include <variant>
 
