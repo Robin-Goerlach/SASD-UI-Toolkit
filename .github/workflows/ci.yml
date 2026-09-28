@@ -77,6 +77,72 @@ jobs:
       - name: Test installed-package consumer
         run: ctest --test-dir build-consumer -C Debug --output-on-failure
 
+  release-validation:
+    name: ${{ matrix.name }}
+    needs: build-and-test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux Release
+            os: ubuntu-latest
+            compiler_args: -DCMAKE_CXX_COMPILER=g++
+          - name: macOS Release
+            os: macos-latest
+            compiler_args: -DCMAKE_CXX_COMPILER=clang++
+          - name: Windows Release
+            os: windows-latest
+            compiler_args: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify repository release hygiene
+        run: >-
+          cmake
+          -DSASD_UI_SOURCE_DIR="${{ github.workspace }}"
+          -P tools/verify_release_tree.cmake
+
+      - name: Configure Release
+        run: >-
+          cmake -S . -B build-release
+          -DCMAKE_BUILD_TYPE=Release
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_BUILD_EXAMPLES=ON
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          ${{ matrix.compiler_args }}
+
+      - name: Build Release
+        run: cmake --build build-release --config Release --parallel
+
+      - name: Test Release
+        run: ctest --test-dir build-release -C Release --output-on-failure
+
+      - name: Install Release package
+        run: >-
+          cmake --install build-release
+          --config Release
+          --prefix "${{ github.workspace }}/release-stage"
+
+      - name: Verify installed Release contents
+        run: >-
+          cmake
+          -DSASD_UI_INSTALL_PREFIX="${{ github.workspace }}/release-stage"
+          -P tools/verify_release_install.cmake
+
+      - name: Configure Release consumer
+        run: >-
+          cmake -S tests/package_consumer -B build-release-consumer
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/release-stage"
+
+      - name: Build Release consumer
+        run: cmake --build build-release-consumer --config Release --parallel
+
+      - name: Test Release consumer
+        run: ctest --test-dir build-release-consumer -C Release --output-on-failure
+
   sanitizers:
     name: Linux Clang ASan + UBSan
     runs-on: ubuntu-latest
