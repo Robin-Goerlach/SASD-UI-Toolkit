@@ -5,10 +5,13 @@
 
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/focus_manager.hpp>
+#include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
+#include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/window.hpp>
 
@@ -179,6 +182,120 @@ TEST_CASE("SDL3 window backend presents a real semantic rendered widget tree end
     CHECK(second_replay.forced == 3);
     CHECK(display.size() > 0);
     CHECK(backend.presentFrame(display) == display.size());
+}
+
+TEST_CASE("SDL3 pointer click moves TextField cursor and replay emits matching caret") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList display;
+    RenderedPresentationSink sink{display, backend, Color::black};
+    FocusManager focus;
+    PointerRouter pointer_router;
+
+    Window window;
+    const Size size = backend.windowSize();
+    window.arrange({0, 0, size.width, size.height});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({12, 48, 180, 32});
+    field.setCursorPosition(3);
+
+    const auto first_advance =
+        backend.textAdvanceToScalar(field.text(), 1);
+    CHECK(first_advance.has_value());
+
+    if (!first_advance.has_value()) {
+        return;
+    }
+
+    /*
+     * Build the native button event at a known shaped scalar boundary. The private SDL translator is
+     * the same deterministic semantic mapping used by Sdl3WindowBackend after native window/logical
+     * coordinate conversion; using it directly avoids depending on SDL's offscreen mouse-driver
+     * state while still beginning this integration test with an SDL_Event.
+     */
+    SDL_Event native{};
+    native.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    native.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    native.button.button = SDL_BUTTON_LEFT;
+    native.button.clicks = 1;
+    native.button.x =
+        static_cast<float>(13 + *first_advance); // one-unit border => content starts at x=13.
+    native.button.y = 56.0F;
+
+    const auto pointer =
+        detail::translateLogicalPointerEvent(native);
+    CHECK(pointer.has_value());
+
+    if (!pointer.has_value()) {
+        return;
+    }
+
+    /*
+     * Mirror the desktop host policy used by the runnable SDL3 demo. Focus selection and rendered
+     * caret placement intentionally remain outside PointerRouter: the router owns target/capture
+     * mechanics, while font-dependent TextField caret geometry belongs to the Rendered layer.
+     */
+    Widget* hit = HitTest::deepestAt(window, pointer->position);
+    CHECK(hit == &field);
+    CHECK(hit != nullptr);
+
+    if (hit == nullptr) {
+        return;
+    }
+
+    CHECK(focus.requestFocus(*hit));
+
+    const auto scalar =
+        RenderedTextFieldHitTest::caretIndexAt(
+            field,
+            pointer->position,
+            backend);
+    CHECK(scalar == std::optional<std::size_t>{1});
+
+    if (!scalar.has_value()) {
+        return;
+    }
+
+    field.setCursorPosition(*scalar);
+
+    const PointerRouteResult routed =
+        pointer_router.route(window, *pointer);
+
+    /*
+     * TextField currently has no pointer gesture of its own, so the press is geometrically targeted
+     * but intentionally not captured/handled. Caret placement is host/rendered policy above.
+     */
+    CHECK(routed.targeted);
+    CHECK(!routed.handled);
+    CHECK(!routed.capture_active);
+
+    display.clear();
+    const auto replay =
+        PresentationCoordinator::replay(window, sink);
+
+    CHECK(replay.complete());
+    CHECK(field.cursorPosition() == 1);
+
+    const auto expected_caret_x =
+        static_cast<Coordinate>(13 + *first_advance);
+
+    bool found_caret = false;
+    for (const auto& command : display.commands()) {
+        if (const auto* fill = std::get_if<FillRectCommand>(&command);
+            fill != nullptr &&
+            fill->role == FillRole::foreground &&
+            fill->bounds.x == expected_caret_x) {
+            CHECK(fill->bounds.y == 49);
+            CHECK(fill->bounds.width == 1);
+            CHECK(fill->bounds.height > 0);
+            found_caret = true;
+        }
+    }
+
+    CHECK(found_caret);
 }
 
 TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic events") {
