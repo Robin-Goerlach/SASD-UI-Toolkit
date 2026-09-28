@@ -118,6 +118,7 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
     endif()
 
     add_library(sasd_ui_rendered_sdl3
+        src/rendered/sdl3/sdl3_render_context.cpp
         src/rendered/sdl3/sdl3_software_device.cpp
     )
     add_library(SASD::UI::Rendered::SDL3 ALIAS sasd_ui_rendered_sdl3)
