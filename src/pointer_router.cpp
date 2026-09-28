@@ -1,5 +1,6 @@
 #include <sasd/ui/pointer_router.hpp>
 
+#include <sasd/ui/container.hpp>
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/widget.hpp>
