@@ -45,7 +45,7 @@ public:
             offset += decoded.consumed;
             ++scalar;
             advance = static_cast<Coordinate>(
-                advance + (decoded.value == U'界' ? 16 : 8));
+                advance + (decoded.value == U'\u754C' ? 16 : 8));
         }
 
         return advance;
@@ -93,7 +93,7 @@ TEST_CASE("RenderedTextFieldHitTest uses the same horizontally scrolled viewport
     Window window;
     window.arrange({0, 0, 100, 50});
 
-    auto& field = window.emplace<TextField>(std::string{"Aç" "B"});
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
     field.arrange({10, 10, 20, 14}); // content width 18, caret text capacity 17.
     field.setCursorPosition(2);       // viewport starts after A so 界 caret can fit.
 
