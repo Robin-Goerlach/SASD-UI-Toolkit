@@ -22,6 +22,20 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $BuildDir = Join-Path $RepoRoot "build-smoke"
 $Demo = Join-Path $BuildDir "examples\Debug\sasd_ui_terminal_demo.exe"
 
+# A release-gate PASS must be reproducible from the recorded commit. Refuse to validate a checkout
+# containing local tracked or untracked files. build-smoke/ is ignored by the repository, so repeated
+# smoke runs do not make an otherwise clean checkout fail this preflight check.
+$WorktreeStatus = (& git -C $RepoRoot status --porcelain --untracked-files=normal) -join [Environment]::NewLine
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to inspect the Git worktree before the M2 smoke test."
+}
+if ($WorktreeStatus) {
+    Write-Host "ERROR: the M2 release smoke test requires a clean Git worktree." -ForegroundColor Red
+    Write-Host "Commit/stash/discard the following local changes before retrying:"
+    Write-Host $WorktreeStatus
+    exit 2
+}
+
 function Resolve-CMakeTools {
     # Prefer PATH because it is the least surprising developer setup.
     # Visual Studio also ships CMake/CTest, but normal PowerShell sessions do not always expose
@@ -87,20 +101,6 @@ if (-not $SkipBuild) {
 
 if (-not (Test-Path -LiteralPath $Demo)) {
     throw "Terminal demo not found: $Demo. Run without -SkipBuild first."
-}
-
-# A release-gate PASS must be reproducible from the recorded commit. Refuse to validate a checkout
-# containing local tracked or untracked files. build-smoke/ is ignored by the repository, so repeated
-# smoke runs do not make an otherwise clean checkout fail this preflight check.
-$WorktreeStatus = (& git -C $RepoRoot status --porcelain --untracked-files=normal) -join [Environment]::NewLine
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to inspect the Git worktree before the M2 smoke test."
-}
-if ($WorktreeStatus) {
-    Write-Host "ERROR: the M2 release smoke test requires a clean Git worktree." -ForegroundColor Red
-    Write-Host "Commit/stash/discard the following local changes before retrying:"
-    Write-Host $WorktreeStatus
-    exit 2
 }
 
 function Get-CodePageSnapshot {
