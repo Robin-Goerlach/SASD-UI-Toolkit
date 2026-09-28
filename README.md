@@ -49,6 +49,7 @@ The repository now contains the first working implementation slice:
 - conservative presentation-subtree refresh for move/resize/remove damage before optimized dirty regions exist;
 - deterministic `PresentationCoordinator` / `PresentationSink` bridge for pending visual updates;
 - separately linkable `SASD::UI::Terminal` M2 target with a tested off-screen terminal `ScreenBuffer`;
+- separately linkable `SASD::UI::Rendered` M3 target with a deterministic backend-neutral `DisplayList` for rendered drawing commands;
 - semantic M2 widgets: `Window`, UTF-8 `Label`, interactive `Button` and single-line editable `TextField`;
 - headless `TerminalPresentationSink` that renders `Window`, `Label`, `Button` and `TextField` through `PresentationCoordinator` into terminal cells;
 - versioned terminal `TextMetrics` with UTF-8 decoding, narrow/wide/ambiguous cell widths and explicit wide-cell occupancy;
@@ -133,7 +134,7 @@ The exact release-gate procedure and recorded results are documented in the [Eng
 
 ### Install and consume as a CMake package
 
-v0.1.0 installs public headers, the Core and Terminal libraries, and CMake package metadata. A typical Release installation is:
+The current development line installs public headers, Core, Terminal and Rendered libraries plus CMake package metadata. The published v0.1.0 tag contains the Core/Terminal baseline; `main` now targets v0.2.0/M3. A typical Release installation is:
 
 ```bash
 cmake -S . -B build-release \
@@ -157,13 +158,16 @@ cmake --install build-release --config Release --prefix C:\path\to\sasd-ui
 A consuming project can then use normal CMake package discovery:
 
 ```cmake
-find_package(SASDUIToolkit 0.1 CONFIG REQUIRED)
+find_package(SASDUIToolkit 0.2 CONFIG REQUIRED)
 
 # Platform-neutral Core only:
 target_link_libraries(my_app PRIVATE SASD::UI)
 
 # Terminal backend (pulls in Core transitively):
 target_link_libraries(my_terminal_app PRIVATE SASD::UI::Terminal)
+
+# Rendered-desktop command layer (SDL-independent M3 foundation):
+target_link_libraries(my_rendered_app PRIVATE SASD::UI::Rendered)
 ```
 
 Set `CMAKE_PREFIX_PATH` to the chosen install prefix when it is not in CMake's default search paths.
@@ -273,14 +277,14 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |
-| SDL3 | Optional rendered desktop backend, hidden behind SASD API | Planned |
+| SDL3 | Optional rendered desktop adapter, hidden behind SASD API | M3 foundation in progress; deterministic DisplayList implemented |
 
 ## Roadmap at a glance
 
 1. **M0 – Architecture and repository foundation** – complete enough to begin implementation.
 2. **M1 – Core skeleton and headless validation** – complete; core contracts are validated headlessly across the compiler/OS matrix.
 3. **M2 – Terminal Preview / v0.1.0** – complete; first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus, input and validated native terminal sessions.
-4. **M3 – Rendered Desktop Preview / v0.2.0** – demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
+4. **M3 – Rendered Desktop Preview / v0.2.0** – in progress; deterministic `SASD::UI::Rendered` DisplayList foundation is implemented before the optional SDL3 adapter.
 5. **Later milestones** – more controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
