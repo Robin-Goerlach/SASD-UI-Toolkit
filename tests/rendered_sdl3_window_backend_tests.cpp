@@ -50,6 +50,35 @@ void pushEvent(SDL_Event event) {
     CHECK(SDL_PushEvent(&event));
 }
 
+/**
+ * Returns the SDL id of the one window owned by the current backend test.
+ *
+ * SDL_ConvertEventToRenderCoordinates() intentionally consults the event's window id before applying
+ * renderer logical-presentation transforms. Supplying zero happened to work for motion in the first
+ * test draft but is not a faithful native event. Resolve the actual hidden test window instead of
+ * weakening production code to accommodate a synthetic id SDL itself would not normally generate.
+ */
+[[nodiscard]] SDL_WindowID currentTestWindowId() {
+    int count = 0;
+    SDL_Window** windows = SDL_GetWindows(&count);
+
+    CHECK(windows != nullptr);
+    CHECK(count == 1);
+
+    if (windows == nullptr || count != 1) {
+        if (windows != nullptr) {
+            SDL_free(windows);
+        }
+        return 0;
+    }
+
+    const SDL_WindowID id = SDL_GetWindowID(windows[0]);
+    SDL_free(windows);
+
+    CHECK(id != 0);
+    return id;
+}
+
 } // namespace
 
 TEST_CASE("SDL3 window backend initializes transactionally and presents a complete frame") {
@@ -172,7 +201,9 @@ TEST_CASE("SDL3 window backend exposes logical pointer motion and button transit
     SDL_Event motion{};
     motion.type = SDL_EVENT_MOUSE_MOTION;
     motion.motion.type = SDL_EVENT_MOUSE_MOTION;
-    motion.motion.windowID = 0;
+    const SDL_WindowID window_id = currentTestWindowId();
+
+    motion.motion.windowID = window_id;
     motion.motion.x = 42.75F;
     motion.motion.y = 18.25F;
     pushEvent(motion);
@@ -190,7 +221,7 @@ TEST_CASE("SDL3 window backend exposes logical pointer motion and button transit
     SDL_Event button{};
     button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
     button.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
-    button.button.windowID = 0;
+    button.button.windowID = window_id;
     button.button.button = SDL_BUTTON_LEFT;
     button.button.down = true;
     button.button.clicks = 2;
