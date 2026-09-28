@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+# The exported file defines the same public target names used by an in-tree build:
+#   SASD::UI
+#   SASD::UI::Terminal
+# Keeping those names stable means consumers do not need conditional CMake logic for installed vs.
+# add_subdirectory() usage.
+include("${CMAKE_CURRENT_LIST_DIR}/SASDUIToolkitTargets.cmake")
+
+check_required_components(SASDUIToolkit)

@@ -62,6 +62,21 @@ jobs:
       - name: Test
         run: ctest --test-dir build -C Debug --output-on-failure
 
+      - name: Install CMake package
+        run: cmake --install build --config Debug --prefix "${{ github.workspace }}/build/install"
+
+      - name: Configure installed-package consumer
+        run: >-
+          cmake -S tests/package_consumer -B build-consumer
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/build/install"
+
+      - name: Build installed-package consumer
+        run: cmake --build build-consumer --config Debug --parallel
+
+      - name: Test installed-package consumer
+        run: ctest --test-dir build-consumer -C Debug --output-on-failure
+
   sanitizers:
     name: Linux Clang ASan + UBSan
     runs-on: ubuntu-latest

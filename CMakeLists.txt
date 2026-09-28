@@ -5,6 +5,9 @@ project(SASD_UI_Toolkit
     DESCRIPTION "Cross-platform C++ UI toolkit for desktop and terminal applications"
     LANGUAGES CXX)
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 option(SASD_UI_BUILD_TESTS "Build SASD UI Toolkit tests" ON)
 option(SASD_UI_BUILD_EXAMPLES "Build SASD UI Toolkit example applications" ON)
 option(SASD_UI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
@@ -51,6 +54,11 @@ endif()
 
 add_library(SASD::UI::Terminal ALIAS sasd_ui_terminal)
 target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
+
+# Preserve the same public target names for both build-tree and installed-package consumers.
+# EXPORT_NAME may contain "::" because exported targets are imported targets when consumed.
+set_target_properties(sasd_ui_core PROPERTIES EXPORT_NAME UI)
+set_target_properties(sasd_ui_terminal PROPERTIES EXPORT_NAME "UI::Terminal")
 
 target_compile_features(sasd_ui_core PUBLIC cxx_std_20)
 target_include_directories(sasd_ui_core
@@ -99,3 +107,57 @@ endif()
 if(SASD_UI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+# v0.1.0 is intended to be consumable through normal CMake package discovery rather than requiring
+# applications to copy source files or depend on this repository layout. Keep installation metadata
+# next to the targets so future backends can join the same export set without changing consumers.
+set(SASD_UI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/SASDUIToolkit")
+
+install(
+    TARGETS sasd_ui_core sasd_ui_terminal
+    EXPORT SASDUIToolkitTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+
+# Public headers intentionally mirror the source include/ tree. No backend-private OS headers are
+# installed from src/, which keeps termios/Win32 implementation details outside the public package.
+install(
+    DIRECTORY include/
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+
+configure_package_config_file(
+    cmake/SASDUIToolkitConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/SASDUIToolkitConfig.cmake"
+    INSTALL_DESTINATION "${SASD_UI_INSTALL_CMAKEDIR}"
+)
+
+# Pre-1.0 source compatibility is intentionally not promised across feature releases. Treat only
+# 0.1.x packages as version-compatible with a 0.1 request.
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/SASDUIToolkitConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMinorVersion
+)
+
+install(
+    EXPORT SASDUIToolkitTargets
+    FILE SASDUIToolkitTargets.cmake
+    NAMESPACE SASD::
+    DESTINATION "${SASD_UI_INSTALL_CMAKEDIR}"
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/SASDUIToolkitConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/SASDUIToolkitConfigVersion.cmake"
+    DESTINATION "${SASD_UI_INSTALL_CMAKEDIR}"
+)
+
+install(
+    FILES LICENSE README.md
+    DESTINATION "${CMAKE_INSTALL_DOCDIR}"
+)
