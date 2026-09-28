@@ -21,14 +21,14 @@ or GitHub release is created only after explicit approval.
 
 ## Still verify before publication
 
-- [ ] Record the final release commit after this documentation freeze and confirm the complete CI run for that exact SHA is green.
+- [x] Final release commit `dc34ebd4bf6db4a0f9777fc81320f47dae72b36b`; complete CI for that exact SHA is green.
 - [x] Produced and tested Release builds from fresh CI checkouts on Linux, macOS and Windows.
 - [x] Automatically verified installed public headers, Core/Terminal libraries, CMake config, license/README/changelog.
 - [x] Finalized bilingual release notes from `CHANGELOG.md`.
 - [x] Release CI verifies repository hygiene; no generated build/linker artifacts are tracked.
 - [x] Explicit publication approval received; CI-gated publisher prepared.
-- [ ] Publisher must create tag `v0.1.0` exactly on the validated release commit.
-- [ ] Publisher must publish the GitHub Release from the final release notes.
+- [x] Annotated tag `v0.1.0` points exactly at `dc34ebd4bf6db4a0f9777fc81320f47dae72b36b`.
+- [x] GitHub Release `SASD UI Toolkit v0.1.0` published.
 
 ## Release boundary
 

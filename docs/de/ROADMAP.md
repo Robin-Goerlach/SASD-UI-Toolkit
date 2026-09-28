@@ -72,6 +72,8 @@ Die verbindliche manuelle Abschlussprüfung ist im [M2-Terminal-Smoke-Test](M2_T
 
 ## M3 – Rendered Desktop Preview / v0.2.0
 
+**Status: in Arbeit (seit 28.09.2026).** v0.1.0/M2 ist veröffentlicht. M3 beginnt mit einer kleinen, deterministisch testbaren Rendered-Schicht; ein optionaler SDL3-Adapter soll darauf aufsetzen, ohne SDL-Typen in die öffentliche Core-API zu tragen.
+
 **Ziel:** dieselbe öffentliche API grafisch auf mehreren Desktopplattformen demonstrieren.
 
 Geplant:

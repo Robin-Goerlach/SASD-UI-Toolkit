@@ -72,6 +72,8 @@ The binding manual completion procedure is documented in the [M2 terminal smoke 
 
 ## M3 – Rendered Desktop Preview / v0.2.0
 
+**Status: in progress (since 2026-09-28).** v0.1.0/M2 is published. M3 starts with a small, deterministically testable rendered layer; an optional SDL3 adapter will build on that layer without leaking SDL types into the public Core API.
+
 **Goal:** demonstrate the same public API graphically across desktop platforms.
 
 Planned:

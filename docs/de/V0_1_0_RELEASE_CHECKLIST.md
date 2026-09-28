@@ -21,14 +21,14 @@ Ein Git-Tag oder GitHub-Release wird erst nach ausdrücklicher Freigabe erstellt
 
 ## Vor Veröffentlichung noch prüfen
 
-- [ ] Finalen Release-Commit nach diesem Dokumentationsabschluss festhalten und vollständige CI genau dieses SHAs grün bestätigen.
+- [x] Finaler Release-Commit `dc34ebd4bf6db4a0f9777fc81320f47dae72b36b`; vollständige CI dieses SHAs grün.
 - [x] Release-Build in CI aus einem frischen Checkout auf Linux, macOS und Windows erzeugt und getestet.
 - [x] Installationsinhalt automatisiert geprüft: öffentliche Header, Core-/Terminal-Libraries, CMake-Config sowie Lizenz/README/Changelog.
 - [x] Release Notes aus `CHANGELOG.md` zweisprachig final redigiert.
 - [x] Repository-Hygiene in der Release-CI geprüft; keine generierten Build-/Linker-Artefakte versioniert.
 - [x] Ausdrückliche Freigabe zur Veröffentlichung erteilt; CI-gekoppelter Publisher vorbereitet.
-- [ ] Publisher muss Tag `v0.1.0` exakt auf den validierten Release-Commit setzen.
-- [ ] Publisher muss das GitHub Release aus den finalen Release Notes veröffentlichen.
+- [x] Annotierter Tag `v0.1.0` zeigt exakt auf `dc34ebd4bf6db4a0f9777fc81320f47dae72b36b`.
+- [x] GitHub Release `SASD UI Toolkit v0.1.0` veröffentlicht.
 
 ## Release-Grenze
 
