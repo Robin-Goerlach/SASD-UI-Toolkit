@@ -175,6 +175,16 @@ struct Sdl3SoftwareDevice::Impl {
     explicit Impl(Sdl3SoftwareDeviceConfig config)
         : size{config.surface_size},
           owner_thread{std::this_thread::get_id()} {
+        /*
+         * SDL3 documents renderer drawing operations as main-thread-only even when the software
+         * renderer itself can be created elsewhere. Rejecting an off-main-thread device up front is
+         * safer than accepting construction and failing later on the first FillRect/DrawText call.
+         */
+        if (!SDL_IsMainThread()) {
+            throw std::runtime_error{
+                "SDL3 software device must be created and used on the process main thread"};
+        }
+
         if (size.width <= 0 || size.height <= 0) {
             throw std::invalid_argument{"SDL3 software surface size must be positive"};
         }

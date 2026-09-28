@@ -47,8 +47,10 @@ struct Sdl3SoftwareDeviceConfig {
  * That is the same dependency direction intended for the later desktop-window adapter: semantic
  * Widgets and generic Rendered code never acquire SDL ownership.
  *
- * The object is intentionally non-copyable/non-movable because SDL renderer/font objects have
- * thread-affine behavior. Create, use and destroy one instance on the same thread.
+ * The object is intentionally non-copyable/non-movable because SDL renderer/font operations are
+ * thread-affine. SDL's rendering API is a main-thread API, while SDL_ttf text objects must stay on
+ * the thread that created their font/text engine. Construction therefore requires the process main
+ * thread, and subsequent calls require that same owning thread.
  */
 class Sdl3SoftwareDevice final : public RenderDevice, public RenderedMeasurementContext {
 public:
