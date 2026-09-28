@@ -117,6 +117,46 @@ endif()
 
 add_test(NAME sasd_ui_rendered_tests COMMAND sasd_ui_rendered_tests)
 
+# Compile/run the first real SDL3 + SDL_ttf adapter only when explicitly requested and when a test
+# font is supplied. The normal Core/Terminal/Rendered test matrix therefore remains dependency-free,
+# while the dedicated adapter CI job exercises actual upstream SDL code headlessly.
+if(SASD_UI_BUILD_SDL3_ADAPTER AND NOT SASD_UI_SDL3_TEST_FONT STREQUAL "")
+    add_executable(sasd_ui_sdl3_tests
+        test_main.cpp
+        rendered_sdl3_software_device_tests.cpp
+    )
+
+    target_link_libraries(sasd_ui_sdl3_tests PRIVATE SASD::UI::Rendered::SDL3)
+    target_compile_features(sasd_ui_sdl3_tests PRIVATE cxx_std_20)
+    target_include_directories(sasd_ui_sdl3_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+    # Pass a configured path instead of embedding/distributing a font in this repository. Font
+    # licensing remains the responsibility of the environment that enables the adapter tests.
+    target_compile_definitions(sasd_ui_sdl3_tests
+        PRIVATE SASD_UI_SDL3_TEST_FONT_PATH="${SASD_UI_SDL3_TEST_FONT}"
+    )
+
+    if(MSVC)
+        target_compile_options(sasd_ui_sdl3_tests PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_sdl3_tests PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(sasd_ui_sdl3_tests PRIVATE -Wall -Wextra -Wpedantic)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_sdl3_tests PRIVATE -Werror)
+        endif()
+    endif()
+
+    if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
+        target_compile_options(sasd_ui_sdl3_tests
+            PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(sasd_ui_sdl3_tests PRIVATE -fsanitize=address,undefined)
+    endif()
+
+    add_test(NAME sasd_ui_sdl3_tests COMMAND sasd_ui_sdl3_tests)
+endif()
+
 # Exercise the real POSIX terminal adapter against a kernel pseudo-terminal. This is intentionally a
 # separate process-level smoke test: it mutates stdin/stdout termios state and forks a child, concerns
 # that should not leak into the ordinary deterministic unit-test executable.

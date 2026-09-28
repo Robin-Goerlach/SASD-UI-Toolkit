@@ -12,6 +12,10 @@ option(SASD_UI_BUILD_TESTS "Build SASD UI Toolkit tests" ON)
 option(SASD_UI_BUILD_EXAMPLES "Build SASD UI Toolkit example applications" ON)
 option(SASD_UI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(SASD_UI_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer where supported" OFF)
+option(SASD_UI_BUILD_SDL3_ADAPTER "Build the experimental SDL3 rendered adapter" OFF)
+option(SASD_UI_FETCH_SDL3 "Fetch pinned SDL3/SDL3_ttf sources for the experimental adapter" OFF)
+set(SASD_UI_SDL3_TEST_FONT "" CACHE FILEPATH
+    "Font file used by SDL3 adapter tests; leave empty to skip those tests")
 
 add_library(sasd_ui_core
     src/application.cpp
@@ -64,6 +68,90 @@ add_library(sasd_ui_rendered
 )
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
+
+# The first concrete M3 adapter is intentionally optional and build-tree-only. It proves that the
+# generic DisplayList/RenderDevice contract can drive a real SDL3 renderer and SDL_ttf metrics before
+# we commit to desktop-window/event-loop packaging. Keeping it out of the normal install/export set
+# also prevents pre-release SDL dependency policy from becoming an accidental public guarantee.
+if(SASD_UI_BUILD_SDL3_ADAPTER)
+    if(SASD_UI_FETCH_SDL3)
+        include(FetchContent)
+
+        # Pin known release tags so CI and local adapter experiments do not silently change behavior
+        # when upstream main branches move. SDL install/tests/examples are disabled because these
+        # sources are implementation dependencies of this build, not part of our package surface.
+        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+        set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+        set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+        set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+        set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+        FetchContent_Declare(
+            sasd_sdl3
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+            GIT_TAG release-3.4.16
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(sasd_sdl3)
+
+        # SDL_ttf is kept static and non-installing. HarfBuzz stays enabled because ADR 0028 requires
+        # the caret/measurement side to respect shaping context. PlutoSVG/color-emoji support is not
+        # needed for this first software-device slice and would add unrelated dependencies.
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+        set(SDLTTF_INSTALL OFF CACHE BOOL "" FORCE)
+        set(SDLTTF_VENDORED OFF CACHE BOOL "" FORCE)
+        set(SDLTTF_HARFBUZZ ON CACHE BOOL "" FORCE)
+        set(SDLTTF_PLUTOSVG OFF CACHE BOOL "" FORCE)
+        set(SDLTTF_SAMPLES OFF CACHE BOOL "" FORCE)
+
+        FetchContent_Declare(
+            sasd_sdl3_ttf
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+            GIT_TAG release-3.2.2
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(sasd_sdl3_ttf)
+    else()
+        find_package(SDL3 3.2 REQUIRED CONFIG)
+        find_package(SDL3_ttf 3.2 REQUIRED CONFIG)
+    endif()
+
+    add_library(sasd_ui_rendered_sdl3
+        src/rendered/sdl3/sdl3_software_device.cpp
+    )
+    add_library(SASD::UI::Rendered::SDL3 ALIAS sasd_ui_rendered_sdl3)
+
+    target_link_libraries(sasd_ui_rendered_sdl3
+        PUBLIC SASD::UI::Rendered
+        PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf
+    )
+    target_compile_features(sasd_ui_rendered_sdl3 PUBLIC cxx_std_20)
+
+    # The adapter header intentionally remains a build-tree experiment for now. Exposing src/ only on
+    # this target lets examples/tests consume it without installing SDL-specific API prematurely.
+    target_include_directories(sasd_ui_rendered_sdl3
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    )
+
+    if(MSVC)
+        target_compile_options(sasd_ui_rendered_sdl3 PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_rendered_sdl3 PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(sasd_ui_rendered_sdl3 PRIVATE -Wall -Wextra -Wpedantic)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_rendered_sdl3 PRIVATE -Werror)
+        endif()
+    endif()
+
+    if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
+        target_compile_options(sasd_ui_rendered_sdl3
+            PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(sasd_ui_rendered_sdl3 PRIVATE -fsanitize=address,undefined)
+    endif()
+endif()
 
 # Preserve the same public target names for both build-tree and installed-package consumers.
 # EXPORT_NAME may contain "::" because exported targets are imported targets when consumed.

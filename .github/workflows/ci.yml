@@ -143,6 +143,36 @@ jobs:
       - name: Test Release consumer
         run: ctest --test-dir build-release-consumer -C Release --output-on-failure
 
+  sdl3-adapter:
+    name: Linux SDL3 adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SDL_ttf build dependencies and test font
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfreetype6-dev libharfbuzz-dev fonts-dejavu-core
+
+      - name: Configure pinned SDL3 adapter
+        run: >-
+          cmake -S . -B build-sdl3
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=clang++
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_BUILD_EXAMPLES=OFF
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          -DSASD_UI_BUILD_SDL3_ADAPTER=ON
+          -DSASD_UI_FETCH_SDL3=ON
+          -DSASD_UI_SDL3_TEST_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          -DSDL_UNIX_CONSOLE_BUILD=ON
+
+      - name: Build SDL3 adapter tests
+        run: cmake --build build-sdl3 --target sasd_ui_sdl3_tests --parallel
+
+      - name: Test SDL3 adapter
+        run: ctest --test-dir build-sdl3 -R sasd_ui_sdl3_tests --output-on-failure
+
   sanitizers:
     name: Linux Clang ASan + UBSan
     runs-on: ubuntu-latest
