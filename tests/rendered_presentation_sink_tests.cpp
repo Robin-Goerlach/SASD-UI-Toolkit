@@ -30,7 +30,7 @@ namespace {
  * to prove RenderedPresentationSink consumes scalar-boundary advances supplied by a shaping/metric
  * provider instead of assuming UTF-8 byte count, scalar count or terminal cell width.
  */
-class TestRenderedMeasurementContext final : public RenderedMeasurementContext {
+class TestRenderedMeasurementContext : public RenderedMeasurementContext {
 public:
     [[nodiscard]] Size measureText(std::string_view utf8_text) const override {
         const auto width = textAdvanceToScalar(utf8_text, utf8::scalarCount(utf8_text));
