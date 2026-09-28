@@ -24,10 +24,25 @@ namespace {
         (SDL_GetError() != nullptr ? SDL_GetError() : "unknown SDL error")};
 }
 
-[[nodiscard]] int checkedInt(Coordinate value, const char* what) {
+[[nodiscard]] int checkedPositiveInt(Coordinate value, const char* what) {
     if (value < 0 ||
         static_cast<std::int64_t>(value) >
             static_cast<std::int64_t>(std::numeric_limits<int>::max())) {
+        throw std::invalid_argument{std::string{what} + " is outside SDL integer range"};
+    }
+    return static_cast<int>(value);
+}
+
+[[nodiscard]] int checkedSignedInt(Coordinate value, const char* what) {
+    /*
+     * Logical origins and clip rectangles may legitimately be negative while a widget is partially
+     * outside the visible surface. Keep that distinct from extents, which must remain non-negative.
+     * Coordinate is int32_t today, but making the conversion explicit prevents a future platform or
+     * type change from turning implementation-defined narrowing into an adapter bug.
+     */
+    const auto widened = static_cast<std::int64_t>(value);
+    if (widened < static_cast<std::int64_t>(std::numeric_limits<int>::min()) ||
+        widened > static_cast<std::int64_t>(std::numeric_limits<int>::max())) {
         throw std::invalid_argument{std::string{what} + " is outside SDL integer range"};
     }
     return static_cast<int>(value);
@@ -53,10 +68,10 @@ namespace {
 
 [[nodiscard]] SDL_Rect toClipRect(Rect value) {
     return {
-        static_cast<int>(value.x),
-        static_cast<int>(value.y),
-        checkedInt(value.width, "clip width"),
-        checkedInt(value.height, "clip height"),
+        checkedSignedInt(value.x, "clip x"),
+        checkedSignedInt(value.y, "clip y"),
+        checkedPositiveInt(value.width, "clip width"),
+        checkedPositiveInt(value.height, "clip height"),
     };
 }
 
@@ -176,8 +191,8 @@ struct Sdl3SoftwareDevice::Impl {
          * X11/Wayland/WindowServer/Win32 desktop session.
          */
         surface = SDL_CreateSurface(
-            checkedInt(size.width, "surface width"),
-            checkedInt(size.height, "surface height"),
+            checkedPositiveInt(size.width, "surface width"),
+            checkedPositiveInt(size.height, "surface height"),
             SDL_PIXELFORMAT_RGBA32);
         if (surface == nullptr) {
             throwSdlError("SDL_CreateSurface");
@@ -264,8 +279,7 @@ struct Sdl3SoftwareDevice::Impl {
 
     void renderLine(std::string_view line,
                     Point origin,
-                    const TextStyle& style,
-                    const std::optional<Rect>& clip) {
+                    const TextStyle& style) {
         if (line.empty()) {
             return;
         }
@@ -354,7 +368,6 @@ struct Sdl3SoftwareDevice::Impl {
             }
         }
 
-        (void)clip; // ClipScope is owned by the caller and remains active for this entire line.
     }
 
     Size size{};
@@ -435,8 +448,17 @@ void Sdl3SoftwareDevice::strokeRect(const StrokeRectCommand& command) {
     setDrawColor(impl_->renderer, paletteColor(command.color, false));
 
     const Coordinate smallest_extent = std::min(command.bounds.width, command.bounds.height);
+
+    /*
+     * Widen before adding one. Coordinate is signed int32_t; (INT32_MAX + 1) would otherwise be
+     * undefined behavior for a perfectly valid, if extreme, rectangle. This is deliberately boring
+     * defensive arithmetic at the platform boundary rather than an optimization.
+     */
     const Coordinate maximum_layers =
-        smallest_extent <= 0 ? 0 : static_cast<Coordinate>((smallest_extent + 1) / 2);
+        smallest_extent <= 0
+            ? 0
+            : static_cast<Coordinate>(
+                  (static_cast<std::int64_t>(smallest_extent) + 1) / 2);
     const Coordinate layers = std::min(command.thickness, maximum_layers);
 
     for (Coordinate inset = 0; inset < layers; ++inset) {
@@ -487,8 +509,7 @@ void Sdl3SoftwareDevice::drawText(const DrawTextCommand& command) {
         impl_->renderLine(
             line,
             {command.origin.x, static_cast<Coordinate>(y64)},
-            command.style,
-            command.clip_bounds);
+            command.style);
 
         if (newline == std::string::npos) {
             break;
