@@ -50,11 +50,21 @@ Geometry changes and child removal now use a conservative subtree refresh: the t
 
 F1–F12 are now backend-neutral `Key` identities decoded from common SS3/CSI/xterm forms. Extended keyboard protocols (F13+, Kitty/CSI-u/modifyOtherKeys), full grapheme/ZWJ presentation and pointer/hit-test interaction remain open.
 
-### 2. SDL3 backend
+### 2. Rendered desktop / experimental SDL3 adapter
 
-An SDL3 backend is planned as an early graphical proof of concept. It should demonstrate that the same component tree can be rendered in a desktop window across multiple platforms.
+M3 now has a concrete SDL3 proof below the generic Rendered layer. The experimental
+`SASD::UI::Rendered::SDL3` target implements `RenderDevice` and `RenderedMeasurementContext`
+using an off-screen SDL3 software renderer plus SDL_ttf. It exercises real fill/stroke execution,
+UTF-8 rasterization, clipping, font metrics and shaped TextField caret-boundary queries without
+requiring a display server or desktop window.
 
-SDL3 would remain a **private/optional backend dependency**. Normal SASD UI application code must not require SDL types.
+This target is deliberately opt-in and build-tree-only. SDL3/SDL_ttf are not dependencies of the
+Core, Terminal backend or generic `SASD::UI::Rendered` target, and SDL types do not appear in those
+public APIs. Dedicated CI builds the adapter headlessly; the normal compiler/release matrix remains
+SDL-independent.
+
+The next M3 slice is a window-backed SDL3 host that reuses the same DisplayList/RenderDevice/metric
+contracts and adds real frame presentation, resize/DPI, event pumping and input translation.
 
 ### 3. Native Windows backend
 

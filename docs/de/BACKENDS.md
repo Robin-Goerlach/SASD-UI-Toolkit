@@ -50,11 +50,22 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 F1–F12 sind nun als backendneutrale `Key`-Identitäten implementiert und werden aus verbreiteten SS3-/CSI-/xterm-Sequenzen dekodiert. Noch offen sind insbesondere erweiterte Keyboard-Protokolle (F13+, Kitty/CSI-u/modifyOtherKeys), vollständige Grapheme-/ZWJ-Darstellung sowie Pointer-/Hit-Test-Interaktion.
 
-### 2. SDL3-Backend
+### 2. Rendered Desktop / experimenteller SDL3-Adapter
 
-Ein SDL3-Backend ist als früher grafischer Proof-of-Concept vorgesehen. Es soll zeigen, dass derselbe Komponentenbaum auch in einem Desktop-Fenster gerendert werden kann.
+M3 besitzt nun einen konkreten SDL3-Proof unterhalb der generischen Rendered-Schicht. Das
+experimentelle Target `SASD::UI::Rendered::SDL3` implementiert `RenderDevice` und
+`RenderedMeasurementContext` mit einem Off-Screen-SDL3-Software-Renderer plus SDL_ttf. Damit werden
+echte Fill-/Stroke-Ausführung, UTF-8-Rasterung, Clipping, Fontmetriken und geformte
+TextField-Caret-Grenzen geprüft, ohne bereits Display Server oder Desktopfenster vorauszusetzen.
 
-SDL3 wäre dabei eine **private/optionale Backend-Abhängigkeit**. Anwendungscode des SASD UI Toolkit soll keine SDL-Typen benötigen.
+Das Target ist bewusst opt-in und nur im Build-Tree verfügbar. SDL3/SDL_ttf sind keine Abhängigkeiten
+von Core, Terminal-Backend oder generischem `SASD::UI::Rendered`; SDL-Typen erscheinen nicht in
+deren öffentlichen APIs. Eine dedizierte CI baut den Adapter headless, während die normale
+Compiler-/Release-Matrix SDL-unabhängig bleibt.
+
+Der nächste M3-Schnitt ist ein fenstergebundener SDL3-Host, der dieselben
+DisplayList-/RenderDevice-/Metrikverträge wiederverwendet und reale Frame-Presentation, Resize/DPI,
+Event-Pump und Input-Übersetzung ergänzt.
 
 ### 3. Native Windows-Backend
 

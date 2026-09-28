@@ -44,6 +44,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0027](0027-rendered-display-list-and-sdl3-boundary.md) | Deterministic rendered display list and optional SDL3 adapter boundary | Accepted |
 | [0028](0028-rendered-text-metrics-and-textfield-caret.md) | Rendered text metrics and TextField caret/viewport contract | Accepted |
 | [0029](0029-render-device-replay-boundary.md) | Render device replay boundary below DisplayList | Accepted |
+| [0030](0030-headless-sdl3-software-adapter.md) | Headless SDL3 software adapter before desktop-window lifecycle | Accepted |
 
 ## ADR policy
 
