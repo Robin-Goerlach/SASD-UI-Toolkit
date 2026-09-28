@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(SASD_UI_Toolkit
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Cross-platform C++ UI toolkit for desktop and terminal applications"
     LANGUAGES CXX)
 

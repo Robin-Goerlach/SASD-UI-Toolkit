@@ -1,12 +1,12 @@
 # SASD UI Toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Project status](https://img.shields.io/badge/status-v0.1.0%20release%20preparation-blue)
+![Project status](https://img.shields.io/badge/status-M3%20rendered%20desktop%20preview-orange)
 ![C++ target](https://img.shields.io/badge/C%2B%2B-20-blue)
 
 **Open-source C++ UI toolkit for building portable desktop and terminal applications across Windows, Linux and macOS.**
 
-> **Current status:** M2 Terminal Preview is complete and manually validated on Linux/xterm-like and Windows Terminal environments. The codebase is now in v0.1.0 release preparation; no Git tag or GitHub release has been published yet.
+> **Current status:** v0.1.0 (M2 Terminal Preview) is published. Development has moved to M3 / v0.2.0, introducing a rendered desktop presentation path while preserving the backend-neutral Core and Terminal backend.
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 
@@ -68,7 +68,7 @@ The repository now contains the first working implementation slice:
 - native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The visible terminal backend is now under development. `Window` and `Label` can already be driven through the normal `PresentationCoordinator` into the off-screen terminal buffer. Terminal text now uses versioned Unicode width tables, configurable East-Asian-Ambiguous width and explicit two-cell occupancy for wide glyphs. Combining/ZWJ/grapheme sequences are conservatively deferred until grapheme-aware cell storage exists. The first interactive `Button` and single-line `TextField` are implemented headlessly and in terminal cells. TextField includes UTF-8 editing, cursor navigation, horizontal terminal viewport logic and a separate caret request. ANSI/VT frame encoding is now implemented deterministically, and Tab/Shift+Tab focus traversal is available through the existing unhandled-event composition boundary. Native terminal output/session handling is now implemented behind a portable RAII device boundary. Native byte input and core ANSI/VT escape-sequence translation are now implemented. Resize-event production, incomplete-sequence timing and a runnable terminal sample are now implemented. Simple portable styling is now implemented. A real interactive Linux/Windows terminal smoke test, richer Unicode grapheme editing and pointer interaction remain before the M2 exit criterion can be claimed. Desktop backends remain planned.
+The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. Richer Unicode grapheme editing, pointer input and desktop-specific presentation features remain incremental work.
 
 ## Build and test
 
