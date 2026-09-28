@@ -214,7 +214,7 @@ wird:
 | Umgebung | Commit | Ergebnis | Bemerkungen |
 |---|---|---|---|
 | Linux / xterm-artig | `25c3522` | PASS | WSL2 Linux 5.15.167.4, `TERM=xterm-256color`; Build/CTest, drei Exit-Pfade, TTY-Restoration und menschliche Sicht-/Interaktionsprüfung bestanden. |
-| Windows Terminal | | PASS | |
+| Windows Terminal | `21e5109` | PASS | Windows Terminal auf Windows 10.0.26200; MSVC-Build/CTest, ConPTY-Smoke, drei Exit-Pfade, Codepage-Restoration sowie Unicode-Eingabe/Editing mit `Robin AΩ界` bestanden. |
 
-Erst wenn beide Zeilen PASS sind und keine kritischen Fehler offen sind, sollte die Roadmap das
-M2-Exit-Kriterium als erfüllt markieren und die Vorbereitung von v0.1.0 beginnen.
+**M2 ist damit manuell validiert.** Beide geforderten Umgebungen sind PASS und es sind keine kritischen
+M2-Fehler offen. Die Vorbereitung von v0.1.0 kann beginnen.

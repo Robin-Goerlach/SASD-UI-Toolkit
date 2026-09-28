@@ -174,7 +174,7 @@ Not M2 failures when the documented conservative behavior is preserved:
 | Environment | Commit | Result | Notes |
 |---|---|---|---|
 | Linux / xterm-like | `25c3522` | PASS | WSL2 Linux 5.15.167.4, `TERM=xterm-256color`; build/CTest, all three exit paths, TTY restoration and the human visual/interaction check passed. |
-| Windows Terminal | | PASS | |
+| Windows Terminal | `21e5109` | PASS | Windows Terminal on Windows 10.0.26200; MSVC build/CTest, ConPTY smoke, all three exit paths, code-page restoration, and Unicode input/editing with `Robin AΩ界` passed. |
 
-Only after both rows pass with no critical failures should the roadmap mark the M2 exit criterion as
-satisfied and v0.1.0 release preparation begin.
+**M2 is now manually validated.** Both required environments pass with no open critical M2 failures,
+so v0.1.0 release preparation can begin.
