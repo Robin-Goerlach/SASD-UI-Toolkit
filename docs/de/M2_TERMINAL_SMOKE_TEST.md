@@ -57,7 +57,7 @@ werden. Die Runner stellen den ursprünglichen TTY-/Codepage-Zustand defensiv wi
 Abweichung aber trotzdem als Fehler.
 
 Für einen Release-Gate-Lauf verlangen beide Runner außerdem einen **sauberen Git-Worktree**. So ist
-das Ergebnis eindeutig dem protokollierten Commit zuordenbar. Die von den Runnern erzeugten platform-spezifischen Verzeichnisse `build-smoke-posix/` und
+das Ergebnis eindeutig dem protokollierten Commit zuordenbar. Die von den Runnern erzeugten plattformspezifischen Verzeichnisse `build-smoke-posix/` und
 `build-smoke-windows/` sind deshalb repositoryweit ignoriert.
 
 Nach den drei regulären Läufen muss die menschliche Sicht-/Interaktionsprüfung ausdrücklich mit
@@ -86,7 +86,7 @@ Falls die Hilfsskripte nicht verwendet werden, muss vor dem manuellen Test der a
 sein:
 
 ```bash
-cmake -S . -B build-smoke \
+cmake -S . -B build-smoke-posix \
   -DCMAKE_BUILD_TYPE=Debug \
   -DSASD_UI_BUILD_TESTS=ON \
   -DSASD_UI_BUILD_EXAMPLES=ON \

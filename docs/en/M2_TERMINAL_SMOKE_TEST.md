@@ -72,7 +72,7 @@ both WSL and Windows.
 ## 2. Verify the automated baseline manually
 
 ```bash
-cmake -S . -B build-smoke \
+cmake -S . -B build-smoke-posix \
   -DCMAKE_BUILD_TYPE=Debug \
   -DSASD_UI_BUILD_TESTS=ON \
   -DSASD_UI_BUILD_EXAMPLES=ON \
