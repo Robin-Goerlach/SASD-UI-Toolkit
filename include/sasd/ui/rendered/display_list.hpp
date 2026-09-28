@@ -4,6 +4,7 @@
 #include <sasd/ui/style.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -46,6 +47,15 @@ struct DrawTextCommand {
     Point origin{};
     std::string text;
     TextStyle style{};
+
+    /**
+     * Optional logical clipping rectangle.
+     *
+     * A per-command clip is enough for the first widget-rendering slice and avoids prematurely
+     * introducing a mutable graphics-state/clip stack. The concrete renderer must honor this bound
+     * after converting logical coordinates to device coordinates.
+     */
+    std::optional<Rect> clip_bounds;
 
     friend bool operator==(const DrawTextCommand&, const DrawTextCommand&) = default;
 };
@@ -92,8 +102,14 @@ public:
      *
      * DisplayList preserves bytes exactly and does not impose a font/grapheme policy. Decoding,
      * shaping and glyph fallback are responsibilities of the later rendered text subsystem.
+     *
+     * clip_bounds, when supplied, uses the same logical coordinate space as origin. Negative clip
+     * extents are rejected; an empty clip is a deterministic no-op.
      */
-    void drawText(Point origin, std::string_view utf8_text, TextStyle style = {});
+    void drawText(Point origin,
+                  std::string_view utf8_text,
+                  TextStyle style = {},
+                  std::optional<Rect> clip_bounds = std::nullopt);
 
 private:
     static void validateRect(Rect bounds);
