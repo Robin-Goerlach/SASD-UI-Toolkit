@@ -21,7 +21,7 @@ Ein Git-Tag oder GitHub-Release wird erst nach ausdrücklicher Freigabe erstellt
 
 ## Vor Veröffentlichung noch prüfen
 
-- [ ] Letzten `main`-HEAD festhalten und vollständige CI dieses HEADs grün bestätigen.
+- [ ] Finalen Release-Commit nach diesem Dokumentationsabschluss festhalten und vollständige CI genau dieses SHAs grün bestätigen.
 - [x] Release-Build in CI aus einem frischen Checkout auf Linux, macOS und Windows erzeugt und getestet.
 - [x] Installationsinhalt automatisiert geprüft: öffentliche Header, Core-/Terminal-Libraries, CMake-Config sowie Lizenz/README/Changelog.
 - [x] Release Notes aus `CHANGELOG.md` zweisprachig final redigiert.

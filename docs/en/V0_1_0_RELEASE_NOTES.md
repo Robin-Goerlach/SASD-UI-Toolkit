@@ -66,7 +66,7 @@ v0.1.0 is a **pre-1.0 release**. The architecture is intentionally small and val
 source compatibility is not frozen yet. Justified API corrections may still occur before 1.0 and
 will remain documented through ADRs, the roadmap and the changelog.
 
-## Publication status
+## Publication
 
-These release notes are prepared for publication. The `v0.1.0` Git tag and GitHub Release will only
-be published after explicit approval.
+These release notes accompany the `v0.1.0` release. The published tag must point exactly at the
+final validated release commit; subsequent M3 development is not part of v0.1.0.

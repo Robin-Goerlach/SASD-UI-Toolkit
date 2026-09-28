@@ -5,7 +5,7 @@ All notable changes to SASD UI Toolkit are documented in this file.
 The project is still pre-1.0. Source-breaking corrections may occur between feature releases when
 they improve the architecture before compatibility commitments become expensive.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-28
 
 ### Added
 
@@ -43,4 +43,3 @@ they improve the architecture before compatibility commitments become expensive.
 - RGB/true-color and background/theme cascade.
 - Rendered desktop backend and native desktop peers.
 
-No Git tag or GitHub release has been published yet.

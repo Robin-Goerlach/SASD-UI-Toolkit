@@ -67,7 +67,7 @@ v0.1.0 ist ein **Pre-1.0-Release**. Die Architektur ist absichtlich klein und ge
 langfristige Source-Kompatibilität ist noch nicht eingefroren. Begründete API-Korrekturen bleiben
 vor 1.0 möglich und werden über ADRs, Roadmap und Changelog dokumentiert.
 
-## Veröffentlichungsstatus
+## Veröffentlichung
 
-Diese Release Notes sind fertig vorbereitet. Ein Git-Tag `v0.1.0` und ein GitHub Release werden erst
-nach ausdrücklicher Freigabe veröffentlicht.
+Diese Release Notes gehören zur Freigabe von `v0.1.0`. Der veröffentlichte Tag muss exakt auf den
+abschließend validierten Release-Commit zeigen; spätere M3-Entwicklung gehört nicht mehr zu v0.1.0.

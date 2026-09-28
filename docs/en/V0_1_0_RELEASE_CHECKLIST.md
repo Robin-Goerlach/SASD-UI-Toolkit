@@ -21,7 +21,7 @@ or GitHub release is created only after explicit approval.
 
 ## Still verify before publication
 
-- [ ] Record the final `main` HEAD and confirm the complete CI run for that exact HEAD is green.
+- [ ] Record the final release commit after this documentation freeze and confirm the complete CI run for that exact SHA is green.
 - [x] Produced and tested Release builds from fresh CI checkouts on Linux, macOS and Windows.
 - [x] Automatically verified installed public headers, Core/Terminal libraries, CMake config, license/README/changelog.
 - [x] Finalized bilingual release notes from `CHANGELOG.md`.
