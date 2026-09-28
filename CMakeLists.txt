@@ -55,10 +55,19 @@ endif()
 add_library(SASD::UI::Terminal ALIAS sasd_ui_terminal)
 target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
 
+# M3 starts with a deterministic rendered command layer that has no SDL3 dependency. A future
+# SDL3 adapter consumes this target instead of exposing SDL handles/types through the Core API.
+add_library(sasd_ui_rendered
+    src/rendered/display_list.cpp
+)
+add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
+target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
+
 # Preserve the same public target names for both build-tree and installed-package consumers.
 # EXPORT_NAME may contain "::" because exported targets are imported targets when consumed.
 set_target_properties(sasd_ui_core PROPERTIES EXPORT_NAME UI)
 set_target_properties(sasd_ui_terminal PROPERTIES EXPORT_NAME "UI::Terminal")
+set_target_properties(sasd_ui_rendered PROPERTIES EXPORT_NAME "UI::Rendered")
 
 target_compile_features(sasd_ui_core PUBLIC cxx_std_20)
 target_include_directories(sasd_ui_core
@@ -74,19 +83,30 @@ target_include_directories(sasd_ui_terminal
         $<INSTALL_INTERFACE:include>
 )
 
+target_compile_features(sasd_ui_rendered PUBLIC cxx_std_20)
+target_include_directories(sasd_ui_rendered
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
 if(MSVC)
     target_compile_options(sasd_ui_core PRIVATE /W4 /permissive-)
     target_compile_options(sasd_ui_terminal PRIVATE /W4 /permissive-)
+    target_compile_options(sasd_ui_rendered PRIVATE /W4 /permissive-)
     if(SASD_UI_WARNINGS_AS_ERRORS)
         target_compile_options(sasd_ui_core PRIVATE /WX)
         target_compile_options(sasd_ui_terminal PRIVATE /WX)
+        target_compile_options(sasd_ui_rendered PRIVATE /WX)
     endif()
 else()
     target_compile_options(sasd_ui_core PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(sasd_ui_terminal PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(sasd_ui_rendered PRIVATE -Wall -Wextra -Wpedantic)
     if(SASD_UI_WARNINGS_AS_ERRORS)
         target_compile_options(sasd_ui_core PRIVATE -Werror)
         target_compile_options(sasd_ui_terminal PRIVATE -Werror)
+        target_compile_options(sasd_ui_rendered PRIVATE -Werror)
     endif()
 endif()
 
@@ -96,6 +116,9 @@ if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
 
     target_compile_options(sasd_ui_terminal PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
     target_link_options(sasd_ui_terminal PRIVATE -fsanitize=address,undefined)
+
+    target_compile_options(sasd_ui_rendered PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(sasd_ui_rendered PRIVATE -fsanitize=address,undefined)
 endif()
 
 if(SASD_UI_BUILD_TESTS)
@@ -108,13 +131,13 @@ if(SASD_UI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-# v0.1.0 is intended to be consumable through normal CMake package discovery rather than requiring
-# applications to copy source files or depend on this repository layout. Keep installation metadata
+# Pre-1.0 releases are intended to be consumable through normal CMake package discovery rather than
+# requiring applications to copy source files or depend on this repository layout. Keep installation metadata
 # next to the targets so future backends can join the same export set without changing consumers.
 set(SASD_UI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/SASDUIToolkit")
 
 install(
-    TARGETS sasd_ui_core sasd_ui_terminal
+    TARGETS sasd_ui_core sasd_ui_terminal sasd_ui_rendered
     EXPORT SASDUIToolkitTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -135,8 +158,8 @@ configure_package_config_file(
     INSTALL_DESTINATION "${SASD_UI_INSTALL_CMAKEDIR}"
 )
 
-# Pre-1.0 source compatibility is intentionally not promised across feature releases. Treat only
-# 0.1.x packages as version-compatible with a 0.1 request.
+# Pre-1.0 source compatibility is intentionally not promised across feature releases. SameMinorVersion
+# therefore keeps consumers within one feature line (for example 0.2.x for a 0.2 request).
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/SASDUIToolkitConfigVersion.cmake"
     VERSION "${PROJECT_VERSION}"

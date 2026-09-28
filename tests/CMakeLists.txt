@@ -84,6 +84,37 @@ endif()
 add_test(NAME sasd_ui_terminal_tests COMMAND sasd_ui_terminal_tests)
 
 
+
+# M3 rendered-command tests stay independent from SDL/window-system availability. They validate the
+# deterministic presentation intermediate representation on every compiler/OS in the normal matrix.
+add_executable(sasd_ui_rendered_tests
+    test_main.cpp
+    rendered_display_list_tests.cpp
+)
+
+target_link_libraries(sasd_ui_rendered_tests PRIVATE SASD::UI::Rendered)
+target_compile_features(sasd_ui_rendered_tests PRIVATE cxx_std_20)
+target_include_directories(sasd_ui_rendered_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(MSVC)
+    target_compile_options(sasd_ui_rendered_tests PRIVATE /W4 /permissive-)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_rendered_tests PRIVATE /WX)
+    endif()
+else()
+    target_compile_options(sasd_ui_rendered_tests PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_rendered_tests PRIVATE -Werror)
+    endif()
+endif()
+
+if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
+    target_compile_options(sasd_ui_rendered_tests PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(sasd_ui_rendered_tests PRIVATE -fsanitize=address,undefined)
+endif()
+
+add_test(NAME sasd_ui_rendered_tests COMMAND sasd_ui_rendered_tests)
+
 # Exercise the real POSIX terminal adapter against a kernel pseudo-terminal. This is intentionally a
 # separate process-level smoke test: it mutates stdin/stdout termios state and forks a child, concerns
 # that should not leak into the ordinary deterministic unit-test executable.
