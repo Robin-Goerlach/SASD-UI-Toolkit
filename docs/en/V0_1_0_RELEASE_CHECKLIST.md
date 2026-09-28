@@ -26,8 +26,9 @@ or GitHub release is created only after explicit approval.
 - [x] Automatically verified installed public headers, Core/Terminal libraries, CMake config, license/README/changelog.
 - [x] Finalized bilingual release notes from `CHANGELOG.md`.
 - [x] Release CI verifies repository hygiene; no generated build/linker artifacts are tracked.
-- [ ] Only after explicit approval: create tag `v0.1.0`.
-- [ ] Only after explicit approval: publish the GitHub Release.
+- [x] Explicit publication approval received; CI-gated publisher prepared.
+- [ ] Publisher must create tag `v0.1.0` exactly on the validated release commit.
+- [ ] Publisher must publish the GitHub Release from the final release notes.
 
 ## Release boundary
 

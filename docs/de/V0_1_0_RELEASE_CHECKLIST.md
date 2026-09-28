@@ -26,8 +26,9 @@ Ein Git-Tag oder GitHub-Release wird erst nach ausdrücklicher Freigabe erstellt
 - [x] Installationsinhalt automatisiert geprüft: öffentliche Header, Core-/Terminal-Libraries, CMake-Config sowie Lizenz/README/Changelog.
 - [x] Release Notes aus `CHANGELOG.md` zweisprachig final redigiert.
 - [x] Repository-Hygiene in der Release-CI geprüft; keine generierten Build-/Linker-Artefakte versioniert.
-- [ ] Erst nach ausdrücklicher Freigabe: Tag `v0.1.0` erstellen.
-- [ ] Erst nach ausdrücklicher Freigabe: GitHub Release veröffentlichen.
+- [x] Ausdrückliche Freigabe zur Veröffentlichung erteilt; CI-gekoppelter Publisher vorbereitet.
+- [ ] Publisher muss Tag `v0.1.0` exakt auf den validierten Release-Commit setzen.
+- [ ] Publisher muss das GitHub Release aus den finalen Release Notes veröffentlichen.
 
 ## Release-Grenze
 
