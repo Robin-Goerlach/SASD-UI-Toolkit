@@ -66,7 +66,9 @@ target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
 add_library(sasd_ui_rendered
     src/rendered/display_list.cpp
     src/rendered/display_list_executor.cpp
+    src/rendered/rendered_geometry.cpp
     src/rendered/rendered_presentation_sink.cpp
+    src/rendered/rendered_text_field_viewport.cpp
 )
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
