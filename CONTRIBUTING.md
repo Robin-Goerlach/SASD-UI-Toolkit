@@ -1,6 +1,6 @@
 # Contributing to SASD UI Toolkit
 
-SASD UI Toolkit is currently in its architecture/bootstrap phase. Contributions are welcome, but early changes should protect the core design rather than maximize feature count.
+SASD UI Toolkit is in pre-1.0 development. M2 Terminal Preview is complete and v0.1.0 is being prepared. Contributions are welcome, but early changes should protect the core design rather than maximize feature count.
 
 ## English
 
@@ -74,7 +74,7 @@ test: add layout contract cases
 
 ## Deutsch
 
-Das SASD UI Toolkit befindet sich derzeit in der Architektur- und Bootstrap-Phase. Beiträge sind willkommen; in dieser frühen Phase ist eine saubere Kernarchitektur wichtiger als eine möglichst lange Featureliste.
+Das SASD UI Toolkit befindet sich in der Pre-1.0-Entwicklung. M2 Terminal Preview ist abgeschlossen und v0.1.0 wird vorbereitet. Beiträge sind willkommen; in dieser frühen Phase ist eine saubere Kernarchitektur wichtiger als eine möglichst lange Featureliste.
 
 ### Vor der Implementierung
 

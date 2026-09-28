@@ -127,9 +127,47 @@ cmake --build build-msvc --config Debug --parallel
 
 The demo requires an interactive terminal. Type a name, use Tab/Shift+Tab to move focus, activate buttons with Enter/Space, press F1 for help, resize the terminal, and press F10, Escape or the Exit button to leave. Terminal state is restored through RAII on normal exit and exceptions.
 
-CI now goes beyond compilation: Linux/macOS run the native POSIX adapter inside a real kernel PTY, while Windows runs the native adapter inside a real ConPTY pseudoconsole. These process-level tests verify native size discovery, raw/VT input, frame output and terminal-state restoration. They still do not replace manual execution in a real Linux/xterm-like emulator and Windows Terminal, which remains part of the M2 exit validation.
+CI goes beyond compilation: Linux/macOS run the native POSIX adapter inside a real kernel PTY, while Windows runs the native adapter inside a real ConPTY pseudoconsole. These process-level tests verify native size discovery, raw/VT input, frame output and terminal-state restoration. The M2 manual release gate has additionally passed in a Linux/xterm-like environment and Windows Terminal.
 
-The exact release-gate procedure is documented in the [English M2 terminal smoke test](docs/en/M2_TERMINAL_SMOKE_TEST.md) and [German M2-Terminal-Smoke-Test](docs/de/M2_TERMINAL_SMOKE_TEST.md).
+The exact release-gate procedure and recorded results are documented in the [English M2 terminal smoke test](docs/en/M2_TERMINAL_SMOKE_TEST.md) and [German M2-Terminal-Smoke-Test](docs/de/M2_TERMINAL_SMOKE_TEST.md).
+
+### Install and consume as a CMake package
+
+v0.1.0 installs public headers, the Core and Terminal libraries, and CMake package metadata. A typical Release installation is:
+
+```bash
+cmake -S . -B build-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSASD_UI_BUILD_TESTS=OFF \
+  -DSASD_UI_BUILD_EXAMPLES=OFF
+cmake --build build-release --parallel
+cmake --install build-release --prefix /your/install/prefix
+```
+
+For Visual Studio/multi-config generators, select the configuration when building and installing:
+
+```powershell
+cmake -S . -B build-release -G "Visual Studio 17 2022" -A x64 `
+  -DSASD_UI_BUILD_TESTS=OFF `
+  -DSASD_UI_BUILD_EXAMPLES=OFF
+cmake --build build-release --config Release --parallel
+cmake --install build-release --config Release --prefix C:\path\to\sasd-ui
+```
+
+A consuming project can then use normal CMake package discovery:
+
+```cmake
+find_package(SASDUIToolkit 0.1 CONFIG REQUIRED)
+
+# Platform-neutral Core only:
+target_link_libraries(my_app PRIVATE SASD::UI)
+
+# Terminal backend (pulls in Core transitively):
+target_link_libraries(my_terminal_app PRIVATE SASD::UI::Terminal)
+```
+
+Set `CMAKE_PREFIX_PATH` to the chosen install prefix when it is not in CMake's default search paths.
+CI verifies this installed-package flow with a separate consumer project on GCC, Clang, AppleClang and MSVC.
 
 ## Architectural direction
 
@@ -231,7 +269,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 | Environment | Intended strategy | Status |
 |---|---|---|
 | Headless / Mock | Deterministic contract and core testing | Implemented foundation |
-| Terminal / ANSI / VT | Rendered terminal backend | M2 in progress: widgets + layout + input/output + resize + runnable demo |
+| Terminal / ANSI / VT | Rendered terminal backend | M2 complete; v0.1.0 release baseline validated |
 | Windows | Rendered backend first, native Win32 peers later | Planned |
 | Linux | Rendered backend first, native GTK peers later | Planned |
 | macOS | Rendered backend first, native AppKit peers later | Planned |
@@ -241,7 +279,7 @@ M1 includes a deterministic **headless/mock backend**. It validates component tr
 
 1. **M0 – Architecture and repository foundation** – complete enough to begin implementation.
 2. **M1 – Core skeleton and headless validation** – complete; core contracts are validated headlessly across the compiler/OS matrix.
-3. **M2 – Terminal Preview / v0.1.0** – in progress; first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus and input.
+3. **M2 – Terminal Preview / v0.1.0** – complete; first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus, input and validated native terminal sessions.
 4. **M3 – Rendered Desktop Preview / v0.2.0** – demonstrate the same API graphically on Windows, Linux and macOS through an optional rendered backend.
 5. **Later milestones** – more controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
 

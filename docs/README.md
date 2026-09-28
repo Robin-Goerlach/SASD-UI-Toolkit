@@ -2,7 +2,7 @@
 
 This directory contains the project documentation in **German** and **English**.
 
-> **Project status:** M1 is complete and M2 Terminal Preview is in release-validation work. The documented API is still pre-1.0 and not yet a stability promise.
+> **Project status:** M2 Terminal Preview is complete. v0.1.0 is in release preparation, including install/package validation. The documented API remains pre-1.0 and is not yet a long-term source-compatibility promise.
 
 ## Content
 
@@ -14,6 +14,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Development guidelines](en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](en/ROADMAP.md)
 - [M2 terminal smoke test](en/M2_TERMINAL_SMOKE_TEST.md)
+- [v0.1.0 release checklist](en/V0_1_0_RELEASE_CHECKLIST.md)
 - [Inspirations and references](en/REFERENCES.md)
 
 ### Deutsch
@@ -24,6 +25,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Entwicklungsrichtlinien](de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](de/ROADMAP.md)
 - [M2-Terminal-Smoke-Test](de/M2_TERMINAL_SMOKE_TEST.md)
+- [v0.1.0-Release-Checkliste](de/V0_1_0_RELEASE_CHECKLIST.md)
 - [Vorbilder und Referenzen](de/REFERENZEN.md)
 
 ### Architecture Decision Records
