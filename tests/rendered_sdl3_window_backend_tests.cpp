@@ -47,7 +47,23 @@ void drainEvents(Sdl3WindowBackend& backend) {
 }
 
 void pushEvent(SDL_Event event) {
-    CHECK(SDL_PushEvent(&event));
+    /*
+     * Use the queue primitive directly for adapter translation tests.
+     *
+     * SDL_PushEvent() intentionally runs global event filters/watchers first. Those hooks are part of
+     * SDL's own input-state machinery and may reject a synthetic mouse-button transition that did
+     * not originate from the platform mouse driver. Here we are not testing SDL's mouse state; we
+     * are testing how Sdl3WindowBackend translates an SDL_Event already present in the queue.
+     *
+     * SDL_ADDEVENT appends the exact event without invoking those filters, making the test
+     * deterministic while still exercising the production SDL_PollEvent() path.
+     */
+    CHECK(SDL_PeepEvents(
+              &event,
+              1,
+              SDL_ADDEVENT,
+              SDL_EVENT_FIRST,
+              SDL_EVENT_LAST) == 1);
 }
 
 /**
