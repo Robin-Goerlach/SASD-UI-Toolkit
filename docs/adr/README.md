@@ -41,6 +41,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0024](0024-terminal-event-pump-backend-and-demo.md) | Terminal event pump, Backend integration and runnable M2 loop | Accepted |
 | [0025](0025-minimal-backend-neutral-text-styling.md) | Minimal backend-neutral text styling before a theme system | Accepted |
 | [0026](0026-backend-neutral-function-keys.md) | Backend-neutral F1–F12 identity and terminal function-key decoding | Accepted |
+| [0027](0027-rendered-display-list-and-sdl3-boundary.md) | Deterministic rendered display list and optional SDL3 adapter boundary | Accepted |
 
 ## ADR policy
 
