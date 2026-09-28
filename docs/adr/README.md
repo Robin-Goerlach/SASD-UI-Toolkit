@@ -43,6 +43,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0026](0026-backend-neutral-function-keys.md) | Backend-neutral F1–F12 identity and terminal function-key decoding | Accepted |
 | [0027](0027-rendered-display-list-and-sdl3-boundary.md) | Deterministic rendered display list and optional SDL3 adapter boundary | Accepted |
 | [0028](0028-rendered-text-metrics-and-textfield-caret.md) | Rendered text metrics and TextField caret/viewport contract | Accepted |
+| [0029](0029-render-device-replay-boundary.md) | Render device replay boundary below DisplayList | Accepted |
 
 ## ADR policy
 

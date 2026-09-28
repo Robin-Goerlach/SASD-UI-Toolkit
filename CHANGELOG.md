@@ -17,6 +17,7 @@ they improve the architecture before compatibility commitments become expensive.
 - `RenderedPresentationSink` for Window refreshes, Label and Button presentation, including incremental repaint and conservative subtree rebuild behavior.
 - `RenderedMeasurementContext` with logical line-height and deferrable Unicode-scalar boundary advances for rendered font/shaping metrics.
 - Metric-aware rendered `TextField` presentation with full-run clipping, scalar-boundary horizontal viewport and insertion caret, while unsupported caret mappings remain explicitly deferred.
+- `RenderDevice` and `DisplayListExecutor` execution boundary, centralizing deterministic command replay for later SDL3/native adapters without exposing their types.
 
 ## [0.1.0] - 2026-09-28
 
