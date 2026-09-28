@@ -1,5 +1,6 @@
 #include <sasd/ui/button.hpp>
 
+#include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/measurement_context.hpp>
 
 #include <variant>
@@ -59,6 +60,63 @@ Size Button::onMeasure(const MeasurementContext& context, const MeasureConstrain
 }
 
 EventResult Button::onEvent(const Event& event) {
+    if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+        if (pointer->button != PointerButton::primary &&
+            pointer->action != PointerAction::move) {
+            return EventResult::ignored;
+        }
+
+        if (pointer->action == PointerAction::press) {
+            /*
+             * EventDispatcher normally receives this press through HitTest/PointerRouter. Re-check
+             * geometry defensively so manually targeted pointer events cannot arm a Button from
+             * outside its visual bounds.
+             */
+            if (!isEnabled() || !isVisible() ||
+                !HitTest::contains(*this, pointer->position)) {
+                pointer_armed_ = false;
+                return EventResult::ignored;
+            }
+
+            pointer_armed_ = true;
+            return EventResult::handled;
+        }
+
+        if (pointer->action == PointerAction::move) {
+            /*
+             * While captured, movement still belongs to the gesture even though the first visual
+             * model does not expose hover/pressed styling yet. Consuming it prevents an ancestor from
+             * interpreting the same captured gesture independently.
+             */
+            return pointer_armed_ ? EventResult::handled : EventResult::ignored;
+        }
+
+        if (pointer->action == PointerAction::release) {
+            if (!pointer_armed_) {
+                return EventResult::ignored;
+            }
+
+            /*
+             * Clear transient state before invoking application code. activate() may synchronously
+             * release/reparent this Button, so no Button member may be required afterwards.
+             */
+            pointer_armed_ = false;
+
+            const bool completes_inside =
+                isEnabled() && isVisible() &&
+                HitTest::contains(*this, pointer->position);
+
+            if (completes_inside) {
+                (void)activate();
+            }
+
+            // A captured primary gesture remains ours even when release cancels outside.
+            return EventResult::handled;
+        }
+
+        return EventResult::ignored;
+    }
+
     const auto* key = std::get_if<KeyEvent>(&event);
     if (key == nullptr) {
         return EventResult::ignored;

@@ -13,6 +13,7 @@ class Container;
 class FocusManager;
 class MeasurementContext;
 class PresentationCoordinator;
+class PointerRouter;
 
 /**
  * Base class for components that have a visual or interactively presentable representation.
@@ -255,6 +256,7 @@ protected:
 private:
     friend class Container;
     friend class FocusManager;
+    friend class PointerRouter;
     friend class PresentationCoordinator;
 
     void setParent(Container* parent) noexcept { parent_ = parent; }
@@ -272,6 +274,14 @@ private:
 
     Container* parent_{nullptr};
     FocusManager* focus_manager_{nullptr};
+
+    /*
+     * Non-owning reverse observation used only while this Widget owns pointer capture. PointerRouter
+     * and Widget destruction cooperate exactly like the FocusManager lifetime handshake: the router
+     * cannot retain a dangling target after Widget storage disappears.
+     */
+    PointerRouter* pointer_router_{nullptr};
+
     Rect bounds_{};
     SizeConstraints size_constraints_{};
     Size desired_size_{};

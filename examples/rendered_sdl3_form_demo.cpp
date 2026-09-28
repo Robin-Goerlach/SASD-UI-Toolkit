@@ -4,7 +4,9 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
+#include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
@@ -171,6 +173,7 @@ int main(int argc, char** argv) {
         exit.setTextStyle(exit_style);
 
         FocusManager focus;
+        PointerRouter pointer_router;
 
         greet.setOnActivated([&] {
             std::string value{name.text()};
@@ -197,10 +200,32 @@ int main(int argc, char** argv) {
                         return focus.focusedWidget();
                     }
 
-                    // Resize and other backend-level events are handled outside widget routing.
+                    /*
+                     * PointerRouter owns hit testing/capture and dispatches pointer events itself in
+                     * the fallback handler below. Returning nullptr here prevents Application from
+                     * performing a second ordinary dispatch of the same pointer input.
+                     */
                     return nullptr;
                 },
                 [&](const Event& event) {
+                    if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        /*
+                         * Desktop focus-on-primary-press is host policy, not PointerRouter policy.
+                         * Keep FocusManager independent from pointer mechanics while still providing
+                         * familiar Button/TextField behavior in this concrete desktop demo.
+                         */
+                        if (pointer->action == PointerAction::press &&
+                            pointer->button == PointerButton::primary) {
+                            if (Widget* hit = HitTest::deepestAt(window, pointer->position);
+                                hit != nullptr && hit->canReceiveFocus()) {
+                                (void)focus.requestFocus(*hit);
+                            }
+                        }
+
+                        (void)pointer_router.route(window, *pointer);
+                        return;
+                    }
+
                     if (const auto* resize = std::get_if<ResizeEvent>(&event)) {
                         layoutForm(window, form, backend, resize->size);
                         return;

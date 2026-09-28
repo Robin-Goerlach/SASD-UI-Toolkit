@@ -33,6 +33,15 @@ public:
      */
     [[nodiscard]] static Widget* deepestAt(Widget& root, Point point) noexcept;
     [[nodiscard]] static const Widget* deepestAt(const Widget& root, Point point) noexcept;
+
+    /**
+     * Returns whether point lies inside widget after applying every visual ancestor offset/clip.
+     *
+     * point uses the same top-level-parent coordinate space as PointerEvent. This is especially
+     * useful for a captured control: it can receive release outside its bounds yet still decide
+     * whether the gesture completed inside the original control.
+     */
+    [[nodiscard]] static bool contains(const Widget& widget, Point point) noexcept;
 };
 
 } // namespace sasd::ui

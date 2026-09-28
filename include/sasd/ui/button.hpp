@@ -18,6 +18,10 @@ namespace sasd::ui {
  *
  * Keyboard activation intentionally uses KeyEvent rather than TextInputEvent. Enter/Space describe
  * control intent; text input remains reserved for editable textual content such as TextField.
+ *
+ * Pointer activation uses an armed press/release gesture. PointerRouter capture guarantees the
+ * matching release reaches the same route even after leaving the Button; the Button then activates
+ * only when that release is still geometrically inside its clipped visual bounds.
  */
 class Button final : public Widget {
 public:
@@ -79,6 +83,12 @@ private:
     std::string text_;
     TextStyle text_style_{};
     ActivationHandler on_activated_;
+
+    /*
+     * Internal interaction state only. The first pointer slice does not yet expose a pressed-state
+     * styling API; keeping this private avoids prematurely freezing a public visual-state contract.
+     */
+    bool pointer_armed_{false};
 };
 
 } // namespace sasd::ui

@@ -30,6 +30,7 @@ add_library(sasd_ui_core
     src/label.cpp
     src/text_field.cpp
     src/utf8.cpp
+    src/pointer_router.cpp
     src/presentation_coordinator.cpp
     src/widget.cpp
     src/testing/mock_backend.cpp

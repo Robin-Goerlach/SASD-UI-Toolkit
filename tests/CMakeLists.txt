@@ -10,6 +10,7 @@ add_executable(sasd_ui_tests
     focus_traversal_tests.cpp
     hit_test_tests.cpp
     layout_tests.cpp
+    pointer_router_tests.cpp
     text_field_tests.cpp
     utf8_tests.cpp
     widget_controls_tests.cpp

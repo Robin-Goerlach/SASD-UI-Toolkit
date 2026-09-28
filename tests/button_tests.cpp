@@ -5,6 +5,7 @@
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/pointer_router.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -180,6 +181,78 @@ TEST_CASE("Disabled Button rejects programmatic and keyboard activation") {
         EventDispatcher::dispatch(button, KeyEvent{Key::space, true, KeyModifier::none});
 
     CHECK(!result.handled());
+    CHECK(activations == 0);
+}
+
+TEST_CASE("Button pointer gesture activates only after primary release inside") {
+    Container root;
+    root.arrange({0, 0, 200, 100});
+
+    auto& button = root.emplace<Button>("Pointer");
+    button.arrange({20, 10, 80, 30});
+
+    PointerRouter router;
+    int activations = 0;
+    button.setOnActivated([&] { ++activations; });
+
+    const auto press = router.route(
+        root,
+        PointerEvent{{30, 20}, PointerAction::press, PointerButton::primary, 1});
+    CHECK(press.handled);
+    CHECK(press.capture_active);
+    CHECK(activations == 0);
+
+    const auto release = router.route(
+        root,
+        PointerEvent{{40, 25}, PointerAction::release, PointerButton::primary, 1});
+    CHECK(release.handled);
+    CHECK(!release.capture_active);
+    CHECK(activations == 1);
+}
+
+TEST_CASE("Button captured pointer release outside cancels activation cleanly") {
+    Container root;
+    root.arrange({0, 0, 200, 100});
+
+    auto& button = root.emplace<Button>("Pointer");
+    button.arrange({20, 10, 80, 30});
+
+    PointerRouter router;
+    int activations = 0;
+    button.setOnActivated([&] { ++activations; });
+
+    CHECK(router.route(
+        root,
+        PointerEvent{{30, 20}, PointerAction::press, PointerButton::primary, 1}).handled);
+
+    // Capture keeps the release on Button's route even though the pointer is far outside.
+    const auto release = router.route(
+        root,
+        PointerEvent{{180, 90}, PointerAction::release, PointerButton::primary, 1});
+
+    CHECK(release.handled);
+    CHECK(!router.hasCapture());
+    CHECK(activations == 0);
+}
+
+TEST_CASE("Button ignores secondary pointer button gestures") {
+    Container root;
+    root.arrange({0, 0, 100, 60});
+
+    auto& button = root.emplace<Button>("Pointer");
+    button.arrange({10, 10, 70, 30});
+
+    PointerRouter router;
+    int activations = 0;
+    button.setOnActivated([&] { ++activations; });
+
+    const auto result = router.route(
+        root,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::secondary, 1});
+
+    CHECK(result.targeted);
+    CHECK(!result.handled);
+    CHECK(!router.hasCapture());
     CHECK(activations == 0);
 }
 

@@ -3,6 +3,7 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/pointer_router.hpp>
 
 #include <stdexcept>
 #include <typeinfo>
@@ -18,6 +19,14 @@ Widget::~Widget() {
      */
     if (focus_manager_ != nullptr) {
         focus_manager_->widgetDestroyed(*this);
+    }
+
+    /*
+     * Pointer capture is another non-owning runtime observation. Clear it during destruction so a
+     * later native move/release can never be routed through stale Widget storage.
+     */
+    if (pointer_router_ != nullptr) {
+        pointer_router_->widgetDestroyed(*this);
     }
 }
 
