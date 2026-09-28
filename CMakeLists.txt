@@ -120,6 +120,7 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
     endif()
 
     add_library(sasd_ui_rendered_sdl3
+        src/rendered/sdl3/sdl3_pointer_event_translation.cpp
         src/rendered/sdl3/sdl3_render_context.cpp
         src/rendered/sdl3/sdl3_software_device.cpp
         src/rendered/sdl3/sdl3_window_backend.cpp

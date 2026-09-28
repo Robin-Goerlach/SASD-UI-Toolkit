@@ -1,6 +1,7 @@
 #include "rendered/sdl3/sdl3_window_backend.hpp"
 
 #include "rendered/sdl3/sdl3_render_context.hpp"
+#include "rendered/sdl3/sdl3_pointer_event_translation.hpp"
 
 #include <sasd/ui/rendered/display_list_executor.hpp>
 
@@ -63,64 +64,6 @@ namespace {
     }
 
     return result;
-}
-
-[[nodiscard]] std::optional<Point> translatePointerPosition(SDL_Renderer* renderer,
-                                                                   float window_x,
-                                                                   float window_y) {
-    /*
-     * We only expose the absolute pointer position, so convert exactly those two fields rather than
-     * mutating the complete SDL_Event with SDL_ConvertEventToRenderCoordinates(). This avoids making
-     * Core translation depend on SDL's event-window lookup and keeps the native boundary explicit.
-     */
-    if (!std::isfinite(window_x) || !std::isfinite(window_y)) {
-        return std::nullopt;
-    }
-
-    float render_x = 0.0F;
-    float render_y = 0.0F;
-    if (!SDL_RenderCoordinatesFromWindow(
-            renderer,
-            window_x,
-            window_y,
-            &render_x,
-            &render_y)) {
-        throwSdlError("SDL_RenderCoordinatesFromWindow");
-    }
-
-    if (!std::isfinite(render_x) || !std::isfinite(render_y)) {
-        return std::nullopt;
-    }
-
-    /*
-     * Core geometry currently uses integer logical units, so choose the containing logical unit by
-     * flooring rather than C++ truncation: -0.25 must remain outside coordinate 0 rather than
-     * incorrectly becoming 0.
-     */
-    const double logical_x = std::floor(static_cast<double>(render_x));
-    const double logical_y = std::floor(static_cast<double>(render_y));
-    const double minimum = static_cast<double>(std::numeric_limits<Coordinate>::min());
-    const double maximum = static_cast<double>(std::numeric_limits<Coordinate>::max());
-
-    if (logical_x < minimum || logical_x > maximum ||
-        logical_y < minimum || logical_y > maximum) {
-        return std::nullopt;
-    }
-
-    return Point{
-        static_cast<Coordinate>(logical_x),
-        static_cast<Coordinate>(logical_y)};
-}
-
-[[nodiscard]] PointerButton translatePointerButton(Uint8 button) noexcept {
-    switch (button) {
-    case SDL_BUTTON_LEFT:   return PointerButton::primary;
-    case SDL_BUTTON_MIDDLE: return PointerButton::middle;
-    case SDL_BUTTON_RIGHT:  return PointerButton::secondary;
-    case SDL_BUTTON_X1:     return PointerButton::auxiliary1;
-    case SDL_BUTTON_X2:     return PointerButton::auxiliary2;
-    default:                return PointerButton::other;
-    }
 }
 
 [[nodiscard]] std::optional<Key> translateKey(SDL_Keycode key) noexcept {
@@ -463,22 +406,24 @@ struct Sdl3WindowBackend::Impl {
 
             case SDL_EVENT_MOUSE_MOTION:
                 if (belongsToWindow(event.motion.windowID)) {
-                    /*
-                     * Native mouse coordinates are window coordinates. Convert the absolute point
-                     * through the renderer's logical-presentation transform before exposing Core
-                     * PointerEvent, otherwise high-DPI/scaled windows would route against a different
-                     * coordinate system from Widget::bounds().
-                     */
-                    if (const auto position =
-                            translatePointerPosition(
-                                renderer,
-                                event.motion.x,
-                                event.motion.y)) {
-                        return Event{PointerEvent{
-                            *position,
-                            PointerAction::move,
-                            PointerButton::none,
-                            0}};
+                    float logical_x = 0.0F;
+                    float logical_y = 0.0F;
+                    if (!SDL_RenderCoordinatesFromWindow(
+                            renderer,
+                            event.motion.x,
+                            event.motion.y,
+                            &logical_x,
+                            &logical_y)) {
+                        throwSdlError("SDL_RenderCoordinatesFromWindow(mouse motion)");
+                    }
+
+                    SDL_Event logical_event = event;
+                    logical_event.motion.x = logical_x;
+                    logical_event.motion.y = logical_y;
+
+                    if (const auto pointer =
+                            detail::translateLogicalPointerEvent(logical_event)) {
+                        return Event{*pointer};
                     }
                 }
                 break;
@@ -486,18 +431,24 @@ struct Sdl3WindowBackend::Impl {
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             case SDL_EVENT_MOUSE_BUTTON_UP:
                 if (belongsToWindow(event.button.windowID)) {
-                    if (const auto position =
-                            translatePointerPosition(
-                                renderer,
-                                event.button.x,
-                                event.button.y)) {
-                        return Event{PointerEvent{
-                            *position,
-                            event.type == SDL_EVENT_MOUSE_BUTTON_DOWN
-                                ? PointerAction::press
-                                : PointerAction::release,
-                            translatePointerButton(event.button.button),
-                            event.button.clicks}};
+                    float logical_x = 0.0F;
+                    float logical_y = 0.0F;
+                    if (!SDL_RenderCoordinatesFromWindow(
+                            renderer,
+                            event.button.x,
+                            event.button.y,
+                            &logical_x,
+                            &logical_y)) {
+                        throwSdlError("SDL_RenderCoordinatesFromWindow(mouse button)");
+                    }
+
+                    SDL_Event logical_event = event;
+                    logical_event.button.x = logical_x;
+                    logical_event.button.y = logical_y;
+
+                    if (const auto pointer =
+                            detail::translateLogicalPointerEvent(logical_event)) {
+                        return Event{*pointer};
                     }
                 }
                 break;

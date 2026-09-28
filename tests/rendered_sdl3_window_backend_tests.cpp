@@ -1,5 +1,6 @@
 #include "test_framework.hpp"
 
+#include "rendered/sdl3/sdl3_pointer_event_translation.hpp"
 #include "rendered/sdl3/sdl3_window_backend.hpp"
 
 #include <sasd/ui/application.hpp>
@@ -207,7 +208,7 @@ TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic e
     CHECK(!hasModifier(key.modifiers, KeyModifier::alt));
 }
 
-TEST_CASE("SDL3 window backend exposes logical pointer motion and button transitions") {
+TEST_CASE("SDL3 window backend exposes logical pointer motion through native queue") {
     Sdl3WindowBackend backend{testConfig()};
     backend.initialize();
     drainEvents(backend);
@@ -217,43 +218,53 @@ TEST_CASE("SDL3 window backend exposes logical pointer motion and button transit
     SDL_Event motion{};
     motion.type = SDL_EVENT_MOUSE_MOTION;
     motion.motion.type = SDL_EVENT_MOUSE_MOTION;
-    const SDL_WindowID window_id = currentTestWindowId();
-
-    motion.motion.windowID = window_id;
+    motion.motion.windowID = currentTestWindowId();
     motion.motion.x = 42.75F;
     motion.motion.y = 18.25F;
     pushEvent(motion);
 
-    const auto translated_motion = backend.pollEvent();
-    CHECK(translated_motion.has_value());
-    CHECK(std::holds_alternative<PointerEvent>(*translated_motion));
+    const auto translated = backend.pollEvent();
+    CHECK(translated.has_value());
+    CHECK(std::holds_alternative<PointerEvent>(*translated));
 
-    const auto& pointer_motion = std::get<PointerEvent>(*translated_motion);
-    CHECK(pointer_motion.action == PointerAction::move);
-    CHECK(pointer_motion.button == PointerButton::none);
-    CHECK(pointer_motion.position == Point{42, 18});
-    CHECK(pointer_motion.click_count == 0);
+    const auto& pointer = std::get<PointerEvent>(*translated);
+    CHECK(pointer.action == PointerAction::move);
+    CHECK(pointer.button == PointerButton::none);
+    CHECK(pointer.position == Point{42, 18});
+    CHECK(pointer.click_count == 0);
+}
 
-    SDL_Event button{};
-    button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
-    button.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
-    button.button.windowID = window_id;
-    button.button.button = SDL_BUTTON_LEFT;
-    button.button.down = true;
-    button.button.clicks = 2;
-    button.button.x = 75.9F;
-    button.button.y = 30.1F;
-    pushEvent(button);
+TEST_CASE("SDL3 pointer translator maps button transitions without platform mouse state") {
+    /*
+     * SDL's offscreen mouse driver is free to reject synthetic button transitions while pumping
+     * native state. Test SASD's deterministic mapping at the private adapter seam instead: pollEvent
+     * uses this exact function after window filtering and coordinate conversion.
+     */
+    SDL_Event down{};
+    down.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.button = SDL_BUTTON_LEFT;
+    down.button.clicks = 2;
+    down.button.x = 75.9F;
+    down.button.y = 30.1F;
 
-    const auto translated_button = backend.pollEvent();
-    CHECK(translated_button.has_value());
-    CHECK(std::holds_alternative<PointerEvent>(*translated_button));
+    const auto pressed = detail::translateLogicalPointerEvent(down);
+    CHECK(pressed.has_value());
+    CHECK(pressed->action == PointerAction::press);
+    CHECK(pressed->button == PointerButton::primary);
+    CHECK(pressed->position == Point{75, 30});
+    CHECK(pressed->click_count == 2);
 
-    const auto& pointer_button = std::get<PointerEvent>(*translated_button);
-    CHECK(pointer_button.action == PointerAction::press);
-    CHECK(pointer_button.button == PointerButton::primary);
-    CHECK(pointer_button.position == Point{75, 30});
-    CHECK(pointer_button.click_count == 2);
+    SDL_Event up = down;
+    up.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    up.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    up.button.button = SDL_BUTTON_RIGHT;
+    up.button.clicks = 1;
+
+    const auto released = detail::translateLogicalPointerEvent(up);
+    CHECK(released.has_value());
+    CHECK(released->action == PointerAction::release);
+    CHECK(released->button == PointerButton::secondary);
 }
 
 TEST_CASE("SDL3 window backend separates committed UTF-8 text from physical key input") {
