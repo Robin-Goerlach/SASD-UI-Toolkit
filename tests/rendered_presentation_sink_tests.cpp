@@ -33,14 +33,15 @@ namespace {
 class TestRenderedMeasurementContext final : public RenderedMeasurementContext {
 public:
     [[nodiscard]] Size measureText(std::string_view utf8_text) const override {
-        return {textAdvanceToScalar(utf8_text, utf8::scalarCount(utf8_text)), lineHeight()};
+        const auto width = textAdvanceToScalar(utf8_text, utf8::scalarCount(utf8_text));
+        return {width.value_or(0), lineHeight()};
     }
 
     [[nodiscard]] Coordinate lineHeight() const noexcept override {
         return 12;
     }
 
-    [[nodiscard]] Coordinate textAdvanceToScalar(
+    [[nodiscard]] std::optional<Coordinate> textAdvanceToScalar(
         std::string_view utf8_text,
         std::size_t scalar_index) const override {
         const std::size_t wanted = std::min(scalar_index, utf8::scalarCount(utf8_text));
@@ -72,6 +73,18 @@ public:
 
     [[nodiscard]] std::uint64_t revision() const noexcept override {
         return 1;
+    }
+};
+
+class UnsupportedCaretMeasurementContext final : public TestRenderedMeasurementContext {
+public:
+    [[nodiscard]] std::optional<Coordinate> textAdvanceToScalar(
+        std::string_view utf8_text,
+        std::size_t scalar_index) const override {
+        if (scalar_index == 1) {
+            return std::nullopt;
+        }
+        return TestRenderedMeasurementContext::textAdvanceToScalar(utf8_text, scalar_index);
     }
 };
 
@@ -306,6 +319,32 @@ TEST_CASE("RenderedPresentationSink scrolls TextField at scalar boundaries using
     CHECK(text.clip_bounds == std::optional<Rect>{Rect{11, 11, 18, 12}});
 
     CHECK(std::get<FillRectCommand>(commands[4]).bounds == Rect{27, 11, 1, 12});
+}
+
+TEST_CASE("RenderedPresentationSink defers unsupported caret metrics transactionally") {
+    DisplayList display;
+    UnsupportedCaretMeasurementContext metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    /*
+     * Seed a prior successful frame command. The failing TextField preflight must not erase or append
+     * anything before it discovers that the provider cannot express one caret boundary.
+     */
+    display.drawText({1, 2}, "previous frame");
+
+    Window window;
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({10, 10, 30, 14});
+    CHECK(focus.requestFocus(field));
+    field.setCursorPosition(2);
+
+    const auto result = sink.synchronize(field);
+
+    CHECK(result == PresentationUpdateResult::deferred);
+    CHECK(display.size() == 1);
+    CHECK(std::get<DrawTextCommand>(display.commands()[0]).text == "previous frame");
+    CHECK(field.isVisualUpdatePending());
 }
 
 TEST_CASE("RenderedPresentationSink conservatively defers visible TextField") {

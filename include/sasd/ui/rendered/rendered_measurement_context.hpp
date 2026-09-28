@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <string_view>
 
 namespace sasd::ui::rendered {
@@ -37,16 +38,19 @@ public:
     /**
      * Returns the horizontal logical advance from the text origin to a Unicode-scalar boundary.
      *
-     * scalar_index is in [0, utf8::scalarCount(utf8_text)]. For one unchanged string, advances from
-     * scalar boundary 0 through N must be non-negative and monotonically non-decreasing. A real font
-     * implementation should obtain the values from the same shaping/layout result it uses to draw
-     * the complete string, so kerning and ligatures do not have to be guessed by TextField.
+     * scalar_index is in [0, utf8::scalarCount(utf8_text)]. For one unchanged string, boundary zero
+     * must resolve to logical advance zero; subsequent available advances must be non-negative and
+     * monotonically non-decreasing. A real font implementation should obtain these values from the
+     * same shaping/layout result it uses to draw the complete string, so kerning and ligatures do not
+     * have to be guessed by TextField.
      *
-     * The M3 contract intentionally models logical left-to-right advance only. A future bidi/shaping
-     * milestone can replace this narrow query with a richer visual-caret map when a real use case
-     * requires it.
+     * std::nullopt explicitly means that the current metric/shaping provider cannot represent this
+     * caret boundary with the initial M3 left-to-right advance model. This is important for future
+     * bidirectional or otherwise complex visual ordering: the sink can keep the TextField deferred
+     * instead of manufacturing an incorrect caret. A later shaping milestone may replace this narrow
+     * query with a richer visual-caret map.
      */
-    [[nodiscard]] virtual Coordinate textAdvanceToScalar(
+    [[nodiscard]] virtual std::optional<Coordinate> textAdvanceToScalar(
         std::string_view utf8_text,
         std::size_t scalar_index) const = 0;
 

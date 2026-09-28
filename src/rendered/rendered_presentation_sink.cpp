@@ -237,11 +237,21 @@ struct TextFieldLayout {
     advances.reserve(cursor + 1);
 
     for (std::size_t index = 0; index <= cursor; ++index) {
-        const Coordinate advance = metrics.textAdvanceToScalar(field.text(), index);
-        if (advance < 0 || (!advances.empty() && advance < advances.back())) {
+        const std::optional<Coordinate> advance =
+            metrics.textAdvanceToScalar(field.text(), index);
+
+        /*
+         * nullopt is a normal capability result, not an error: the metric provider may know how to
+         * draw/measure a text run while the initial M3 LTR caret model cannot express one of its
+         * visual boundaries. Keep the field pending rather than guessing.
+         */
+        if (!advance.has_value() ||
+            *advance < 0 ||
+            (index == 0 && *advance != 0) ||
+            (!advances.empty() && *advance < advances.back())) {
             return std::nullopt;
         }
-        advances.push_back(advance);
+        advances.push_back(*advance);
     }
 
     const Coordinate cursor_advance = advances.back();
