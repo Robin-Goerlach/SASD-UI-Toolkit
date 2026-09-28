@@ -99,7 +99,11 @@ TEST_CASE("RenderedTextFieldHitTest uses the same horizontally scrolled viewport
 
     CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {10, 15}, metrics) ==
           std::optional<std::size_t>{1});
-    CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {18, 15}, metrics) ==
+    /*
+     * The visible CJK advance spans relative x=0..16. Relative x=8 is the exact midpoint and the
+     * documented tie-break chooses the later scalar boundary, so global x is content.x(11)+8 = 19.
+     */
+    CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {19, 15}, metrics) ==
           std::optional<std::size_t>{2});
     CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {29, 15}, metrics) ==
           std::optional<std::size_t>{2});
