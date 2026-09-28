@@ -29,6 +29,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate POSIX smoke helper
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          bash -n tools/m2_smoke_posix.sh
+          bash tools/m2_smoke_posix.sh --validate-only
+
+      - name: Validate Windows smoke helper
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\tools\m2_smoke_windows.ps1 -ValidateOnly
+
       - name: Configure
         run: >-
           cmake -S . -B build

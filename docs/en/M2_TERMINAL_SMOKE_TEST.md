@@ -20,7 +20,27 @@ Critical failures include raw-mode/cursor restoration problems, broken shell ech
 input, persistent resize corruption, broken focus traversal, UTF-8 corruption, or exit paths that leave
 terminal state changed.
 
-## 1. Verify the automated baseline first
+## 1. Preferred: use the smoke runners
+
+Two small helper scripts prepare build/test, environment information and restoration checks while
+leaving visual/interactive judgment intentionally human.
+
+Linux/macOS:
+
+```bash
+./tools/m2_smoke_posix.sh
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\m2_smoke_windows.ps1
+```
+
+After an already successful build, use `--skip-build` or `-SkipBuild`. The helpers defensively restore
+the original TTY/code-page state while still reporting any mismatch as a failure.
+
+## 2. Verify the automated baseline manually
 
 ```bash
 cmake -S . -B build-smoke \
@@ -47,7 +67,7 @@ cmake --build build-smoke --config Debug --parallel
 ctest --test-dir build-smoke -C Debug --output-on-failure
 ```
 
-## 2. Record the environment
+## 3. Record the environment
 
 | Field | Value |
 |---|---|
@@ -59,7 +79,7 @@ ctest --test-dir build-smoke -C Debug --output-on-failure
 | Keyboard layout | |
 | Result | PASS / FAIL |
 
-## 3. Linux / xterm-like environment
+## 4. Linux / xterm-like environment
 
 Optional POSIX TTY state comparison:
 
@@ -82,7 +102,7 @@ normal cursor/echo/shell editing after termination. `stty -g` should match befor
 Terminal themes may map named colors differently; leaking SGR state or raw escape text is not
 acceptable.
 
-## 4. Windows Terminal
+## 5. Windows Terminal
 
 ```powershell
 .\build-smoke\examples\Debug\sasd_ui_terminal_demo.exe
@@ -103,7 +123,7 @@ Repeat the Linux functional validation: clean startup, styles, `Robin AΩ界`, e
 Tab/Shift+Tab, Enter/Space activation, F1 Help, F10 exit, resize, Escape, Exit button, and normal shell behavior after
 termination. The console code page must be restored to its pre-run state.
 
-## 5. Deliberately outside the M2 release gate
+## 6. Deliberately outside the M2 release gate
 
 Not M2 failures when the documented conservative behavior is preserved:
 
@@ -115,7 +135,7 @@ Not M2 failures when the documented conservative behavior is preserved:
 - arbitrary RGB/true-color styling;
 - background styling and theme cascade.
 
-## 6. Completion record
+## 7. Completion record
 
 | Environment | Commit | Result | Notes |
 |---|---|---|---|

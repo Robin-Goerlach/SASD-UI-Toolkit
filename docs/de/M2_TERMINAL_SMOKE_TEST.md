@@ -29,9 +29,31 @@ Ein **kritischer Fehler** ist insbesondere:
 - TextField beschädigt UTF-8-Inhalt;
 - Exit/Exception hinterlässt den Terminalzustand verändert.
 
-## 1. Automatisierte Basis zuerst prüfen
+## 1. Bevorzugt: Smoke-Runner verwenden
 
-Vor dem manuellen Test muss der aktuelle `main` grün sein:
+Für den eigentlichen manuellen Test gibt es zwei kleine Hilfsskripte, die Build/Test, Umgebungsdaten
+und Restoration-Prüfungen vorbereiten. Die visuelle/interaktive Bewertung bleibt bewusst bei dir.
+
+Linux/macOS:
+
+```bash
+./tools/m2_smoke_posix.sh
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\m2_smoke_windows.ps1
+```
+
+Nach einem bereits erfolgreichen Build kann `--skip-build` beziehungsweise `-SkipBuild` verwendet
+werden. Die Runner stellen den ursprünglichen TTY-/Codepage-Zustand defensiv wieder her, melden eine
+Abweichung aber trotzdem als Fehler.
+
+## 2. Automatisierte Basis manuell ausführen
+
+Falls die Hilfsskripte nicht verwendet werden, muss vor dem manuellen Test der aktuelle `main` grün
+sein:
 
 ```bash
 cmake -S . -B build-smoke \
@@ -58,7 +80,7 @@ cmake --build build-smoke --config Debug --parallel
 ctest --test-dir build-smoke -C Debug --output-on-failure
 ```
 
-## 2. Testumgebung protokollieren
+## 3. Testumgebung protokollieren
 
 | Feld | Wert |
 |---|---|
@@ -70,7 +92,7 @@ ctest --test-dir build-smoke -C Debug --output-on-failure
 | Tastaturlayout | |
 | Ergebnis | PASS / FAIL |
 
-## 3. Linux / xterm-artige Umgebung
+## 4. Linux / xterm-artige Umgebung
 
 Optional den POSIX-Terminalzustand vor/nach dem Lauf vergleichen:
 
@@ -105,7 +127,7 @@ Prüfen:
 Terminal-Themes dürfen die konkreten Farbtöne verändern. Rohe Escape-Sequenzen oder auslaufende
 SGR-Zustände sind dagegen Fehler.
 
-## 4. Windows Terminal
+## 5. Windows Terminal
 
 Start:
 
@@ -139,7 +161,7 @@ Dieselben funktionalen Schritte wie unter Linux prüfen:
 
 Die Codepage muss nach Programmende wieder dem Zustand vor dem Start entsprechen.
 
-## 5. Bewusst nicht Teil des M2-Release-Gates
+## 6. Bewusst nicht Teil des M2-Release-Gates
 
 Folgende Punkte sind derzeit kein M2-Fehler, solange der dokumentierte konservative Vertrag eingehalten
 wird:
@@ -152,7 +174,7 @@ wird:
 - RGB-/True-Color-Styles;
 - Background-Styles und Theme-Cascade.
 
-## 6. Abschlussprotokoll
+## 7. Abschlussprotokoll
 
 | Umgebung | Commit | Ergebnis | Bemerkungen |
 |---|---|---|---|
