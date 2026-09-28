@@ -27,6 +27,8 @@ they improve the architecture before compatibility commitments become expensive.
 - Backend-neutral `PointerEvent`, visual-tree `HitTest` and lifetime-safe `PointerRouter` with capture assigned to the Widget that handles the press.
 - Semantic `Button::isPressed()` state with capture-loss cleanup, release-inside activation / release-outside cancellation, and Terminal/Rendered pressed presentation.
 - SDL3 pointer coordinate conversion and private deterministic semantic translation seam; the SDL3 backend now advertises pointer input capability.
+- Shared private Rendered TextField viewport geometry plus `RenderedTextFieldHitTest` for metric-correct pointer click-to-caret mapping without leaking font/pixel state into Core.
+- SDL3 integration coverage from native mouse-button representation through semantic cursor placement to the final rendered TextField caret command.
 
 ## [0.1.0] - 2026-09-28
 
