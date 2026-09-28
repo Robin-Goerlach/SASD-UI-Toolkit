@@ -90,6 +90,7 @@ add_test(NAME sasd_ui_terminal_tests COMMAND sasd_ui_terminal_tests)
 add_executable(sasd_ui_rendered_tests
     test_main.cpp
     rendered_display_list_tests.cpp
+    rendered_display_list_executor_tests.cpp
     rendered_presentation_sink_tests.cpp
 )
 
