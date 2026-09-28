@@ -1,6 +1,6 @@
 # M2 Terminal Smoke Test
 
-Status: 2026-09-27
+Status: 2026-09-28
 
 This document defines the **manual exit validation for M2 / v0.1.0**.
 
@@ -36,6 +36,11 @@ Windows PowerShell:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\m2_smoke_windows.ps1
 ```
+
+By default the runners launch the demo **three times**: first for the complete interaction pass ending
+with F10, then once each for Escape and the Exit button. Restoration is therefore checked separately
+after all three required exit paths. Add `--single-run` or `-SingleRun` for a quick diagnostic run; a
+single run alone is not sufficient to close the M2 release gate.
 
 After an already successful build, use `--skip-build` or `-SkipBuild`. The helpers defensively restore
 the original TTY/code-page state while still reporting any mismatch as a failure.

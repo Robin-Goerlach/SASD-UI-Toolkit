@@ -34,12 +34,12 @@ jobs:
         shell: bash
         run: |
           bash -n tools/m2_smoke_posix.sh
-          bash tools/m2_smoke_posix.sh --validate-only
+          bash tools/m2_smoke_posix.sh --single-run --validate-only
 
       - name: Validate Windows smoke helper
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\tools\m2_smoke_windows.ps1 -ValidateOnly
+        run: .\tools\m2_smoke_windows.ps1 -SingleRun -ValidateOnly
 
       - name: Configure
         run: >-

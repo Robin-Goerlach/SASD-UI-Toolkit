@@ -1,5 +1,6 @@
 param(
     [switch]$SkipBuild,
+    [switch]$SingleRun,
     [switch]$ValidateOnly
 )
 
@@ -8,8 +9,9 @@ $ErrorActionPreference = "Stop"
 # Manual M2 terminal release-gate helper for Windows Terminal / modern Windows consoles.
 #
 # Automated ConPTY tests already cover the native adapter. This helper prepares the exact local
-# checkout and adds an external code-page restoration check around the real interactive demo.
-# Visual appearance, focus traversal, resize behavior and shell usability remain human observations.
+# checkout, guides the required F10/Escape/Exit-button runs and checks the visible console code page
+# around every run. Visual appearance, focus traversal, resize behavior and shell usability remain
+# human observations.
 
 if ($ValidateOnly) {
     Write-Host "M2 Windows smoke runner syntax/argument validation: PASS"
@@ -40,11 +42,45 @@ if (-not (Test-Path -LiteralPath $Demo)) {
     throw "Terminal demo not found: $Demo. Run without -SkipBuild first."
 }
 
+function Get-CodePageSnapshot {
+    $Text = (& cmd /c chcp) -join " "
+    $Number = if ($Text -match '(\d+)') { [int]$Matches[1] } else { $null }
+
+    return [pscustomobject]@{
+        Text = $Text
+        Number = $Number
+    }
+}
+
+function Test-CodePageEqual {
+    param(
+        [Parameter(Mandatory = $true)]$Before,
+        [Parameter(Mandatory = $true)]$After
+    )
+
+    if ($null -ne $Before.Number -and $null -ne $After.Number) {
+        return $Before.Number -eq $After.Number
+    }
+
+    return $Before.Text -eq $After.Text
+}
+
+function Restore-CodePage {
+    param(
+        [Parameter(Mandatory = $true)]$Snapshot
+    )
+
+    if ($null -ne $Snapshot.Number) {
+        # This is a safety net only. A mismatch is still reported as a release-gate failure.
+        & cmd /c "chcp $($Snapshot.Number) >nul"
+    }
+}
+
 $Commit = (& git -C $RepoRoot rev-parse --short HEAD 2>$null)
 if (-not $Commit) { $Commit = "unknown" }
 
-$BeforeChcpText = (& cmd /c chcp) -join " "
-$BeforeCodePage = if ($BeforeChcpText -match '(\d+)') { [int]$Matches[1] } else { $null }
+$OriginalCodePage = Get-CodePageSnapshot
+$script:RunFailures = 0
 
 Write-Host ""
 Write-Host "M2 terminal smoke environment"
@@ -52,62 +88,107 @@ Write-Host "-----------------------------"
 Write-Host "Commit:           $Commit"
 Write-Host "Operating system: $([System.Environment]::OSVersion.VersionString)"
 Write-Host "PowerShell:       $($PSVersionTable.PSVersion)"
-Write-Host "Code page:        $BeforeChcpText"
+Write-Host "Code page:        $($OriginalCodePage.Text)"
 Write-Host ""
-Write-Host "Manual observations during the demo:"
+Write-Host "Manual observations during the first demo run:"
 Write-Host "  1. Styles/colors render without raw escape text."
 Write-Host "  2. Enter: Robin AΩ界 ; verify Unicode and wide-cell layout."
 Write-Host "  3. Left/Right/Home/End/Backspace/Delete edit correctly."
 Write-Host "  4. Tab/Shift+Tab traverse focus; caret belongs only to TextField."
 Write-Host "  5. Greet activates exactly once with Enter and Space."
-Write-Host "  6. F1 shows help; F10 exits on a separate run."
+Write-Host "  6. F1 shows help."
 Write-Host "  7. Resize smaller/larger; no stale cells, logical focus/text preserved."
-Write-Host "  8. Escape and Exit button both restore normal shell behavior on separate runs."
-Write-Host ""
-Write-Host "Starting the interactive demo now..."
 
-$DemoStatus = 0
+function Invoke-DemoRun {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$Instruction
+    )
+
+    Write-Host ""
+    Write-Host "=== $Label ==="
+    Write-Host $Instruction
+    Write-Host "Starting the interactive demo..."
+
+    $Before = Get-CodePageSnapshot
+    $After = $null
+    $DemoStatus = 0
+
+    try {
+        & $Demo
+        $DemoStatus = $LASTEXITCODE
+    }
+    finally {
+        $After = Get-CodePageSnapshot
+
+        if (-not (Test-CodePageEqual -Before $Before -After $After)) {
+            Restore-CodePage -Snapshot $Before
+        }
+    }
+
+    $RestorationFailed = -not (Test-CodePageEqual -Before $Before -After $After)
+
+    Write-Host ""
+    if (-not $RestorationFailed) {
+        Write-Host "Code-page restoration: PASS"
+    }
+    else {
+        Write-Host "Code-page restoration: FAIL"
+        Write-Host "Before: $($Before.Text)"
+        Write-Host "After:  $($After.Text)"
+        Write-Host "The helper restored the numeric code page captured immediately before this run where possible."
+    }
+
+    if ($DemoStatus -eq 0) {
+        Write-Host "Demo exit code:       PASS (0)"
+    }
+    else {
+        Write-Host "Demo exit code:       FAIL ($DemoStatus)"
+    }
+
+    if ($DemoStatus -ne 0 -or $RestorationFailed) {
+        $script:RunFailures += 1
+    }
+}
+
 try {
-    & $Demo
-    $DemoStatus = $LASTEXITCODE
+    if ($SingleRun) {
+        Invoke-DemoRun `
+            -Label "Single diagnostic run" `
+            -Instruction "Perform the interaction you want to diagnose, then exit the demo normally."
+    }
+    else {
+        Invoke-DemoRun `
+            -Label "Run 1/3 - interaction + F10" `
+            -Instruction "Perform the full interaction checklist above. Finish this run with F10."
+        Invoke-DemoRun `
+            -Label "Run 2/3 - Escape restoration" `
+            -Instruction "After the UI appears, finish this separate run with Escape."
+        Invoke-DemoRun `
+            -Label "Run 3/3 - Exit-button restoration" `
+            -Instruction "Move focus to the Exit button and activate it with Enter or Space."
+    }
 }
 finally {
-    $AfterChcpText = (& cmd /c chcp) -join " "
-    $AfterCodePage = if ($AfterChcpText -match '(\d+)') { [int]$Matches[1] } else { $null }
-
-    if ($BeforeCodePage -ne $null -and
-        $AfterCodePage -ne $null -and
-        $BeforeCodePage -ne $AfterCodePage) {
-        # Safety net: restore the visible console code page even if the application failed its own
-        # RAII contract. This does not hide the failure; it is reported below.
-        & cmd /c "chcp $BeforeCodePage >nul"
+    # Protect the shell even if the validation is interrupted between guided runs.
+    $CurrentCodePage = Get-CodePageSnapshot
+    if (-not (Test-CodePageEqual -Before $OriginalCodePage -After $CurrentCodePage)) {
+        Restore-CodePage -Snapshot $OriginalCodePage
     }
 }
 
 Write-Host ""
-if ($BeforeChcpText -eq $AfterChcpText) {
-    Write-Host "Code-page restoration: PASS"
-    $RestorationFailed = $false
+if ($script:RunFailures -eq 0) {
+    Write-Host "Objective runner checks: PASS"
 }
 else {
-    Write-Host "Code-page restoration: FAIL"
-    Write-Host "Before: $BeforeChcpText"
-    Write-Host "After:  $AfterChcpText"
-    Write-Host "The helper restored the original numeric code page where possible."
-    $RestorationFailed = $true
+    Write-Host "Objective runner checks: FAIL ($($script:RunFailures) run(s) reported a problem)"
 }
 
-if ($DemoStatus -eq 0) {
-    Write-Host "Demo exit code:       PASS (0)"
-}
-else {
-    Write-Host "Demo exit code:       FAIL ($DemoStatus)"
-}
-
-Write-Host ""
-Write-Host "Record the visual/interaction result in docs\de\M2_TERMINAL_SMOKE_TEST.md"
+Write-Host "Visual/interaction judgment is still manual."
+Write-Host "Record the result in docs\de\M2_TERMINAL_SMOKE_TEST.md"
 Write-Host "or paste the observations back into the development chat."
 
-if ($DemoStatus -ne 0 -or $RestorationFailed) {
+if ($script:RunFailures -ne 0) {
     exit 1
 }
