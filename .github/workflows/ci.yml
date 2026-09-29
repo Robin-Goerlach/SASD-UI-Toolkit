@@ -173,10 +173,12 @@ jobs:
           -DSASD_UI_FETCH_SDL3=ON
           -DSASD_UI_SDL3_TEST_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
           -DSDL_UNIX_CONSOLE_BUILD=ON
-          -DBUILD_SHARED_LIBS=ON
+          -DBUILD_SHARED_LIBS:BOOL=ON
 
       - name: Verify SDL fetch preserves parent linkage policy
         run: |
+          # Use an explicitly typed parent cache entry above. The regression we guard against is
+          # SASD/SDL_ttf rewriting that caller-owned BOOL from ON to OFF via CACHE ... FORCE.
           cmake -N -LA build-sdl3 > build-sdl3-cache.txt
           grep -Fxq "BUILD_SHARED_LIBS:BOOL=ON" build-sdl3-cache.txt
 
