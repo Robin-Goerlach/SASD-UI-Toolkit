@@ -24,6 +24,24 @@ Widget-Optik folgen später.
 
 ## Windows 11 / Visual Studio 2022
 
+Der bevorzugte Einstieg ist jetzt der Repository-Helper:
+
+```powershell
+.\tools\m3_smoke_windows.ps1
+```
+
+Er findet Repository, CMake, vcpkg, Segoe UI/Consolas und das getrennte Windows-Smoke-Build-Verzeichnis selbst, prueft die benoetigten SDL3/HarfBuzz-Pakete, konfiguriert und baut das Demo und startet anschliessend den sichtbaren Test. Dadurch funktioniert der Ablauf auch nach einer frisch geoeffneten PowerShell ohne zuvor gesetzte `$Build`, `$Demo`, `$Font` oder `$VcpkgRoot`-Variablen.
+
+Nuetzliche Varianten:
+
+```powershell
+.\tools\m3_smoke_windows.ps1 -SkipBuild
+.\tools\m3_smoke_windows.ps1 -BuildOnly
+.\tools\m3_smoke_windows.ps1 -Clean
+.\tools\m3_smoke_windows.ps1 -Diagnostic
+.\tools\m3_smoke_windows.ps1 -InstallDependencies
+```
+
 Die erste sichtbare Validierung verwendete:
 
 - Visual Studio 2022 Developer PowerShell;
