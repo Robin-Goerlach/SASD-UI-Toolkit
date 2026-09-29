@@ -103,7 +103,21 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
         # SDL_ttf is kept static and non-installing. HarfBuzz stays enabled because ADR 0028 requires
         # the caret/measurement side to respect shaping context. PlutoSVG/color-emoji support is not
         # needed for this first software-device slice and would add unrelated dependencies.
-        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+        #
+        # SDL_ttf 3.2.2 intentionally uses CMake's generic BUILD_SHARED_LIBS switch instead of a
+        # SDLTTF-specific static/shared option. Never FORCE that generic variable into the cache here:
+        # SASD UI Toolkit may itself be embedded through add_subdirectory(), and mutating a parent
+        # project's linkage policy would be a surprising global side effect. A normal variable is
+        # sufficient under CMake's NEW CMP0077 behavior (our 3.24 minimum) and is inherited by the
+        # fetched SDL_ttf directory without rewriting the caller's cache entry.
+        set(_sasd_ui_build_shared_libs_was_defined FALSE)
+        if(DEFINED BUILD_SHARED_LIBS)
+            set(_sasd_ui_build_shared_libs_was_defined TRUE)
+            set(_sasd_ui_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
+        endif()
+
+        set(BUILD_SHARED_LIBS OFF)
+
         set(SDLTTF_INSTALL OFF CACHE BOOL "" FORCE)
         set(SDLTTF_VENDORED OFF CACHE BOOL "" FORCE)
         set(SDLTTF_HARFBUZZ ON CACHE BOOL "" FORCE)
@@ -117,6 +131,17 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(sasd_sdl3_ttf)
+
+        # Restore SASD's directory scope exactly enough for all targets declared after the dependency.
+        # If the caller had no BUILD_SHARED_LIBS policy, unsetting our temporary normal variable also
+        # preserves that "unspecified" state instead of imposing static linkage on later targets.
+        if(_sasd_ui_build_shared_libs_was_defined)
+            set(BUILD_SHARED_LIBS "${_sasd_ui_saved_build_shared_libs}")
+        else()
+            unset(BUILD_SHARED_LIBS)
+        endif()
+        unset(_sasd_ui_saved_build_shared_libs)
+        unset(_sasd_ui_build_shared_libs_was_defined)
     else()
         find_package(SDL3 3.2 REQUIRED CONFIG)
         find_package(SDL3_ttf 3.2 REQUIRED CONFIG)
