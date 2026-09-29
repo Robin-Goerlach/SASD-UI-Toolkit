@@ -24,6 +24,24 @@ future work.
 
 ## Windows 11 / Visual Studio 2022 setup
 
+The preferred entry point is now the repository helper:
+
+```powershell
+.\tools\m3_smoke_windows.ps1
+```
+
+It resolves the repository, CMake, vcpkg, Segoe UI/Consolas and the separate Windows smoke build directory; verifies the required SDL3/HarfBuzz packages; configures and builds the demo; and starts the visible test. A freshly opened PowerShell therefore no longer depends on previously assigned `$Build`, `$Demo`, `$Font` or `$VcpkgRoot` variables.
+
+Useful variants:
+
+```powershell
+.\tools\m3_smoke_windows.ps1 -SkipBuild
+.\tools\m3_smoke_windows.ps1 -BuildOnly
+.\tools\m3_smoke_windows.ps1 -Clean
+.\tools\m3_smoke_windows.ps1 -Diagnostic
+.\tools\m3_smoke_windows.ps1 -InstallDependencies
+```
+
 The first visible validation used:
 
 - Visual Studio 2022 Developer PowerShell;
