@@ -138,6 +138,8 @@ CI goes beyond compilation: Linux/macOS run the native POSIX adapter inside a re
 
 The exact release-gate procedure and recorded results are documented in the [English M2 terminal smoke test](docs/en/M2_TERMINAL_SMOKE_TEST.md) and [German M2-Terminal-Smoke-Test](docs/de/M2_TERMINAL_SMOKE_TEST.md).
 
+M3 visible desktop validation is tracked separately in the [English M3 rendered desktop smoke test](docs/en/M3_RENDERED_DESKTOP_SMOKE_TEST.md) and [German M3-Rendered-Desktop-Smoke-Test](docs/de/M3_RENDERED_DESKTOP_SMOKE_TEST.md).
+
 ### Build the experimental SDL3 adapter
 
 The first SDL3 adapter is deliberately **opt-in and build-tree-only** while M3 validates its dependency,
