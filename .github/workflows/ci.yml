@@ -29,12 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate POSIX smoke helper
+      - name: Validate POSIX smoke helpers
         if: runner.os != 'Windows'
         shell: bash
         run: |
           bash -n tools/m2_smoke_posix.sh
+          bash -n tools/m3_smoke_linux.sh
           bash tools/m2_smoke_posix.sh --single-run --validate-only
+          bash tools/m3_smoke_linux.sh --validate-only
 
       - name: Validate Windows smoke helpers
         if: runner.os == 'Windows'

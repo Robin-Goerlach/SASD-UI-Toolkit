@@ -90,6 +90,42 @@ cmake --build $Build --config Debug --target sasd_ui_sdl3_demo --parallel
 & (Join-Path $Build "examples\Debug\sasd_ui_sdl3_demo.exe") $Font
 ```
 
+## Linux desktop setup
+
+The Linux counterpart to the Windows helper is:
+
+```bash
+./tools/m3_smoke_linux.sh
+```
+
+Useful variants:
+
+```bash
+./tools/m3_smoke_linux.sh --skip-build
+./tools/m3_smoke_linux.sh --build-only
+./tools/m3_smoke_linux.sh --clean
+./tools/m3_smoke_linux.sh --diagnostic
+./tools/m3_smoke_linux.sh --font /path/to/font.ttf
+```
+
+The helper uses the repository's pinned SDL3/SDL_ttf FetchContent path. It intentionally does **not**
+set SDL's `SDL_UNIX_CONSOLE_BUILD=ON` escape hatch: upstream SDL uses that switch for Unix builds
+that do not need to create normal windows. A visible M3 validation instead requires an SDL build with
+X11 or Wayland support, so missing desktop development libraries fail configuration rather than
+silently producing an offscreen-only result.
+
+The helper does not install distribution packages. The Linux machine must already provide CMake, a
+C/C++ toolchain, Git, FreeType/HarfBuzz development files and the X11 or Wayland development files
+needed by SDL. A readable proportional desktop font is discovered through `fc-match` when available,
+with common DejaVu/Liberation/Noto paths as fallbacks; `--font` can always override discovery.
+
+Before launching, the helper also rejects a missing graphical session and explicit
+`SDL_VIDEODRIVER=offscreen`/`dummy` overrides. It reports `XDG_SESSION_TYPE`, `DISPLAY` and
+`WAYLAND_DISPLAY` so an X11, Wayland or XWayland result can be recorded precisely.
+
+**Recorded Linux result:** pending. The helper makes the run reproducible; a human-visible desktop
+PASS is still required before the Linux M3 requirement is closed.
+
 ## Manual checks
 
 ### TextField click-to-caret

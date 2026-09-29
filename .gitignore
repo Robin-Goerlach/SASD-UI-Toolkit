@@ -4,6 +4,7 @@
 /build-smoke-posix/
 /build-smoke-windows/
 /build-sdl3-win-smoke/
+/build-sdl3-linux-smoke/
 /cmake-build-*/
 CMakeCache.txt
 CMakeFiles/

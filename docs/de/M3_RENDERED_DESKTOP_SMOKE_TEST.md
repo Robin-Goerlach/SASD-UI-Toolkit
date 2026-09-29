@@ -91,6 +91,45 @@ cmake --build $Build --config Debug --target sasd_ui_sdl3_demo --parallel
 & (Join-Path $Build "examples\Debug\sasd_ui_sdl3_demo.exe") $Font
 ```
 
+## Linux-Desktop-Setup
+
+Das Linux-Gegenstück zum Windows-Helper ist:
+
+```bash
+./tools/m3_smoke_linux.sh
+```
+
+Nützliche Varianten:
+
+```bash
+./tools/m3_smoke_linux.sh --skip-build
+./tools/m3_smoke_linux.sh --build-only
+./tools/m3_smoke_linux.sh --clean
+./tools/m3_smoke_linux.sh --diagnostic
+./tools/m3_smoke_linux.sh --font /pfad/zur/font.ttf
+```
+
+Der Helper verwendet den im Repository gepinnten FetchContent-Pfad für SDL3/SDL_ttf. Er setzt
+bewusst **nicht** SDLs `SDL_UNIX_CONSOLE_BUILD=ON`-Ausnahme: Upstream-SDL verwendet diese Option für
+Unix-Builds, die keine normalen Fenster anzeigen müssen. Für die sichtbare M3-Validierung verlangen
+wir dagegen einen SDL-Build mit X11- oder Wayland-Unterstützung. Fehlende Desktop-Development-
+Bibliotheken sollen deshalb bereits die Konfiguration stoppen, statt unbemerkt nur einen
+Offscreen-Build zu erzeugen.
+
+Der Helper installiert keine Distributionspakete. Auf dem Linux-System müssen CMake, C/C++-Toolchain,
+Git, FreeType-/HarfBuzz-Development-Dateien und die für SDL notwendigen X11- oder Wayland-
+Development-Dateien bereits vorhanden sein. Einen lesbaren proportionalen Desktop-Font sucht der
+Helper bevorzugt über `fc-match`; übliche DejaVu-/Liberation-/Noto-Pfade dienen als Fallback.
+Mit `--font` lässt sich die Erkennung jederzeit überschreiben.
+
+Vor dem Start lehnt der Helper außerdem eine fehlende grafische Sitzung sowie explizite
+`SDL_VIDEODRIVER=offscreen`-/`dummy`-Overrides ab. `XDG_SESSION_TYPE`, `DISPLAY` und
+`WAYLAND_DISPLAY` werden ausgegeben, damit ein X11-, Wayland- oder XWayland-Ergebnis später exakt
+dokumentiert werden kann.
+
+**Aufgezeichnetes Linux-Ergebnis:** ausstehend. Der Helper macht den Ablauf reproduzierbar; zum
+Abschluss der Linux-M3-Anforderung ist weiterhin ein tatsächlich sichtbarer manueller PASS nötig.
+
 ## Manuelle Prüfungen
 
 ### TextField Click-to-Caret

@@ -22,6 +22,7 @@ they improve the architecture before compatibility commitments become expensive.
 - `FillRole` on rendered rectangle fills so `Color::default_color` preserves foreground-vs-background intent (notably TextField caret versus widget erasure).
 - Experimental build-tree-only `SASD::UI::Rendered::SDL3` adapter using a real SDL3 software renderer and SDL_ttf for UTF-8 rendering, clipping, real font metrics and shaped caret-boundary queries.
 - Dedicated headless SDL3 adapter CI with pinned SDL/SDL_ttf releases and externally supplied test font; normal toolkit builds remain SDL-independent.
+- Reproducible visible Linux M3 smoke helper with pinned SDL fetch, font discovery, X11/Wayland build validation, session diagnostics and explicit human PASS gate.
 - SDL_ttf FetchContent configuration no longer FORCE-overwrites a parent project's generic `BUILD_SHARED_LIBS` cache policy; CI guards the embedding invariant.
 - Fetched static SDL3/SDL_ttf dependencies are built position-independent so a parent `BUILD_SHARED_LIBS=ON` policy can produce shared SASD adapter libraries without ELF relocation failures.
 - SDL3 command-local text clipping now restores pre-existing renderer clip state instead of assuming an unclipped outer renderer.
