@@ -93,10 +93,42 @@ void presentFullFrame(Window& window,
         return argv[1];
     }
 
+#if defined(_WIN32)
+    /*
+     * MSVC deliberately diagnoses std::getenv() as C4996. The demo is built with /W4 and can be
+     * built with /WX, so suppressing that diagnostic globally would weaken the warning policy for
+     * unrelated code. Use Microsoft's ownership-explicit environment API locally instead.
+     *
+     * _dupenv_s() allocates the returned buffer with malloc-compatible storage. Copy into std::string
+     * before releasing it so no environment pointer/lifetime leaks into the rest of the demo.
+     */
+    char* environment = nullptr;
+    std::size_t environment_size = 0;
+
+    if (_dupenv_s(&environment, &environment_size, "SASD_UI_FONT") == 0) {
+        std::string value;
+
+        if (environment != nullptr) {
+            value.assign(environment);
+            std::free(environment);
+        }
+
+        if (!value.empty()) {
+            return value;
+        }
+    } else if (environment != nullptr) {
+        /*
+         * Defensive cleanup in case a CRT implementation ever reports failure after assigning a
+         * buffer. Current MSVC documentation normally leaves it null on failure.
+         */
+        std::free(environment);
+    }
+#else
     if (const char* environment = std::getenv("SASD_UI_FONT");
         environment != nullptr && environment[0] != '\0') {
         return environment;
     }
+#endif
 
     return {};
 }
