@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/rendered/rendered_theme_metrics.hpp>
 
 #include <cstddef>
 #include <optional>
@@ -46,7 +47,8 @@ struct RenderedTextFieldViewport {
 [[nodiscard]] std::optional<RenderedTextFieldViewport> buildTextFieldViewport(
     const TextField& field,
     Rect bounds,
-    const RenderedMeasurementContext& metrics);
+    const RenderedMeasurementContext& metrics,
+    RenderedThemeMetrics theme_metrics);
 
 } // namespace detail
 } // namespace rendered

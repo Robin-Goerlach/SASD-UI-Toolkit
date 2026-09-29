@@ -16,6 +16,7 @@ they improve the architecture before compatibility commitments become expensive.
 - Optional per-text-command clipping bounds for safe widget-local rendering without a premature graphics-state stack.
 - `RenderedPresentationSink` for Window refreshes, Label and Button presentation, including incremental repaint and conservative subtree rebuild behavior.
 - `RenderedMeasurementContext` with logical line-height and deferrable Unicode-scalar boundary advances for rendered font/shaping metrics.
+- Geometry-only `RenderedThemeMetrics` shared by rendered control measurement, Button/TextField chrome, TextField viewport/caret layout and click-to-caret mapping.
 - Metric-aware rendered `TextField` presentation with full-run clipping, scalar-boundary horizontal viewport and insertion caret, while unsupported caret mappings remain explicitly deferred.
 - `RenderDevice` and `DisplayListExecutor` execution boundary, centralizing deterministic command replay for later SDL3/native adapters without exposing their types.
 - `FillRole` on rendered rectangle fills so `Color::default_color` preserves foreground-vs-background intent (notably TextField caret versus widget erasure).

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/rendered/rendered_theme_metrics.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -36,6 +37,18 @@ public:
     [[nodiscard]] virtual Coordinate lineHeight() const noexcept = 0;
 
     /**
+     * Returns geometry-only control theme metrics used by rendered measurement and presentation.
+     *
+     * The default preserves the original M3 one-unit chrome. A concrete rendered environment may
+     * override this when its theme requires different logical border/caret geometry. If those values
+     * can change at runtime, revision() must change with them so Widget measurement caches cannot
+     * retain sizes produced by an obsolete theme.
+     */
+    [[nodiscard]] virtual RenderedThemeMetrics themeMetrics() const noexcept {
+        return {};
+    }
+
+    /**
      * Returns the horizontal logical advance from the text origin to a Unicode-scalar boundary.
      *
      * scalar_index is in [0, utf8::scalarCount(utf8_text)]. For one unchanged string, boundary zero
@@ -63,10 +76,20 @@ public:
     [[nodiscard]] Size measureButton(std::string_view utf8_text) const override {
         const Size text = measureText(utf8_text);
         const Coordinate content_height = std::max(text.height, positiveLineHeight());
-        return {
-            saturatingAdd(text.width, 2),
-            saturatingAdd(content_height, 2),
-        };
+        const RenderedThemeMetrics theme = themeMetrics().normalized();
+
+        /*
+         * Apply the same border on both sides using repeated saturating addition instead of
+         * multiplying first. Coordinate is signed and a theme provider may legally choose a large
+         * logical border; widened/unchecked arithmetic must not overflow before saturation.
+         */
+        Coordinate width = saturatingAdd(text.width, theme.control_border_thickness);
+        width = saturatingAdd(width, theme.control_border_thickness);
+
+        Coordinate height = saturatingAdd(content_height, theme.control_border_thickness);
+        height = saturatingAdd(height, theme.control_border_thickness);
+
+        return {width, height};
     }
 
     /**
@@ -79,10 +102,16 @@ public:
     [[nodiscard]] Size measureTextField(std::string_view utf8_text) const override {
         const Size text = measureText(utf8_text);
         const Coordinate content_height = std::max(text.height, positiveLineHeight());
-        return {
-            saturatingAdd(text.width, 3),
-            saturatingAdd(content_height, 2),
-        };
+        const RenderedThemeMetrics theme = themeMetrics().normalized();
+
+        Coordinate width = saturatingAdd(text.width, theme.control_border_thickness);
+        width = saturatingAdd(width, theme.control_border_thickness);
+        width = saturatingAdd(width, theme.text_field_caret_width);
+
+        Coordinate height = saturatingAdd(content_height, theme.control_border_thickness);
+        height = saturatingAdd(height, theme.control_border_thickness);
+
+        return {width, height};
     }
 
 private:

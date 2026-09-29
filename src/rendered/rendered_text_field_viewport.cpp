@@ -15,8 +15,10 @@ namespace sasd::ui::rendered::detail {
 std::optional<RenderedTextFieldViewport> buildTextFieldViewport(
     const TextField& field,
     Rect bounds,
-    const RenderedMeasurementContext& metrics) {
-    const auto content = insetOne(bounds);
+    const RenderedMeasurementContext& metrics,
+    RenderedThemeMetrics theme_metrics) {
+    const RenderedThemeMetrics theme = theme_metrics.normalized();
+    const auto content = inset(bounds, theme.control_border_thickness);
     if (!content.has_value()) {
         return std::nullopt;
     }
@@ -61,8 +63,16 @@ std::optional<RenderedTextFieldViewport> buildTextFieldViewport(
     }
 
     result.cursor_advance = advances.back();
+    /*
+     * Reserve the complete caret width at the end of the visible text capacity even while the field
+     * is unfocused. This mirrors intrinsic measurement and prevents focus alone from forcing the
+     * viewport to scroll.
+     */
     result.text_capacity =
-        content->width > 0 ? static_cast<Coordinate>(content->width - 1) : 0;
+        content->width > theme.text_field_caret_width
+            ? static_cast<Coordinate>(
+                  content->width - theme.text_field_caret_width)
+            : 0;
 
     result.start_index = 0;
     while (result.start_index < result.cursor_index) {
@@ -86,7 +96,8 @@ std::optional<RenderedTextFieldViewport> buildTextFieldViewport(
     }
     result.text_origin.x = *text_x;
 
-    if (field.hasFocus()) {
+    if (field.hasFocus() &&
+        content->width >= theme.text_field_caret_width) {
         const std::int64_t relative_caret =
             static_cast<std::int64_t>(result.cursor_advance) -
             static_cast<std::int64_t>(result.start_advance);
@@ -95,14 +106,18 @@ std::optional<RenderedTextFieldViewport> buildTextFieldViewport(
             static_cast<std::int64_t>(content->x) + relative_caret);
         if (!caret_x.has_value() ||
             relative_caret < 0 ||
-            relative_caret >= static_cast<std::int64_t>(content->width)) {
+            relative_caret > static_cast<std::int64_t>(result.text_capacity)) {
             return std::nullopt;
         }
 
         const Coordinate caret_height =
             std::min(result.line_height, content->height);
         if (caret_height > 0) {
-            result.caret = Rect{*caret_x, content->y, 1, caret_height};
+            result.caret = Rect{
+                *caret_x,
+                content->y,
+                theme.text_field_caret_width,
+                caret_height};
         }
     }
 

@@ -54,6 +54,15 @@ public:
     std::uint64_t revision() const noexcept override { return 1; }
 };
 
+class ThemedHitTestMetrics final : public HitTestMetrics {
+public:
+    RenderedThemeMetrics themeMetrics() const noexcept override {
+        return {2, 2, 2};
+    }
+
+    std::uint64_t revision() const noexcept override { return 2; }
+};
+
 class UnsupportedVisibleBoundaryMetrics final : public HitTestMetrics {
 public:
     std::optional<Coordinate> textAdvanceToScalar(
@@ -85,6 +94,26 @@ TEST_CASE("RenderedTextFieldHitTest chooses nearest scalar boundary in visible f
           std::optional<std::size_t>{2});
     CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {48, 15}, metrics) ==
           std::optional<std::size_t>{3});
+}
+
+TEST_CASE("RenderedTextFieldHitTest uses theme border geometry from the metric provider") {
+    ThemedHitTestMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 100, 50});
+
+    auto& field = window.emplace<TextField>("ab");
+    field.arrange({10, 10, 40, 16});
+
+    /*
+     * With a two-unit border the text viewport starts at global x=12. The midpoint to the first
+     * eight-unit advance is therefore x=16; x=15 must still select scalar zero. A hard-coded
+     * one-unit inset would incorrectly treat x=15 as the midpoint and select scalar one.
+     */
+    CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {15, 15}, metrics) ==
+          std::optional<std::size_t>{0});
+    CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {16, 15}, metrics) ==
+          std::optional<std::size_t>{1});
 }
 
 TEST_CASE("RenderedTextFieldHitTest uses the same horizontally scrolled viewport as presentation") {

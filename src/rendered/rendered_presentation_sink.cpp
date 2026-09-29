@@ -69,9 +69,18 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     return PresentationUpdateResult::synchronized;
 }
 
-[[nodiscard]] PresentationUpdateResult renderButton(DisplayList& display_list,
-                                                    const Button& button,
-                                                    Color background_color) {
+[[nodiscard]] RenderedThemeMetrics activeThemeMetrics(
+    const RenderedMeasurementContext* metrics) noexcept {
+    return metrics != nullptr
+               ? metrics->themeMetrics().normalized()
+               : RenderedThemeMetrics{}.normalized();
+}
+
+[[nodiscard]] PresentationUpdateResult renderButton(
+    DisplayList& display_list,
+    const Button& button,
+    const RenderedMeasurementContext* metrics,
+    Color background_color) {
     const auto absolute = detail::absoluteRectOf(button);
     if (!absolute.has_value()) {
         return PresentationUpdateResult::deferred;
@@ -86,17 +95,24 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
      * Preflight all pressed-state coordinate arithmetic before mutating DisplayList. A failure must
      * not erase a previous good frame and then return deferred with no rollback mechanism.
      */
-    const auto content = detail::insetOne(*absolute);
+    const RenderedThemeMetrics theme = activeThemeMetrics(metrics);
+    const auto content =
+        detail::inset(*absolute, theme.control_border_thickness);
     if (!content.has_value()) {
         return PresentationUpdateResult::deferred;
     }
 
     Point text_origin{content->x, content->y};
-    if (button.isPressed() && content->width > 1 && content->height > 1) {
-        const auto pressed_x =
-            detail::narrowCoordinate(static_cast<std::int64_t>(content->x) + 1);
-        const auto pressed_y =
-            detail::narrowCoordinate(static_cast<std::int64_t>(content->y) + 1);
+    if (button.isPressed() &&
+        theme.button_pressed_offset > 0 &&
+        content->width > theme.button_pressed_offset &&
+        content->height > theme.button_pressed_offset) {
+        const auto pressed_x = detail::narrowCoordinate(
+            static_cast<std::int64_t>(content->x) +
+            static_cast<std::int64_t>(theme.button_pressed_offset));
+        const auto pressed_y = detail::narrowCoordinate(
+            static_cast<std::int64_t>(content->y) +
+            static_cast<std::int64_t>(theme.button_pressed_offset));
         if (!pressed_x.has_value() || !pressed_y.has_value()) {
             return PresentationUpdateResult::deferred;
         }
@@ -106,12 +122,17 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     const TextStyle style = controlTextStyle(button, button.textStyle());
 
     eraseWidget(display_list, *absolute, background_color);
-    display_list.strokeRect(*absolute, style.foreground, 1);
+    if (theme.control_border_thickness > 0) {
+        display_list.strokeRect(
+            *absolute,
+            style.foreground,
+            theme.control_border_thickness);
+    }
 
     if (!content->isEmpty()) {
         /*
-         * One logical unit of caption offset is the first rendered pressed cue. It changes no
-         * measurement and introduces no premature theme/brush contract.
+         * Pressed offset is visual state only and intentionally does not participate in intrinsic
+         * measurement. Theme geometry changes chrome without changing Button's semantic state.
          */
         display_list.drawText(text_origin, button.text(), style, *content);
     }
@@ -142,8 +163,9 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         return PresentationUpdateResult::deferred;
     }
 
+    const RenderedThemeMetrics theme = metrics->themeMetrics().normalized();
     const auto layout =
-        detail::buildTextFieldViewport(field, *absolute, *metrics);
+        detail::buildTextFieldViewport(field, *absolute, *metrics, theme);
     if (!layout.has_value()) {
         return PresentationUpdateResult::deferred;
     }
@@ -156,7 +178,12 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
      * place the caret last so it remains visible over the glyph run.
      */
     eraseWidget(display_list, layout->bounds, background_color);
-    display_list.strokeRect(layout->bounds, style.foreground, 1);
+    if (theme.control_border_thickness > 0) {
+        display_list.strokeRect(
+            layout->bounds,
+            style.foreground,
+            theme.control_border_thickness);
+    }
 
     if (!layout->content.isEmpty()) {
         display_list.drawText(
@@ -212,7 +239,11 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
     }
 
     if (const auto* button = dynamic_cast<const Button*>(&widget)) {
-        return renderButton(display_list_, *button, background_color_);
+        return renderButton(
+            display_list_,
+            *button,
+            measurement_context_,
+            background_color_);
     }
 
     if (const auto* label = dynamic_cast<const Label*>(&widget)) {

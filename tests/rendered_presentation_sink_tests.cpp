@@ -77,6 +77,23 @@ public:
     }
 };
 
+class WideChromeRenderedMeasurementContext final
+    : public TestRenderedMeasurementContext {
+public:
+    [[nodiscard]] RenderedThemeMetrics themeMetrics() const noexcept override {
+        return {
+            2, // two logical units of rendered border
+            2, // two-unit pressed caption offset
+            2, // two-unit TextField caret width
+        };
+    }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept override {
+        // A distinct revision documents that theme geometry participates in measurement identity.
+        return 2;
+    }
+};
+
 class UnsupportedCaretMeasurementContext final : public TestRenderedMeasurementContext {
 public:
     [[nodiscard]] std::optional<Coordinate> textAdvanceToScalar(
@@ -278,6 +295,80 @@ TEST_CASE("RenderedMeasurementContext keeps rendered control chrome consistent w
 
     TextField empty;
     CHECK(empty.measure(metrics) == Size{3, 14});
+}
+
+TEST_CASE("Rendered theme metrics drive control measurement and Button presentation together") {
+    WideChromeRenderedMeasurementContext metrics;
+
+    Button measured_button{"abc"};
+    CHECK(measured_button.measure(metrics) == Size{28, 16});
+
+    TextField measured_field{"abc"};
+    CHECK(measured_field.measure(metrics) == Size{30, 16});
+
+    DisplayList display;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    PointerRouter pointer;
+
+    Window window;
+    window.arrange({0, 0, 200, 80});
+
+    auto& button = window.emplace<Button>("Run");
+    button.arrange({10, 10, 80, 30});
+
+    CHECK(pointer.route(
+        window,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::primary, 1}).handled);
+    CHECK(button.isPressed());
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto commands = display.commands();
+    CHECK(commands.size() == 4);
+
+    /*
+     * The same two-unit border that affected intrinsic size also defines the rendered content clip.
+     * The pressed cue then applies its independent two-unit visual offset inside that content.
+     */
+    CHECK(std::get<StrokeRectCommand>(commands[2]) ==
+          StrokeRectCommand{Rect{10, 10, 80, 30}, Color::default_color, 2});
+
+    const auto& text = std::get<DrawTextCommand>(commands[3]);
+    CHECK(text.origin == Point{14, 14});
+    CHECK(text.clip_bounds == std::optional<Rect>{Rect{12, 12, 76, 26}});
+}
+
+TEST_CASE("Rendered theme metrics keep TextField border viewport and caret coherent") {
+    WideChromeRenderedMeasurementContext metrics;
+    DisplayList display;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 120, 60});
+
+    auto& field = window.emplace<TextField>("a");
+    field.arrange({10, 10, 40, 16});
+    CHECK(focus.requestFocus(field));
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto commands = display.commands();
+    CHECK(commands.size() == 5);
+
+    CHECK(std::get<StrokeRectCommand>(commands[2]) ==
+          StrokeRectCommand{Rect{10, 10, 40, 16}, Color::default_color, 2});
+
+    const auto& text = std::get<DrawTextCommand>(commands[3]);
+    CHECK(text.origin == Point{12, 12});
+    CHECK(text.clip_bounds == std::optional<Rect>{Rect{12, 12, 36, 12}});
+
+    // "a" advances by 8; the themed insertion caret starts at x=12+8 and is two units wide.
+    CHECK(std::get<FillRectCommand>(commands[4]) ==
+          FillRectCommand{
+              Rect{20, 12, 2, 12},
+              Color::default_color,
+              FillRole::foreground});
 }
 
 TEST_CASE("RenderedPresentationSink renders focused TextField with clipped text and caret") {

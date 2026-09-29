@@ -22,8 +22,13 @@ namespace rendered::detail {
  */
 [[nodiscard]] std::optional<Rect> absoluteRectOf(const Widget& widget) noexcept;
 
-/** Returns a one-unit interior rectangle, preserving tiny controls as an empty interior. */
-[[nodiscard]] std::optional<Rect> insetOne(Rect bounds) noexcept;
+/**
+ * Returns an interior rectangle inset by a non-negative logical amount on every side.
+ *
+ * Tiny controls preserve their outer origin and become an empty interior instead of producing
+ * negative extents. Invalid negative input or unrepresentable translated origins return nullopt.
+ */
+[[nodiscard]] std::optional<Rect> inset(Rect bounds, Coordinate amount) noexcept;
 
 } // namespace rendered::detail
 } // namespace sasd::ui

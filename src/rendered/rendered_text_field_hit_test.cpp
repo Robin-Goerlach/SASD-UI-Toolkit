@@ -28,8 +28,14 @@ std::optional<std::size_t> RenderedTextFieldHitTest::caretIndexAt(
         return std::nullopt;
     }
 
+    /*
+     * Snapshot theme geometry once for this mapping operation. A mutable environment must bump the
+     * MeasurementContext revision when theme metrics change, but one hit test should still be
+     * internally coherent even if the provider is backed by live platform state.
+     */
+    const RenderedThemeMetrics theme = metrics.themeMetrics().normalized();
     const auto viewport =
-        detail::buildTextFieldViewport(field, *absolute, metrics);
+        detail::buildTextFieldViewport(field, *absolute, metrics, theme);
     if (!viewport.has_value() || viewport->content.isEmpty()) {
         return std::nullopt;
     }

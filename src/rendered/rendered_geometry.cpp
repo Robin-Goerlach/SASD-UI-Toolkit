@@ -41,13 +41,31 @@ std::optional<Rect> absoluteRectOf(const Widget& widget) noexcept {
         widget.bounds().height};
 }
 
-std::optional<Rect> insetOne(Rect bounds) noexcept {
-    if (bounds.width <= 2 || bounds.height <= 2) {
+std::optional<Rect> inset(Rect bounds, Coordinate amount) noexcept {
+    if (amount < 0 || bounds.width < 0 || bounds.height < 0) {
+        return std::nullopt;
+    }
+    if (amount == 0) {
+        return bounds;
+    }
+
+    const std::int64_t doubled = static_cast<std::int64_t>(amount) * 2;
+
+    /*
+     * An arranged control may be smaller than its theme chrome after a parent constrains layout.
+     * Keep such a control representable: presentation can still erase/outline the outer bounds while
+     * text/caret drawing sees an empty interior. Do not shift the empty rectangle to an origin that
+     * could overflow merely to represent "no drawable content".
+     */
+    if (static_cast<std::int64_t>(bounds.width) <= doubled ||
+        static_cast<std::int64_t>(bounds.height) <= doubled) {
         return Rect{bounds.x, bounds.y, 0, 0};
     }
 
-    const auto x = narrowCoordinate(static_cast<std::int64_t>(bounds.x) + 1);
-    const auto y = narrowCoordinate(static_cast<std::int64_t>(bounds.y) + 1);
+    const auto x = narrowCoordinate(
+        static_cast<std::int64_t>(bounds.x) + static_cast<std::int64_t>(amount));
+    const auto y = narrowCoordinate(
+        static_cast<std::int64_t>(bounds.y) + static_cast<std::int64_t>(amount));
     if (!x.has_value() || !y.has_value()) {
         return std::nullopt;
     }
@@ -55,8 +73,8 @@ std::optional<Rect> insetOne(Rect bounds) noexcept {
     return Rect{
         *x,
         *y,
-        static_cast<Coordinate>(bounds.width - 2),
-        static_cast<Coordinate>(bounds.height - 2)};
+        static_cast<Coordinate>(static_cast<std::int64_t>(bounds.width) - doubled),
+        static_cast<Coordinate>(static_cast<std::int64_t>(bounds.height) - doubled)};
 }
 
 } // namespace sasd::ui::rendered::detail

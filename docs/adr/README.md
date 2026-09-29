@@ -48,6 +48,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0031](0031-window-backed-sdl3-host-and-presentation-replay.md) | Window-backed SDL3 host, presentation replay and desktop event boundary | Accepted |
 | [0032](0032-pointer-routing-capture-and-button-pressed-state.md) | Backend-neutral pointer routing, capture and Button pressed state | Accepted |
 | [0033](0033-rendered-textfield-click-to-caret.md) | Rendered TextField click-to-caret mapping | Accepted |
+| [0034](0034-rendered-geometry-theme-metrics.md) | Rendered geometry theme metrics before a full theme system | Accepted |
 
 ## ADR policy
 
