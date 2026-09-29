@@ -30,6 +30,21 @@ Der bevorzugte Einstieg ist jetzt der Repository-Helper:
 .\tools\m3_smoke_windows.ps1
 ```
 
+Falls Windows PowerShell die lokale Skriptausführung blockiert, reicht eine rein prozesslokale
+Freigabe fuer die aktuelle Shell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\tools\m3_smoke_windows.ps1
+```
+
+Alternativ kann der Helper ohne dauerhafte Policy-Aenderung in einem einzelnen Unterprozess gestartet
+werden:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\m3_smoke_windows.ps1
+```
+
 Er findet Repository, CMake, vcpkg, Segoe UI/Consolas und das getrennte Windows-Smoke-Build-Verzeichnis selbst, prueft die benoetigten SDL3/HarfBuzz-Pakete, konfiguriert und baut das Demo und startet anschliessend den sichtbaren Test. Dadurch funktioniert der Ablauf auch nach einer frisch geoeffneten PowerShell ohne zuvor gesetzte `$Build`, `$Demo`, `$Font` oder `$VcpkgRoot`-Variablen.
 
 Nuetzliche Varianten:
@@ -141,7 +156,9 @@ Commit `d11bee05` ändert die Desktop-Hostpolicy auf
 `ResizeEvent -> Layout -> vollständiger Replay -> Present` für positive Fenstergrößen. Die
 Frame-Scheduling-Policy bleibt damit außerhalb der backendneutralen `Application`-Klasse.
 
-**Retest-Status:** manueller Windows-Retest nach `d11bee05` noch offen.
+**Retest-Status:** bestanden am 29.09.2026. Der manuelle Windows-Retest nach `d11bee05`
+verhielt sich wie erwartet; die zuvor beobachteten störenden Live-Resize-Artefakte traten nicht mehr
+als relevanter Fehler auf. Der stabile Frame blieb sauber.
 
 ## Exit-Kriterium
 
