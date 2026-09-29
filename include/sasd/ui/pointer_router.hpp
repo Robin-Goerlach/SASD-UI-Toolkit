@@ -3,6 +3,7 @@
 #include <sasd/ui/events/event.hpp>
 
 #include <cstddef>
+#include <vector>
 
 namespace sasd::ui {
 
@@ -24,17 +25,20 @@ struct PointerRouteResult {
 };
 
 /**
- * Backend-neutral pointer target selection plus single-pointer capture.
+ * Backend-neutral pointer target selection, geometric hover and single-pointer capture.
  *
  * Responsibilities are deliberately narrow:
  *
- * - HitTest chooses the initial visual target from logical coordinates.
- * - EventDispatcher performs normal target-to-parent bubbling.
- * - PointerRouter captures the Widget that actually handled a button press and preserves that
- *   interaction target across move/release.
+ * - HitTest chooses the current deepest visual target from logical coordinates.
+ * - PointerRouter mirrors the complete root-to-target geometry as direct Widget hover state.
+ * - EventDispatcher performs normal target-to-parent bubbling for the actual PointerEvent.
+ * - PointerRouter captures the Widget that handled a button press and preserves that interaction
+ *   target across move/release without freezing geometric hover.
  *
- * The router does not own Widgets, choose keyboard focus, activate controls or translate native
- * mouse/touch APIs. Concrete controls decide what PointerEvent means to them.
+ * Hover state is deliberately not synthesized as routed enter/leave application events yet. This
+ * avoids choosing bubbling semantics before a real application use case requires them. The router
+ * does not own Widgets, choose keyboard focus, activate controls or translate native mouse/touch
+ * APIs. Concrete controls decide what routed PointerEvent means to them.
  */
 class PointerRouter final {
 public:
@@ -50,6 +54,17 @@ public:
     [[nodiscard]] Widget* capturedWidget() noexcept { return captured_; }
     [[nodiscard]] const Widget* capturedWidget() const noexcept { return captured_; }
 
+    /** Returns whether any Widget currently belongs to the geometric hover path. */
+    [[nodiscard]] bool hasHover() const noexcept { return !hover_path_.empty(); }
+
+    /** Returns the deepest currently hovered Widget, or nullptr when the pointer is outside root. */
+    [[nodiscard]] Widget* hoveredWidget() noexcept {
+        return hover_path_.empty() ? nullptr : hover_path_.back();
+    }
+    [[nodiscard]] const Widget* hoveredWidget() const noexcept {
+        return hover_path_.empty() ? nullptr : hover_path_.back();
+    }
+
     /**
      * Routes one semantic PointerEvent inside root's visual subtree.
      *
@@ -63,6 +78,10 @@ public:
      *
      * Detachment from root releases capture before the next event. Releasing capture invokes the
      * Widget's noexcept capture-lost hook so transient pressed/dragging state cannot remain stale.
+     *
+     * Independently, every pointer event refreshes the geometric root-to-hit-target hover path.
+     * Capture affects event delivery only; dragging outside a captured control therefore clears its
+     * hover even while move/release continue to reach that control.
      */
     [[nodiscard]] PointerRouteResult route(Widget& root, const PointerEvent& event);
 
@@ -72,15 +91,26 @@ public:
 private:
     friend class Widget;
 
-    /** Widget destruction handshake for the non-owning captured_ pointer. */
+    /** Widget destruction handshake for capture and geometric hover observations. */
     void widgetDestroyed(Widget& widget) noexcept;
 
+    /** Widget-side invalidation after hide/geometry change makes the cached hover path stale. */
+    void widgetHoverInvalidated(Widget& widget) noexcept;
+
     [[nodiscard]] bool beginCapture(Widget& widget, PointerButton button) noexcept;
+    void updateHoverPath(Widget& root, Widget* deepest_target) noexcept;
+    void clearHover() noexcept;
     [[nodiscard]] static bool belongsToRoot(const Widget& root,
                                             const Widget& widget) noexcept;
 
     Widget* captured_{nullptr};
     PointerButton captured_button_{PointerButton::none};
+
+    /*
+     * Root-to-deepest-target path from the most recent pointer coordinates. Every entry is observed
+     * through Widget::pointer_hover_router_, making destruction lifetime-safe without ownership.
+     */
+    std::vector<Widget*> hover_path_;
 };
 
 } // namespace sasd::ui

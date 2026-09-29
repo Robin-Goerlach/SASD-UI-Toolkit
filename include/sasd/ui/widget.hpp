@@ -70,6 +70,16 @@ public:
     [[nodiscard]] bool hasFocus() const noexcept { return focused_; }
 
     /**
+     * Returns whether the current pointer-routing scope geometrically contains this Widget.
+     *
+     * PointerRouter marks every Widget on the current root-to-hit-target path, not only the deepest
+     * leaf. The state is therefore suitable for future composite controls: a parent remains hovered
+     * while the pointer moves between its descendants. Hover is presentation state only and never
+     * affects intrinsic measurement.
+     */
+    [[nodiscard]] bool isPointerOver() const noexcept { return pointer_over_; }
+
+    /**
      * Returns whether this widget is locally eligible to become the focus target.
      *
      * M1 intentionally evaluates the widget's own focusable/visible/enabled state only. Effective
@@ -278,6 +288,9 @@ private:
      */
     void setFocusState(bool focused, FocusManager* focus_manager) noexcept;
 
+    /** Updates router-owned geometric hover state and invalidates presentation on transitions. */
+    void setPointerOverState(bool pointer_over) noexcept;
+
     /** Clears current focus after a local property change made this widget ineligible. */
     void clearFocusIfIneligible();
 
@@ -285,11 +298,12 @@ private:
     FocusManager* focus_manager_{nullptr};
 
     /*
-     * Non-owning reverse observation used only while this Widget owns pointer capture. PointerRouter
-     * and Widget destruction cooperate exactly like the FocusManager lifetime handshake: the router
-     * cannot retain a dangling target after Widget storage disappears.
+     * Capture and hover are separate non-owning observations. Keeping two reverse links matters when
+     * the same Widget is both captured and hovered: releasing one role must not remove the lifetime
+     * handshake required by the other. Different PointerRouter instances are also kept independent.
      */
-    PointerRouter* pointer_router_{nullptr};
+    PointerRouter* pointer_capture_router_{nullptr};
+    PointerRouter* pointer_hover_router_{nullptr};
 
     Rect bounds_{};
     SizeConstraints size_constraints_{};
@@ -309,6 +323,7 @@ private:
     bool enabled_{true};
     bool focusable_{false};
     bool focused_{false};
+    bool pointer_over_{false};
     bool measure_valid_{false};
     bool subtree_refresh_pending_{false};
 

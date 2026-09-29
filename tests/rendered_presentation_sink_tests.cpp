@@ -236,6 +236,42 @@ TEST_CASE("RenderedPresentationSink renders Button chrome without mutating seman
     CHECK(button.textStyle() == base);
 }
 
+TEST_CASE("RenderedPresentationSink overlays Button hover without mutating semantic style") {
+    DisplayList display;
+    RenderedPresentationSink sink{display, Color::black};
+    PointerRouter pointer;
+
+    Window window;
+    window.arrange({0, 0, 200, 80});
+
+    auto& button = window.emplace<Button>("Run");
+    button.arrange({10, 10, 80, 30});
+
+    TextStyle base;
+    base.foreground = Color::bright_green;
+    button.setTextStyle(base);
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    display.clear();
+
+    (void)pointer.route(
+        window,
+        PointerEvent{{20, 20}, PointerAction::move, PointerButton::none, 0});
+
+    CHECK(button.isPointerOver());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto commands = display.commands();
+    CHECK(commands.size() == 3);
+
+    const auto& text = std::get<DrawTextCommand>(commands[2]);
+    CHECK(text.style.foreground == Color::bright_green);
+    CHECK(text.style.underline);
+
+    // Hover is an ephemeral presentation overlay; user style remains untouched.
+    CHECK(button.textStyle() == base);
+}
+
 TEST_CASE("RenderedPresentationSink offsets Button caption while pressed") {
     DisplayList display;
     RenderedPresentationSink sink{display, Color::black};

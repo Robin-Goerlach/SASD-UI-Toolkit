@@ -22,11 +22,15 @@ Widget::~Widget() {
     }
 
     /*
-     * Pointer capture is another non-owning runtime observation. Clear it during destruction so a
-     * later native move/release can never be routed through stale Widget storage.
+     * Pointer capture and hover are separate non-owning runtime observations. Either router must be
+     * told before Widget storage disappears. widgetDestroyed() clears both roles owned by that router,
+     * so re-reading the second reverse link avoids duplicate notification when both roles share it.
      */
-    if (pointer_router_ != nullptr) {
-        pointer_router_->widgetDestroyed(*this);
+    if (pointer_capture_router_ != nullptr) {
+        pointer_capture_router_->widgetDestroyed(*this);
+    }
+    if (pointer_hover_router_ != nullptr) {
+        pointer_hover_router_->widgetDestroyed(*this);
     }
 }
 
@@ -36,6 +40,15 @@ void Widget::setVisible(bool visible) {
     }
 
     visible_ = visible;
+
+    /*
+     * A hidden Widget immediately stops participating in HitTest. If it currently belongs to a
+     * router's hover path, invalidate that complete path now rather than waiting for another native
+     * motion event and exposing stale hover presentation in the meantime.
+     */
+    if (!visible && pointer_hover_router_ != nullptr) {
+        pointer_hover_router_->widgetHoverInvalidated(*this);
+    }
 
     /*
      * M1 does not yet decide whether hidden widgets consume layout space. Nevertheless a visibility
@@ -156,6 +169,15 @@ void Widget::arrange(Rect final_bounds) {
 
     if (geometry_changed) {
         /*
+         * The router stores geometry-derived hover, not the last pointer position. Once this Widget
+         * moves or resizes that cached path is no longer provably correct. Drop it conservatively;
+         * the next pointer event will rebuild the exact root-to-hit-target path.
+         */
+        if (pointer_hover_router_ != nullptr) {
+            pointer_hover_router_->widgetHoverInvalidated(*this);
+        }
+
+        /*
          * Moving/resizing can leave old presentation content behind and can uncover siblings that
          * were previously occluded. A normal visual invalidation is therefore insufficient: request
          * a conservative subtree rebuild at the presentation root.
@@ -233,6 +255,21 @@ void Widget::setFocusState(bool focused, FocusManager* focus_manager) noexcept {
     if (state_changed) {
         invalidateVisual();
     }
+}
+
+void Widget::setPointerOverState(bool pointer_over) noexcept {
+    if (pointer_over_ == pointer_over) {
+        return;
+    }
+
+    pointer_over_ = pointer_over;
+
+    /*
+     * Hover can alter backend presentation, but never intrinsic size. The state is router-owned and
+     * carries no application callback, so a noexcept direct transition is sufficient and avoids
+     * inventing enter/leave bubbling semantics before a concrete application-event use case exists.
+     */
+    invalidateVisual();
 }
 
 void Widget::clearFocusIfIneligible() {

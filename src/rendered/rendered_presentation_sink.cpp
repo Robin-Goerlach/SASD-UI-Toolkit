@@ -119,7 +119,17 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         text_origin = {*pressed_x, *pressed_y};
     }
 
-    const TextStyle style = controlTextStyle(button, button.textStyle());
+    TextStyle style = controlTextStyle(button, button.textStyle());
+
+    /*
+     * Hover is backend-neutral Widget state, but its appearance remains a Rendered presentation
+     * choice. Underline is a deliberately small cue that changes no geometry and does not mutate the
+     * Button's semantic/user-provided TextStyle. Pressed feedback remains the stronger interaction
+     * state and therefore suppresses this transient hover decoration.
+     */
+    if (button.isEnabled() && button.isPointerOver() && !button.isPressed()) {
+        style.underline = true;
+    }
 
     eraseWidget(display_list, *absolute, background_color);
     if (theme.control_border_thickness > 0) {
