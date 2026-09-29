@@ -99,6 +99,34 @@ void pushEvent(SDL_Event event) {
     return id;
 }
 
+/**
+ * Returns the SDL renderer owned by the one hidden window in the current adapter test.
+ *
+ * This is intentionally a test-only native seam. Production code keeps SDL handles private; the
+ * regression below needs temporary access only to pre-seed and inspect renderer clip state around a
+ * public Sdl3WindowBackend::drawText() call.
+ */
+[[nodiscard]] SDL_Renderer* currentTestRenderer() {
+    int count = 0;
+    SDL_Window** windows = SDL_GetWindows(&count);
+
+    CHECK(windows != nullptr);
+    CHECK(count == 1);
+
+    if (windows == nullptr || count != 1) {
+        if (windows != nullptr) {
+            SDL_free(windows);
+        }
+        return nullptr;
+    }
+
+    SDL_Renderer* renderer = SDL_GetRenderer(windows[0]);
+    SDL_free(windows);
+
+    CHECK(renderer != nullptr);
+    return renderer;
+}
+
 } // namespace
 
 TEST_CASE("SDL3 window backend initializes transactionally and presents a complete frame") {
@@ -133,6 +161,47 @@ TEST_CASE("SDL3 window backend initializes transactionally and presents a comple
 
     // shutdown() is intentionally idempotent for Application/destructor safety.
     backend.shutdown();
+}
+
+TEST_CASE("SDL3 text command restores the renderer clip state it temporarily replaces") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    SDL_Renderer* renderer = currentTestRenderer();
+    CHECK(renderer != nullptr);
+    if (renderer == nullptr) {
+        return;
+    }
+
+    /*
+     * Pretend a future outer render pass already owns a native clip. DrawTextCommand has its own
+     * command-local clipping contract and may temporarily replace this rectangle, but it must not
+     * destroy renderer state that it did not create.
+     */
+    const SDL_Rect outer_clip{7, 9, 240, 120};
+    CHECK(SDL_SetRenderClipRect(renderer, &outer_clip));
+    CHECK(SDL_RenderClipEnabled(renderer));
+
+    DrawTextCommand command;
+    command.origin = {0, 0};
+    command.text = "Scoped clip";
+    command.style.foreground = Color::bright_white;
+    command.clip_bounds = Rect{20, 0, 40, 24};
+
+    backend.drawText(command);
+
+    CHECK(SDL_RenderClipEnabled(renderer));
+
+    SDL_Rect restored{};
+    CHECK(SDL_GetRenderClipRect(renderer, &restored));
+    CHECK(restored.x == outer_clip.x);
+    CHECK(restored.y == outer_clip.y);
+    CHECK(restored.w == outer_clip.w);
+    CHECK(restored.h == outer_clip.h);
+
+    // Leave the native renderer in the default state expected by the rest of this isolated test.
+    CHECK(SDL_SetRenderClipRect(renderer, nullptr));
 }
 
 TEST_CASE("SDL3 window backend presents a real semantic rendered widget tree end to end") {

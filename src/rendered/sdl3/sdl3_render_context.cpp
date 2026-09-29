@@ -123,7 +123,19 @@ void setDrawColor(SDL_Renderer* renderer, Rgba8 color) {
 class ClipScope final {
 public:
     ClipScope(SDL_Renderer* renderer, const std::optional<Rect>& clip)
-        : renderer_{renderer} {
+        : renderer_{renderer},
+          previous_enabled_{SDL_RenderClipEnabled(renderer_)} {
+        /*
+         * A command-local clip is temporary renderer state. Capture the state that existed before the
+         * command instead of assuming that "no clip" is the universal outer state. Today the SASD
+         * window/software hosts own their renderer exclusively, but preserving state here makes this
+         * helper composable with future container clips, render passes or test instrumentation.
+         */
+        if (previous_enabled_ &&
+            !SDL_GetRenderClipRect(renderer_, &previous_rect_)) {
+            throwSdlError("SDL_GetRenderClipRect");
+        }
+
         if (!clip.has_value()) {
             if (!SDL_SetRenderClipRect(renderer_, nullptr)) {
                 throwSdlError("SDL_SetRenderClipRect(disable)");
@@ -131,19 +143,21 @@ public:
             return;
         }
 
-        rect_ = toClipRect(*clip);
-        if (!SDL_SetRenderClipRect(renderer_, &rect_)) {
+        command_rect_ = toClipRect(*clip);
+        if (!SDL_SetRenderClipRect(renderer_, &command_rect_)) {
             throwSdlError("SDL_SetRenderClipRect");
         }
     }
 
     ~ClipScope() {
         /*
-         * DrawTextCommand clipping is command-local. Always return the renderer to unclipped state so
-         * a later rectangle/text command cannot accidentally inherit this text command's clip.
-         * Destructors are non-throwing; a restoration failure will be exposed by a later SDL call.
+         * Restore exactly what the caller had, not an assumed default. The destructor is deliberately
+         * noexcept: a failed native restoration cannot be reported safely during stack unwinding, and
+         * the next SDL operation remains responsible for surfacing native renderer failure.
          */
-        (void)SDL_SetRenderClipRect(renderer_, nullptr);
+        const SDL_Rect* previous =
+            previous_enabled_ ? &previous_rect_ : nullptr;
+        (void)SDL_SetRenderClipRect(renderer_, previous);
     }
 
     ClipScope(const ClipScope&) = delete;
@@ -151,7 +165,9 @@ public:
 
 private:
     SDL_Renderer* renderer_;
-    SDL_Rect rect_{};
+    bool previous_enabled_{false};
+    SDL_Rect previous_rect_{};
+    SDL_Rect command_rect_{};
 };
 
 [[nodiscard]] std::size_t byteOffsetAtScalar(std::string_view text,
