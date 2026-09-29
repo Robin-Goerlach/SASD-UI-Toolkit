@@ -4,6 +4,7 @@
 #include "rendered/sdl3/sdl3_window_backend.hpp"
 
 #include <sasd/ui/application.hpp>
+#include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
