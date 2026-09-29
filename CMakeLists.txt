@@ -85,6 +85,22 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
         # Pin known release tags so CI and local adapter experiments do not silently change behavior
         # when upstream main branches move. SDL install/tests/examples are disabled because these
         # sources are implementation dependencies of this build, not part of our package surface.
+        #
+        # The fetched dependencies are always static implementation details, while SASD itself still
+        # respects a parent BUILD_SHARED_LIBS policy. If that parent requests shared SASD libraries,
+        # these static objects may be linked into sasd_ui_rendered_sdl3.so/dylib. Build them as PIC
+        # from the start instead of forcing the SASD adapter static merely to satisfy its dependencies.
+        #
+        # Keep this as a directory-scope normal variable rather than a cache override. Target PIC is
+        # initialized when SDL/SDL_ttf create their static targets; after both dependencies exist we
+        # restore the caller-visible effective value for all later SASD targets.
+        set(_sasd_ui_pic_was_defined FALSE)
+        if(DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
+            set(_sasd_ui_pic_was_defined TRUE)
+            set(_sasd_ui_saved_pic "${CMAKE_POSITION_INDEPENDENT_CODE}")
+        endif()
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
         set(SDL_SHARED OFF CACHE BOOL "" FORCE)
         set(SDL_STATIC ON CACHE BOOL "" FORCE)
         set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
@@ -165,6 +181,17 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
         unset(_sasd_ui_build_shared_libs_cache_was_defined)
         unset(_sasd_ui_saved_build_shared_libs)
         unset(_sasd_ui_build_shared_libs_was_defined)
+
+        # The dependency targets have already captured the PIC setting. Restore the surrounding
+        # directory so SASD does not impose position-independent-code policy on unrelated targets in
+        # an embedding project.
+        if(_sasd_ui_pic_was_defined)
+            set(CMAKE_POSITION_INDEPENDENT_CODE "${_sasd_ui_saved_pic}")
+        else()
+            unset(CMAKE_POSITION_INDEPENDENT_CODE)
+        endif()
+        unset(_sasd_ui_saved_pic)
+        unset(_sasd_ui_pic_was_defined)
     else()
         find_package(SDL3 3.2 REQUIRED CONFIG)
         find_package(SDL3_ttf 3.2 REQUIRED CONFIG)

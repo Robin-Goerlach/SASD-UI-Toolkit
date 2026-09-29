@@ -22,6 +22,7 @@ they improve the architecture before compatibility commitments become expensive.
 - Experimental build-tree-only `SASD::UI::Rendered::SDL3` adapter using a real SDL3 software renderer and SDL_ttf for UTF-8 rendering, clipping, real font metrics and shaped caret-boundary queries.
 - Dedicated headless SDL3 adapter CI with pinned SDL/SDL_ttf releases and externally supplied test font; normal toolkit builds remain SDL-independent.
 - SDL_ttf FetchContent configuration no longer FORCE-overwrites a parent project's generic `BUILD_SHARED_LIBS` cache policy; CI guards the embedding invariant.
+- Fetched static SDL3/SDL_ttf dependencies are built position-independent so a parent `BUILD_SHARED_LIBS=ON` policy can produce shared SASD adapter libraries without ELF relocation failures.
 - SDL3 command-local text clipping now restores pre-existing renderer clip state instead of assuming an unclipped outer renderer.
 - Window-backed experimental SDL3 backend with transactional lifecycle, complete-frame presentation, resize/close/key/text event translation and logical/pixel/display-scale separation.
 - High-DPI regression coverage keeps pixel-size/display-scale changes presentation-only: they request replay without manufacturing logical resize events or metric revisions.
