@@ -278,6 +278,30 @@ int main(int argc, char** argv) {
 
                     if (const auto* resize = std::get_if<ResizeEvent>(&event)) {
                         layoutForm(window, form, backend, resize->size);
+
+                        /*
+                         * Present resize results immediately instead of waiting until
+                         * processRoutedEvents() has drained the entire native event queue.
+                         *
+                         * During an interactive desktop resize SDL/Windows can enqueue many resize
+                         * notifications while the old back buffer is still visible. Deferring the
+                         * repaint until the end of that batch lets the window manager temporarily
+                         * stretch or expose stale pixels, which is especially noticeable on borders
+                         * and text. Rendering here keeps layout and the visible back buffer closely
+                         * synchronized without teaching the backend-neutral Application class about
+                         * frame scheduling.
+                         *
+                         * A minimized/native-zero-sized window has no useful drawable surface. Keep
+                         * its semantic layout current, but wait for the next positive ResizeEvent
+                         * before presenting again.
+                         */
+                        if (!resize->size.isEmpty()) {
+                            presentFullFrame(
+                                window,
+                                display_list,
+                                presentation,
+                                backend);
+                        }
                         return;
                     }
 
@@ -321,7 +345,13 @@ int main(int argc, char** argv) {
              * even when every Widget is semantically clean, which is why the backend also exposes its
              * presentationRequested() bit.
              */
-            if (window.isVisualUpdatePending() || backend.presentationRequested()) {
+            if (!backend.windowSize().isEmpty() &&
+                (window.isVisualUpdatePending() || backend.presentationRequested())) {
+                /*
+                 * Non-resize invalidation and expose/scale requests still use the normal end-of-batch
+                 * presentation path. Resize itself is handled eagerly above to reduce live-resize
+                 * stale-frame artifacts.
+                 */
                 presentFullFrame(window, display_list, presentation, backend);
             }
 
