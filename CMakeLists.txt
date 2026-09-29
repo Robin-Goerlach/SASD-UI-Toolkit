@@ -105,18 +105,29 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
         # needed for this first software-device slice and would add unrelated dependencies.
         #
         # SDL_ttf 3.2.2 intentionally uses CMake's generic BUILD_SHARED_LIBS switch instead of a
-        # SDLTTF-specific static/shared option. Never FORCE that generic variable into the cache here:
-        # SASD UI Toolkit may itself be embedded through add_subdirectory(), and mutating a parent
-        # project's linkage policy would be a surprising global side effect. A normal variable is
-        # sufficient under CMake's NEW CMP0077 behavior (our 3.24 minimum) and is inherited by the
-        # fetched SDL_ttf directory without rewriting the caller's cache entry.
+        # SDLTTF-specific static/shared option. That makes dependency isolation slightly unusual:
+        # both normal-variable lookup (CMP0077) and cache writes performed by nested projects have to
+        # be contained. SASD may be embedded with add_subdirectory(), so its dependency choice must
+        # never become the parent project's linkage policy.
         set(_sasd_ui_build_shared_libs_was_defined FALSE)
         if(DEFINED BUILD_SHARED_LIBS)
             set(_sasd_ui_build_shared_libs_was_defined TRUE)
             set(_sasd_ui_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
         endif()
 
+        set(_sasd_ui_build_shared_libs_cache_was_defined FALSE)
+        if(DEFINED CACHE{BUILD_SHARED_LIBS})
+            set(_sasd_ui_build_shared_libs_cache_was_defined TRUE)
+            get_property(
+                _sasd_ui_saved_build_shared_libs_cache
+                CACHE BUILD_SHARED_LIBS PROPERTY VALUE)
+        endif()
+
+        # Supply OFF through both lookup paths while configuring SDL_ttf. The CACHE write is
+        # intentionally temporary and is always undone immediately after FetchContent returns.
         set(BUILD_SHARED_LIBS OFF)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL
+            "Temporary SASD SDL_ttf dependency linkage policy" FORCE)
 
         set(SDLTTF_INSTALL OFF CACHE BOOL "" FORCE)
         set(SDLTTF_VENDORED OFF CACHE BOOL "" FORCE)
@@ -132,14 +143,26 @@ if(SASD_UI_BUILD_SDL3_ADAPTER)
         )
         FetchContent_MakeAvailable(sasd_sdl3_ttf)
 
-        # Restore SASD's directory scope exactly enough for all targets declared after the dependency.
-        # If the caller had no BUILD_SHARED_LIBS policy, unsetting our temporary normal variable also
-        # preserves that "unspecified" state instead of imposing static linkage on later targets.
+        # Restore the caller-visible cache first. BUILD_SHARED_LIBS is conventionally a BOOL option;
+        # preserving its value is the important contract. If the caller had no cache entry at all,
+        # remove the temporary one instead of leaving SASD's dependency policy behind.
+        if(_sasd_ui_build_shared_libs_cache_was_defined)
+            set(BUILD_SHARED_LIBS "${_sasd_ui_saved_build_shared_libs_cache}" CACHE BOOL
+                "Build libraries as shared libraries" FORCE)
+        else()
+            unset(BUILD_SHARED_LIBS CACHE)
+        endif()
+
+        # Restore the effective directory-scope policy used by SASD targets declared below. This also
+        # preserves a parent normal variable that intentionally shadows a different cache value.
         if(_sasd_ui_build_shared_libs_was_defined)
             set(BUILD_SHARED_LIBS "${_sasd_ui_saved_build_shared_libs}")
         else()
             unset(BUILD_SHARED_LIBS)
         endif()
+
+        unset(_sasd_ui_saved_build_shared_libs_cache)
+        unset(_sasd_ui_build_shared_libs_cache_was_defined)
         unset(_sasd_ui_saved_build_shared_libs)
         unset(_sasd_ui_build_shared_libs_was_defined)
     else()
