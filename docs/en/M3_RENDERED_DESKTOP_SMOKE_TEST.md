@@ -30,6 +30,20 @@ The preferred entry point is now the repository helper:
 .\tools\m3_smoke_windows.ps1
 ```
 
+If Windows PowerShell blocks local script execution, a process-local policy override is sufficient for
+the current shell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\tools\m3_smoke_windows.ps1
+```
+
+Alternatively, launch the helper in a one-off subprocess without changing any persistent policy:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\m3_smoke_windows.ps1
+```
+
 It resolves the repository, CMake, vcpkg, Segoe UI/Consolas and the separate Windows smoke build directory; verifies the required SDL3/HarfBuzz packages; configures and builds the demo; and starts the visible test. A freshly opened PowerShell therefore no longer depends on previously assigned `$Build`, `$Demo`, `$Font` or `$VcpkgRoot` variables.
 
 Useful variants:
@@ -142,7 +156,9 @@ Commit `d11bee05` changes the desktop demo to perform
 the visible back buffer closer to native resize progress while leaving frame scheduling outside the
 backend-neutral `Application` class.
 
-**Retest status:** pending manual Windows validation after `d11bee05`.
+**Retest status:** passed on 2026-09-29. Manual Windows validation after `d11bee05` behaved as
+expected; the previously observed distracting live-resize artifacts no longer reproduced as a
+material issue, and the stable frame remained clean.
 
 ## Exit criterion
 
