@@ -394,6 +394,76 @@ TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic e
     CHECK(!hasModifier(key.modifiers, KeyModifier::alt));
 }
 
+TEST_CASE("SDL3 window backend reports native pointer surface enter and leave") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    SDL_Event enter{};
+    enter.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
+    enter.window.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
+    enter.window.windowID = currentTestWindowId();
+    pushEvent(enter);
+
+    const auto entered = backend.pollEvent();
+    CHECK(entered.has_value());
+    CHECK(std::holds_alternative<PointerSurfaceEvent>(*entered));
+    CHECK(std::get<PointerSurfaceEvent>(*entered).action ==
+          PointerSurfaceAction::entered);
+
+    SDL_Event leave{};
+    leave.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+    leave.window.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+    leave.window.windowID = currentTestWindowId();
+    pushEvent(leave);
+
+    const auto left = backend.pollEvent();
+    CHECK(left.has_value());
+    CHECK(std::holds_alternative<PointerSurfaceEvent>(*left));
+    CHECK(std::get<PointerSurfaceEvent>(*left).action ==
+          PointerSurfaceAction::left);
+}
+
+TEST_CASE("SDL3 pointer surface leave can retire Core hover and capture without coordinates") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    PointerRouter pointer_router;
+    Window window;
+    window.arrange({0, 0, 320, 180});
+
+    auto& button = window.emplace<Button>("Leave");
+    button.arrange({10, 10, 80, 30});
+
+    CHECK(pointer_router.route(
+        window,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::primary, 1}).handled);
+    CHECK(button.isPointerOver());
+    CHECK(button.isPressed());
+    CHECK(pointer_router.hasCapture());
+
+    SDL_Event leave{};
+    leave.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+    leave.window.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+    leave.window.windowID = currentTestWindowId();
+    pushEvent(leave);
+
+    const auto translated = backend.pollEvent();
+    CHECK(translated.has_value());
+    CHECK(std::holds_alternative<PointerSurfaceEvent>(*translated));
+
+    if (const auto* surface = std::get_if<PointerSurfaceEvent>(&*translated);
+        surface != nullptr && surface->action == PointerSurfaceAction::left) {
+        pointer_router.leaveRoot();
+    }
+
+    CHECK(!button.isPointerOver());
+    CHECK(!button.isPressed());
+    CHECK(!pointer_router.hasHover());
+    CHECK(!pointer_router.hasCapture());
+}
+
 TEST_CASE("SDL3 window backend exposes logical pointer motion through native queue") {
     Sdl3WindowBackend backend{testConfig()};
     backend.initialize();

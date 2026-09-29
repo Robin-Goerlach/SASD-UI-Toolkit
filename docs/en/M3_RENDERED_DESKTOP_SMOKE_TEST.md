@@ -145,6 +145,15 @@ Verify:
 3. press inside, drag outside, drag back inside, release inside -> activation;
 4. pressed presentation follows inside/outside state while capture remains active.
 
+### Hover and window leave
+
+Verify:
+
+1. move over `Greet` -> the rendered caption gains the hover underline;
+2. move away inside the window -> underline clears;
+3. move over `Greet`, then move the pointer completely outside the native window -> underline clears;
+4. after re-entering, the next real pointer motion rebuilds hover normally.
+
 ### Keyboard
 
 Verify:

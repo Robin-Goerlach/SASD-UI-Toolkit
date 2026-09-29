@@ -290,9 +290,10 @@ Manual observations
   2. Click before/after text and verify caret boundary placement.
   3. Greet: press inside, drag outside, release outside -> no activation.
   4. Greet: press inside, leave, re-enter, release inside -> one activation.
-  5. Verify pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
-  6. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
-  7. Escape/F10/Exit should close normally.
+  5. Hover Greet: underline appears; leave the window: hover clears.
+  6. Verify pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
+  7. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
+  8. Escape/F10/Exit should close normally.
 
 Starting visible SDL3 demo...
 EOF

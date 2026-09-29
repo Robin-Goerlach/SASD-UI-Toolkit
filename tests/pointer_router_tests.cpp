@@ -271,6 +271,39 @@ TEST_CASE("PointerRouter keeps geometric hover independent from active capture")
     CHECK(first.events().back().position == Point{90, 20});
 }
 
+TEST_CASE("PointerRouter surface leave clears hover and conservatively releases capture") {
+    Container root;
+    root.arrange({0, 0, 100, 80});
+
+    auto& target = root.emplace<PointerProbe>();
+    target.arrange({10, 10, 40, 40});
+
+    PointerRouter router;
+    CHECK(router.route(
+        root,
+        PointerEvent{{20, 20}, PointerAction::press, PointerButton::primary, 1}).handled);
+
+    CHECK(router.hasHover());
+    CHECK(router.hasCapture());
+    CHECK(target.isPointerOver());
+    CHECK(!target.captureLost());
+
+    router.leaveRoot();
+
+    CHECK(!router.hasHover());
+    CHECK(router.hoveredWidget() == nullptr);
+    CHECK(!router.hasCapture());
+    CHECK(router.capturedWidget() == nullptr);
+    CHECK(!root.isPointerOver());
+    CHECK(!target.isPointerOver());
+    CHECK(target.captureLost());
+
+    // Native backends may coalesce or repeat boundary notifications; cleanup must stay idempotent.
+    router.leaveRoot();
+    CHECK(!router.hasHover());
+    CHECK(!router.hasCapture());
+}
+
 TEST_CASE("PointerRouter clears hover immediately when hovered geometry becomes invalid") {
     Container root;
     root.arrange({0, 0, 100, 80});

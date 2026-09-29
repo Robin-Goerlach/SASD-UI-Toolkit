@@ -149,6 +149,15 @@ Prüfen:
 3. innen drücken, nach außen ziehen, wieder hinein, innen loslassen -> Aktivierung;
 4. Pressed-Darstellung folgt inside/outside während Capture aktiv bleibt.
 
+### Hover und Window-Leave
+
+Prüfen:
+
+1. Pointer über `Greet` bewegen -> die gerenderte Beschriftung erhält den Hover-Underline;
+2. innerhalb des Fensters wegbewegen -> Underline verschwindet;
+3. Pointer erneut über `Greet` und anschließend vollständig aus dem nativen Fenster bewegen -> Underline verschwindet;
+4. nach erneutem Betreten baut die nächste echte Pointer-Bewegung Hover wieder normal auf.
+
 ### Tastatur
 
 Prüfen:

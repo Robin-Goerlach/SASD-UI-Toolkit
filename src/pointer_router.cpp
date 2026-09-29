@@ -97,6 +97,23 @@ void PointerRouter::releaseCapture() noexcept {
     previous->onPointerCaptureLost();
 }
 
+void PointerRouter::leaveRoot() noexcept {
+    /*
+     * Surface leave invalidates geometry first. A captured control may inspect ordinary visual state
+     * while clearing its gesture in onPointerCaptureLost(); exposing "not hovered" at that point is
+     * the conservative truth once the native pointer is outside the top-level surface.
+     */
+    clearHover();
+
+    /*
+     * Semantic capture alone cannot promise native delivery beyond the window boundary. Releasing it
+     * prevents an armed Button/drag state from becoming stuck if the platform sends no matching
+     * release back to this surface. This is intentionally conservative until a backend explicitly
+     * owns system-level mouse capture.
+     */
+    releaseCapture();
+}
+
 void PointerRouter::widgetDestroyed(Widget& widget) noexcept {
     if (captured_ == &widget) {
         captured_ = nullptr;

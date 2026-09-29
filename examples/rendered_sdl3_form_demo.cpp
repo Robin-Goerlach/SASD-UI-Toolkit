@@ -241,6 +241,20 @@ int main(int argc, char** argv) {
                     return nullptr;
                 },
                 [&](const Event& event) {
+                    if (const auto* surface =
+                            std::get_if<PointerSurfaceEvent>(&event)) {
+                        /*
+                         * Surface leave is host lifecycle, not a Widget event. Core cannot assume
+                         * native mouse capture continues outside this SDL window, so retire hover and
+                         * any active semantic capture conservatively. Enter needs no action: the next
+                         * real PointerEvent rebuilds hover from trustworthy logical coordinates.
+                         */
+                        if (surface->action == PointerSurfaceAction::left) {
+                            pointer_router.leaveRoot();
+                        }
+                        return;
+                    }
+
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
                         /*
                          * Desktop focus-on-primary-press is host policy, not PointerRouter policy.

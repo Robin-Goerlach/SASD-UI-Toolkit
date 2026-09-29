@@ -130,12 +130,34 @@ struct PointerEvent {
     std::uint8_t click_count{0};
 };
 
+/**
+ * Lifecycle of the pointer relative to one top-level input surface.
+ *
+ * This is deliberately not a Widget enter/leave event. Concrete window backends use it to report
+ * that native pointer delivery crossed the outer surface boundary, where ordinary motion events no
+ * longer provide a reliable logical position inside the Widget tree.
+ */
+enum class PointerSurfaceAction : std::uint8_t {
+    entered,
+    left,
+};
+
+struct PointerSurfaceEvent {
+    PointerSurfaceAction action{PointerSurfaceAction::entered};
+};
+
 struct ResizeEvent {
     Size size{};
 };
 
 using Event =
-    std::variant<QuitEvent, FocusEvent, KeyEvent, TextInputEvent, PointerEvent, ResizeEvent>;
+    std::variant<QuitEvent,
+                 FocusEvent,
+                 KeyEvent,
+                 TextInputEvent,
+                 PointerEvent,
+                 PointerSurfaceEvent,
+                 ResizeEvent>;
 
 /**
  * Result returned by a widget after receiving one semantic event.

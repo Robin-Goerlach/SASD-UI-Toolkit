@@ -88,6 +88,18 @@ public:
     /** Explicitly releases capture and performs noexcept control-state cleanup. Safe repeatedly. */
     void releaseCapture() noexcept;
 
+    /**
+     * Ends pointer state when native delivery leaves the top-level routing surface.
+     *
+     * Hover is cleared immediately. Active capture is also released conservatively because the Core
+     * router has no platform guarantee that motion/release delivery will continue outside the native
+     * surface. A future backend with explicit native mouse capture can introduce that stronger
+     * capability without making today's semantic gesture state sticky.
+     *
+     * This is surface lifecycle, not a routed Widget enter/leave event. Safe repeatedly.
+     */
+    void leaveRoot() noexcept;
+
 private:
     friend class Widget;
 

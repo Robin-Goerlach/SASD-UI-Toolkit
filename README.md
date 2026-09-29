@@ -42,7 +42,7 @@ The repository now contains the first working implementation slice:
 - thread-safe FIFO `EventQueue`;
 - target-to-parent event routing with explicit handled/ignored semantics;
 - lifetime-safe logical keyboard `FocusManager` plus deterministic visual-tree `FocusTraversal` for Tab/Shift+Tab;
-- backend-neutral `HitTest` and lifetime-safe `PointerRouter` with handler-owned pointer capture;
+- backend-neutral `HitTest` and lifetime-safe `PointerRouter` with geometric hover, handler-owned pointer capture and explicit top-level surface-leave cleanup;
 - two-phase `measure()` / `arrange()` layout foundation with cached desired sizes and invalidation propagation;
 - backend-neutral `MeasurementContext` so content widgets can obtain terminal/font/native metrics without backend coupling;
 - first automatic layout containers `VBox` and `HBox`, with context propagation, spacing, visibility collapse and deterministic constrained arrangement;

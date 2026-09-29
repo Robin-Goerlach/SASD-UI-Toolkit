@@ -371,6 +371,29 @@ struct Sdl3WindowBackend::Impl {
                 }
                 break;
 
+            case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                if (belongsToWindow(event.window.windowID)) {
+                    /*
+                     * Surface-boundary notifications deliberately carry no synthetic coordinates.
+                     * PointerRouter will rebuild geometric hover from the next real motion/button
+                     * event; entering the native window alone is not enough to name a Widget target.
+                     */
+                    return Event{PointerSurfaceEvent{PointerSurfaceAction::entered}};
+                }
+                break;
+
+            case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                if (belongsToWindow(event.window.windowID)) {
+                    /*
+                     * Once the native pointer leaves the top-level window there may be no further
+                     * motion event with a meaningful logical position. Report surface lifecycle
+                     * explicitly so the host can clear Core hover/capture without inventing an
+                     * out-of-range coordinate or backend-specific Widget event.
+                     */
+                    return Event{PointerSurfaceEvent{PointerSurfaceAction::left}};
+                }
+                break;
+
             case SDL_EVENT_WINDOW_EXPOSED:
             case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
             case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
@@ -461,9 +484,10 @@ struct Sdl3WindowBackend::Impl {
 
             default:
                 /*
-                 * Window focus, wheel/touch/pen, composition and other SDL events are intentionally
-                 * not converted yet. In particular SDL window focus is not Widget FocusEvent:
-                 * logical widget focus remains owned by FocusManager.
+                 * Keyboard-window focus, wheel/touch/pen, composition and other SDL events are
+                 * intentionally not converted yet. In particular SDL keyboard focus is not Widget
+                 * FocusEvent: logical widget focus remains owned by FocusManager. Pointer surface
+                 * enter/leave is handled above because it is required to retire geometric hover.
                  */
                 break;
             }

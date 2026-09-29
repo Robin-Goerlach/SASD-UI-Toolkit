@@ -50,6 +50,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0033](0033-rendered-textfield-click-to-caret.md) | Rendered TextField click-to-caret mapping | Accepted |
 | [0034](0034-rendered-geometry-theme-metrics.md) | Rendered geometry theme metrics before a full theme system | Accepted |
 | [0035](0035-geometric-pointer-hover-state.md) | Geometric pointer hover as direct Widget state | Accepted |
+| [0036](0036-pointer-surface-lifecycle.md) | Pointer surface lifecycle is separate from Widget hover boundaries | Accepted |
 
 ## ADR policy
 

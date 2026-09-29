@@ -32,6 +32,7 @@ they improve the architecture before compatibility commitments become expensive.
 - Runnable `sasd_ui_sdl3_demo` plus end-to-end offscreen SDL window tests.
 - Backend-neutral `PointerEvent`, visual-tree `HitTest` and lifetime-safe `PointerRouter` with capture assigned to the Widget that handles the press.
 - Lifetime-safe root-to-target geometric hover state independent from capture, plus a geometry-neutral Rendered Button hover overlay.
+- Backend-neutral `PointerSurfaceEvent` plus SDL3 window enter/leave translation; surface leave clears hover and conservatively retires semantic capture.
 - Semantic `Button::isPressed()` state with capture-loss cleanup, release-inside activation / release-outside cancellation, and Terminal/Rendered pressed presentation.
 - SDL3 pointer coordinate conversion and private deterministic semantic translation seam; the SDL3 backend now advertises pointer input capability.
 - Shared private Rendered TextField viewport geometry plus `RenderedTextFieldHitTest` for metric-correct pointer click-to-caret mapping without leaking font/pixel state into Core.
