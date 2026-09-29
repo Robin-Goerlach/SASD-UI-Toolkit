@@ -23,6 +23,7 @@ they improve the architecture before compatibility commitments become expensive.
 - Dedicated headless SDL3 adapter CI with pinned SDL/SDL_ttf releases and externally supplied test font; normal toolkit builds remain SDL-independent.
 - SDL3 command-local text clipping now restores pre-existing renderer clip state instead of assuming an unclipped outer renderer.
 - Window-backed experimental SDL3 backend with transactional lifecycle, complete-frame presentation, resize/close/key/text event translation and logical/pixel/display-scale separation.
+- High-DPI regression coverage keeps pixel-size/display-scale changes presentation-only: they request replay without manufacturing logical resize events or metric revisions.
 - `PresentationCoordinator::replay()` for deterministic full-tree reconstruction after native presentation-surface loss/expose without mutating semantic dirty state.
 - Runnable `sasd_ui_sdl3_demo` plus end-to-end offscreen SDL window tests.
 - Backend-neutral `PointerEvent`, visual-tree `HitTest` and lifetime-safe `PointerRouter` with capture assigned to the Widget that handles the press.

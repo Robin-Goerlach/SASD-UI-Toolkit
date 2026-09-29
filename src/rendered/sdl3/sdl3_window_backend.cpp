@@ -376,9 +376,15 @@ struct Sdl3WindowBackend::Impl {
             case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
                 if (belongsToWindow(event.window.windowID)) {
                     /*
-                     * These events need a fresh frame but do not necessarily change semantic logical
-                     * size. SDL's logical presentation tracks output pixels; replaying the current
-                     * logical frame is sufficient for this first high-DPI foundation.
+                     * These are presentation-surface changes, not semantic layout changes. Keep the
+                     * logical Widget size and RenderedMeasurementContext revision stable: under the
+                     * current SDL logical-presentation policy a DPI/pixel-density transition changes
+                     * only how the same logical frame maps to physical output pixels. Request a fresh
+                     * replay, but do not invent a ResizeEvent or invalidate logical font metrics.
+                     *
+                     * This distinction is deliberately explicit because conflating monitor/DPI
+                     * changes with logical layout would make otherwise identical Widget trees jump
+                     * in size while moving a window between displays.
                      */
                     presentation_requested = true;
                 }

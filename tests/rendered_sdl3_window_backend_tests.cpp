@@ -508,6 +508,66 @@ TEST_CASE("SDL3 window backend turns native resize into logical resize and repai
     CHECK(backend.presentationRequested());
 }
 
+TEST_CASE("SDL3 pixel-size change requests repaint without changing logical layout or metrics") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList frame;
+    const Size logical_before = backend.windowSize();
+    const std::uint64_t revision_before = backend.revision();
+    frame.fillRect({0, 0, logical_before.width, logical_before.height}, Color::black);
+    (void)backend.presentFrame(frame);
+    CHECK(!backend.presentationRequested());
+
+    SDL_Event native{};
+    native.type = SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
+    native.window.type = SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
+    native.window.windowID = 0;
+    native.window.data1 = 640;
+    native.window.data2 = 360;
+    pushEvent(native);
+
+    /*
+     * Physical back-buffer changes are deliberately presentation-only. pollEvent() consumes the
+     * native notification, requests a replay and emits no semantic ResizeEvent because Widget layout
+     * still lives in logical window coordinates.
+     */
+    CHECK(!backend.pollEvent().has_value());
+    CHECK(backend.presentationRequested());
+    CHECK(backend.windowSize() == logical_before);
+    CHECK(backend.revision() == revision_before);
+}
+
+TEST_CASE("SDL3 display-scale change requests repaint without changing logical layout or metrics") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList frame;
+    const Size logical_before = backend.windowSize();
+    const std::uint64_t revision_before = backend.revision();
+    frame.fillRect({0, 0, logical_before.width, logical_before.height}, Color::black);
+    (void)backend.presentFrame(frame);
+    CHECK(!backend.presentationRequested());
+
+    SDL_Event native{};
+    native.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED;
+    native.window.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED;
+    native.window.windowID = 0;
+    pushEvent(native);
+
+    /*
+     * A monitor/DPI transition may change physical pixel density, but the STRETCH logical
+     * presentation keeps SASD geometry and font metrics expressed in the same logical coordinate
+     * system. Repainting is required; semantic re-layout and measurement invalidation are not.
+     */
+    CHECK(!backend.pollEvent().has_value());
+    CHECK(backend.presentationRequested());
+    CHECK(backend.windowSize() == logical_before);
+    CHECK(backend.revision() == revision_before);
+}
+
 TEST_CASE("SDL3 window expose requests repaint without inventing a semantic widget event") {
     Sdl3WindowBackend backend{testConfig()};
     backend.initialize();
