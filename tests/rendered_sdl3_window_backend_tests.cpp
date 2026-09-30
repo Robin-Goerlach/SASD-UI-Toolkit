@@ -10,6 +10,8 @@
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/pointer_router.hpp>
+#include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
@@ -397,6 +399,135 @@ TEST_CASE("SDL3 CheckBox pointer gesture toggles semantic state and presents the
     CHECK(saw_checked_mark);
     CHECK(saw_caption);
     CHECK(check.textStyle() == TextStyle{});
+    CHECK(backend.presentFrame(display) == display.size());
+}
+
+TEST_CASE("SDL3 RadioButton gesture switches explicit group selection and replay") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList display;
+    RenderedPresentationSink sink{display, backend, Color::black};
+    FocusManager focus;
+    PointerRouter pointer_router;
+    RadioGroup group;
+
+    Window window;
+    const Size size = backend.windowSize();
+    window.arrange({0, 0, size.width, size.height});
+
+    auto& first = window.emplace<RadioButton>(group, "Hello");
+    auto& second = window.emplace<RadioButton>(group, "Hi");
+    first.arrange({20, 20, 140, 28});
+    second.arrange({20, 60, 140, 28});
+
+    CHECK(first.setSelected(true));
+    CHECK(group.selectedButton() == &first);
+
+    int second_selected_notifications = 0;
+    bool callback_saw_coherent_group = false;
+    second.setOnSelected([&] {
+        ++second_selected_notifications;
+        callback_saw_coherent_group =
+            group.selectedButton() == &second &&
+            second.isSelected() &&
+            !first.isSelected();
+    });
+
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+    CHECK(backend.presentFrame(display) == display.size());
+
+    SDL_Event down{};
+    down.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.button = SDL_BUTTON_LEFT;
+    down.button.clicks = 1;
+    down.button.x = 30.0F;
+    down.button.y = 70.0F;
+
+    const auto pressed = detail::translateLogicalPointerEvent(down);
+    CHECK(pressed.has_value());
+    if (!pressed.has_value()) {
+        return;
+    }
+
+    /*
+     * Mirror the concrete SDL3 demo host policy. Focus choice belongs to the desktop host, while the
+     * PointerRouter owns semantic target/capture behavior. RadioGroup remains completely unaware of
+     * SDL and receives only the eventual RadioButton selection transition.
+     */
+    Widget* hit = HitTest::deepestAt(window, pressed->position);
+    CHECK(hit == &second);
+    if (hit != nullptr && hit->canReceiveFocus()) {
+        CHECK(focus.requestFocus(*hit));
+    }
+
+    const PointerRouteResult press_result =
+        pointer_router.route(window, *pressed);
+    CHECK(press_result.handled);
+    CHECK(press_result.capture_active);
+    CHECK(second.isPressed());
+    CHECK(!second.isSelected());
+    CHECK(first.isSelected());
+
+    display.clear();
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+
+    bool saw_pressed_caption = false;
+    for (const auto& command : display.commands()) {
+        if (const auto* text = std::get_if<DrawTextCommand>(&command);
+            text != nullptr && text->text == "Hi") {
+            CHECK(text->style.inverse);
+            saw_pressed_caption = true;
+        }
+    }
+    CHECK(saw_pressed_caption);
+    CHECK(backend.presentFrame(display) == display.size());
+
+    SDL_Event up = down;
+    up.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    up.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
+
+    const auto released = detail::translateLogicalPointerEvent(up);
+    CHECK(released.has_value());
+    if (!released.has_value()) {
+        return;
+    }
+
+    const PointerRouteResult release_result =
+        pointer_router.route(window, *released);
+    CHECK(release_result.handled);
+    CHECK(!release_result.capture_active);
+    CHECK(!pointer_router.hasCapture());
+
+    CHECK(!first.isSelected());
+    CHECK(second.isSelected());
+    CHECK(group.selectedButton() == &second);
+    CHECK(second_selected_notifications == 1);
+    CHECK(callback_saw_coherent_group);
+
+    /*
+     * Rebuild the full frame and verify that exactly one semantic foreground mark remains, located in
+     * the newly selected radio. This catches both halves of exclusivity presentation: adding the new
+     * mark and removing the old one.
+     */
+    display.clear();
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+
+    int radio_marks = 0;
+    for (const auto& command : display.commands()) {
+        if (const auto* fill = std::get_if<FillRectCommand>(&command);
+            fill != nullptr &&
+            fill->role == FillRole::foreground) {
+            ++radio_marks;
+            CHECK(fill->bounds.y >= second.bounds().y);
+            CHECK(fill->bounds.y <
+                  static_cast<Coordinate>(second.bounds().y + second.bounds().height));
+        }
+    }
+
+    CHECK(radio_marks == 1);
     CHECK(backend.presentFrame(display) == display.size());
 }
 

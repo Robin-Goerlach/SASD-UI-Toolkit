@@ -9,6 +9,8 @@
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
+#include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
@@ -169,6 +171,14 @@ int main(int argc, char** argv) {
             backend,
             Color::black};
 
+        /*
+         * RadioGroup is a non-visual semantic relationship object. Declare it before Window so normal
+         * reverse local destruction destroys the Window (and therefore its RadioButtons) first. The
+         * relationship code is lifetime-safe in either order, but this ordering also makes the demo's
+         * intended ownership graph obvious: Window owns Widgets; RadioGroup owns none of them.
+         */
+        RadioGroup greeting_group;
+
         Window window;
         auto& form = window.emplace<VBox>();
         form.setSpacing(8);
@@ -203,6 +213,26 @@ int main(int argc, char** argv) {
         checkbox_style.foreground = Color::bright_magenta;
         enthusiastic.setTextStyle(checkbox_style);
 
+        /*
+         * Two RadioButtons share one explicit semantic group. Their mutual exclusion therefore
+         * survives future layout/reparenting changes and is not an accidental property of VBox.
+         */
+        auto& hello_style =
+            form.emplace<RadioButton>(greeting_group, "Greeting word: Hello");
+        auto& hi_style =
+            form.emplace<RadioButton>(greeting_group, "Greeting word: Hi");
+
+        TextStyle radio_style;
+        radio_style.foreground = Color::bright_blue;
+        hello_style.setTextStyle(radio_style);
+        hi_style.setTextStyle(radio_style);
+
+        /*
+         * Establish the initial application choice programmatically. The first selection callback is
+         * installed below, so startup does not manufacture a user-visible change notification.
+         */
+        (void)hello_style.setSelected(true);
+
         auto& greet = form.emplace<Button>("Greet");
         TextStyle greet_style;
         greet_style.foreground = Color::bright_green;
@@ -210,7 +240,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab/Shift+Tab focus. Space toggles CheckBox. F1 help.");
+            "Tab moves focus. Space toggles/selects controls. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -234,8 +264,10 @@ int main(int argc, char** argv) {
              * toggled by keyboard, SDL pointer input or a future native peer is irrelevant here.
              */
             const char punctuation = enthusiastic.isChecked() ? '!' : '.';
+            const std::string greeting_word =
+                hi_style.isSelected() ? "Hi" : "Hello";
             status.setText(
-                "Hello, " + value + std::string(1, punctuation));
+                greeting_word + ", " + value + std::string(1, punctuation));
         });
 
         enthusiastic.setOnCheckedChanged([&](bool checked) {
@@ -247,6 +279,18 @@ int main(int argc, char** argv) {
                 checked
                     ? "Greeting style: enthusiastic (!)"
                     : "Greeting style: calm (.)");
+        });
+
+        hello_style.setOnSelected([&] {
+            /*
+             * RadioGroup has already retired the previous selection before this callback runs. The
+             * application can therefore trust group state immediately and need not repair exclusivity.
+             */
+            status.setText("Greeting word selected: Hello");
+        });
+
+        hi_style.setOnSelected([&] {
+            status.setText("Greeting word selected: Hi");
         });
 
         exit.setOnActivated([&] {
@@ -363,7 +407,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; Space toggles CheckBox; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; Space toggles CheckBox/selects RadioButton; Enter/Space activates Buttons.");
                             return;
                         }
 

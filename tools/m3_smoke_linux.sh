@@ -293,10 +293,12 @@ Manual observations
   5. Hover Greet: underline appears; leave the window: hover clears.
   6. Tab to "Enthusiastic greeting"; Space toggles its mark and status text.
   7. Click the CheckBox; verify one toggle per inside release and no toggle after release outside.
-  8. Greet uses "!" while checked and "." while unchecked.
-  9. Verify Button pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
- 10. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
- 11. Escape/F10/Exit should close normally.
+  8. Tab to the two greeting-word RadioButtons; Space selects one without toggling it off.
+  9. Click the other RadioButton; verify the old mark disappears and exactly one option remains selected.
+ 10. Greet uses Hello/Hi from the RadioGroup and "!" or "." from the CheckBox.
+ 11. Verify Button pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
+ 12. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
+ 13. Escape/F10/Exit should close normally.
 
 Starting visible SDL3 demo...
 EOF
@@ -353,6 +355,7 @@ Useful report template:
   Click-to-caret: PASS / FAIL
   Pointer capture: PASS / FAIL
   CheckBox keyboard/pointer: PASS / FAIL
+  RadioButton group keyboard/pointer: PASS / FAIL
   Keyboard: PASS / FAIL
   Resize while dragging: NONE / LESS / SAME / WORSE
   Stable frame after release: CLEAN / ARTIFACTS

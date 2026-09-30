@@ -6,6 +6,8 @@
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
+#include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
@@ -66,6 +68,12 @@ int main() {
         TerminalPresentationSink presentation{screen};
         TerminalMeasurementContext metrics;
 
+        /*
+         * RadioGroup is semantic and non-visual. It is deliberately not inferred from VBox siblings.
+         * Declare it before Window so the visual tree dies first in ordinary reverse local order.
+         */
+        RadioGroup greeting_group;
+
         Window window;
         auto& form = window.emplace<VBox>();
         form.setSpacing(1);
@@ -96,6 +104,21 @@ int main() {
         checkbox_style.foreground = Color::bright_magenta;
         enthusiastic.setTextStyle(checkbox_style);
 
+        /*
+         * The same explicit RadioGroup/RadioButton model is used in Terminal and SDL3. The terminal
+         * backend decides how "(o)" looks; application code sees only semantic selection state.
+         */
+        auto& hello_style =
+            form.emplace<RadioButton>(greeting_group, "Greeting word: Hello");
+        auto& hi_style =
+            form.emplace<RadioButton>(greeting_group, "Greeting word: Hi");
+
+        TextStyle radio_style;
+        radio_style.foreground = Color::bright_blue;
+        hello_style.setTextStyle(radio_style);
+        hi_style.setTextStyle(radio_style);
+        (void)hello_style.setSelected(true);
+
         auto& greet = form.emplace<Button>("Greet");
         TextStyle greet_style;
         greet_style.foreground = Color::bright_green;
@@ -103,7 +126,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab/Shift+Tab focus. Space toggles CheckBox. F1 help.");
+            "Tab moves focus. Space toggles/selects controls. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -129,8 +152,10 @@ int main() {
              * presentation detail and therefore cannot leak into this application-level decision.
              */
             const char punctuation = enthusiastic.isChecked() ? '!' : '.';
+            const std::string greeting_word =
+                hi_style.isSelected() ? "Hi" : "Hello";
             status.setText(
-                "Hello, " + value + std::string(1, punctuation));
+                greeting_word + ", " + value + std::string(1, punctuation));
         });
 
         enthusiastic.setOnCheckedChanged([&](bool checked) {
@@ -138,6 +163,14 @@ int main() {
                 checked
                     ? "Greeting style: enthusiastic (!)"
                     : "Greeting style: calm (.)");
+        });
+
+        hello_style.setOnSelected([&] {
+            status.setText("Greeting word selected: Hello");
+        });
+
+        hi_style.setOnSelected([&] {
+            status.setText("Greeting word selected: Hi");
         });
 
         exit.setOnActivated([&] {
@@ -196,7 +229,7 @@ int main() {
                              * terminal backend or a Widget base class.
                              */
                             status.setText(
-                                "Help: Tab moves focus; Space toggles CheckBox; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; Space toggles CheckBox/selects RadioButton; Enter/Space activates Buttons.");
                             return;
                         }
 
