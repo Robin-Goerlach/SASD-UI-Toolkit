@@ -1,6 +1,7 @@
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
 
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
@@ -280,6 +281,78 @@ PresentationUpdateResult renderButton(ScreenBuffer& buffer,
     return renderUtf8(buffer, rect, presentation, ambiguous_width, false, style);
 }
 
+[[nodiscard]] std::string checkBoxPresentationText(const CheckBox& check_box) {
+    /*
+     * Keep every state exactly four cells before the caption:
+     *
+     *   [ ] caption  unchecked
+     *   [x] caption  checked
+     *   < > caption  pointer-pressed unchecked
+     *   <x> caption  pointer-pressed checked
+     *   ( ) caption  disabled unchecked
+     *   (x) caption  disabled checked
+     *
+     * Focus is represented by TextStyle::inverse rather than another delimiter pair. That keeps
+     * checked identity obvious and avoids creating a second geometry convention for keyboard focus.
+     */
+    char left = '[';
+    char right = ']';
+
+    if (!check_box.isEnabled()) {
+        left = '(';
+        right = ')';
+    } else if (check_box.isPressed()) {
+        left = '<';
+        right = '>';
+    }
+
+    std::string result;
+    result.reserve(check_box.text().size() + 4);
+    result.push_back(left);
+    result.push_back(check_box.isChecked() ? 'x' : ' ');
+    result.push_back(right);
+    result.push_back(' ');
+    result.append(check_box.text());
+    return result;
+}
+
+PresentationUpdateResult renderCheckBox(ScreenBuffer& buffer,
+                                        const CheckBox& check_box,
+                                        AmbiguousWidthMode ambiguous_width) {
+    const AbsoluteRect rect = absoluteRectOf(check_box);
+
+    if (!check_box.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    TextStyle style = check_box.textStyle();
+    if (!check_box.isEnabled()) {
+        style.dim = true;
+    } else if (check_box.hasFocus()) {
+        style.inverse = true;
+    }
+
+    /*
+     * Pointer hover is geometric Widget state. Terminal mouse input is not implemented yet, but
+     * honoring the state here costs no architecture debt and keeps presentation semantics aligned
+     * when terminal pointer support eventually arrives.
+     */
+    if (check_box.isEnabled() &&
+        check_box.isPointerOver() &&
+        !check_box.isPressed()) {
+        style.underline = true;
+    }
+
+    const std::string presentation = checkBoxPresentationText(check_box);
+
+    /*
+     * The first CheckBox remains single-line in the terminal backend. Multi-line captions are kept
+     * losslessly in Core and deferred here rather than half-rendered with ambiguous indicator layout.
+     */
+    return renderUtf8(buffer, rect, presentation, ambiguous_width, false, style);
+}
+
 [[nodiscard]] std::vector<ScalarLayout> layoutTextScalars(
     std::string_view text,
     AmbiguousWidthMode ambiguous_width,
@@ -469,6 +542,10 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
         }
 
         return rendered.update;
+    }
+
+    if (const auto* check_box = dynamic_cast<const CheckBox*>(&widget)) {
+        return renderCheckBox(buffer_, *check_box, ambiguous_width_);
     }
 
     if (const auto* button = dynamic_cast<const Button*>(&widget)) {

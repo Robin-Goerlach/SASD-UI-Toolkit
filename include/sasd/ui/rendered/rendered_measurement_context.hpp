@@ -99,6 +99,28 @@ public:
      * backend's layout-stability rule: focusing a naturally sized field must not immediately force a
      * horizontal scroll merely because the insertion caret becomes visible.
      */
+    /**
+     * Measures the first rendered CheckBox presentation.
+     *
+     * The indicator is a square whose side follows the current font line height. One logical gap is
+     * always reserved between indicator and caption; if the active control border is thicker than
+     * that, the border thickness becomes the gap. The same policy is repeated by
+     * RenderedPresentationSink so measurement and drawing agree without leaking CheckBox geometry
+     * into Core.
+     */
+    [[nodiscard]] Size measureCheckBox(std::string_view utf8_text) const override {
+        const Size text = measureText(utf8_text);
+        const Coordinate indicator = positiveLineHeight();
+        const RenderedThemeMetrics theme = themeMetrics().normalized();
+        const Coordinate gap =
+            std::max(Coordinate{1}, theme.control_border_thickness);
+
+        Coordinate width = saturatingAdd(indicator, gap);
+        width = saturatingAdd(width, text.width);
+
+        return {width, std::max(text.height, indicator)};
+    }
+
     [[nodiscard]] Size measureTextField(std::string_view utf8_text) const override {
         const Size text = measureText(utf8_text);
         const Coordinate content_height = std::max(text.height, positiveLineHeight());

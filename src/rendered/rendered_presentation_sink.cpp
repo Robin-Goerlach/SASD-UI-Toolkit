@@ -4,6 +4,7 @@
 #include "rendered_text_field_viewport.hpp"
 
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
@@ -150,6 +151,133 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     return PresentationUpdateResult::synchronized;
 }
 
+[[nodiscard]] PresentationUpdateResult renderCheckBox(
+    DisplayList& display_list,
+    const CheckBox& check_box,
+    const RenderedMeasurementContext* metrics,
+    Color background_color) {
+    const auto absolute = detail::absoluteRectOf(check_box);
+    if (!absolute.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    if (!check_box.isVisible() || absolute->isEmpty()) {
+        eraseWidget(display_list, *absolute, background_color);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    /*
+     * Unlike Button, a rendered CheckBox needs font metrics even when its caption is empty because
+     * the indicator square is intentionally tied to line height. A metrics-free sink therefore
+     * defers before mutating DisplayList instead of guessing a backend-specific indicator size.
+     */
+    if (metrics == nullptr) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const RenderedThemeMetrics theme = metrics->themeMetrics().normalized();
+    const Coordinate requested_indicator =
+        std::max(Coordinate{1}, metrics->lineHeight());
+    const Coordinate indicator_size =
+        std::min(requested_indicator,
+                 std::min(absolute->width, absolute->height));
+    const Coordinate gap =
+        std::max(Coordinate{1}, theme.control_border_thickness);
+
+    /*
+     * Preflight every coordinate derived from arranged geometry before erasing anything. This keeps
+     * the sink transactional: an unrepresentable accumulated x coordinate leaves the previous frame
+     * intact and the Widget pending.
+     */
+    const std::int64_t text_x_wide =
+        static_cast<std::int64_t>(absolute->x) +
+        static_cast<std::int64_t>(indicator_size) +
+        static_cast<std::int64_t>(gap);
+    const auto text_x = detail::narrowCoordinate(text_x_wide);
+    if (!text_x.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const std::int64_t right_wide =
+        static_cast<std::int64_t>(absolute->x) +
+        static_cast<std::int64_t>(absolute->width);
+    const std::int64_t available_wide =
+        std::max<std::int64_t>(0, right_wide - text_x_wide);
+    if (available_wide > std::numeric_limits<Coordinate>::max()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const Rect indicator{
+        absolute->x,
+        absolute->y,
+        indicator_size,
+        indicator_size};
+    const Rect caption_clip{
+        *text_x,
+        absolute->y,
+        static_cast<Coordinate>(available_wide),
+        absolute->height};
+
+    TextStyle style =
+        controlTextStyle(check_box, check_box.textStyle());
+
+    /*
+     * Hover and press are presentation overlays only. Hover underlines the caption; press uses
+     * inverse text feedback. Neither changes geometry or mutates the user-provided TextStyle.
+     */
+    if (check_box.isEnabled() &&
+        check_box.isPointerOver() &&
+        !check_box.isPressed()) {
+        style.underline = true;
+    }
+    if (check_box.isEnabled() && check_box.isPressed()) {
+        style.inverse = true;
+    }
+
+    eraseWidget(display_list, *absolute, background_color);
+
+    if (!indicator.isEmpty()) {
+        if (theme.control_border_thickness > 0) {
+            display_list.strokeRect(
+                indicator,
+                style.foreground,
+                theme.control_border_thickness);
+        }
+
+        if (check_box.isChecked()) {
+            /*
+             * Checked state is represented as solid foreground ink inside the indicator border. When
+             * the theme disables border geometry, filling the complete square still leaves an
+             * unambiguous checked mark instead of making the control disappear.
+             */
+            const Coordinate inset_amount =
+                theme.control_border_thickness > 0
+                    ? theme.control_border_thickness
+                    : Coordinate{0};
+            const auto mark = detail::inset(indicator, inset_amount);
+            if (!mark.has_value()) {
+                return PresentationUpdateResult::deferred;
+            }
+            if (!mark->isEmpty()) {
+                display_list.fillRect(
+                    *mark,
+                    style.foreground,
+                    FillRole::foreground);
+            }
+        }
+    }
+
+    if (!caption_clip.isEmpty()) {
+        display_list.drawText(
+            {caption_clip.x, caption_clip.y},
+            check_box.text(),
+            style,
+            caption_clip);
+    }
+
+    return PresentationUpdateResult::synchronized;
+}
+
 [[nodiscard]] PresentationUpdateResult renderTextField(
     DisplayList& display_list,
     const TextField& field,
@@ -244,6 +372,14 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
         return renderTextField(
             display_list_,
             *field,
+            measurement_context_,
+            background_color_);
+    }
+
+    if (const auto* check_box = dynamic_cast<const CheckBox*>(&widget)) {
+        return renderCheckBox(
+            display_list_,
+            *check_box,
             measurement_context_,
             background_color_);
     }

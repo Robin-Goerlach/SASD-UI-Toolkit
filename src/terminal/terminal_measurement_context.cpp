@@ -27,6 +27,23 @@ Size TerminalMeasurementContext::measureButton(std::string_view utf8_text) const
     return {width, measured.rows};
 }
 
+Size TerminalMeasurementContext::measureCheckBox(std::string_view utf8_text) const {
+    const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
+
+    /*
+     * "[x] " is four terminal columns. All presentation states deliberately preserve that width so
+     * checking, focus, pointer press or disabling the control cannot invalidate layout by itself.
+     */
+    constexpr Coordinate indicator_and_gap = 4;
+    const Coordinate maximum = std::numeric_limits<Coordinate>::max();
+    const Coordinate width =
+        measured.columns > maximum - indicator_and_gap
+            ? maximum
+            : static_cast<Coordinate>(measured.columns + indicator_and_gap);
+
+    return {width, measured.rows};
+}
+
 Size TerminalMeasurementContext::measureTextField(std::string_view utf8_text) const {
     const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
 

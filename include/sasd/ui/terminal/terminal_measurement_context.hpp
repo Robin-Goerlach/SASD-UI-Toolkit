@@ -43,6 +43,16 @@ public:
     [[nodiscard]] Size measureButton(std::string_view utf8_text) const override;
 
     /**
+     * Measures terminal CheckBox presentation as a three-cell indicator plus one separating cell:
+     *
+     *     [x] caption
+     *
+     * Checked, unchecked, focused, pressed and disabled variants keep exactly the same footprint so
+     * interaction state never causes a layout jump.
+     */
+    [[nodiscard]] Size measureCheckBox(std::string_view utf8_text) const override;
+
+    /**
      * Measures terminal TextField as two delimiter cells plus content and one reserved caret cell.
      *
      * Reserving caret room even for non-empty intrinsic fields keeps focus transitions layout-stable:

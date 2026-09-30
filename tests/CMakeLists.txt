@@ -57,6 +57,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp
     terminal_button_tests.cpp
+    terminal_check_box_tests.cpp
     terminal_text_field_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
@@ -95,6 +96,7 @@ add_executable(sasd_ui_rendered_tests
     rendered_display_list_tests.cpp
     rendered_display_list_executor_tests.cpp
     rendered_presentation_sink_tests.cpp
+    rendered_check_box_tests.cpp
     rendered_text_field_hit_test_tests.cpp
 )
 
