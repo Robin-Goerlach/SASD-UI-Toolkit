@@ -1,5 +1,6 @@
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
@@ -69,7 +70,7 @@ int main() {
         auto& form = window.emplace<VBox>();
         form.setSpacing(1);
 
-        auto& title = form.emplace<Label>("SASD UI Toolkit - Terminal M2 Demo");
+        auto& title = form.emplace<Label>("SASD UI Toolkit - Terminal Demo");
         TextStyle title_style;
         title_style.foreground = Color::bright_cyan;
         title_style.bold = true;
@@ -85,6 +86,16 @@ int main() {
         field_style.foreground = Color::bright_white;
         name.setTextStyle(field_style);
 
+        /*
+         * This is the same Core CheckBox class used by the SDL3 example. Terminal-specific indicator
+         * text such as "[x]" is supplied by TerminalPresentationSink and never stored in the Widget.
+         */
+        auto& enthusiastic =
+            form.emplace<CheckBox>("Enthusiastic greeting", true);
+        TextStyle checkbox_style;
+        checkbox_style.foreground = Color::bright_magenta;
+        enthusiastic.setTextStyle(checkbox_style);
+
         auto& greet = form.emplace<Button>("Greet");
         TextStyle greet_style;
         greet_style.foreground = Color::bright_green;
@@ -92,7 +103,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab/Shift+Tab focus. F1 help. F10/Escape exits.");
+            "Tab/Shift+Tab focus. Space toggles CheckBox. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -113,8 +124,20 @@ int main() {
             /*
              * Label::setText() invalidates measurement and presentation. The main loop below notices
              * that the form measurement became stale and performs a fresh layout before repainting.
+             *
+             * The punctuation comes only from semantic CheckBox state. Terminal marker geometry is a
+             * presentation detail and therefore cannot leak into this application-level decision.
              */
-            status.setText("Hello, " + value + "!");
+            const char punctuation = enthusiastic.isChecked() ? '!' : '.';
+            status.setText(
+                "Hello, " + value + std::string(1, punctuation));
+        });
+
+        enthusiastic.setOnCheckedChanged([&](bool checked) {
+            status.setText(
+                checked
+                    ? "Greeting style: enthusiastic (!)"
+                    : "Greeting style: calm (.)");
         });
 
         exit.setOnActivated([&] {
@@ -173,7 +196,7 @@ int main() {
                              * terminal backend or a Widget base class.
                              */
                             status.setText(
-                                "Help: type a name, Tab to Greet/Exit, Enter or Space activates.");
+                                "Help: Tab moves focus; Space toggles CheckBox; Enter/Space activates Buttons.");
                             return;
                         }
 

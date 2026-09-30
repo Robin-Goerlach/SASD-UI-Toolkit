@@ -287,9 +287,12 @@ Manual observations
   3. Greet: press inside, drag outside, release outside -> no activation.
   4. Greet: press inside, leave, re-enter, release inside -> one activation.
   5. Hover Greet: underline appears; leave the window: hover clears.
-  6. Verify pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
-  7. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
-  8. Escape/F10/Exit should close normally.
+  6. Tab to "Enthusiastic greeting"; Space toggles its mark and status text.
+  7. Click the CheckBox; verify one toggle per inside release and no toggle after release outside.
+  8. Greet uses "!" while checked and "." while unchecked.
+  9. Verify Button pressed feedback, Tab/Shift+Tab, Enter/Space and F1.
+ 10. Resize slowly and quickly while dragging; watch for stale/stretch artifacts.
+ 11. Escape/F10/Exit should close normally.
 
 Starting visible SDL3 demo...
 EOF
@@ -343,6 +346,7 @@ Useful report template:
   macOS version: ...
   Click-to-caret: PASS / FAIL
   Pointer capture: PASS / FAIL
+  CheckBox keyboard/pointer: PASS / FAIL
   Hover/window leave: PASS / FAIL
   Keyboard: PASS / FAIL
   Resize while dragging: NONE / LESS / SAME / WORSE

@@ -2,6 +2,7 @@
 
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/hit_test.hpp>
@@ -150,7 +151,7 @@ int main(int argc, char** argv) {
         }
 
         Sdl3WindowBackendConfig backend_config;
-        backend_config.title = "SASD UI Toolkit - Rendered M3 SDL3 Demo";
+        backend_config.title = "SASD UI Toolkit - Rendered SDL3 Demo";
         backend_config.initial_size = {800, 500};
         backend_config.font_path = font_path;
         backend_config.font_point_size = 18.0F;
@@ -172,7 +173,7 @@ int main(int argc, char** argv) {
         auto& form = window.emplace<VBox>();
         form.setSpacing(8);
 
-        auto& title = form.emplace<Label>("SASD UI Toolkit - Rendered M3 SDL3 Demo");
+        auto& title = form.emplace<Label>("SASD UI Toolkit - Rendered SDL3 Demo");
         TextStyle title_style;
         title_style.foreground = Color::bright_cyan;
         title_style.bold = true;
@@ -188,6 +189,20 @@ int main(int argc, char** argv) {
         field_style.foreground = Color::bright_white;
         name.setTextStyle(field_style);
 
+        /*
+         * Keep the first M4 form control in the same semantic tree as the M2/M3 widgets. The example
+         * does not construct an SDL-specific checkbox: Core owns checked state and interaction while
+         * RenderedPresentationSink decides how that state becomes pixels.
+         *
+         * Starting checked preserves the demo's historical "Hello, name!" behavior until the user
+         * deliberately changes the option.
+         */
+        auto& enthusiastic =
+            form.emplace<CheckBox>("Enthusiastic greeting", true);
+        TextStyle checkbox_style;
+        checkbox_style.foreground = Color::bright_magenta;
+        enthusiastic.setTextStyle(checkbox_style);
+
         auto& greet = form.emplace<Button>("Greet");
         TextStyle greet_style;
         greet_style.foreground = Color::bright_green;
@@ -195,7 +210,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab/Shift+Tab focus. F1 help. F10/Escape exits.");
+            "Tab/Shift+Tab focus. Space toggles CheckBox. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -213,7 +228,25 @@ int main(int argc, char** argv) {
             if (value.empty()) {
                 value = "world";
             }
-            status.setText("Hello, " + value + "!");
+
+            /*
+             * Application logic consumes the semantic checked value only. Whether the option was
+             * toggled by keyboard, SDL pointer input or a future native peer is irrelevant here.
+             */
+            const char punctuation = enthusiastic.isChecked() ? '!' : '.';
+            status.setText(
+                "Hello, " + value + std::string(1, punctuation));
+        });
+
+        enthusiastic.setOnCheckedChanged([&](bool checked) {
+            /*
+             * The callback demonstrates that checked-state notification is backend-neutral. It also
+             * gives the visible smoke test immediate feedback without coupling CheckBox to Label.
+             */
+            status.setText(
+                checked
+                    ? "Greeting style: enthusiastic (!)"
+                    : "Greeting style: calm (.)");
         });
 
         exit.setOnActivated([&] {
@@ -330,7 +363,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: type a name, Tab to Greet/Exit, Enter or Space activates.");
+                                "Help: Tab moves focus; Space toggles CheckBox; Enter/Space activates Buttons.");
                             return;
                         }
 
