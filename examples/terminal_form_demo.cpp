@@ -8,6 +8,7 @@
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
@@ -213,6 +214,18 @@ int main() {
                         return;
                     }
 
+                    /*
+                     * Arrow navigation for RadioGroup is an explicit focus-scope policy, separate from
+                     * RadioButton's own Space-to-select semantics and generic Tab traversal.
+                     */
+                    if (auto* radio =
+                            dynamic_cast<RadioButton*>(focus.focusedWidget());
+                        radio != nullptr &&
+                        RadioGroupNavigation::handleEvent(
+                            focus, *radio, event) == EventResult::handled) {
+                        return;
+                    }
+
                     if (FocusTraversal::handleEvent(focus, form, event) ==
                         EventResult::handled) {
                         return;
@@ -229,7 +242,7 @@ int main() {
                              * terminal backend or a Widget base class.
                              */
                             status.setText(
-                                "Help: Tab moves focus; Space toggles CheckBox/selects RadioButton; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 

@@ -8,6 +8,7 @@
 namespace sasd::ui {
 
 class RadioButton;
+class RadioGroupNavigation;
 
 /**
  * Non-visual semantic exclusivity group for RadioButton controls.
@@ -47,6 +48,7 @@ public:
 
 private:
     friend class RadioButton;
+    friend class RadioGroupNavigation;
 
     void attach(RadioButton& button);
     void detach(RadioButton& button) noexcept;

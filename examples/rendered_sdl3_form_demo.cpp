@@ -11,6 +11,7 @@
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
@@ -396,6 +397,20 @@ int main(int argc, char** argv) {
                         return;
                     }
 
+                    /*
+                     * Radio-group arrow navigation is deliberately separate from generic Tab
+                     * traversal. This host opts the current focus scope into the policy explicitly,
+                     * preventing a semantic RadioGroup that spans windows from silently moving focus
+                     * across top-level surfaces.
+                     */
+                    if (auto* radio =
+                            dynamic_cast<RadioButton*>(focus.focusedWidget());
+                        radio != nullptr &&
+                        RadioGroupNavigation::handleEvent(
+                            focus, *radio, event) == EventResult::handled) {
+                        return;
+                    }
+
                     if (FocusTraversal::handleEvent(focus, form, event) ==
                         EventResult::handled) {
                         return;
@@ -407,7 +422,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; Space toggles CheckBox/selects RadioButton; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 

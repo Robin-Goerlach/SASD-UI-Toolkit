@@ -6,6 +6,7 @@ add_executable(sasd_ui_tests
     button_tests.cpp
     check_box_tests.cpp
     radio_button_tests.cpp
+    radio_group_navigation_tests.cpp
     event_queue_tests.cpp
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
