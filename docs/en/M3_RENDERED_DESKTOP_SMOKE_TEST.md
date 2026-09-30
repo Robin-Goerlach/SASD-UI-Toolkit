@@ -156,6 +156,40 @@ The helper itself printed `FAIL / NOT CONFIRMED` in this specific run only becau
 confirmation `Pass` did not exactly match uppercase `PASS`. This was not a toolkit behavior failure;
 the helper normalizes confirmation case in the following commit.
 
+## macOS desktop setup
+
+The remaining third M3 desktop path now has a dedicated Cocoa helper:
+
+```bash
+./tools/m3_smoke_macos.sh
+```
+
+Useful variants:
+
+```bash
+./tools/m3_smoke_macos.sh --skip-build
+./tools/m3_smoke_macos.sh --build-only
+./tools/m3_smoke_macos.sh --clean
+./tools/m3_smoke_macos.sh --diagnostic
+./tools/m3_smoke_macos.sh --font /path/to/font.ttf
+```
+
+Like the Linux helper, it uses the pinned SDL3/SDL3_ttf sources, but explicitly requires SDL's native
+Cocoa window backend. It does not install packages. For a typical Homebrew development environment,
+the following is normally sufficient in addition to Apple's/Xcode command-line developer tools:
+
+```bash
+brew install cmake pkg-config freetype harfbuzz
+```
+
+FreeType may be keg-only in Homebrew. The helper therefore adds Homebrew's reported FreeType and
+HarfBuzz prefixes only to its own CMake invocation without modifying the user's shell or global CMake
+configuration. It discovers a font through `fc-match` when available, then checks common macOS
+system-font locations; `--font` remains the explicit override.
+
+**Recorded macOS result:** pending. A real visible Cocoa run with human confirmation remains the last
+platform-specific M3 exit criterion.
+
 ## Manual checks
 
 ### TextField click-to-caret
@@ -259,4 +293,4 @@ surface-lifecycle path at commit `83e964f`.
 Windows visible validation is considered clean when all interaction checks pass and live resize no
 longer produces persistent or materially distracting stale-frame artifacts.
 
-Linux and macOS visible validation remain separate M3 requirements.
+Visible Windows and Debian 12 / WSL2 / WSLg validation have passed. Visible macOS/Cocoa validation remains the final independent M3 platform requirement.

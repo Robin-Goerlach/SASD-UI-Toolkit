@@ -161,6 +161,40 @@ Bestätigung natürlichsprachlich `Pass` statt exakt `PASS` eingegeben wurde. Da
 Funktionsfehler des Toolkits; der Helper normalisiert die Bestätigung ab dem nachfolgenden Commit
 groß-/kleinschreibungsunabhängig.
 
+## macOS-Desktop-Setup
+
+Für den noch offenen dritten M3-Desktoppfad gibt es jetzt einen eigenen Cocoa-Helper:
+
+```bash
+./tools/m3_smoke_macos.sh
+```
+
+Nützliche Varianten:
+
+```bash
+./tools/m3_smoke_macos.sh --skip-build
+./tools/m3_smoke_macos.sh --build-only
+./tools/m3_smoke_macos.sh --clean
+./tools/m3_smoke_macos.sh --diagnostic
+./tools/m3_smoke_macos.sh --font /pfad/zur/font.ttf
+```
+
+Der Helper verwendet wie Linux die gepinnten SDL3-/SDL3_ttf-Quellen, verlangt aber ausdrücklich
+SDLs natives Cocoa-Window-Backend. Er installiert keine Pakete. Für eine typische Homebrew-
+Entwicklungsumgebung genügen zusätzlich zur Apple/Xcode-Command-Line-Toolchain in der Regel:
+
+```bash
+brew install cmake pkg-config freetype harfbuzz
+```
+
+FreeType kann unter Homebrew keg-only sein. Der Helper ergänzt deshalb die von Homebrew gemeldeten
+FreeType-/HarfBuzz-Präfixe nur für seinen eigenen CMake-Aufruf, ohne die Shell- oder globale
+CMake-Konfiguration zu verändern. Einen geeigneten Font sucht er über `fc-match`, falls verfügbar,
+und danach in üblichen macOS-Systemfontpfaden; `--font` bleibt der explizite Override.
+
+**Aufgezeichnetes macOS-Ergebnis:** ausstehend. Ein echter sichtbarer Cocoa-Lauf mit manueller
+Bestätigung bleibt das letzte plattformspezifische M3-Exit-Kriterium.
+
 ## Manuelle Prüfungen
 
 ### TextField Click-to-Caret
@@ -263,4 +297,4 @@ SDL3-Surface-Lifecycle-Pfads auf Commit `83e964f` sichtbar bestätigt.
 Die sichtbare Windows-Validierung gilt als sauber, wenn alle Interaktionsprüfungen bestehen und
 Live-Resize keine persistenten oder deutlich störenden stale-frame-Artefakte mehr erzeugt.
 
-Sichtbare Linux- und macOS-Validierung bleiben eigenständige M3-Anforderungen.
+Die sichtbaren Windows- und Debian-12-/WSL2-/WSLg-Validierungen sind bestanden. Die sichtbare macOS-/Cocoa-Validierung bleibt die letzte eigenständige M3-Plattformanforderung.
