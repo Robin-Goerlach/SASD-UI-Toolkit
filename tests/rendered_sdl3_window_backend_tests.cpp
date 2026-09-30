@@ -5,6 +5,7 @@
 
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
@@ -251,6 +252,151 @@ TEST_CASE("SDL3 window backend presents a real semantic rendered widget tree end
     CHECK(second_replay.complete());
     CHECK(second_replay.forced == 3);
     CHECK(display.size() > 0);
+    CHECK(backend.presentFrame(display) == display.size());
+}
+
+TEST_CASE("SDL3 CheckBox pointer gesture toggles semantic state and presents the new frame") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+
+    DisplayList display;
+    RenderedPresentationSink sink{display, backend, Color::black};
+    FocusManager focus;
+    PointerRouter pointer_router;
+
+    Window window;
+    const Size size = backend.windowSize();
+    window.arrange({0, 0, size.width, size.height});
+
+    auto& check = window.emplace<CheckBox>("Enthusiastic greeting");
+    check.arrange({20, 20, 220, 28});
+
+    int change_notifications = 0;
+    bool callback_value = false;
+    check.setOnCheckedChanged([&](bool checked) {
+        ++change_notifications;
+        callback_value = checked;
+    });
+
+    /*
+     * Start with a real rendered frame so this test covers the same semantic-tree -> DisplayList ->
+     * SDL renderer path as the interactive demo before any input arrives.
+     */
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+    CHECK(!check.isChecked());
+    CHECK(backend.presentFrame(display) == display.size());
+
+    /*
+     * Feed SDL-native pointer data through the adapter's production translation seam. Using the
+     * deterministic translator instead of SDL's synthetic offscreen mouse state keeps CI portable
+     * while still proving the SDL_Event -> PointerEvent boundary used by Sdl3WindowBackend.
+     */
+    SDL_Event down{};
+    down.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    down.button.button = SDL_BUTTON_LEFT;
+    down.button.clicks = 1;
+    down.button.x = 30.0F;
+    down.button.y = 30.0F;
+
+    const auto pressed = detail::translateLogicalPointerEvent(down);
+    CHECK(pressed.has_value());
+    if (!pressed.has_value()) {
+        return;
+    }
+
+    /*
+     * Mirror the concrete desktop-host policy from rendered_sdl3_form_demo.cpp: primary press first
+     * selects logical focus, then PointerRouter owns target dispatch and semantic capture.
+     */
+    Widget* hit = HitTest::deepestAt(window, pressed->position);
+    CHECK(hit == &check);
+    if (hit != nullptr && hit->canReceiveFocus()) {
+        CHECK(focus.requestFocus(*hit));
+    }
+
+    const PointerRouteResult press_result =
+        pointer_router.route(window, *pressed);
+    CHECK(press_result.targeted);
+    CHECK(press_result.handled);
+    CHECK(press_result.capture_active);
+    CHECK(check.hasFocus());
+    CHECK(check.isPressed());
+    CHECK(!check.isChecked());
+
+    /*
+     * Replay the transient pressed state as well. This proves the semantic gesture can be presented
+     * before release instead of only checking the final persistent value.
+     */
+    display.clear();
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+
+    bool saw_pressed_caption = false;
+    for (const auto& command : display.commands()) {
+        if (const auto* text = std::get_if<DrawTextCommand>(&command);
+            text != nullptr && text->text == "Enthusiastic greeting") {
+            CHECK(text->style.inverse);
+            saw_pressed_caption = true;
+        }
+    }
+    CHECK(saw_pressed_caption);
+    CHECK(backend.presentFrame(display) == display.size());
+
+    SDL_Event up = down;
+    up.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    up.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
+
+    const auto released = detail::translateLogicalPointerEvent(up);
+    CHECK(released.has_value());
+    if (!released.has_value()) {
+        return;
+    }
+
+    const PointerRouteResult release_result =
+        pointer_router.route(window, *released);
+    CHECK(release_result.targeted);
+    CHECK(release_result.handled);
+    CHECK(!release_result.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(!check.isPressed());
+    CHECK(check.isChecked());
+    CHECK(change_notifications == 1);
+    CHECK(callback_value);
+
+    /*
+     * Rebuild and present from current semantic state. A checked CheckBox emits a foreground-role fill
+     * for its indicator mark. Looking for that command ties the state transition to Rendered
+     * presentation without depending on pixel screenshots or private SDL renderer internals.
+     */
+    display.clear();
+    CHECK(PresentationCoordinator::replay(window, sink).complete());
+
+    bool saw_checked_mark = false;
+    bool saw_caption = false;
+    for (const auto& command : display.commands()) {
+        if (const auto* fill = std::get_if<FillRectCommand>(&command);
+            fill != nullptr &&
+            fill->role == FillRole::foreground &&
+            fill->bounds.x >= check.bounds().x &&
+            fill->bounds.y >= check.bounds().y) {
+            saw_checked_mark = true;
+        }
+
+        if (const auto* text = std::get_if<DrawTextCommand>(&command);
+            text != nullptr && text->text == "Enthusiastic greeting") {
+            /*
+             * Focus remains a presentation overlay after the pointer gesture; the control's stored
+             * TextStyle stays untouched while the rendered text reports inverse focus feedback.
+             */
+            CHECK(text->style.inverse);
+            saw_caption = true;
+        }
+    }
+
+    CHECK(saw_checked_mark);
+    CHECK(saw_caption);
+    CHECK(check.textStyle() == TextStyle{});
     CHECK(backend.presentFrame(display) == display.size());
 }
 
