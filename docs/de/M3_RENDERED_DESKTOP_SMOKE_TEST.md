@@ -208,6 +208,25 @@ Frame-Scheduling-Policy bleibt damit außerhalb der backendneutralen `Applicatio
 verhielt sich wie erwartet; die zuvor beobachteten störenden Live-Resize-Artefakte traten nicht mehr
 als relevanter Fehler auf. Der stabile Frame blieb sauber.
 
+### Windows-Retest nach Hover/Surface-Lifecycle – 30.09.2026
+
+Nach den Hover- und Top-Level-Surface-Lifecycle-Änderungen wurde der sichtbare Windows-Test erneut
+auf Commit `83e964f` ausgeführt. Der komplette Helper-Lauf baute das SDL3-Demo neu und endete mit
+einem manuell bestätigten `PASS`.
+
+Zusätzlich zu den bereits zuvor bestandenen Interaktionsprüfungen wurden dabei insbesondere die neuen
+M3-Verträge sichtbar validiert:
+
+- `Greet` zeigt den Hover-Underline beim Betreten;
+- der Hover verschwindet beim Verlassen des nativen Fensters;
+- nach erneutem Betreten wird Hover durch die nächste echte Pointer-Bewegung wieder aufgebaut;
+- Pointer-Capture/Pressed-State bleiben nach Verlassen und erneutem Betreten des Fensters nicht hängen;
+- Click-to-Caret, Tab/Shift+Tab, Enter/Space, F1 sowie Escape/F10 funktionierten weiterhin;
+- langsames und schnelles Resize erzeugte keine persistenten oder materiell störenden stale-frame-Artefakte.
+
+Damit ist der aktuelle Windows-M3-Smoke-Stand einschließlich ADR 0035/0036 und des
+SDL3-Surface-Lifecycle-Pfads auf Commit `83e964f` sichtbar bestätigt.
+
 ## Exit-Kriterium
 
 Die sichtbare Windows-Validierung gilt als sauber, wenn alle Interaktionsprüfungen bestehen und

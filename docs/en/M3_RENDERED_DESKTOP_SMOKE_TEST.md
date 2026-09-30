@@ -205,6 +205,25 @@ backend-neutral `Application` class.
 expected; the previously observed distracting live-resize artifacts no longer reproduced as a
 material issue, and the stable frame remained clean.
 
+### Windows retest after hover/surface lifecycle – 2026-09-30
+
+After the hover and top-level surface-lifecycle changes, the visible Windows test was run again on
+commit `83e964f`. The complete helper run rebuilt the SDL3 demo and ended with a human-confirmed
+`PASS`.
+
+In addition to the interaction checks that had already passed before, this run visibly validated the
+new M3 contracts in particular:
+
+- `Greet` gains the hover underline when entered;
+- hover clears when the pointer leaves the native window;
+- after re-entering, the next real pointer movement rebuilds hover normally;
+- pointer capture/pressed state do not remain stuck across leaving and re-entering the window;
+- click-to-caret, Tab/Shift+Tab, Enter/Space, F1 and Escape/F10 continued to work;
+- slow and fast resize produced no persistent or materially distracting stale-frame artifacts.
+
+The current Windows M3 smoke status therefore visibly covers ADR 0035/0036 and the SDL3
+surface-lifecycle path at commit `83e964f`.
+
 ## Exit criterion
 
 Windows visible validation is considered clean when all interaction checks pass and live resize no
