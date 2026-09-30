@@ -54,6 +54,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0037](0037-initial-checkbox-semantics.md) | Initial two-state CheckBox semantics and input contract | Accepted |
 | [0038](0038-explicit-radio-group-and-radio-button-semantics.md) | Explicit RadioGroup and initial RadioButton selection semantics | Accepted |
 | [0039](0039-radio-group-arrow-key-navigation.md) | Explicit RadioGroup arrow-key navigation policy | Accepted |
+| [0040](0040-initial-grid-layout-track-semantics.md) | Initial row-major GridLayout track semantics | Accepted |
 
 ## ADR policy
 

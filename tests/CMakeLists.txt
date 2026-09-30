@@ -11,6 +11,7 @@ add_executable(sasd_ui_tests
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp
     focus_traversal_tests.cpp
+    grid_layout_tests.cpp
     hit_test_tests.cpp
     layout_tests.cpp
     pointer_router_tests.cpp
@@ -58,6 +59,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_screen_buffer_tests.cpp
     terminal_measurement_context_tests.cpp
     terminal_box_layout_tests.cpp
+    terminal_grid_layout_tests.cpp
     terminal_button_tests.cpp
     terminal_check_box_tests.cpp
     terminal_radio_button_tests.cpp

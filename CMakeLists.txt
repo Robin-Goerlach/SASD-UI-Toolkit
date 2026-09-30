@@ -30,6 +30,7 @@ add_library(sasd_ui_core
     src/event_queue.cpp
     src/focus_manager.cpp
     src/focus_traversal.cpp
+    src/grid_layout.cpp
     src/hit_test.cpp
     src/label.cpp
     src/text_field.cpp
