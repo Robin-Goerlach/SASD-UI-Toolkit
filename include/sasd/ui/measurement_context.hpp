@@ -40,6 +40,17 @@ public:
     }
 
     /**
+     * Measures the intrinsic presentation size of a CheckBox carrying the supplied UTF-8 caption.
+     *
+     * The default falls back to plain text measurement so adding the first M4 form control does not
+     * make existing/custom MeasurementContext implementations source-incompatible. Presentation
+     * backends should override this when indicator/chrome requires additional logical space.
+     */
+    [[nodiscard]] virtual Size measureCheckBox(std::string_view utf8_text) const {
+        return measureText(utf8_text);
+    }
+
+    /**
      * Measures the intrinsic presentation size of a single-line TextField containing utf8_text.
      *
      * The default falls back to plain text measurement. Backends may override this to add control

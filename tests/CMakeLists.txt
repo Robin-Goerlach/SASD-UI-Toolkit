@@ -4,6 +4,7 @@ add_executable(sasd_ui_tests
     component_tests.cpp
     box_layout_tests.cpp
     button_tests.cpp
+    check_box_tests.cpp
     event_queue_tests.cpp
     event_dispatcher_tests.cpp
     focus_manager_tests.cpp

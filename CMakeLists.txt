@@ -21,6 +21,7 @@ add_library(sasd_ui_core
     src/application.cpp
     src/box_layout.cpp
     src/button.cpp
+    src/check_box.cpp
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp

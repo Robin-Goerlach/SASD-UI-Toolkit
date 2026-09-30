@@ -91,6 +91,8 @@ Planned:
 
 ## M4 – Layout, commands and form controls / v0.3.x
 
+**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The first deliberately small vertical slice is the semantic two-state `CheckBox`; presentation backends follow incrementally.
+
 Planned:
 
 - `GridLayout`
