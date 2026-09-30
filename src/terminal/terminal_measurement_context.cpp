@@ -44,6 +44,24 @@ Size TerminalMeasurementContext::measureCheckBox(std::string_view utf8_text) con
     return {width, measured.rows};
 }
 
+Size TerminalMeasurementContext::measureRadioButton(std::string_view utf8_text) const {
+    const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
+
+    /*
+     * "(o) " is four terminal columns, matching the initial CheckBox footprint while remaining a
+     * separate measurement override. Keeping the explicit method matters for future backends/themes
+     * where radio and checkbox chrome may diverge.
+     */
+    constexpr Coordinate indicator_and_gap = 4;
+    const Coordinate maximum = std::numeric_limits<Coordinate>::max();
+    const Coordinate width =
+        measured.columns > maximum - indicator_and_gap
+            ? maximum
+            : static_cast<Coordinate>(measured.columns + indicator_and_gap);
+
+    return {width, measured.rows};
+}
+
 Size TerminalMeasurementContext::measureTextField(std::string_view utf8_text) const {
     const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
 

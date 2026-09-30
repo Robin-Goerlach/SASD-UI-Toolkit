@@ -121,6 +121,26 @@ public:
         return {width, std::max(text.height, indicator)};
     }
 
+    /**
+     * Measures the initial rendered RadioButton using the same line-height-sized selector box and
+     * gap policy as CheckBox.
+     *
+     * Sharing geometry at this stage keeps layout predictable while presentation remains free to use
+     * a smaller centered selection mark so radio and checkbox state are visually distinguishable.
+     */
+    [[nodiscard]] Size measureRadioButton(std::string_view utf8_text) const override {
+        const Size text = measureText(utf8_text);
+        const Coordinate indicator = positiveLineHeight();
+        const RenderedThemeMetrics theme = themeMetrics().normalized();
+        const Coordinate gap =
+            std::max(Coordinate{1}, theme.control_border_thickness);
+
+        Coordinate width = saturatingAdd(indicator, gap);
+        width = saturatingAdd(width, text.width);
+
+        return {width, std::max(text.height, indicator)};
+    }
+
     [[nodiscard]] Size measureTextField(std::string_view utf8_text) const override {
         const Size text = measureText(utf8_text);
         const Coordinate content_height = std::max(text.height, positiveLineHeight());

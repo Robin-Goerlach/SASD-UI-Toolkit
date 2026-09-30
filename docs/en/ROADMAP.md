@@ -91,7 +91,7 @@ Planned:
 
 ## M4 – Layout, commands and form controls / v0.3.x
 
-**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The first deliberately small vertical slice is the semantic two-state `CheckBox`. Core semantics plus Terminal and Rendered measurement/presentation are implemented. The shared Terminal/SDL3 sample now integrates CheckBox end to end. An automated SDL3 integration path additionally covers native pointer translation, focus, capture, toggle callback, rendered replay and frame presentation together; visible CheckBox interaction validation remains the manual proof. In parallel, the next M4 Core slice starts with `RadioButton` and an explicit non-visual `RadioGroup`, keeping exclusivity independent from layout and Container ownership.
+**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The first deliberately small vertical slice is the semantic two-state `CheckBox`. Core semantics plus Terminal and Rendered measurement/presentation are implemented. The shared Terminal/SDL3 sample now integrates CheckBox end to end. An automated SDL3 integration path additionally covers native pointer translation, focus, capture, toggle callback, rendered replay and frame presentation together; visible CheckBox interaction validation remains the manual proof. The `RadioButton`/`RadioGroup` slice now includes Core semantics plus Terminal and Rendered measurement/presentation. Group transitions invalidate both the old and new selection indicators; demo/SDL3 end-to-end integration is the next step.
 
 Planned:
 

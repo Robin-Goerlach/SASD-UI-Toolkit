@@ -5,6 +5,7 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -353,6 +354,73 @@ PresentationUpdateResult renderCheckBox(ScreenBuffer& buffer,
     return renderUtf8(buffer, rect, presentation, ambiguous_width, false, style);
 }
 
+[[nodiscard]] std::string radioButtonPresentationText(const RadioButton& radio) {
+    /*
+     * RadioButton must remain visually distinct from CheckBox even in a minimal cell backend:
+     *
+     *   ( ) caption  unselected
+     *   (o) caption  selected
+     *   < > caption  pointer-pressed unselected
+     *   <o> caption  pointer-pressed selected
+     *   { } caption  disabled unselected
+     *   {o} caption  disabled selected
+     *
+     * Focus remains a TextStyle overlay so no interaction state changes the measured footprint.
+     */
+    char left = '(';
+    char right = ')';
+
+    if (!radio.isEnabled()) {
+        left = '{';
+        right = '}';
+    } else if (radio.isPressed()) {
+        left = '<';
+        right = '>';
+    }
+
+    std::string result;
+    result.reserve(radio.text().size() + 4);
+    result.push_back(left);
+    result.push_back(radio.isSelected() ? 'o' : ' ');
+    result.push_back(right);
+    result.push_back(' ');
+    result.append(radio.text());
+    return result;
+}
+
+PresentationUpdateResult renderRadioButton(ScreenBuffer& buffer,
+                                           const RadioButton& radio,
+                                           AmbiguousWidthMode ambiguous_width) {
+    const AbsoluteRect rect = absoluteRectOf(radio);
+
+    if (!radio.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    TextStyle style = radio.textStyle();
+    if (!radio.isEnabled()) {
+        style.dim = true;
+    } else if (radio.hasFocus()) {
+        style.inverse = true;
+    }
+
+    if (radio.isEnabled() &&
+        radio.isPointerOver() &&
+        !radio.isPressed()) {
+        style.underline = true;
+    }
+
+    const std::string presentation = radioButtonPresentationText(radio);
+
+    /*
+     * As with CheckBox, the first terminal RadioButton intentionally supports one presentation row.
+     * Core keeps arbitrary UTF-8 losslessly; unsupported multiline captions remain pending instead of
+     * being flattened or partially acknowledged by this backend.
+     */
+    return renderUtf8(buffer, rect, presentation, ambiguous_width, false, style);
+}
+
 [[nodiscard]] std::vector<ScalarLayout> layoutTextScalars(
     std::string_view text,
     AmbiguousWidthMode ambiguous_width,
@@ -546,6 +614,10 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
 
     if (const auto* check_box = dynamic_cast<const CheckBox*>(&widget)) {
         return renderCheckBox(buffer_, *check_box, ambiguous_width_);
+    }
+
+    if (const auto* radio = dynamic_cast<const RadioButton*>(&widget)) {
+        return renderRadioButton(buffer_, *radio, ambiguous_width_);
     }
 
     if (const auto* button = dynamic_cast<const Button*>(&widget)) {

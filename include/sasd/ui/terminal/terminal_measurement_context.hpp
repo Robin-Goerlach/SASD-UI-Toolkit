@@ -53,6 +53,15 @@ public:
     [[nodiscard]] Size measureCheckBox(std::string_view utf8_text) const override;
 
     /**
+     * Measures terminal RadioButton presentation as a three-cell selector plus one separating cell:
+     *
+     *     (o) caption
+     *
+     * Selected, unselected, focused, pressed and disabled variants all preserve the same footprint.
+     */
+    [[nodiscard]] Size measureRadioButton(std::string_view utf8_text) const override;
+
+    /**
      * Measures terminal TextField as two delimiter cells plus content and one reserved caret cell.
      *
      * Reserving caret room even for non-empty intrinsic fields keeps focus transitions layout-stable:

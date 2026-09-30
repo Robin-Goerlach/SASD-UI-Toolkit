@@ -8,6 +8,7 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
@@ -278,6 +279,135 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     return PresentationUpdateResult::synchronized;
 }
 
+[[nodiscard]] PresentationUpdateResult renderRadioButton(
+    DisplayList& display_list,
+    const RadioButton& radio,
+    const RenderedMeasurementContext* metrics,
+    Color background_color) {
+    const auto absolute = detail::absoluteRectOf(radio);
+    if (!absolute.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    if (!radio.isVisible() || absolute->isEmpty()) {
+        eraseWidget(display_list, *absolute, background_color);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    /*
+     * The selector box is tied to the active font line height, so metrics are mandatory even for an
+     * empty caption. Do not guess a size in the metrics-free sink: deferral preserves the last known
+     * good frame and keeps measurement/presentation contracts aligned.
+     */
+    if (metrics == nullptr) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const RenderedThemeMetrics theme = metrics->themeMetrics().normalized();
+    const Coordinate requested_indicator =
+        std::max(Coordinate{1}, metrics->lineHeight());
+    const Coordinate indicator_size =
+        std::min(requested_indicator,
+                 std::min(absolute->width, absolute->height));
+    const Coordinate gap =
+        std::max(Coordinate{1}, theme.control_border_thickness);
+
+    const std::int64_t text_x_wide =
+        static_cast<std::int64_t>(absolute->x) +
+        static_cast<std::int64_t>(indicator_size) +
+        static_cast<std::int64_t>(gap);
+    const auto text_x = detail::narrowCoordinate(text_x_wide);
+    if (!text_x.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const std::int64_t right_wide =
+        static_cast<std::int64_t>(absolute->x) +
+        static_cast<std::int64_t>(absolute->width);
+    const std::int64_t available_wide =
+        std::max<std::int64_t>(0, right_wide - text_x_wide);
+    if (available_wide > std::numeric_limits<Coordinate>::max()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const Rect indicator{
+        absolute->x,
+        absolute->y,
+        indicator_size,
+        indicator_size};
+    const Rect caption_clip{
+        *text_x,
+        absolute->y,
+        static_cast<Coordinate>(available_wide),
+        absolute->height};
+
+    /*
+     * Pre-compute the selected mark before mutating DisplayList. The first DisplayList has only
+     * rectangular primitives, so a compact centered square is used as the radio "dot". This is a
+     * presentation compromise, not Core semantics; a later richer graphics primitive can make the
+     * selector circular without changing RadioButton or RadioGroup.
+     */
+    std::optional<Rect> selected_mark;
+    if (radio.isSelected() && !indicator.isEmpty()) {
+        Coordinate mark_size = indicator_size / 3;
+        if (mark_size <= 0) {
+            mark_size = 1;
+        }
+
+        const Coordinate offset =
+            static_cast<Coordinate>((indicator_size - mark_size) / 2);
+
+        const auto mark_x = detail::narrowCoordinate(
+            static_cast<std::int64_t>(indicator.x) +
+            static_cast<std::int64_t>(offset));
+        const auto mark_y = detail::narrowCoordinate(
+            static_cast<std::int64_t>(indicator.y) +
+            static_cast<std::int64_t>(offset));
+        if (!mark_x.has_value() || !mark_y.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+
+        selected_mark = Rect{*mark_x, *mark_y, mark_size, mark_size};
+    }
+
+    TextStyle style = controlTextStyle(radio, radio.textStyle());
+
+    if (radio.isEnabled() &&
+        radio.isPointerOver() &&
+        !radio.isPressed()) {
+        style.underline = true;
+    }
+    if (radio.isEnabled() && radio.isPressed()) {
+        style.inverse = true;
+    }
+
+    eraseWidget(display_list, *absolute, background_color);
+
+    if (!indicator.isEmpty() && theme.control_border_thickness > 0) {
+        display_list.strokeRect(
+            indicator,
+            style.foreground,
+            theme.control_border_thickness);
+    }
+
+    if (selected_mark.has_value() && !selected_mark->isEmpty()) {
+        display_list.fillRect(
+            *selected_mark,
+            style.foreground,
+            FillRole::foreground);
+    }
+
+    if (!caption_clip.isEmpty()) {
+        display_list.drawText(
+            {caption_clip.x, caption_clip.y},
+            radio.text(),
+            style,
+            caption_clip);
+    }
+
+    return PresentationUpdateResult::synchronized;
+}
+
 [[nodiscard]] PresentationUpdateResult renderTextField(
     DisplayList& display_list,
     const TextField& field,
@@ -380,6 +510,14 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
         return renderCheckBox(
             display_list_,
             *check_box,
+            measurement_context_,
+            background_color_);
+    }
+
+    if (const auto* radio = dynamic_cast<const RadioButton*>(&widget)) {
+        return renderRadioButton(
+            display_list_,
+            *radio,
             measurement_context_,
             background_color_);
     }
