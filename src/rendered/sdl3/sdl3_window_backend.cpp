@@ -372,25 +372,19 @@ struct Sdl3WindowBackend::Impl {
                 break;
 
             case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                if (belongsToWindow(event.window.windowID)) {
-                    /*
-                     * Surface-boundary notifications deliberately carry no synthetic coordinates.
-                     * PointerRouter will rebuild geometric hover from the next real motion/button
-                     * event; entering the native window alone is not enough to name a Widget target.
-                     */
-                    return Event{PointerSurfaceEvent{PointerSurfaceAction::entered}};
-                }
-                break;
-
             case SDL_EVENT_WINDOW_MOUSE_LEAVE:
                 if (belongsToWindow(event.window.windowID)) {
                     /*
-                     * Once the native pointer leaves the top-level window there may be no further
-                     * motion event with a meaningful logical position. Report surface lifecycle
-                     * explicitly so the host can clear Core hover/capture without inventing an
-                     * out-of-range coordinate or backend-specific Widget event.
+                     * Keep SDL queue/window ownership concerns in the backend, but keep the actual
+                     * semantic mapping deterministic and separately testable. This matters for the
+                     * offscreen driver: synthetic stateful enter/leave sequences are not a reliable
+                     * contract of SDL's platform pump, while real native events reaching this branch
+                     * still require an exact backend-neutral surface lifecycle notification.
                      */
-                    return Event{PointerSurfaceEvent{PointerSurfaceAction::left}};
+                    if (const auto surface =
+                            detail::translatePointerSurfaceEvent(event)) {
+                        return Event{*surface};
+                    }
                 }
                 break;
 

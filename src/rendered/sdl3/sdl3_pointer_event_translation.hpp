@@ -21,4 +21,18 @@ namespace sasd::ui::rendered::sdl3::detail {
 [[nodiscard]] std::optional<PointerEvent> translateLogicalPointerEvent(
     const SDL_Event& event) noexcept;
 
+/**
+ * Converts an SDL top-level mouse enter/leave notification into the backend-neutral surface event.
+ *
+ * This helper deliberately does not inspect SDL's live mouse state and does not decide whether the
+ * event belongs to a particular window. Sdl3WindowBackend performs native window filtering first,
+ * then delegates only the deterministic SDL-event-type -> SASD-semantic mapping here.
+ *
+ * Keeping that mapping behind a tiny private seam lets headless/offscreen tests verify the exact
+ * production translation without depending on a synthetic enter/leave sequence surviving SDL's
+ * platform event-pump state reconciliation.
+ */
+[[nodiscard]] std::optional<PointerSurfaceEvent> translatePointerSurfaceEvent(
+    const SDL_Event& event) noexcept;
+
 } // namespace sasd::ui::rendered::sdl3::detail

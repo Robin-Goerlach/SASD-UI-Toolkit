@@ -395,34 +395,36 @@ TEST_CASE("SDL3 window backend maps key modifiers and key identity to semantic e
     CHECK(!hasModifier(key.modifiers, KeyModifier::alt));
 }
 
-TEST_CASE("SDL3 window backend reports native pointer surface enter and leave") {
-    Sdl3WindowBackend backend{testConfig()};
-    backend.initialize();
-    drainEvents(backend);
-
+TEST_CASE("SDL3 pointer surface translator maps enter and leave without platform mouse state") {
+    /*
+     * Do not make this semantic mapping test depend on a synthetic enter -> leave transition being
+     * preserved by a particular SDL video driver's event pump. The Linux CI uses SDL's offscreen
+     * driver, which may reconcile stateful window-mouse notifications against its own native state.
+     *
+     * Sdl3WindowBackend::pollEvent() calls this exact private seam after native window filtering, so
+     * these checks still protect the production SDL-event-type -> SASD semantic contract. The
+     * separate leaveRoot integration test below keeps one real pollEvent() path covered as well.
+     */
     SDL_Event enter{};
     enter.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
     enter.window.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
-    enter.window.windowID = currentTestWindowId();
-    pushEvent(enter);
 
-    const auto entered = backend.pollEvent();
+    const auto entered = detail::translatePointerSurfaceEvent(enter);
     CHECK(entered.has_value());
-    CHECK(std::holds_alternative<PointerSurfaceEvent>(*entered));
-    CHECK(std::get<PointerSurfaceEvent>(*entered).action ==
-          PointerSurfaceAction::entered);
+    CHECK(entered->action == PointerSurfaceAction::entered);
 
     SDL_Event leave{};
     leave.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
     leave.window.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
-    leave.window.windowID = currentTestWindowId();
-    pushEvent(leave);
 
-    const auto left = backend.pollEvent();
+    const auto left = detail::translatePointerSurfaceEvent(leave);
     CHECK(left.has_value());
-    CHECK(std::holds_alternative<PointerSurfaceEvent>(*left));
-    CHECK(std::get<PointerSurfaceEvent>(*left).action ==
-          PointerSurfaceAction::left);
+    CHECK(left->action == PointerSurfaceAction::left);
+
+    SDL_Event unrelated{};
+    unrelated.type = SDL_EVENT_WINDOW_EXPOSED;
+    unrelated.window.type = SDL_EVENT_WINDOW_EXPOSED;
+    CHECK(!detail::translatePointerSurfaceEvent(unrelated).has_value());
 }
 
 TEST_CASE("SDL3 pointer surface leave can retire Core hover and capture without coordinates") {

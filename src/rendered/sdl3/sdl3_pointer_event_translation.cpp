@@ -79,4 +79,26 @@ std::optional<PointerEvent> translateLogicalPointerEvent(const SDL_Event& event)
     return std::nullopt;
 }
 
+std::optional<PointerSurfaceEvent> translatePointerSurfaceEvent(
+    const SDL_Event& event) noexcept {
+    switch (event.type) {
+    case SDL_EVENT_WINDOW_MOUSE_ENTER:
+        /*
+         * Surface lifecycle intentionally carries no coordinates. Core hover is rebuilt by the next
+         * real PointerEvent; inventing a position here would couple semantics to backend state.
+         */
+        return PointerSurfaceEvent{PointerSurfaceAction::entered};
+
+    case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+        /*
+         * A leave notification must remain useful even when no subsequent motion event exists.
+         * Hosts can therefore retire hover/capture without fabricating an out-of-range coordinate.
+         */
+        return PointerSurfaceEvent{PointerSurfaceAction::left};
+
+    default:
+        return std::nullopt;
+    }
+}
+
 } // namespace sasd::ui::rendered::sdl3::detail
