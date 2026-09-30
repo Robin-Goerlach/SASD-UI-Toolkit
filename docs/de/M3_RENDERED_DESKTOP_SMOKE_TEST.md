@@ -122,13 +122,44 @@ Development-Dateien bereits vorhanden sein. Einen lesbaren proportionalen Deskto
 Helper bevorzugt über `fc-match`; übliche DejaVu-/Liberation-/Noto-Pfade dienen als Fallback.
 Mit `--font` lässt sich die Erkennung jederzeit überschreiben.
 
+Für Debian 12/Bookworm hat sich folgende Entwicklungsumgebung als vollständige Referenz für den
+sichtbaren SDL3/SDL3_ttf-Smoke-Test bewährt:
+
+```bash
+sudo apt install \
+  build-essential cmake git pkg-config \
+  libfreetype6-dev libharfbuzz-dev \
+  libx11-dev libxext-dev libxcursor-dev libxfixes-dev libxrender-dev \
+  libxi-dev libxrandr-dev libxss-dev libxtst-dev \
+  libwayland-dev libxkbcommon-dev \
+  libfribidi-dev libthai-dev \
+  libdrm-dev libgbm-dev libudev-dev libdbus-1-dev libibus-1.0-dev \
+  libusb-1.0-0-dev \
+  libasound2-dev libpulse-dev libpipewire-0.3-dev libjack-jackd2-dev
+```
+
+Die Liste ist bewusst eine reproduzierbare Desktop-Entwicklungsumgebung und nicht die minimalste
+denkbare Laufzeitabhängigkeit des Toolkits.
+
 Vor dem Start lehnt der Helper außerdem eine fehlende grafische Sitzung sowie explizite
 `SDL_VIDEODRIVER=offscreen`-/`dummy`-Overrides ab. `XDG_SESSION_TYPE`, `DISPLAY` und
 `WAYLAND_DISPLAY` werden ausgegeben, damit ein X11-, Wayland- oder XWayland-Ergebnis später exakt
 dokumentiert werden kann.
 
-**Aufgezeichnetes Linux-Ergebnis:** ausstehend. Der Helper macht den Ablauf reproduzierbar; zum
-Abschluss der Linux-M3-Anforderung ist weiterhin ein tatsächlich sichtbarer manueller PASS nötig.
+**Aufgezeichnetes Linux-Ergebnis – 30.09.2026:** bestanden unter Debian 12 (Bookworm) in WSL2/WSLg
+auf Commit `65866db`. Der Helper erkannte eine sichtbare grafische Sitzung mit `DISPLAY=:0` und
+`WAYLAND_DISPLAY=wayland-0`; SDL wurde mit automatischer Video-Driver-Auswahl gestartet. Der
+exakte zur Laufzeit ausgewählte SDL-Video-Driver wurde in diesem Lauf noch nicht separat protokolliert.
+
+Der komplette Build einschließlich SDL3 3.4.16, SDL3_ttf 3.2.2, HarfBuzz und FreeType lief erfolgreich
+durch. Das sichtbare Demo beendete sich mit Exitcode 0, und die manuellen Interaktionsprüfungen
+(Click-to-Caret, Pointer-Capture, Hover/Window-Leave, Tastatur und Resize) wurden anschließend vom
+Tester als erfolgreich bestätigt.
+
+Der Helper selbst meldete in diesem konkreten Lauf fälschlich `FAIL / NOT CONFIRMED`, weil als
+Bestätigung natürlichsprachlich `Pass` statt exakt `PASS` eingegeben wurde. Das war kein
+Funktionsfehler des Toolkits; der Helper normalisiert die Bestätigung ab dem nachfolgenden Commit
+groß-/kleinschreibungsunabhängig.
 
 ## Manuelle Prüfungen
 

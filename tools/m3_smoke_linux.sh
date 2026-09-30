@@ -326,6 +326,13 @@ persistent or materially distracting stale-frame artifacts.
 EOF
 read -r -p "Type PASS to confirm the visible Linux M3 smoke test: " manual_confirmation
 
+# Human confirmation is intentionally required, but the confirmation token itself should not be
+# fragile. Normalize surrounding whitespace and letter case so natural input such as "Pass" or
+# " pass " does not turn a successful visible validation into a false negative.
+manual_confirmation="$(printf '%s' "$manual_confirmation" | tr '[:lower:]' '[:upper:]')"
+manual_confirmation="${manual_confirmation#"${manual_confirmation%%[![:space:]]*}"}"
+manual_confirmation="${manual_confirmation%"${manual_confirmation##*[![:space:]]}"}"
+
 if ((demo_status == 0)) && [[ "$manual_confirmation" == "PASS" ]]; then
     echo
     echo "M3 Linux visible smoke result: PASS"

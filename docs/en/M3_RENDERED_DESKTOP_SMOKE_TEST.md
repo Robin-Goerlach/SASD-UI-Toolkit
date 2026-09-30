@@ -119,12 +119,42 @@ C/C++ toolchain, Git, FreeType/HarfBuzz development files and the X11 or Wayland
 needed by SDL. A readable proportional desktop font is discovered through `fc-match` when available,
 with common DejaVu/Liberation/Noto paths as fallbacks; `--font` can always override discovery.
 
+For Debian 12/Bookworm, the following development environment proved to be a complete reference
+setup for the visible SDL3/SDL3_ttf smoke test:
+
+```bash
+sudo apt install \
+  build-essential cmake git pkg-config \
+  libfreetype6-dev libharfbuzz-dev \
+  libx11-dev libxext-dev libxcursor-dev libxfixes-dev libxrender-dev \
+  libxi-dev libxrandr-dev libxss-dev libxtst-dev \
+  libwayland-dev libxkbcommon-dev \
+  libfribidi-dev libthai-dev \
+  libdrm-dev libgbm-dev libudev-dev libdbus-1-dev libibus-1.0-dev \
+  libusb-1.0-0-dev \
+  libasound2-dev libpulse-dev libpipewire-0.3-dev libjack-jackd2-dev
+```
+
+This is intentionally a reproducible desktop development environment, not the smallest possible
+runtime dependency set for the toolkit.
+
 Before launching, the helper also rejects a missing graphical session and explicit
 `SDL_VIDEODRIVER=offscreen`/`dummy` overrides. It reports `XDG_SESSION_TYPE`, `DISPLAY` and
 `WAYLAND_DISPLAY` so an X11, Wayland or XWayland result can be recorded precisely.
 
-**Recorded Linux result:** pending. The helper makes the run reproducible; a human-visible desktop
-PASS is still required before the Linux M3 requirement is closed.
+**Recorded Linux result – 2026-09-30:** passed on Debian 12 (Bookworm) under WSL2/WSLg at
+commit `65866db`. The helper detected a visible graphical session with `DISPLAY=:0` and
+`WAYLAND_DISPLAY=wayland-0`; SDL used automatic video-driver selection. The exact SDL video driver
+chosen at runtime was not separately recorded in this run.
+
+The complete build, including SDL3 3.4.16, SDL3_ttf 3.2.2, HarfBuzz and FreeType, completed
+successfully. The visible demo exited with code 0, and the human interaction checks
+(click-to-caret, pointer capture, hover/window leave, keyboard and resize) were subsequently confirmed
+as successful by the tester.
+
+The helper itself printed `FAIL / NOT CONFIRMED` in this specific run only because the natural
+confirmation `Pass` did not exactly match uppercase `PASS`. This was not a toolkit behavior failure;
+the helper normalizes confirmation case in the following commit.
 
 ## Manual checks
 
