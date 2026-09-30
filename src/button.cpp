@@ -1,6 +1,6 @@
 #include <sasd/ui/button.hpp>
 
-#include <sasd/ui/hit_test.hpp>
+#include "primary_pointer_gesture.hpp"
 #include <sasd/ui/measurement_context.hpp>
 
 #include <variant>
@@ -60,76 +60,55 @@ Size Button::onMeasure(const MeasurementContext& context, const MeasureConstrain
 }
 
 void Button::setPointerGestureState(bool armed, bool inside) noexcept {
-    const bool was_pressed = isPressed();
+    const bool was_pressed =
+        detail::primaryPointerPressed(*this, pointer_armed_, pointer_inside_);
+
     pointer_armed_ = armed;
     pointer_inside_ = inside;
 
     /*
-     * Pressed state is visual state, not intrinsic geometry. Repeated motion within the same region
-     * therefore does not invalidate presentation unless the externally observable state changed.
+     * This setter remains for concrete-control code paths that need direct cancellation. The common
+     * event transition rules live in primary_pointer_gesture.hpp; visual invalidation stays here
+     * because it is protected Widget behavior and part of the concrete control's responsibility.
      */
-    if (was_pressed != isPressed()) {
+    if (was_pressed !=
+        detail::primaryPointerPressed(*this, pointer_armed_, pointer_inside_)) {
         invalidateVisual();
     }
 }
 
 void Button::onPointerCaptureLost() noexcept {
-    // Capture can disappear without a release event; never leave the Button visually depressed.
-    setPointerGestureState(false, false);
+    if (detail::cancelPrimaryPointerGesture(
+            *this,
+            pointer_armed_,
+            pointer_inside_)) {
+        invalidateVisual();
+    }
 }
 
 EventResult Button::onEvent(const Event& event) {
     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
-        if (pointer->button != PointerButton::primary &&
-            pointer->action != PointerAction::move) {
-            return EventResult::ignored;
+        const detail::PrimaryPointerGestureUpdate update =
+            detail::updatePrimaryPointerGesture(
+                *this,
+                *pointer,
+                pointer_armed_,
+                pointer_inside_);
+
+        if (update.pressed_state_changed) {
+            invalidateVisual();
         }
 
-        if (pointer->action == PointerAction::press) {
-            if (!isEnabled() || !isVisible() ||
-                !HitTest::contains(*this, pointer->position)) {
-                setPointerGestureState(false, false);
-                return EventResult::ignored;
-            }
-
-            setPointerGestureState(true, true);
-            return EventResult::handled;
+        /*
+         * updatePrimaryPointerGesture() has already retired pressed state before reporting completion.
+         * activate() may therefore invoke application code that releases this Button without leaving
+         * gesture cleanup for code that runs after the callback.
+         */
+        if (update.completed_inside) {
+            (void)activate();
         }
 
-        if (pointer->action == PointerAction::move) {
-            if (!pointer_armed_) {
-                return EventResult::ignored;
-            }
-
-            const bool inside =
-                isEnabled() && isVisible() &&
-                HitTest::contains(*this, pointer->position);
-            setPointerGestureState(true, inside);
-            return EventResult::handled;
-        }
-
-        if (pointer->action == PointerAction::release) {
-            if (!pointer_armed_) {
-                return EventResult::ignored;
-            }
-
-            const bool completes_inside =
-                isEnabled() && isVisible() &&
-                HitTest::contains(*this, pointer->position);
-
-            /*
-             * Clear state before application code. activate() may synchronously release/reparent the
-             * Button, so no Button member may be required afterwards.
-             */
-            setPointerGestureState(false, false);
-
-            if (completes_inside) {
-                (void)activate();
-            }
-            return EventResult::handled;
-        }
-
-        return EventResult::ignored;
+        return update.result;
     }
 
     const auto* key = std::get_if<KeyEvent>(&event);

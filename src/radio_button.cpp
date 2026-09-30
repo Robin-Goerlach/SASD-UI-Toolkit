@@ -1,6 +1,6 @@
 #include <sasd/ui/radio_button.hpp>
 
-#include <sasd/ui/hit_test.hpp>
+#include "primary_pointer_gesture.hpp"
 #include <sasd/ui/measurement_context.hpp>
 #include <sasd/ui/radio_group.hpp>
 
@@ -103,73 +103,54 @@ Size RadioButton::onMeasure(const MeasurementContext& context,
 }
 
 void RadioButton::setPointerGestureState(bool armed, bool inside) noexcept {
-    const bool was_pressed = isPressed();
+    const bool was_pressed =
+        detail::primaryPointerPressed(*this, pointer_armed_, pointer_inside_);
 
     pointer_armed_ = armed;
     pointer_inside_ = inside;
 
-    if (was_pressed != isPressed()) {
+    /*
+     * This setter remains for concrete-control code paths that need direct cancellation. The common
+     * event transition rules live in primary_pointer_gesture.hpp; visual invalidation stays here
+     * because it is protected Widget behavior and part of the concrete control's responsibility.
+     */
+    if (was_pressed !=
+        detail::primaryPointerPressed(*this, pointer_armed_, pointer_inside_)) {
         invalidateVisual();
     }
 }
 
 void RadioButton::onPointerCaptureLost() noexcept {
-    setPointerGestureState(false, false);
+    if (detail::cancelPrimaryPointerGesture(
+            *this,
+            pointer_armed_,
+            pointer_inside_)) {
+        invalidateVisual();
+    }
 }
 
 EventResult RadioButton::onEvent(const Event& event) {
     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
-        if (pointer->button != PointerButton::primary &&
-            pointer->action != PointerAction::move) {
-            return EventResult::ignored;
+        const detail::PrimaryPointerGestureUpdate update =
+            detail::updatePrimaryPointerGesture(
+                *this,
+                *pointer,
+                pointer_armed_,
+                pointer_inside_);
+
+        if (update.pressed_state_changed) {
+            invalidateVisual();
         }
 
-        if (pointer->action == PointerAction::press) {
-            if (!isEnabled() || !isVisible() ||
-                !HitTest::contains(*this, pointer->position)) {
-                setPointerGestureState(false, false);
-                return EventResult::ignored;
-            }
-
-            setPointerGestureState(true, true);
-            return EventResult::handled;
-        }
-
-        if (pointer->action == PointerAction::move) {
-            if (!pointer_armed_) {
-                return EventResult::ignored;
-            }
-
-            const bool inside =
-                isEnabled() && isVisible() &&
-                HitTest::contains(*this, pointer->position);
-            setPointerGestureState(true, inside);
-            return EventResult::handled;
-        }
-
-        if (pointer->action == PointerAction::release) {
-            if (!pointer_armed_) {
-                return EventResult::ignored;
-            }
-
-            const bool completes_inside =
-                isEnabled() && isVisible() &&
-                HitTest::contains(*this, pointer->position);
-
+        if (update.completed_inside && !selected_) {
             /*
-             * Retire transient gesture state before selection can enter application callbacks. A
-             * selected handler may release this object, so nothing below may depend on gesture fields.
+             * User activation selects but never toggles off an already selected radio. The shared
+             * helper owns only gesture mechanics; this selection rule remains RadioButton semantics.
              */
-            setPointerGestureState(false, false);
-
-            if (completes_inside && !selected_) {
-                (void)setSelected(true);
-            }
-
-            return EventResult::handled;
+            (void)setSelected(true);
         }
 
-        return EventResult::ignored;
+        return update.result;
     }
 
     const auto* key = std::get_if<KeyEvent>(&event);
