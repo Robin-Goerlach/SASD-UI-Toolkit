@@ -52,6 +52,7 @@ Each ADR is bilingual. English is followed by German in the same file so the rat
 | [0035](0035-geometric-pointer-hover-state.md) | Geometric pointer hover as direct Widget state | Accepted |
 | [0036](0036-pointer-surface-lifecycle.md) | Pointer surface lifecycle is separate from Widget hover boundaries | Accepted |
 | [0037](0037-initial-checkbox-semantics.md) | Initial two-state CheckBox semantics and input contract | Accepted |
+| [0038](0038-explicit-radio-group-and-radio-button-semantics.md) | Explicit RadioGroup and initial RadioButton selection semantics | Accepted |
 
 ## ADR policy
 

@@ -51,6 +51,16 @@ public:
     }
 
     /**
+     * Measures the intrinsic presentation size of a RadioButton carrying the supplied UTF-8 caption.
+     *
+     * The compatibility default is plain text measurement. Terminal, rendered and later native
+     * contexts may override it when their radio indicator/chrome occupies additional logical space.
+     */
+    [[nodiscard]] virtual Size measureRadioButton(std::string_view utf8_text) const {
+        return measureText(utf8_text);
+    }
+
+    /**
      * Measures the intrinsic presentation size of a single-line TextField containing utf8_text.
      *
      * The default falls back to plain text measurement. Backends may override this to add control
