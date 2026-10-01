@@ -91,21 +91,25 @@ Geplant:
 
 ## M4 – Layout, Commands und Form Controls / v0.3.x
 
-**Status: begonnen am 30.09.2026.** Die noch ausstehende sichtbare macOS-/Cocoa-Validierung von M3 bleibt als externe Plattformprüfung offen und blockiert die backendneutrale M4-Weiterentwicklung nicht. Der erste kleine vertikale Schnitt ist die semantische Zwei-Zustands-`CheckBox`. Core-Semantik sowie Terminal- und Rendered-Messung/-Darstellung sind implementiert. Die gemeinsame Terminal-/SDL3-Beispielanwendung bindet die CheckBox jetzt end-to-end ein. Zusätzlich deckt ein automatisierter SDL3-Integrationspfad native Pointer-Übersetzung, Fokus, Capture, Toggle-Callback, Rendered-Replay und Frame-Presentation gemeinsam ab; die sichtbare CheckBox-Interaktionsprüfung bleibt als manueller Nachweis offen. Der `RadioButton`-/`RadioGroup`-Slice besitzt Core-Semantik sowie Terminal- und Rendered-Messung/-Darstellung und ist jetzt in beide Beispielanwendungen integriert. Ein automatisierter SDL3-Gruppenwechsel deckt native Pointer-Übersetzung, Fokus, Capture, konsistenten Selection-Callback, Entfernung des alten Markers, Darstellung des neuen Markers und Frame-Presentation gemeinsam ab; die sichtbare RadioButton-Interaktionsprüfung bleibt manuell offen. Die inzwischen in Button, CheckBox und RadioButton nachgewiesene identische Primary-Pointer-Press/Capture/Release-Mechanik ist in einen privaten Core-Interaction-Helper refaktoriert; die semantische Aktion jedes Controls bleibt bewusst in der jeweiligen Klasse und es wurde keine neue öffentliche Control-Basisklasse eingeführt. RadioGroup-Pfeiltasten-Navigation ist nun als explizite `RadioGroupNavigation`-Policy umgesetzt: Links/Hoch bzw. Rechts/Runter bewegen Fokus und Auswahl zyklisch in stabiler Gruppenreihenfolge, überspringen effektiv unerreichbare Mitglieder und überschreiten keinen Top-Level-Visual-Root. Als nächstes M4-Layoutfundament ist `GridLayout` implementiert: feste positive Spaltenzahl, dichtes Row-Major-Placement sichtbarer Kinder, intrinsische Spalten-/Zeilenmaxima, getrenntes Row-/Column-Spacing sowie deterministisches Clipping später Tracks bei Platzmangel. Spans, Gewichte und Extra-Space-Verteilung bleiben bewusst spätere Track-Policies.
+**Status: begonnen am 30.09.2026.** Die noch ausstehende sichtbare macOS-/Cocoa-Validierung von M3 bleibt als externe Plattformprüfung offen und blockiert die backendneutrale M4-Weiterentwicklung nicht. Die semantische Zwei-Zustands-`CheckBox` sowie der `RadioButton`-/`RadioGroup`-Slice sind in Core, Terminal und Rendered Presentation implementiert und in die Beispielanwendungen integriert; eigene SDL3-Integrationspfade prüfen ihr Verhalten vom nativen Pointer-Event bis zur Frame-Presentation. Die in Button, CheckBox und RadioButton nachgewiesene identische Primary-Pointer-Press/Capture/Release-Mechanik wurde in einen privaten Core-Helper ausgelagert, ohne eine öffentliche Control-Basisklasse einzuführen. `RadioGroupNavigation` stellt explizite zyklische Links/Hoch- bzw. Rechts/Runter-Navigation in stabiler Gruppenreihenfolge bereit, überspringt effektiv unerreichbare Mitglieder und überschreitet keinen Top-Level-Visual-Root.
+
+Die erste M4-Layoutfamilie ist nun implementiert und stabilisiert. `GridLayout` bietet eine feste positive Spaltenzahl, dichtes Row-Major-Placement sichtbarer Kinder, intrinsische Spalten-/Zeilenmaxima, getrenntes Row-/Column-Spacing sowie deterministisches Clipping bei Platzmangel. Track-Belegung ist strukturell: Eine belegte Spalte mit Breite null existiert weiterhin und erhält die Spacing-Grenze zur vorherigen belegten Spalte. `FormLayout` ist eine getrennte Implementierung mit stabiler Label-/Field-Paarung nach visueller Adoption Order, gemeinsamer intrinsischer Label-Spalte, expandierender Field-Spalte, label-only letzter Zeile, Behandlung versteckter Zeilen und deterministischem Clipping. Visibility packt die strukturellen Paare niemals neu; ein explizites `release()` mit erneuter Adoption ist dagegen eine strukturelle Änderung und folgt deshalb der daraus entstehenden Child-Reihenfolge. `StackLayout` legt jedes sichtbare Kind in dasselbe Client-Rechteck; die gewünschte Größe ist das komponentenweise Maximum, die Adoption Order bestimmt die Paint-Reihenfolge und spätere Kinder liegen daher oben. Terminal- und Rendered-Presentation behandeln Grid/Form/Stack explizit als strukturelle Container, während unbekannte konkrete `Container`-Unterklassen `deferred` bleiben, damit spätere Composite Controls ihren Presentation-State nicht still verlieren. Visibility-Änderungen fordern konservativ ein Subtree-Replay an; beim erzwungenen Replay werden versteckte Widgets ausgespart, sodass eine wieder freigelegte untere Stack-Schicht korrekt restauriert wird.
+
+Die aktuellen Layout-Verträge sind bewusst klein. `GridLayout` besitzt noch keine Spans, gewichteten Tracks, Cell-Alignment, Margins/Padding oder Extra-Space-Verteilung. `FormLayout` besitzt noch keine Row-Metadaten, unabhängigen Row-Objekte oder zusätzliche Alignment-Policy jenseits des gemeinsamen Zwei-Spalten-Vertrags. `StackLayout` besitzt keinen Active-Page-State, Z-Index, Offsets, Margins oder Window-Manager-Semantik; aktuell wird geschichteter Inhalt über Visibility ausgewählt. Diese Funktionen bleiben spätere Erweiterungen und sollen erst dann öffentliche API werden, wenn reale Nutzer sie rechtfertigen.
 
 Geplant:
 
-- `GridLayout`
-- `FormLayout`
-- `StackLayout`
-- `CheckBox`
-- `RadioButton`
-- `ComboBox`
-- Commands/Actions
-- Menüs als semantisches Modell
-- Shortcuts
-- Clipboard-Basis
-- Binding-/Validation-Grundlagen dort, wo reale Anwendungsfälle sie rechtfertigen
+- [x] `GridLayout`
+- [x] `FormLayout`
+- [x] `StackLayout`
+- [x] `CheckBox`
+- [x] `RadioButton`
+- [ ] `ComboBox`
+- [ ] Commands/Actions
+- [ ] Menüs als semantisches Modell
+- [ ] Shortcuts
+- [ ] Clipboard-Basis
+- [ ] Binding-/Validation-Grundlagen dort, wo reale Anwendungsfälle sie rechtfertigen
 
 ## M5 – Model/View und datenreiche Widgets / v0.4.x
 

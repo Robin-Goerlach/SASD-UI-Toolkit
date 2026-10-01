@@ -91,21 +91,25 @@ Planned:
 
 ## M4 – Layout, commands and form controls / v0.3.x
 
-**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The first deliberately small vertical slice is the semantic two-state `CheckBox`. Core semantics plus Terminal and Rendered measurement/presentation are implemented. The shared Terminal/SDL3 sample now integrates CheckBox end to end. An automated SDL3 integration path additionally covers native pointer translation, focus, capture, toggle callback, rendered replay and frame presentation together; visible CheckBox interaction validation remains the manual proof. The `RadioButton`/`RadioGroup` slice now includes Core semantics plus Terminal and Rendered measurement/presentation and is integrated into both sample applications. An automated SDL3 group transition covers native pointer translation, focus, capture, coherent selection callback state, removal of the old mark, presentation of the new mark, and frame presentation together; visible RadioButton interaction validation remains a manual proof. The identical primary-pointer press/capture/release mechanics now proven across Button, CheckBox and RadioButton have been refactored into a private Core interaction helper; each control retains its own semantic action and no new public control base class was introduced. Radio-group arrow-key navigation is now an explicit `RadioGroupNavigation` policy: Left/Up and Right/Down move focus and selection cyclically in stable group order, skip effectively unreachable members, and never cross a top-level visual root. The next M4 layout foundation, `GridLayout`, is now implemented with a fixed positive column count, dense row-major placement of visible children, intrinsic column/row maxima, independent row/column spacing, and deterministic clipping of later tracks under shortage. Spans, weights and extra-space distribution deliberately remain later track policies.
+**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The semantic two-state `CheckBox` and the `RadioButton`/`RadioGroup` slice are implemented across Core, Terminal and Rendered presentation and are integrated into the sample applications; dedicated SDL3 integration paths exercise their native-pointer-to-frame behavior. The identical primary-pointer press/capture/release mechanics proven across Button, CheckBox and RadioButton have been factored into a private Core helper without introducing a public control base class. `RadioGroupNavigation` provides explicit cyclic Left/Up and Right/Down navigation in stable group order, skips effectively unreachable members, and never crosses a top-level visual root.
+
+The first M4 layout family is now implemented and stabilized. `GridLayout` provides a fixed positive column count, dense row-major placement of visible children, intrinsic column/row maxima, independent row/column spacing and deterministic clipping under shortage. Track occupancy is structural: an occupied zero-width column still exists and keeps the spacing boundary to the preceding occupied column. `FormLayout` is a separate implementation with stable label/field pairing by visual adoption order, a shared intrinsic label column, an expanding field column, label-only final rows, hidden-row handling and deterministic clipping. Visibility never repacks its structural pairs; explicit `release()`/re-adoption is a structural change and therefore follows the resulting child order. `StackLayout` overlays every visible child into the same client rectangle; desired size is the component-wise maximum, adoption order defines paint order, and later children are therefore topmost. Terminal and Rendered presentation treat Grid/Form/Stack as explicit structural containers, while unknown concrete `Container` subclasses remain deferred so future composite controls cannot silently lose presentation state. Visibility changes conservatively request subtree replay, and forced replay prunes hidden widgets so an uncovered lower stack layer is restored correctly.
+
+The current layout contracts are intentionally small. `GridLayout` does not yet provide spans, weighted tracks, per-cell alignment, margins/padding or extra-space distribution. `FormLayout` does not yet provide per-row metadata, independent row objects or alignment policy beyond the shared two-column contract. `StackLayout` does not provide active-page state, z-index, offsets, margins or window-manager semantics; visibility is currently the mechanism for selecting layered content. Those features remain later extensions and should only be added when real consumers justify the additional public API.
 
 Planned:
 
-- `GridLayout`
-- `FormLayout`
-- `StackLayout`
-- `CheckBox`
-- `RadioButton`
-- `ComboBox`
-- commands/actions
-- semantic menu model
-- shortcuts
-- clipboard foundation
-- binding/validation foundations where supported by real use cases
+- [x] `GridLayout`
+- [x] `FormLayout`
+- [x] `StackLayout`
+- [x] `CheckBox`
+- [x] `RadioButton`
+- [ ] `ComboBox`
+- [ ] commands/actions
+- [ ] semantic menu model
+- [ ] shortcuts
+- [ ] clipboard foundation
+- [ ] binding/validation foundations where supported by real use cases
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 
