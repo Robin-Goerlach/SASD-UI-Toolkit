@@ -8,6 +8,7 @@
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -641,7 +642,8 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
         dynamic_cast<const VBox*>(&widget) != nullptr ||
         dynamic_cast<const HBox*>(&widget) != nullptr ||
         dynamic_cast<const GridLayout*>(&widget) != nullptr ||
-        dynamic_cast<const FormLayout*>(&widget) != nullptr) {
+        dynamic_cast<const FormLayout*>(&widget) != nullptr ||
+        dynamic_cast<const StackLayout*>(&widget) != nullptr) {
         return PresentationUpdateResult::synchronized;
     }
 
