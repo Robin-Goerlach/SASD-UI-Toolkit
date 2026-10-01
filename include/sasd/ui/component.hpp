@@ -8,8 +8,8 @@ class Container;
  * Base class for toolkit components that participate in ownership and lifecycle semantics.
  *
  * Component is intentionally not a universal root object for every value type in the library.
- * A component may be visual (through Widget) or non-visual (for example a future Command,
- * Timer or DataSource).
+ * A component may be visual (through Widget) or non-visual (for example Command, or a future Timer
+ * or DataSource).
  */
 class Component {
 public:

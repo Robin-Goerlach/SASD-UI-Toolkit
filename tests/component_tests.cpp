@@ -1,5 +1,6 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/command.hpp>
 #include <sasd/ui/container.hpp>
 
 #include <memory>
@@ -158,6 +159,81 @@ TEST_CASE("Container destruction releases all owned component lifetimes exactly 
     }
 
     CHECK(destruction_count == 2);
+}
+
+TEST_CASE("Command is an owned non-visual component") {
+    Container root;
+    auto& command = root.emplace<Command>("Save");
+
+    /*
+     * Command participates in the normal Component ownership graph, but it must not become a visual
+     * child merely because a Container owns it. This is the architectural separation that later lets
+     * multiple controls or menus refer to one semantic command without introducing backend objects.
+     */
+    CHECK(root.componentCount() == 1);
+    CHECK(root.childCount() == 0);
+    CHECK(command.owner() == &root);
+    CHECK(command.text() == "Save");
+}
+
+TEST_CASE("Command enabled state gates synchronous execution") {
+    Command command{"Refresh"};
+    int execution_count = 0;
+    command.setOnExecuted([&execution_count] { ++execution_count; });
+
+    CHECK(command.isEnabled());
+    CHECK(command.execute());
+    CHECK(execution_count == 1);
+
+    command.setEnabled(false);
+    CHECK(!command.isEnabled());
+    CHECK(!command.execute());
+    CHECK(execution_count == 1);
+
+    command.setEnabled(true);
+    CHECK(command.execute());
+    CHECK(execution_count == 2);
+}
+
+TEST_CASE("Command copies its handler before invoking mutable client code") {
+    Command command{"Mutable handler"};
+    int first_handler_calls = 0;
+    int replacement_handler_calls = 0;
+
+    command.setOnExecuted([&] {
+        ++first_handler_calls;
+
+        /*
+         * Replacing the handler from inside itself is a compact lifetime regression. execute() must
+         * invoke a local copy; otherwise assigning the member std::function here could invalidate the
+         * callable object whose operator() is currently on the stack.
+         */
+        command.setOnExecuted([&replacement_handler_calls] { ++replacement_handler_calls; });
+    });
+
+    CHECK(command.execute());
+    CHECK(first_handler_calls == 1);
+    CHECK(replacement_handler_calls == 0);
+
+    CHECK(command.execute());
+    CHECK(first_handler_calls == 1);
+    CHECK(replacement_handler_calls == 1);
+}
+
+TEST_CASE("Command text is semantic metadata and does not affect execution eligibility") {
+    Command command;
+    CHECK(command.text().empty());
+    CHECK(command.isEnabled());
+
+    command.setText("Open settings");
+    CHECK(command.text() == "Open settings");
+
+    /*
+     * An enabled command with no installed observer still accepts execution. This intentionally
+     * matches Button::activate(): eligibility is semantic state, not whether client code currently
+     * happens to observe the accepted action.
+     */
+    CHECK(command.execute());
 }
 
 TEST_CASE("Widget state is backend neutral") {
