@@ -12,6 +12,7 @@ add_executable(sasd_ui_tests
     focus_manager_tests.cpp
     focus_traversal_tests.cpp
     grid_layout_tests.cpp
+    grid_layout_regression_tests.cpp
     hit_test_tests.cpp
     layout_tests.cpp
     pointer_router_tests.cpp
