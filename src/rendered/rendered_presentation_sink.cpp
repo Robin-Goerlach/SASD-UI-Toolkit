@@ -6,9 +6,12 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/form_layout.hpp>
+#include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
@@ -535,14 +538,19 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
     }
 
     /*
-     * These types are structural in the current rendered model. Exact-type checks matter: silently
-     * acknowledging a future Widget subclass would discard its pending visual update before a
-     * renderer has learned how to represent it.
+     * Layout containers do not contribute their own rendered commands; they only establish child
+     * geometry. Keep the whitelist explicit rather than accepting every Container subclass. A
+     * future composite control may inherit Container while still requiring its own chrome, and
+     * silently acknowledging it here would lose a pending visual update before the rendered backend
+     * has learned how to represent that control.
      */
     if (typeid(widget) == typeid(Widget) ||
         typeid(widget) == typeid(Container) ||
         dynamic_cast<const VBox*>(&widget) != nullptr ||
-        dynamic_cast<const HBox*>(&widget) != nullptr) {
+        dynamic_cast<const HBox*>(&widget) != nullptr ||
+        dynamic_cast<const GridLayout*>(&widget) != nullptr ||
+        dynamic_cast<const FormLayout*>(&widget) != nullptr ||
+        dynamic_cast<const StackLayout*>(&widget) != nullptr) {
         return PresentationUpdateResult::synchronized;
     }
 
