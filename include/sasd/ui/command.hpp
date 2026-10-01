@@ -40,6 +40,33 @@ public:
     using StateChangedHandler = std::function<void(StateChange)>;
 
     /**
+     * Lifetime-safe, non-owning reference to a Command.
+     *
+     * Reference deliberately does not extend Command lifetime. get() returns nullptr after the Command
+     * is destroyed, including while an in-flight state notification keeps the observer registry itself
+     * alive. This is the small capability later bindings need to invoke a Command without retaining a
+     * dangling raw pointer or forcing shared ownership onto the Component tree.
+     *
+     * The contract is single-threaded like the rest of the current UI core. get() is therefore a
+     * lifetime check for ordered UI-thread operations, not a cross-thread synchronization primitive.
+     */
+    class Reference final {
+    public:
+        Reference() noexcept = default;
+
+        [[nodiscard]] Command* get() const noexcept;
+        [[nodiscard]] explicit operator bool() const noexcept { return get() != nullptr; }
+
+    private:
+        friend class Command;
+
+        explicit Reference(std::weak_ptr<ObserverState> state) noexcept
+            : state_{std::move(state)} {}
+
+        std::weak_ptr<ObserverState> state_;
+    };
+
+    /**
      * Move-only RAII connection returned by observeState().
      *
      * The subscription does not own the Command. Destroying or resetting the token disconnects the
@@ -90,8 +117,30 @@ public:
     Command() = default;
     explicit Command(std::string text) : text_{std::move(text)} {}
 
+    ~Command() override {
+        /*
+         * A notification callback is allowed to destroy the Command. notifyObservers() keeps the
+         * registry alive through a local shared_ptr in that case, so clear the back-reference before
+         * Component destruction continues. Any later callback in the same notification snapshot can
+         * then observe that the semantic object is gone without dereferencing freed storage.
+         */
+        if (observers_) {
+            observers_->command = nullptr;
+        }
+    }
+
     /** Returns the UTF-8 user-facing command text. */
     [[nodiscard]] std::string_view text() const noexcept { return text_; }
+
+    /**
+     * Returns a lifetime-safe non-owning reference to this Command.
+     *
+     * Creating a reference lazily creates the same private shared state used by observation. The
+     * returned object remains cheap to copy and does not participate in Component ownership.
+     */
+    [[nodiscard]] Reference reference() {
+        return Reference{ensureObserverState()};
+    }
 
     /**
      * Replaces user-facing text metadata and synchronously notifies state observers on a real change.
@@ -152,15 +201,12 @@ public:
             return {};
         }
 
-        if (!observers_) {
-            observers_ = std::make_shared<ObserverState>();
-        }
-
-        compactInactiveObservers(observers_);
+        const auto state = ensureObserverState();
+        compactInactiveObservers(state);
 
         auto slot = std::make_shared<ObserverSlot>();
         slot->handler = std::move(handler);
-        observers_->slots.push_back(slot);
+        state->slots.push_back(slot);
         return StateSubscription{slot};
     }
 
@@ -196,8 +242,17 @@ private:
     };
 
     struct ObserverState {
+        Command* command{nullptr};
         std::vector<std::shared_ptr<ObserverSlot>> slots;
     };
+
+    [[nodiscard]] std::shared_ptr<ObserverState> ensureObserverState() {
+        if (!observers_) {
+            observers_ = std::make_shared<ObserverState>();
+            observers_->command = this;
+        }
+        return observers_;
+    }
 
     static void compactInactiveObservers(const std::shared_ptr<ObserverState>& state) {
         if (!state) {
@@ -248,6 +303,11 @@ private:
     std::shared_ptr<ObserverState> observers_;
     bool enabled_{true};
 };
+
+inline Command* Command::Reference::get() const noexcept {
+    const auto state = state_.lock();
+    return state != nullptr ? state->command : nullptr;
+}
 
 inline bool Command::StateSubscription::connected() const noexcept {
     const auto slot = slot_.lock();
