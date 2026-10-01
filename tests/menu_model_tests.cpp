@@ -84,6 +84,7 @@ TEST_CASE("Menu separator is non-interactive and carries no command state") {
     const MenuItem& separator = menu.itemAt(0);
     CHECK(separator.kind() == MenuItemKind::separator);
     CHECK(separator.command() == nullptr);
+    CHECK(separator.submenu() == nullptr);
     CHECK(separator.text().empty());
     CHECK(!separator.isEnabled());
     CHECK(!separator.shortcut().has_value());
@@ -129,11 +130,63 @@ TEST_CASE("Menu activation tolerates Command self-destruction") {
     CHECK(!menu.itemAt(0).activate());
 }
 
+TEST_CASE("MenuModel owns nested submenu structure recursively") {
+    Command recent{"Recent file"};
+    MenuModel file{"File"};
+
+    MenuModel& recent_menu = file.appendSubmenu("Recent");
+    recent_menu.appendCommand(recent);
+
+    const MenuItem& item = file.itemAt(0);
+    CHECK(item.kind() == MenuItemKind::submenu);
+    CHECK(item.command() == nullptr);
+    CHECK(item.submenu() == &recent_menu);
+    CHECK(item.text() == "Recent");
+    CHECK(item.isEnabled());
+    CHECK(!item.shortcut().has_value());
+    CHECK(!item.activate());
+    CHECK(recent_menu.itemCount() == 1);
+    CHECK(recent_menu.itemAt(0).command() == &recent);
+}
+
+TEST_CASE("Submenu builder references survive sibling item growth") {
+    MenuModel file{"File"};
+    MenuModel& tools = file.appendSubmenu("Tools");
+
+    /*
+     * The parent stores MenuItem values in a vector, so those values may move as siblings are appended.
+     * The nested MenuModel itself is individually allocated and owned by its submenu item. Its address
+     * must therefore remain stable even when the owning MenuItem moves during vector reallocation.
+     */
+    for (int index = 0; index < 64; ++index) {
+        file.appendSeparator();
+    }
+
+    CHECK(file.itemAt(0).submenu() == &tools);
+    tools.setTitle("Utilities");
+    CHECK(file.itemAt(0).text() == "Utilities");
+}
+
+TEST_CASE("MenuModel supports recursively nested submenus") {
+    Command about{"About"};
+    MenuModel root{"Root"};
+
+    MenuModel& first = root.appendSubmenu("First");
+    MenuModel& second = first.appendSubmenu("Second");
+    second.appendCommand(about);
+
+    const MenuModel* first_from_item = root.itemAt(0).submenu();
+    CHECK(first_from_item == &first);
+    CHECK(first_from_item->itemAt(0).submenu() == &second);
+    CHECK(second.itemAt(0).text() == "About");
+}
+
 TEST_CASE("MenuModel clear preserves title and itemAt checks bounds") {
     Command command{"One"};
     MenuModel menu{"Stable title"};
     menu.appendCommand(command);
     menu.appendSeparator();
+    (void)menu.appendSubmenu("Nested");
 
     menu.clear();
     CHECK(menu.title() == "Stable title");

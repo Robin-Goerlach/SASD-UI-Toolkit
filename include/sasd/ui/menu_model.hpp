@@ -14,10 +14,13 @@
 
 namespace sasd::ui {
 
+class MenuModel;
+
 /** Identifies the semantic role of one entry in a MenuModel. */
 enum class MenuItemKind {
     command,
     separator,
+    submenu,
 };
 
 /**
@@ -28,6 +31,11 @@ enum class MenuItemKind {
  * and enabled state are read from the live Command on demand instead of being duplicated into a second
  * cache that would require another synchronization protocol.
  *
+ * Submenu entries are different: menu structure is owned by menu structure. A submenu item therefore
+ * owns exactly one nested MenuModel through unique_ptr. This gives the recursive semantic tree one
+ * unambiguous lifetime root while preserving the existing rule that Commands themselves are never
+ * owned by menus.
+ *
  * A Shortcut stored here is presentation metadata only. Registering the corresponding gesture remains
  * the responsibility of ShortcutMap at the appropriate application/window/focus scope. Keeping those
  * responsibilities separate prevents merely displaying a menu item from unexpectedly changing input
@@ -35,47 +43,50 @@ enum class MenuItemKind {
  */
 class MenuItem final {
 public:
+    MenuItem(const MenuItem&) = delete;
+    MenuItem& operator=(const MenuItem&) = delete;
+    MenuItem(MenuItem&&) noexcept;
+    MenuItem& operator=(MenuItem&&) noexcept;
+    ~MenuItem();
+
     /** Creates a semantic command item with optional shortcut-display metadata. */
     [[nodiscard]] static MenuItem command(Command& command,
-                                          std::optional<Shortcut> shortcut = std::nullopt) {
-        return MenuItem{MenuItemKind::command, command.reference(), std::move(shortcut)};
-    }
+                                          std::optional<Shortcut> shortcut = std::nullopt);
 
     /** Creates a non-interactive separator entry. */
-    [[nodiscard]] static MenuItem separator() noexcept {
-        return MenuItem{MenuItemKind::separator, {}, std::nullopt};
-    }
+    [[nodiscard]] static MenuItem separator() noexcept;
+
+    /** Creates a submenu item that takes structural ownership of the nested MenuModel. */
+    [[nodiscard]] static MenuItem submenu(std::unique_ptr<MenuModel> submenu) noexcept;
 
     [[nodiscard]] MenuItemKind kind() const noexcept { return kind_; }
 
-    /**
-     * Returns the currently live command for a command entry, or nullptr otherwise.
-     *
-     * Command destruction is therefore represented as an unavailable semantic target rather than a
-     * dangling pointer. This is particularly useful for menu models whose lifetime exceeds a document,
-     * view, or other owner that provided some of their commands.
-     */
+    /** Returns the currently live command for a command entry, or nullptr otherwise. */
     [[nodiscard]] Command* command() const noexcept {
         return kind_ == MenuItemKind::command ? command_.get() : nullptr;
     }
 
-    /**
-     * Returns the current UTF-8 command text, or an empty view when no live command exists.
-     *
-     * The returned view follows Command::text() lifetime rules: consume it synchronously and do not
-     * retain it across later command mutation/destruction. MenuItem deliberately does not cache text,
-     * so Command text changes are immediately observable without a parallel menu-state store.
-     */
-    [[nodiscard]] std::string_view text() const noexcept {
-        const Command* const live_command = command();
-        return live_command != nullptr ? live_command->text() : std::string_view{};
-    }
+    /** Returns the nested menu for a submenu entry, or nullptr for command/separator entries. */
+    [[nodiscard]] MenuModel* submenu() noexcept;
+    [[nodiscard]] const MenuModel* submenu() const noexcept;
 
-    /** Returns true only for a live enabled command entry. */
-    [[nodiscard]] bool isEnabled() const noexcept {
-        const Command* const live_command = command();
-        return live_command != nullptr && live_command->isEnabled();
-    }
+    /**
+     * Returns current user-facing UTF-8 text for this item.
+     *
+     * Command items expose the live Command text. Submenu items expose their owned MenuModel title.
+     * Separators and expired Commands expose an empty view. Returned views are non-owning and must not
+     * be retained across later semantic mutation or destruction.
+     */
+    [[nodiscard]] std::string_view text() const noexcept;
+
+    /**
+     * Returns whether the item is semantically selectable.
+     *
+     * Command entries mirror live Command enabled state. A structurally valid submenu is selectable so
+     * a presenter can open it; separators and expired Commands are not. Empty-submenu presentation
+     * policy remains a backend/application concern rather than being guessed here.
+     */
+    [[nodiscard]] bool isEnabled() const noexcept;
 
     /** Returns optional shortcut-display metadata without registering any input route. */
     [[nodiscard]] const std::optional<Shortcut>& shortcut() const noexcept { return shortcut_; }
@@ -83,46 +94,38 @@ public:
     /**
      * Executes the live command represented by this item.
      *
-     * Separators, expired commands, and disabled commands return false. The lifetime-safe reference is
-     * copied before entering Command::execute(); application code may destroy the Command during its
-     * handler, so no Command or MenuItem state is accessed after execute() begins.
+     * Submenus and separators are structural and therefore return false. Expired/disabled Commands
+     * also return false. The lifetime-safe reference is copied before entering Command::execute();
+     * application code may destroy the Command during its handler, so no Command or MenuItem state is
+     * accessed after execute() begins.
      */
-    [[nodiscard]] bool activate() const {
-        if (kind_ != MenuItemKind::command) {
-            return false;
-        }
-
-        const Command::Reference command_reference = command_;
-        Command* const live_command = command_reference.get();
-        if (live_command == nullptr) {
-            return false;
-        }
-
-        return live_command->execute();
-    }
+    [[nodiscard]] bool activate() const;
 
 private:
     MenuItem(MenuItemKind kind,
              Command::Reference command,
-             std::optional<Shortcut> shortcut) noexcept
-        : kind_{kind}, command_{std::move(command)}, shortcut_{std::move(shortcut)} {}
+             std::optional<Shortcut> shortcut,
+             std::unique_ptr<MenuModel> submenu) noexcept;
 
     MenuItemKind kind_{MenuItemKind::separator};
     Command::Reference command_{};
     std::optional<Shortcut> shortcut_{};
+    std::unique_ptr<MenuModel> submenu_{};
 };
 
 /**
  * Ordered semantic model for one menu surface.
  *
- * MenuModel deliberately models one flat menu at this stage. It owns only its UTF-8 title and entry
- * order; command state remains owned by Command and shortcut routing remains owned by ShortcutMap.
- * This is enough to support File/Edit/Help-style menu surfaces without prematurely defining submenu
- * ownership, popup lifetimes, native menu handles, mnemonic syntax, or platform policy.
+ * MenuModel owns its UTF-8 title and structural item order. Command state remains owned by Command and
+ * shortcut routing remains owned by ShortcutMap. Nested submenu structure is recursively owned by the
+ * parent MenuItem, so deleting a menu deterministically deletes its complete submenu tree without any
+ * separate registry or borrowed structural pointers.
  *
  * Structural mutation may reallocate the internal vector. References returned by itemAt() must
- * therefore not be retained across append/clear operations. Presentation code should normally read a
- * stable snapshot synchronously while building or refreshing a backend representation.
+ * therefore not be retained across append/clear operations. References returned by appendSubmenu() are
+ * intentionally stronger: the nested MenuModel is individually allocated, so later sibling appends do
+ * not relocate it. Such references remain valid until the owning submenu item is removed by clear() or
+ * the parent menu is destroyed.
  */
 class MenuModel final {
 public:
@@ -150,7 +153,22 @@ public:
     /** Appends a semantic separator. Consecutive separators are intentionally permitted for now. */
     void appendSeparator() { items_.push_back(MenuItem::separator()); }
 
-    /** Removes all structural entries while preserving the menu title. */
+    /**
+     * Appends and owns a nested submenu, returning it for builder-style population.
+     *
+     * The nested MenuModel is individually allocated before its owning MenuItem enters the vector.
+     * Therefore later sibling appends may move MenuItem values but cannot relocate the nested menu
+     * itself. This mirrors MenuBarModel's stable builder-reference rule and keeps recursive setup code
+     * predictable without exposing shared ownership.
+     */
+    MenuModel& appendSubmenu(std::string title) {
+        auto nested = std::make_unique<MenuModel>(std::move(title));
+        MenuModel& result = *nested;
+        items_.push_back(MenuItem::submenu(std::move(nested)));
+        return result;
+    }
+
+    /** Removes all structural entries while preserving the menu title. Owned submenus are destroyed. */
     void clear() noexcept { items_.clear(); }
 
 private:
@@ -158,22 +176,85 @@ private:
     std::vector<MenuItem> items_;
 };
 
+inline MenuItem::MenuItem(MenuItemKind kind,
+                          Command::Reference command,
+                          std::optional<Shortcut> shortcut,
+                          std::unique_ptr<MenuModel> submenu) noexcept
+    : kind_{kind},
+      command_{std::move(command)},
+      shortcut_{std::move(shortcut)},
+      submenu_{std::move(submenu)} {}
+
+inline MenuItem::MenuItem(MenuItem&&) noexcept = default;
+inline MenuItem& MenuItem::operator=(MenuItem&&) noexcept = default;
+inline MenuItem::~MenuItem() = default;
+
+inline MenuItem MenuItem::command(Command& command, std::optional<Shortcut> shortcut) {
+    return MenuItem{MenuItemKind::command,
+                    command.reference(),
+                    std::move(shortcut),
+                    nullptr};
+}
+
+inline MenuItem MenuItem::separator() noexcept {
+    return MenuItem{MenuItemKind::separator, {}, std::nullopt, nullptr};
+}
+
+inline MenuItem MenuItem::submenu(std::unique_ptr<MenuModel> submenu) noexcept {
+    return MenuItem{MenuItemKind::submenu, {}, std::nullopt, std::move(submenu)};
+}
+
+inline MenuModel* MenuItem::submenu() noexcept {
+    return kind_ == MenuItemKind::submenu ? submenu_.get() : nullptr;
+}
+
+inline const MenuModel* MenuItem::submenu() const noexcept {
+    return kind_ == MenuItemKind::submenu ? submenu_.get() : nullptr;
+}
+
+inline std::string_view MenuItem::text() const noexcept {
+    if (const Command* const live_command = command()) {
+        return live_command->text();
+    }
+    if (const MenuModel* const nested = submenu()) {
+        return nested->title();
+    }
+    return {};
+}
+
+inline bool MenuItem::isEnabled() const noexcept {
+    if (const Command* const live_command = command()) {
+        return live_command->isEnabled();
+    }
+    return submenu() != nullptr;
+}
+
+inline bool MenuItem::activate() const {
+    if (kind_ != MenuItemKind::command) {
+        return false;
+    }
+
+    const Command::Reference command_reference = command_;
+    Command* const live_command = command_reference.get();
+    if (live_command == nullptr) {
+        return false;
+    }
+
+    return live_command->execute();
+}
+
 /**
  * Ordered owner of the top-level menus that make up one semantic menu bar.
  *
  * MenuBarModel deliberately owns MenuModel instances rather than borrowing them. The bar therefore
  * defines the structural lifetime of File/Edit/Help-style top-level menus, while individual command
- * targets remain non-owning Command::Reference objects inside those menus. This keeps the ownership
- * graph explicit: application/component code owns commands; MenuBarModel owns menu structure.
+ * targets remain non-owning Command::Reference objects inside those menus. Each MenuModel may in turn
+ * own nested submenus, producing one recursively owned structural tree beneath the bar.
  *
  * Menus are stored behind unique_ptr even though a simple vector<MenuModel> would be smaller. That
  * indirection is intentional architecture rather than optimization: appendMenu() returns a MenuModel&
  * for natural builder-style setup, and growing the vector must not invalidate references to previously
- * appended menus. clear() is the explicit lifetime boundary that destroys every owned menu.
- *
- * Submenus remain outside this first hierarchy slice. A submenu requires an explicit recursive
- * ownership model and presentation/navigation semantics; adding a top-level bar should not silently
- * commit the toolkit to one submenu policy before those requirements are exercised.
+ * appended menus. clear() is the explicit lifetime boundary that destroys every owned menu subtree.
  */
 class MenuBarModel final {
 public:
@@ -211,7 +292,7 @@ public:
         return *menus_[index];
     }
 
-    /** Destroys all owned top-level menus. Commands remain owned independently by application code. */
+    /** Destroys all owned top-level menus/submenus. Commands remain application-owned. */
     void clear() noexcept { menus_.clear(); }
 
 private:
