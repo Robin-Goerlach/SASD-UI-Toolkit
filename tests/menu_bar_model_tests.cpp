@@ -115,6 +115,75 @@ TEST_CASE("Menu interaction begins explicitly and opens a root popup without imp
     CHECK(controller.popupSelection() == std::optional<std::size_t>{0});
 }
 
+TEST_CASE("Menu interaction opens root popup at semantic edge for vertical arrows") {
+    Command disabled{"Disabled"};
+    disabled.setEnabled(false);
+    Command first{"First"};
+    Command last{"Last"};
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(disabled);
+    file.appendSeparator();
+    file.appendCommand(first);
+    file.appendSeparator();
+    file.appendCommand(last);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+
+    /*
+     * Down from the active menu bar opens the root popup and immediately lands on the first selectable
+     * semantic item. The controller deliberately delegates scanning to navigateMenu(), so disabled
+     * commands and separators are skipped by exactly the same rule used after the popup is already open.
+     */
+    const auto down = controller.handleKey(
+        bar, KeyEvent{Key::down, true, KeyModifier::none});
+    CHECK(down.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{2});
+
+    controller.reset();
+    CHECK(controller.begin(bar));
+
+    /*
+     * Up is the symmetric entry gesture: open the same root popup but start at the last selectable item.
+     * This behavior intentionally lives in the stateful controller because it coordinates menu-bar open
+     * intent with popup selection state; the stateless menu-bar interpreter only reports open_menu.
+     */
+    const auto up = controller.handleKey(
+        bar, KeyEvent{Key::up, true, KeyModifier::none});
+    CHECK(up.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{4});
+
+    const auto up_intent = interpretMenuBarKey(
+        bar, std::size_t{0}, KeyEvent{Key::up, true, KeyModifier::none});
+    CHECK(up_intent.action == MenuBarKeyAction::open_menu);
+    CHECK(up_intent.selection == std::optional<std::size_t>{0});
+}
+
+TEST_CASE("Menu interaction vertical opening tolerates a popup with no selectable item") {
+    Command disabled{"Disabled"};
+    disabled.setEnabled(false);
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendSeparator();
+    file.appendCommand(disabled);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+
+    const auto down = controller.handleKey(
+        bar, KeyEvent{Key::down, true, KeyModifier::none});
+    CHECK(down.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupDepth() == 1);
+    CHECK(!controller.popupSelection().has_value());
+}
+
 TEST_CASE("Menu interaction composes popup navigation with nested MenuPath state") {
     Command advanced_action{"Advanced action"};
     MenuBarModel bar;

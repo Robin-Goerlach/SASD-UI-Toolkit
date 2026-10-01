@@ -63,16 +63,18 @@ struct MenuBarKeyResult {
  * surface. That mirrors interpretMenuPopupKey() and keeps semantic keyboard policy independent from
  * Terminal, Rendered, or future native menu presentation.
  *
- * The initial contract is deliberately small:
+ * The current contract is deliberately small:
  * - Left/Right select the previous/next top-level menu cyclically;
  * - Home/End select the first/last top-level menu;
- * - Down/Enter request opening the currently selected top-level menu;
+ * - Up/Down/Enter request opening the currently selected top-level menu;
  * - Escape requests leaving menu-bar interaction;
  * - releases, modified gestures, and unrelated keys remain unhandled.
  *
- * Up is intentionally not treated as "open and select the last popup item" yet. That behavior spans
- * two independently owned interaction states (menu-bar selection and popup selection) and belongs in
- * the later controller that composes both contracts rather than being guessed in this stateless layer.
+ * Up and Down deliberately produce the same high-level open_menu intent here. Choosing the initial
+ * popup item is not menu-bar state: the MenuInteractionController combines that intent with the target
+ * MenuModel and selects the last item for Up or the first item for Down. Enter opens without imposing
+ * an item selection. Keeping that distinction in the controller avoids leaking popup state into this
+ * stateless layer while still centralizing which menu-bar keys request opening.
  */
 [[nodiscard]] inline MenuBarKeyResult
 interpretMenuBarKey(const MenuBarModel& bar,
@@ -103,6 +105,7 @@ interpretMenuBarKey(const MenuBarModel& bar,
     case Key::end:
         return count > 0U ? MenuBarKeyResult{MenuBarKeyAction::select, count - 1U}
                           : MenuBarKeyResult{};
+    case Key::up:
     case Key::down:
     case Key::enter:
         return valid_current.has_value()

@@ -55,6 +55,12 @@ struct MenuInteractionResult {
  * works. Switching top-level menus keeps the root popup open but clears its item selection because
  * selection indices belong to the old menu and must never be carried into unrelated semantics.
  *
+ * Opening a selected top-level menu with a vertical arrow also spans menu-bar and popup state. Down
+ * opens the root popup at its first selectable semantic item, Up opens it at its last selectable item,
+ * and Enter opens it without forcing an item selection. The controller derives those edge selections
+ * through navigateMenu(), so separators and unavailable command entries are skipped consistently with
+ * later popup navigation rather than through a second ad-hoc scanning rule.
+ *
  * The class models keyboard interaction only. Pointer hover/click behavior, mnemonic activation,
  * native menu handles, focus restoration, and popup geometry remain separate later layers.
  */
@@ -190,6 +196,30 @@ private:
         return changed;
     }
 
+    /**
+     * Opens one top-level menu as the root popup with an optional semantic edge selection.
+     *
+     * The top-level index is already validated by the caller. initial_direction is intentionally a
+     * navigation direction rather than a raw item index: navigateMenu() then applies exactly the same
+     * selectability policy used by normal popup Up/Down/Home/End navigation. std::nullopt leaves the
+     * root popup open with no selected item, which is the Enter behavior and the reset state used when
+     * switching horizontally between unrelated top-level menus.
+     */
+    void openRootPopup(const MenuBarModel& bar,
+                       std::size_t top_level_index,
+                       std::optional<MenuNavigationDirection> initial_direction = std::nullopt) {
+        menu_bar_selection_ = top_level_index;
+        popup_path_ = MenuPath{};
+
+        std::optional<std::size_t> initial_selection;
+        if (initial_direction.has_value()) {
+            initial_selection =
+                navigateMenu(bar.menuAt(top_level_index), std::nullopt, *initial_direction);
+        }
+
+        popup_selections_.assign(1U, initial_selection);
+    }
+
     [[nodiscard]] MenuInteractionResult handleMenuBarKey(const MenuBarModel& bar,
                                                          const KeyEvent& event,
                                                          bool normalized) {
@@ -200,14 +230,21 @@ private:
             menu_bar_selection_ = interpreted.selection;
             return {MenuInteractionAction::state_changed, {}};
 
-        case MenuBarKeyAction::open_menu:
+        case MenuBarKeyAction::open_menu: {
             if (!interpreted.selection.has_value()) {
                 break;
             }
-            menu_bar_selection_ = interpreted.selection;
-            popup_path_ = MenuPath{};
-            popup_selections_.assign(1U, std::nullopt);
+
+            std::optional<MenuNavigationDirection> initial_direction;
+            if (event.key == Key::down) {
+                initial_direction = MenuNavigationDirection::next;
+            } else if (event.key == Key::up) {
+                initial_direction = MenuNavigationDirection::previous;
+            }
+
+            openRootPopup(bar, *interpreted.selection, initial_direction);
             return {MenuInteractionAction::state_changed, {}};
+        }
 
         case MenuBarKeyAction::close_menu_bar:
             reset();
@@ -233,9 +270,7 @@ private:
             return false;
         }
 
-        menu_bar_selection_ = target;
-        popup_path_ = MenuPath{};
-        popup_selections_.assign(1U, std::nullopt);
+        openRootPopup(bar, *target);
         return true;
     }
 
