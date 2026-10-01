@@ -51,12 +51,22 @@ void Widget::setVisible(bool visible) {
     }
 
     /*
-     * M1 does not yet decide whether hidden widgets consume layout space. Nevertheless a visibility
-     * change can affect whichever policy a future container uses, so invalidating here is the safe
-     * backend-neutral behavior.
+     * Visibility is stronger than an ordinary visual-state change. Hiding a widget can uncover a
+     * previously occluded sibling (StackLayout is the obvious case, but arbitrary overlapping
+     * geometry can do the same), while showing one can change which content should be considered
+     * topmost. Repainting only this widget is therefore not sufficient in the general case.
+     *
+     * Request the same conservative subtree refresh used for geometry damage. The presentation root
+     * can clear/rebuild from a known-clean surface and PresentationCoordinator will replay otherwise
+     * clean descendants in visual order. This deliberately favors correctness over incremental
+     * efficiency; dirty-region/occlusion-aware replay can optimize the policy later without changing
+     * Widget visibility semantics.
+     *
+     * Visibility also affects layout participation, so measurement invalidation remains independent
+     * from presentation invalidation and propagates through the visual-parent chain as before.
      */
     invalidateMeasure();
-    invalidateVisual();
+    invalidatePresentationSubtree();
     clearFocusIfIneligible();
 }
 
