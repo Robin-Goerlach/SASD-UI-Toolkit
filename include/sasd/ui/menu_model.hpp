@@ -4,6 +4,7 @@
 #include <sasd/ui/shortcut.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -117,7 +118,7 @@ private:
  * MenuModel deliberately models one flat menu at this stage. It owns only its UTF-8 title and entry
  * order; command state remains owned by Command and shortcut routing remains owned by ShortcutMap.
  * This is enough to support File/Edit/Help-style menu surfaces without prematurely defining submenu
- * ownership, menu bars, popup lifetimes, native menu handles, mnemonic syntax, or platform policy.
+ * ownership, popup lifetimes, native menu handles, mnemonic syntax, or platform policy.
  *
  * Structural mutation may reallocate the internal vector. References returned by itemAt() must
  * therefore not be retained across append/clear operations. Presentation code should normally read a
@@ -155,6 +156,66 @@ public:
 private:
     std::string title_;
     std::vector<MenuItem> items_;
+};
+
+/**
+ * Ordered owner of the top-level menus that make up one semantic menu bar.
+ *
+ * MenuBarModel deliberately owns MenuModel instances rather than borrowing them. The bar therefore
+ * defines the structural lifetime of File/Edit/Help-style top-level menus, while individual command
+ * targets remain non-owning Command::Reference objects inside those menus. This keeps the ownership
+ * graph explicit: application/component code owns commands; MenuBarModel owns menu structure.
+ *
+ * Menus are stored behind unique_ptr even though a simple vector<MenuModel> would be smaller. That
+ * indirection is intentional architecture rather than optimization: appendMenu() returns a MenuModel&
+ * for natural builder-style setup, and growing the vector must not invalidate references to previously
+ * appended menus. clear() is the explicit lifetime boundary that destroys every owned menu.
+ *
+ * Submenus remain outside this first hierarchy slice. A submenu requires an explicit recursive
+ * ownership model and presentation/navigation semantics; adding a top-level bar should not silently
+ * commit the toolkit to one submenu policy before those requirements are exercised.
+ */
+class MenuBarModel final {
+public:
+    MenuBarModel() = default;
+
+    [[nodiscard]] std::size_t menuCount() const noexcept { return menus_.size(); }
+
+    /**
+     * Appends and owns a top-level menu.
+     *
+     * References returned for earlier menus remain valid across later appendMenu() calls because the
+     * MenuModel objects themselves are individually allocated. They remain valid until clear() or this
+     * MenuBarModel's destruction.
+     */
+    MenuModel& appendMenu(std::string title) {
+        auto menu = std::make_unique<MenuModel>(std::move(title));
+        MenuModel& result = *menu;
+        menus_.push_back(std::move(menu));
+        return result;
+    }
+
+    /** Returns one top-level menu in insertion order. */
+    [[nodiscard]] MenuModel& menuAt(std::size_t index) {
+        if (index >= menus_.size()) {
+            throw std::out_of_range{"MenuBarModel menu index out of range"};
+        }
+        return *menus_[index];
+    }
+
+    /** Const overload for presentation code that only reads semantic structure. */
+    [[nodiscard]] const MenuModel& menuAt(std::size_t index) const {
+        if (index >= menus_.size()) {
+            throw std::out_of_range{"MenuBarModel menu index out of range"};
+        }
+        return *menus_[index];
+    }
+
+    /** Destroys all owned top-level menus. Commands remain owned independently by application code. */
+    void clear() noexcept { menus_.clear(); }
+
+private:
+    std::vector<std::unique_ptr<MenuModel>> menus_;
 };
 
 } // namespace sasd::ui

@@ -7,6 +7,7 @@ add_executable(sasd_ui_tests
     button_command_tests.cpp
     shortcut_tests.cpp
     menu_model_tests.cpp
+    menu_bar_model_tests.cpp
     check_box_tests.cpp
     radio_button_tests.cpp
     radio_group_navigation_tests.cpp
