@@ -214,3 +214,89 @@ TEST_CASE("FormLayout spacing changes invalidate measurement and reject negative
     CHECK(form.columnSpacing() == 3);
     CHECK(form.rowSpacing() == 2);
 }
+
+TEST_CASE("FormLayout supports an odd final label-only row") {
+    FormLayout form;
+    form.setColumnSpacing(1);
+    form.setRowSpacing(2);
+
+    auto& first_label = form.emplace<Widget>();
+    auto& first_field = form.emplace<Widget>();
+    auto& final_label = form.emplace<Widget>();
+
+    setPreferred(first_label, {3, 1});
+    setPreferred(first_field, {4, 2});
+    setPreferred(final_label, {7, 3});
+
+    /*
+     * The unmatched final child is intentionally a label-only row. It still contributes to the
+     * shared label width and row height, but no synthetic field cell or column spacing is invented
+     * for that row. Column spacing remains a relation between globally visible label/field tracks.
+     */
+    CHECK(form.rowCount() == 2);
+    CHECK(form.measure() == Size{12, 7});
+
+    form.arrange({0, 0, 20, 7});
+    CHECK(first_label.bounds() == Rect{0, 0, 7, 2});
+    CHECK(first_field.bounds() == Rect{8, 0, 12, 2});
+    CHECK(final_label.bounds() == Rect{0, 4, 7, 3});
+}
+
+TEST_CASE("FormLayout MeasurementContext skips hidden text cells without repacking rows") {
+    FormLayout form;
+    form.setColumnSpacing(1);
+
+    auto first = form.emplaceRow<Widget>("Hidden label");
+    auto second = form.emplaceRow<Widget>("Visible label");
+    setPreferred(first.field, {5, 2});
+    setPreferred(second.field, {3, 1});
+    first.label.setVisible(false);
+
+    FixedFormTextContext context{{4, 1}};
+
+    /*
+     * A hidden Label must not consume backend text-measurement work. The row itself remains active
+     * because its field is visible, and the second structural pair stays the second row rather than
+     * being repacked around the hidden cell.
+     */
+    CHECK(form.measure(context) == Size{10, 3});
+    CHECK(context.calls() == 1);
+}
+
+TEST_CASE("FormLayout release and re-adopt follow current visual adoption order") {
+    FormLayout form;
+
+    auto& first_label = form.emplace<Widget>();
+    auto& first_field = form.emplace<Widget>();
+    auto& second_label = form.emplace<Widget>();
+    auto& second_field = form.emplace<Widget>();
+
+    auto released = form.release(first_label);
+
+    CHECK(released.get() == &first_label);
+    CHECK(first_label.owner() == nullptr);
+    CHECK(first_label.parent() == nullptr);
+    CHECK(form.childCount() == 3);
+    CHECK(form.rowCount() == 2);
+
+    /*
+     * FormLayout does not maintain hidden row identities outside the Container child order. Removing
+     * a visual child is therefore a structural edit: the remaining children close the gap. Re-adopt
+     * appends the component at the end, which makes the new order explicit and avoids stale pairing
+     * metadata that could disagree with Container ownership.
+     */
+    CHECK(&form.childAt(0) == &first_field);
+    CHECK(&form.childAt(1) == &second_label);
+    CHECK(&form.childAt(2) == &second_field);
+
+    form.adopt(std::move(released));
+
+    CHECK(form.childCount() == 4);
+    CHECK(form.rowCount() == 2);
+    CHECK(&form.childAt(0) == &first_field);
+    CHECK(&form.childAt(1) == &second_label);
+    CHECK(&form.childAt(2) == &second_field);
+    CHECK(&form.childAt(3) == &first_label);
+    CHECK(first_label.owner() == &form);
+    CHECK(first_label.parent() == &form);
+}
