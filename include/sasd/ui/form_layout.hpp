@@ -15,7 +15,10 @@ namespace sasd::ui {
  * Typed references returned by FormLayout::emplaceRow().
  *
  * The references are non-owning views into components owned by the FormLayout. They remain valid
- * until either component is explicitly released or the FormLayout is destroyed.
+ * until either component is explicitly released or the FormLayout is destroyed. They identify the
+ * two components created by emplaceRow(), not an immutable logical row identity: later structural
+ * edits to the Container child sequence can change which visual children form adjacent label/field
+ * pairs even while these references themselves still point to the same live components.
  */
 template <typename T>
     requires std::derived_from<T, Widget>
@@ -27,13 +30,18 @@ struct FormRowRef {
 /**
  * Two-column form container with a shared label column and an expanding field column.
  *
- * Visual children are interpreted as stable label/field pairs in visual adoption order:
+ * Visual children are interpreted as label/field pairs in their current visual adoption order:
  * child 0 is row 0's label cell, child 1 its field cell, child 2 is row 1's label cell, and so on.
- * Pairing is based on structural order rather than on visibility, so hiding one cell never shifts all
- * following rows into different semantic columns. An odd final visual child forms a label-only row.
+ * Visibility does not repack these structural pairs, so hiding one cell never shifts following rows
+ * into different semantic columns. Structural edits do affect pairing: releasing a visual child closes
+ * the Container sequence around it, while adopting or re-adopting a child appends according to normal
+ * Container ordering. FormLayout intentionally keeps no second hidden row-identity graph that could
+ * diverge from ownership order. An odd final visual child forms a label-only row.
  *
  * emplaceRow() is the preferred convenience API for ordinary forms because it creates the Label and
- * field in the correct order with rollback if adoption of the second component fails. Direct
+ * field in the correct order with rollback if adoption of the second component fails. Its returned
+ * FormRowRef names those created components for convenient configuration; it must not be interpreted as
+ * pinning their future structural row membership across release/re-adopt operations. Direct
  * Container::emplace()/adopt() remain available for custom label widgets or intentionally unusual
  * rows; callers using them are responsible for preserving the pair ordering contract.
  *

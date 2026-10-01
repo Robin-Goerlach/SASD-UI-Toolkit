@@ -13,8 +13,8 @@ GridLayout provides a general intrinsic row-major two-dimensional primitive, but
 
 M4 introduces `sasd::ui::FormLayout : Container` as a specialized two-column form policy.
 
-- Visual children are interpreted as stable label/field pairs in visual adoption order. Pairing is structural and does not change when one member becomes invisible.
-- `emplaceRow<T>(label, args...)` is the preferred convenience API. It creates a `Label` followed by one Widget-derived field and returns non-owning typed references to both.
+- Visual children are interpreted as label/field pairs in their current visual adoption order. Pairing is structural and does not change when one member becomes invisible. Structural edits do change subsequent pairing because `FormLayout` deliberately follows the current `Container` child sequence rather than maintaining a second hidden row-identity graph: releasing removes a child from that sequence, and adopting or re-adopting appends according to normal Container ordering.
+- `emplaceRow<T>(label, args...)` is the preferred convenience API. It creates a `Label` followed by one Widget-derived field and returns non-owning typed references to both. Those references identify the created components and their lifetimes; they do not pin immutable row membership across later structural edits.
 - An odd final visual child is a label-only row, keeping direct Container adoption deterministic rather than rejecting a partially constructed custom form.
 - A row participates while at least one of its two cells is visible. A row with both cells hidden collapses and contributes no row spacing.
 - Label-column intrinsic width is the maximum desired width of visible label cells.
@@ -32,11 +32,13 @@ The first contract deliberately does not define per-row label alignment, baselin
 
 FormLayout is intentionally a semantic layout policy rather than a new rendering primitive. Terminal, Rendered, and future native peers continue to present the child widgets normally; only their geometry changes. Keeping field expansion local to FormLayout also provides practical evidence before deciding whether GridLayout itself needs public weighted tracks.
 
-Structural pairing instead of visible-child packing matters for dynamic forms: hiding a label or editor must not shift all following children into the opposite column. The convenience `emplaceRow()` reduces accidental ordering mistakes while preserving Container's lower-level adoption model for advanced users.
+Structural pairing instead of visible-child packing matters for dynamic forms: hiding a label or editor must not shift all following children into the opposite column. At the same time, structural edits must remain consistent with `Container` ownership and visual order. Treating the current child sequence as the single structural source of truth avoids stale row metadata after release/re-adopt operations. The convenience `emplaceRow()` reduces accidental ordering mistakes while preserving Container's lower-level adoption model for advanced users.
 
 ### Consequences
 
 FormLayout makes aligned resizable forms possible without exposing backend details or prematurely enlarging GridLayout. Its first implementation shares the existing Grid layout translation unit because both policies use the same saturating coordinate and constraint rules; the public types remain separate.
+
+`FormRowRef` is a convenience lifetime view, not a durable row handle. Code that structurally edits a `FormLayout` must reason from the resulting current adoption order. If future requirements need immutable logical row identities, that should be introduced explicitly as a separate semantic model rather than inferred from references to two components.
 
 A future validation/binding slice can attach behavior to the field Widgets without changing this geometry contract. If real forms demonstrate a need for richer label placement or weighted tracks, those can be added explicitly under the pre-1.0 compatibility policy.
 
@@ -50,8 +52,8 @@ GridLayout liefert ein allgemeines intrinsisches zweidimensionales Row-Major-Pri
 
 M4 führt `sasd::ui::FormLayout : Container` als spezialisierte zweispaltige Formular-Policy ein.
 
-- Visuelle Kinder werden als stabile Label-/Field-Paare in visueller Adoptionsreihenfolge interpretiert. Die Paarung ist strukturell und ändert sich nicht, wenn ein Mitglied unsichtbar wird.
-- `emplaceRow<T>(label, args...)` ist die bevorzugte Convenience-API. Sie erzeugt ein `Label` gefolgt von einem Widget-abgeleiteten Field und liefert nichtbesitzende typisierte Referenzen auf beide zurück.
+- Visuelle Kinder werden als Label-/Field-Paare in ihrer aktuellen visuellen Adoptionsreihenfolge interpretiert. Die Paarung ist strukturell und ändert sich nicht, wenn ein Mitglied unsichtbar wird. Strukturelle Änderungen verändern spätere Paarungen jedoch sehr wohl, weil `FormLayout` bewusst der aktuellen `Container`-Child-Sequenz folgt statt einen zweiten versteckten Row-Identity-Graphen zu pflegen: `release()` entfernt ein Kind aus dieser Sequenz, `adopt()` bzw. erneutes Adoptieren hängt es gemäß normaler Container-Reihenfolge an.
+- `emplaceRow<T>(label, args...)` ist die bevorzugte Convenience-API. Sie erzeugt ein `Label` gefolgt von einem Widget-abgeleiteten Field und liefert nichtbesitzende typisierte Referenzen auf beide zurück. Diese Referenzen identifizieren die erzeugten Komponenten und deren Lebensdauer; sie fixieren keine unveränderliche Zeilenzugehörigkeit über spätere strukturelle Änderungen hinweg.
 - Ein ungerades letztes visuelles Kind bildet eine reine Label-Zeile; direkte Container-Adoption bleibt damit deterministisch statt ein teilweise aufgebautes Custom-Formular abzulehnen.
 - Eine Zeile nimmt teil, solange mindestens eine ihrer beiden Zellen sichtbar ist. Sind beide unsichtbar, kollabiert die Zeile einschließlich Row-Spacing.
 - Die intrinsische Label-Spaltenbreite ist die maximale Wunschbreite sichtbarer Label-Zellen.
@@ -69,10 +71,12 @@ Der erste Vertrag definiert bewusst noch kein per-Row Label-Alignment, Baseline-
 
 FormLayout ist bewusst eine semantische Layout-Policy und kein neues Rendering-Primitiv. Terminal-, Rendered- und spätere Native-Peers präsentieren die Child-Widgets unverändert; lediglich ihre Geometrie ändert sich. Die Field-Expansion lokal in FormLayout zu halten liefert außerdem praktische Evidenz, bevor entschieden wird, ob GridLayout selbst öffentliche gewichtete Tracks benötigt.
 
-Die strukturelle Paarung statt Packing nur sichtbarer Kinder ist für dynamische Formulare wichtig: Das Ausblenden eines Labels oder Editors darf nicht alle folgenden Kinder in die jeweils andere Spalte verschieben. Die Convenience-API `emplaceRow()` reduziert versehentliche Reihenfolgefehler und bewahrt gleichzeitig das niedrigere Container-Adoptionsmodell für fortgeschrittene Nutzer.
+Die strukturelle Paarung statt Packing nur sichtbarer Kinder ist für dynamische Formulare wichtig: Das Ausblenden eines Labels oder Editors darf nicht alle folgenden Kinder in die jeweils andere Spalte verschieben. Gleichzeitig müssen strukturelle Änderungen mit `Container`-Ownership und visueller Reihenfolge konsistent bleiben. Die aktuelle Child-Sequenz als einzige strukturelle Wahrheit zu behandeln verhindert veraltete Row-Metadaten nach Release-/Re-adopt-Operationen. Die Convenience-API `emplaceRow()` reduziert versehentliche Reihenfolgefehler und bewahrt gleichzeitig das niedrigere Container-Adoptionsmodell für fortgeschrittene Nutzer.
 
 ### Konsequenzen
 
 FormLayout ermöglicht ausgerichtete, resizable Formulare ohne Backenddetails und ohne GridLayout vorschnell zu vergrößern. Die erste Implementierung teilt sich die bestehende Grid-Layout-Übersetzungseinheit, weil beide Policies dieselben saturierenden Koordinaten- und Constraint-Regeln verwenden; die öffentlichen Typen bleiben getrennt.
+
+`FormRowRef` ist eine Convenience-Lifetime-View und kein dauerhafter Row-Handle. Code, der einen `FormLayout` strukturell verändert, muss von der danach aktuellen Adoptionsreihenfolge ausgehen. Falls spätere Anforderungen unveränderliche logische Zeilenidentitäten benötigen, sollte dafür explizit ein separates semantisches Modell eingeführt werden, statt eine solche Identität aus Referenzen auf zwei Komponenten abzuleiten.
 
 Ein späterer Validation-/Binding-Slice kann Verhalten an die Field-Widgets koppeln, ohne diesen Geometrievertrag zu ändern. Wenn reale Formulare reichhaltigere Label-Platzierung oder gewichtete Tracks benötigen, kann das unter der Pre-1.0-Kompatibilität explizit ergänzt werden.
