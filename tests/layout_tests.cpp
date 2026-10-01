@@ -1,9 +1,14 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/hit_test.hpp>
+#include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/widget.hpp>
 
+#include <cstdint>
 #include <stdexcept>
+#include <string_view>
 
 using namespace sasd::ui;
 
@@ -84,6 +89,38 @@ protected:
 private:
     int arrange_calls_{0};
     Rect observed_bounds_{};
+};
+
+class StackMeasurementContext final : public MeasurementContext {
+public:
+    [[nodiscard]] Size measureText(std::string_view) const override {
+        return {};
+    }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept override {
+        return 7;
+    }
+};
+
+class ContextAwareProbe final : public Widget {
+public:
+    explicit ContextAwareProbe(Size contextual_size)
+        : contextual_size_{contextual_size} {}
+
+    [[nodiscard]] int contextualMeasureCalls() const noexcept {
+        return contextual_measure_calls_;
+    }
+
+protected:
+    Size onMeasure(const MeasurementContext&,
+                   const MeasureConstraints&) override {
+        ++contextual_measure_calls_;
+        return contextual_size_;
+    }
+
+private:
+    Size contextual_size_{};
+    int contextual_measure_calls_{0};
 };
 
 } // namespace
@@ -245,4 +282,67 @@ TEST_CASE("Widget rejects invalid intrinsic size ranges") {
 
     CHECK(threw);
     CHECK(widget.sizeConstraints() == SizeConstraints{});
+}
+
+TEST_CASE("StackLayout measures component-wise maximum of visible layers") {
+    StackLayout stack;
+    auto& narrow_tall = stack.emplace<IntrinsicWidget>(Size{4, 9});
+    auto& wide_short = stack.emplace<IntrinsicWidget>(Size{12, 3});
+    auto& hidden_large = stack.emplace<IntrinsicWidget>(Size{50, 50});
+    hidden_large.setVisible(false);
+
+    CHECK(stack.measure() == Size{12, 9});
+    CHECK(narrow_tall.measureCalls() == 1);
+    CHECK(wide_short.measureCalls() == 1);
+    CHECK(hidden_large.measureCalls() == 0);
+}
+
+TEST_CASE("StackLayout stretches every visible layer to the complete client rectangle") {
+    StackLayout stack;
+    auto& first = stack.emplace<IntrinsicWidget>(Size{3, 2});
+    auto& second = stack.emplace<IntrinsicWidget>(Size{8, 4});
+    auto& hidden = stack.emplace<IntrinsicWidget>(Size{20, 20});
+    hidden.setVisible(false);
+
+    (void)stack.measure();
+    stack.arrange({17, 23, 40, 15});
+
+    /*
+     * Children are parent-relative. StackLayout's own x/y locate the complete overlay in its parent;
+     * every visible child receives the same local client rectangle.
+     */
+    CHECK(first.bounds() == Rect{0, 0, 40, 15});
+    CHECK(second.bounds() == Rect{0, 0, 40, 15});
+    CHECK(hidden.bounds() == Rect{});
+}
+
+TEST_CASE("StackLayout forwards MeasurementContext only to visible layers") {
+    StackLayout stack;
+    auto& first = stack.emplace<ContextAwareProbe>(Size{7, 2});
+    auto& second = stack.emplace<ContextAwareProbe>(Size{3, 11});
+    auto& hidden = stack.emplace<ContextAwareProbe>(Size{99, 99});
+    hidden.setVisible(false);
+
+    StackMeasurementContext context;
+    CHECK(stack.measure(context) == Size{7, 11});
+    CHECK(first.contextualMeasureCalls() == 1);
+    CHECK(second.contextualMeasureCalls() == 1);
+    CHECK(hidden.contextualMeasureCalls() == 0);
+}
+
+TEST_CASE("StackLayout adoption order is visual layer and hit-test order") {
+    StackLayout stack;
+    auto& bottom = stack.emplace<Widget>();
+    auto& top = stack.emplace<Widget>();
+
+    stack.arrange({0, 0, 20, 10});
+
+    CHECK(bottom.bounds() == Rect{0, 0, 20, 10});
+    CHECK(top.bounds() == Rect{0, 0, 20, 10});
+
+    /*
+     * Presentation traverses children in adoption order while HitTest walks them in reverse order.
+     * The later child is therefore both painted later and selected as the topmost interactive layer.
+     */
+    CHECK(HitTest::deepestAt(stack, {5, 5}) == &top);
 }
