@@ -300,7 +300,7 @@ TEST_CASE("RenderedPresentationSink offsets Button caption while pressed") {
     CHECK(button.textStyle() == TextStyle{});
 }
 
-TEST_CASE("RenderedPresentationSink erases a hidden Label without drawing stale text") {
+TEST_CASE("RenderedPresentationSink rebuilds the surface when a Label becomes hidden") {
     DisplayList display;
     RenderedPresentationSink sink{display, Color::black};
 
@@ -316,8 +316,14 @@ TEST_CASE("RenderedPresentationSink erases a hidden Label without drawing stale 
 
     CHECK(PresentationCoordinator::synchronize(window, sink).complete());
     CHECK(display.size() == 1);
+
+    /*
+     * Visibility can uncover overlapping content, so it now requests the same conservative subtree
+     * refresh as geometry damage. The Window therefore establishes one clean presentation surface;
+     * the hidden Label is pruned from the forced replay instead of erasing content replayed below it.
+     */
     CHECK(std::get<FillRectCommand>(display.commands()[0]) ==
-          FillRectCommand{Rect{15, 20, 100, 20}, Color::black});
+          FillRectCommand{Rect{0, 0, 200, 80}, Color::black});
 }
 
 TEST_CASE("RenderedMeasurementContext keeps rendered control chrome consistent with metrics") {
@@ -537,7 +543,6 @@ TEST_CASE("RenderedPresentationSink defers unrepresentable accumulated coordinat
 
     Window window;
     window.arrange({std::numeric_limits<Coordinate>::max(), 0, 10, 10});
-
     auto& label = window.emplace<Label>("overflow");
     label.arrange({1, 0, 5, 5});
 
