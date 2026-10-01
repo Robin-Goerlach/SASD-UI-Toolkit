@@ -1,6 +1,6 @@
 #include "test_framework.hpp"
 
-#include <sasd/ui/menu_bar_navigation.hpp>
+#include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/menu_model.hpp>
 
 #include <optional>
@@ -88,121 +88,154 @@ TEST_CASE("MenuBarModel exposes mutable and const indexed access with bounds che
     CHECK(const_threw);
 }
 
-TEST_CASE("Menu bar navigation enters from edges and wraps cyclically") {
+TEST_CASE("Menu interaction begins explicitly and opens a root popup without implicit selection") {
+    Command open{"Open"};
     MenuBarModel bar;
-    bar.appendMenu("File");
-    bar.appendMenu("Edit");
-    bar.appendMenu("Help");
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(open);
+    (void)bar.appendMenu("Help");
 
-    CHECK(navigateMenuBar(bar, std::nullopt, MenuNavigationDirection::next) ==
-          std::optional<std::size_t>{0});
-    CHECK(navigateMenuBar(bar, std::nullopt, MenuNavigationDirection::previous) ==
-          std::optional<std::size_t>{2});
-    CHECK(navigateMenuBar(bar, std::size_t{2}, MenuNavigationDirection::next) ==
-          std::optional<std::size_t>{0});
-    CHECK(navigateMenuBar(bar, std::size_t{0}, MenuNavigationDirection::previous) ==
-          std::optional<std::size_t>{2});
+    MenuInteractionController controller;
+    CHECK(!controller.isActive());
+    CHECK(controller.begin(bar));
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{0});
+    CHECK(!controller.popupOpen());
+
+    const auto open_result = controller.handleKey(
+        bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    CHECK(open_result.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(controller.popupDepth() == 1);
+    CHECK(!controller.popupSelection().has_value());
+
+    const auto select_result = controller.handleKey(
+        bar, KeyEvent{Key::down, true, KeyModifier::none});
+    CHECK(select_result.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0});
 }
 
-TEST_CASE("Menu bar navigation recovers from stale selection and handles an empty bar") {
+TEST_CASE("Menu interaction composes popup navigation with nested MenuPath state") {
+    Command advanced_action{"Advanced action"};
     MenuBarModel bar;
-    bar.appendMenu("File");
-    bar.appendMenu("Help");
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(advanced_action);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto enter_submenu = controller.handleKey(
+        bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(enter_submenu.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0}});
+    CHECK(controller.popupDepth() == 2);
+    CHECK(!controller.popupSelection().has_value());
+
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0});
+}
+
+TEST_CASE("Menu interaction closes state before returning a command activation request") {
+    Command run{"Run"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(run);
+
+    MenuInteractionController controller;
+    bool callback_saw_closed_state = false;
+    int executions = 0;
+    run.setOnExecuted([&] {
+        ++executions;
+        callback_saw_closed_state = !controller.isActive();
+    });
+
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto activation = controller.handleKey(
+        bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    CHECK(activation.action == MenuInteractionAction::activate_command);
+    CHECK(!controller.isActive());
+    CHECK(executions == 0);
+
+    Command* const command = activation.command.get();
+    CHECK(command == &run);
+    if (command != nullptr) {
+        CHECK(command->execute());
+    }
+    CHECK(executions == 1);
+    CHECK(callback_saw_closed_state);
+}
+
+TEST_CASE("Menu interaction closes nested popup levels one at a time before leaving the bar") {
+    Command action{"Action"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(action);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(controller.popupDepth() == 2);
+
+    const auto close_child = controller.handleKey(
+        bar, KeyEvent{Key::escape, true, KeyModifier::none});
+    CHECK(close_child.action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupDepth() == 1);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+
+    const auto close_root = controller.handleKey(
+        bar, KeyEvent{Key::escape, true, KeyModifier::none});
+    CHECK(close_root.action == MenuInteractionAction::state_changed);
+    CHECK(controller.isActive());
+    CHECK(!controller.popupOpen());
+
+    const auto leave_bar = controller.handleKey(
+        bar, KeyEvent{Key::escape, true, KeyModifier::none});
+    CHECK(leave_bar.action == MenuInteractionAction::closed);
+    CHECK(!controller.isActive());
+}
+
+TEST_CASE("Menu interaction conservatively normalizes stale popup state after model mutation") {
+    Command action{"Action"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(action);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0}});
 
     /*
-     * A presenter may retain a selected top-level index while application code rebuilds the bar. The
-     * helper treats an out-of-range index as no current selection, just like the vertical menu helper,
-     * so the next deliberate navigation gesture re-enters a known structural edge.
+     * Application code may rebuild a menu while a popup is open. The controller stores only value
+     * indices, so the next transaction can truncate the invalid route and clear stale selection rather
+     * than dereferencing a destroyed submenu object or guessing a replacement item.
      */
-    CHECK(navigateMenuBar(bar, std::size_t{99}, MenuNavigationDirection::next) ==
-          std::optional<std::size_t>{0});
-    CHECK(navigateMenuBar(bar, std::size_t{99}, MenuNavigationDirection::previous) ==
-          std::optional<std::size_t>{1});
+    file.clear();
+    const auto normalized = controller.handleKey(
+        bar, KeyEvent{Key::space, true, KeyModifier::none});
+    CHECK(normalized.action == MenuInteractionAction::state_changed);
+    CHECK(controller.isActive());
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(controller.popupDepth() == 1);
+    CHECK(!controller.popupSelection().has_value());
 
-    MenuBarModel empty;
-    CHECK(!navigateMenuBar(empty, std::nullopt, MenuNavigationDirection::next).has_value());
-}
-
-TEST_CASE("Menu bar key interpretation moves selection without owning popup state") {
-    MenuBarModel bar;
-    bar.appendMenu("File");
-    bar.appendMenu("Edit");
-    bar.appendMenu("Help");
-
-    const auto right = interpretMenuBarKey(
-        bar, std::nullopt, KeyEvent{Key::right, true, KeyModifier::none});
-    CHECK(right.action == MenuBarKeyAction::select);
-    CHECK(right.selection == std::optional<std::size_t>{0});
-
-    const auto next = interpretMenuBarKey(
-        bar, right.selection, KeyEvent{Key::right, true, KeyModifier::none});
-    CHECK(next.action == MenuBarKeyAction::select);
-    CHECK(next.selection == std::optional<std::size_t>{1});
-
-    const auto left = interpretMenuBarKey(
-        bar, next.selection, KeyEvent{Key::left, true, KeyModifier::none});
-    CHECK(left.action == MenuBarKeyAction::select);
-    CHECK(left.selection == std::optional<std::size_t>{0});
-}
-
-TEST_CASE("Menu bar Home End and open intents are deterministic") {
-    MenuBarModel bar;
-    bar.appendMenu("File");
-    bar.appendMenu("Edit");
-    bar.appendMenu("Help");
-
-    const auto end = interpretMenuBarKey(
-        bar, std::size_t{0}, KeyEvent{Key::end, true, KeyModifier::none});
-    CHECK(end.action == MenuBarKeyAction::select);
-    CHECK(end.selection == std::optional<std::size_t>{2});
-
-    const auto home = interpretMenuBarKey(
-        bar, end.selection, KeyEvent{Key::home, true, KeyModifier::none});
-    CHECK(home.action == MenuBarKeyAction::select);
-    CHECK(home.selection == std::optional<std::size_t>{0});
-
-    const auto down = interpretMenuBarKey(
-        bar, home.selection, KeyEvent{Key::down, true, KeyModifier::none});
-    CHECK(down.action == MenuBarKeyAction::open_menu);
-    CHECK(down.selection == std::optional<std::size_t>{0});
-
-    const auto enter = interpretMenuBarKey(
-        bar, std::size_t{1}, KeyEvent{Key::enter, true, KeyModifier::none});
-    CHECK(enter.action == MenuBarKeyAction::open_menu);
-    CHECK(enter.selection == std::optional<std::size_t>{1});
-}
-
-TEST_CASE("Menu bar key interpretation leaves modified input and stale direct opens unhandled") {
-    MenuBarModel bar;
-    bar.appendMenu("File");
-
-    const auto modified = interpretMenuBarKey(
-        bar, std::size_t{0}, KeyEvent{Key::right, true, KeyModifier::alt});
-    CHECK(modified.action == MenuBarKeyAction::none);
-    CHECK(modified.selection == std::optional<std::size_t>{0});
-
-    const auto release = interpretMenuBarKey(
-        bar, std::size_t{0}, KeyEvent{Key::right, false, KeyModifier::none});
-    CHECK(release.action == MenuBarKeyAction::none);
-    CHECK(release.selection == std::optional<std::size_t>{0});
-
-    const auto stale_open = interpretMenuBarKey(
-        bar, std::size_t{99}, KeyEvent{Key::down, true, KeyModifier::none});
-    CHECK(stale_open.action == MenuBarKeyAction::none);
-    CHECK(!stale_open.selection.has_value());
-
-    const auto recovered = interpretMenuBarKey(
-        bar, std::size_t{99}, KeyEvent{Key::right, true, KeyModifier::none});
-    CHECK(recovered.action == MenuBarKeyAction::select);
-    CHECK(recovered.selection == std::optional<std::size_t>{0});
-}
-
-TEST_CASE("Menu bar Escape requests leaving the bar without rewriting selection") {
-    MenuBarModel bar;
-    bar.appendMenu("File");
-
-    const auto result = interpretMenuBarKey(
-        bar, std::size_t{0}, KeyEvent{Key::escape, true, KeyModifier::none});
-    CHECK(result.action == MenuBarKeyAction::close_menu_bar);
-    CHECK(result.selection == std::optional<std::size_t>{0});
+    bar.clear();
+    const auto invalid_root = controller.handleKey(
+        bar, KeyEvent{Key::space, true, KeyModifier::none});
+    CHECK(invalid_root.action == MenuInteractionAction::state_changed);
+    CHECK(!controller.isActive());
 }

@@ -1,0 +1,299 @@
+#pragma once
+
+#include <sasd/ui/menu_bar_navigation.hpp>
+#include <sasd/ui/menu_navigation.hpp>
+#include <sasd/ui/menu_path.hpp>
+
+#include <cstddef>
+#include <optional>
+#include <utility>
+#include <vector>
+
+namespace sasd::ui {
+
+/** High-level outcome produced by one menu-interaction key transaction. */
+enum class MenuInteractionAction {
+    none,
+    state_changed,
+    activate_command,
+    closed,
+};
+
+/**
+ * Result returned by MenuInteractionController::handleKey().
+ *
+ * activate_command carries a lifetime-safe Command::Reference instead of a borrowed MenuItem* or
+ * Command*. The caller can therefore finish presentation/focus work after handleKey() returns and only
+ * then execute the command if the semantic object is still alive. Other actions leave command empty.
+ */
+struct MenuInteractionResult {
+    MenuInteractionAction action{MenuInteractionAction::none};
+    Command::Reference command{};
+};
+
+/**
+ * Backend-neutral coordinator for transient menu-bar and popup keyboard state.
+ *
+ * The controller composes the small semantic contracts introduced by MenuBarModel, MenuPath,
+ * interpretMenuBarKey(), and interpretMenuPopupKey(). It intentionally owns only transient value
+ * state: top-level indices, submenu indices, and selection indices. It stores no MenuModel*, MenuItem*,
+ * backend handle, focus object, or presentation object across calls.
+ *
+ * This makes structural mutation recoverable. Every key transaction revalidates the retained state
+ * against the supplied MenuBarModel before interpreting input. Invalid submenu routes are truncated to
+ * their longest valid prefix; invalid item selections are cleared rather than guessed. If the selected
+ * top-level menu itself no longer exists, the whole interaction is closed.
+ *
+ * Command activation is also deliberately split into two phases. The controller copies a
+ * Command::Reference, closes its complete interaction state, and returns activate_command. It never
+ * invokes application callbacks itself. Callers may then repaint/dismiss/fix focus and finally execute
+ * result.command if it is still live.
+ *
+ * The class models keyboard interaction only. Pointer hover/click behavior, mnemonic activation,
+ * automatic switching between top-level menus while a root popup is open, native menu handles, and
+ * popup geometry remain separate later layers.
+ */
+class MenuInteractionController final {
+public:
+    MenuInteractionController() = default;
+
+    /**
+     * Enters menu-bar interaction and selects one top-level menu.
+     *
+     * A valid preferred index is honored. A missing or stale preferred index selects the first menu.
+     * Empty bars cannot become active and leave the controller reset.
+     */
+    bool begin(const MenuBarModel& bar, std::optional<std::size_t> preferred = std::nullopt) {
+        reset();
+        if (bar.menuCount() == 0U) {
+            return false;
+        }
+
+        menu_bar_selection_ = preferred.has_value() && *preferred < bar.menuCount()
+                                  ? preferred
+                                  : std::optional<std::size_t>{0U};
+        return true;
+    }
+
+    /** Clears all transient interaction state without touching the semantic menu model. */
+    void reset() noexcept {
+        menu_bar_selection_.reset();
+        popup_path_.reset();
+        popup_selections_.clear();
+    }
+
+    [[nodiscard]] bool isActive() const noexcept { return menu_bar_selection_.has_value(); }
+    [[nodiscard]] bool popupOpen() const noexcept { return popup_path_.has_value(); }
+
+    /** Selected top-level menu while active. */
+    [[nodiscard]] std::optional<std::size_t> menuBarSelection() const noexcept {
+        return menu_bar_selection_;
+    }
+
+    /**
+     * Structural path of the deepest open popup.
+     *
+     * std::nullopt means no popup is open. An engaged empty MenuPath means the root popup belonging to
+     * the selected top-level menu is open.
+     */
+    [[nodiscard]] const std::optional<MenuPath>& popupPath() const noexcept { return popup_path_; }
+
+    /** Selection of the deepest open popup, or std::nullopt when none/no item is selected. */
+    [[nodiscard]] std::optional<std::size_t> popupSelection() const noexcept {
+        return popup_selections_.empty() ? std::nullopt : popup_selections_.back();
+    }
+
+    /** Number of currently represented popup levels; zero when no popup is open. */
+    [[nodiscard]] std::size_t popupDepth() const noexcept { return popup_selections_.size(); }
+
+    /**
+     * Applies one keyboard event to the current interaction state.
+     *
+     * The controller must first be activated with begin(). Inactive controllers ignore input instead
+     * of implicitly stealing arbitrary application keys. Active state is normalized against bar before
+     * dispatch so application-side menu rebuilds cannot leave stale structural pointers behind.
+     */
+    [[nodiscard]] MenuInteractionResult handleKey(const MenuBarModel& bar, const KeyEvent& event) {
+        if (!isActive()) {
+            return {};
+        }
+
+        const bool normalized = normalizeAgainst(bar);
+        if (!isActive()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        return popupOpen() ? handlePopupKey(bar, event, normalized)
+                           : handleMenuBarKey(bar, event, normalized);
+    }
+
+private:
+    /**
+     * Revalidates retained indices after arbitrary semantic-menu mutation.
+     *
+     * Selection repair is conservative. If an item disappears, becomes disabled, or stops being
+     * selectable, the selection becomes empty. We intentionally do not jump to a neighboring item;
+     * the next explicit navigation gesture decides where the user moves.
+     */
+    bool normalizeAgainst(const MenuBarModel& bar) {
+        bool changed = false;
+
+        if (!menu_bar_selection_.has_value() || *menu_bar_selection_ >= bar.menuCount()) {
+            reset();
+            return true;
+        }
+
+        if (!popup_path_.has_value()) {
+            return false;
+        }
+
+        const MenuModel& root = bar.menuAt(*menu_bar_selection_);
+        const MenuPath sanitized_path = sanitizeMenuPath(root, *popup_path_);
+        if (sanitized_path != *popup_path_) {
+            *popup_path_ = sanitized_path;
+            changed = true;
+        }
+
+        const std::size_t expected_levels = popup_path_->size() + 1U;
+        if (popup_selections_.size() != expected_levels) {
+            popup_selections_.resize(expected_levels);
+            changed = true;
+        }
+
+        const MenuModel* current = &root;
+        for (std::size_t level = 0; level < expected_levels; ++level) {
+            auto& selection = popup_selections_[level];
+            if (selection.has_value()) {
+                const bool valid_index = *selection < current->itemCount();
+                const bool selectable = valid_index && current->itemAt(*selection).isEnabled();
+                if (!selectable) {
+                    selection.reset();
+                    changed = true;
+                }
+            }
+
+            if (level < popup_path_->size()) {
+                /*
+                 * sanitizeMenuPath() already proved that this element names a live submenu. Keeping
+                 * traversal here explicit avoids retaining that borrowed pointer beyond normalization.
+                 */
+                current = current->itemAt((*popup_path_)[level]).submenu();
+            }
+        }
+
+        return changed;
+    }
+
+    [[nodiscard]] MenuInteractionResult handleMenuBarKey(const MenuBarModel& bar,
+                                                         const KeyEvent& event,
+                                                         bool normalized) {
+        const MenuBarKeyResult interpreted = interpretMenuBarKey(bar, menu_bar_selection_, event);
+
+        switch (interpreted.action) {
+        case MenuBarKeyAction::select:
+            menu_bar_selection_ = interpreted.selection;
+            return {MenuInteractionAction::state_changed, {}};
+
+        case MenuBarKeyAction::open_menu:
+            if (!interpreted.selection.has_value()) {
+                break;
+            }
+            menu_bar_selection_ = interpreted.selection;
+            popup_path_ = MenuPath{};
+            popup_selections_.assign(1U, std::nullopt);
+            return {MenuInteractionAction::state_changed, {}};
+
+        case MenuBarKeyAction::close_menu_bar:
+            reset();
+            return {MenuInteractionAction::closed, {}};
+
+        case MenuBarKeyAction::none:
+            break;
+        }
+
+        return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none, {}};
+    }
+
+    [[nodiscard]] MenuInteractionResult handlePopupKey(const MenuBarModel& bar,
+                                                       const KeyEvent& event,
+                                                       bool normalized) {
+        const MenuModel& root = bar.menuAt(*menu_bar_selection_);
+        const MenuModel* const current = resolveMenuPath(root, *popup_path_);
+        if (current == nullptr) {
+            /*
+             * normalizeAgainst() should make this unreachable for a stable single-threaded model, but
+             * failing closed costs almost nothing and keeps this layer robust if future model hooks
+             * introduce mutation between normalization and interpretation.
+             */
+            popup_path_ = MenuPath{};
+            popup_selections_.assign(1U, std::nullopt);
+            return {MenuInteractionAction::state_changed, {}};
+        }
+
+        const MenuPopupKeyResult interpreted =
+            interpretMenuPopupKey(*current, popup_selections_.back(), event);
+
+        switch (interpreted.action) {
+        case MenuPopupKeyAction::select:
+            popup_selections_.back() = interpreted.selection;
+            return {MenuInteractionAction::state_changed, {}};
+
+        case MenuPopupKeyAction::open_submenu: {
+            if (!interpreted.selection.has_value()) {
+                break;
+            }
+
+            const auto child = enterMenuSubmenu(root, *popup_path_, *interpreted.selection);
+            if (!child.has_value()) {
+                break;
+            }
+
+            *popup_path_ = *child;
+            popup_selections_.push_back(std::nullopt);
+            return {MenuInteractionAction::state_changed, {}};
+        }
+
+        case MenuPopupKeyAction::close_menu:
+            if (!popup_path_->empty()) {
+                popup_path_->pop_back();
+                popup_selections_.resize(popup_path_->size() + 1U);
+            } else {
+                popup_path_.reset();
+                popup_selections_.clear();
+            }
+            return {MenuInteractionAction::state_changed, {}};
+
+        case MenuPopupKeyAction::activate_command: {
+            if (!interpreted.selection.has_value()) {
+                break;
+            }
+
+            MenuItem& item = const_cast<MenuItem&>(current->itemAt(*interpreted.selection));
+            Command* const command = item.command();
+            if (command == nullptr) {
+                break;
+            }
+
+            /*
+             * Capture only the lifetime-safe semantic reference, then close all menu state before the
+             * caller is allowed to execute client code. No MenuModel/MenuItem pointer escapes this call.
+             */
+            Command::Reference command_reference = command->reference();
+            reset();
+            return {MenuInteractionAction::activate_command, std::move(command_reference)};
+        }
+
+        case MenuPopupKeyAction::none:
+            break;
+        }
+
+        return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none, {}};
+    }
+
+    std::optional<std::size_t> menu_bar_selection_{};
+    std::optional<MenuPath> popup_path_{};
+    std::vector<std::optional<std::size_t>> popup_selections_{};
+};
+
+} // namespace sasd::ui
