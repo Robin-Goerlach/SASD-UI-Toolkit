@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 using namespace sasd::ui;
 
@@ -234,6 +235,160 @@ TEST_CASE("Command text is semantic metadata and does not affect execution eligi
      * happens to observe the accepted action.
      */
     CHECK(command.execute());
+}
+
+TEST_CASE("Command state observers receive only real semantic changes") {
+    Command command{"Save"};
+    int text_changes = 0;
+    int enabled_changes = 0;
+
+    auto subscription = command.observeState([&](Command::StateChange change) {
+        if (change == Command::StateChange::text) {
+            ++text_changes;
+        } else if (change == Command::StateChange::enabled) {
+            ++enabled_changes;
+        }
+    });
+
+    CHECK(subscription.connected());
+
+    /*
+     * Establishing an observer is intentionally not an implicit snapshot. Bindings read current state
+     * once when connecting and then consume only actual transitions from this notification channel.
+     */
+    CHECK(text_changes == 0);
+    CHECK(enabled_changes == 0);
+
+    command.setText("Save");
+    command.setEnabled(true);
+    CHECK(text_changes == 0);
+    CHECK(enabled_changes == 0);
+
+    command.setText("Save as");
+    command.setEnabled(false);
+    CHECK(text_changes == 1);
+    CHECK(enabled_changes == 1);
+}
+
+TEST_CASE("Command subscription lifetime disconnects without owning the Command") {
+    Command command{"Open"};
+    int changes = 0;
+
+    {
+        auto subscription = command.observeState(
+            [&changes](Command::StateChange) { ++changes; });
+        CHECK(subscription.connected());
+
+        command.setText("Open file");
+        CHECK(changes == 1);
+    }
+
+    command.setText("Open folder");
+    CHECK(changes == 1);
+
+    auto subscription = command.observeState(
+        [&changes](Command::StateChange) { ++changes; });
+    subscription.reset();
+    CHECK(!subscription.connected());
+    command.setEnabled(false);
+    CHECK(changes == 1);
+}
+
+TEST_CASE("Command subscription move assignment retires the previous connection") {
+    Command first{"First"};
+    Command second{"Second"};
+    int first_changes = 0;
+    int second_changes = 0;
+
+    auto target = first.observeState(
+        [&first_changes](Command::StateChange) { ++first_changes; });
+    auto incoming = second.observeState(
+        [&second_changes](Command::StateChange) { ++second_changes; });
+
+    target = std::move(incoming);
+
+    CHECK(target.connected());
+    CHECK(!incoming.connected());
+
+    first.setText("First changed");
+    second.setText("Second changed");
+
+    /*
+     * Move-assignment must disconnect target's old slot before taking incoming's slot; otherwise the
+     * first callback would remain live but unreachable by any subscription token.
+     */
+    CHECK(first_changes == 0);
+    CHECK(second_changes == 1);
+}
+
+TEST_CASE("Command observer can disconnect a later observer during notification") {
+    Command command{"Run"};
+    int first_calls = 0;
+    int second_calls = 0;
+
+    Command::StateSubscription second;
+    auto first = command.observeState([&](Command::StateChange) {
+        ++first_calls;
+        second.reset();
+    });
+    second = command.observeState(
+        [&second_calls](Command::StateChange) { ++second_calls; });
+
+    command.setEnabled(false);
+
+    CHECK(first.connected());
+    CHECK(first_calls == 1);
+    CHECK(second_calls == 0);
+    CHECK(!second.connected());
+}
+
+TEST_CASE("Command observer added during notification starts with the next change") {
+    Command command{"Run"};
+    int first_calls = 0;
+    int late_calls = 0;
+    Command::StateSubscription late;
+
+    auto first = command.observeState([&](Command::StateChange) {
+        ++first_calls;
+        if (!late.connected()) {
+            late = command.observeState(
+                [&late_calls](Command::StateChange) { ++late_calls; });
+        }
+    });
+
+    command.setEnabled(false);
+    CHECK(first_calls == 1);
+    CHECK(late_calls == 0);
+    CHECK(first.connected());
+    CHECK(late.connected());
+
+    command.setEnabled(true);
+    CHECK(first_calls == 2);
+    CHECK(late_calls == 1);
+}
+
+TEST_CASE("Command state notification remains safe when a callback destroys the Command") {
+    auto command = std::make_unique<Command>("Temporary");
+    int calls = 0;
+
+    auto subscription = command->observeState([&](Command::StateChange) {
+        ++calls;
+
+        /*
+         * Notification keeps only shared observer-state needed for the in-flight pass and performs no
+         * later access through this Command. Destroying the semantic object from client code therefore
+         * cannot turn StateSubscription cleanup into a raw-pointer lifetime hazard.
+         */
+        command.reset();
+    });
+
+    command->setText("Destroy me");
+    CHECK(command == nullptr);
+    CHECK(calls == 1);
+
+    // The token weakly references a slot owned by the destroyed Command and therefore expires safely.
+    CHECK(!subscription.connected());
+    subscription.reset();
 }
 
 TEST_CASE("Widget state is backend neutral") {
