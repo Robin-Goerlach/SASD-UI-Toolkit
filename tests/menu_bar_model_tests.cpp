@@ -138,6 +138,82 @@ TEST_CASE("Menu interaction composes popup navigation with nested MenuPath state
     CHECK(controller.popupSelection() == std::optional<std::size_t>{0});
 }
 
+TEST_CASE("Menu interaction switches top-level menus while the root popup stays open") {
+    Command open{"Open"};
+    Command copy{"Copy"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& edit = bar.appendMenu("Edit");
+    file.appendCommand(open);
+    edit.appendCommand(copy);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0});
+
+    /*
+     * A root-popup Right gesture on a command crosses to the next top-level menu instead of being
+     * swallowed by popup-local navigation. The old item index is deliberately discarded because index
+     * zero in File has no semantic relationship to index zero in Edit.
+     */
+    const auto next_menu = controller.handleKey(
+        bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(next_menu.action == MenuInteractionAction::state_changed);
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{1});
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(controller.popupDepth() == 1);
+    CHECK(!controller.popupSelection().has_value());
+
+    const auto previous_menu = controller.handleKey(
+        bar, KeyEvent{Key::left, true, KeyModifier::none});
+    CHECK(previous_menu.action == MenuInteractionAction::state_changed);
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{0});
+    CHECK(controller.popupOpen());
+    CHECK(!controller.popupSelection().has_value());
+}
+
+TEST_CASE("Menu interaction gives selected root submenus precedence over Right menu switching") {
+    Command action{"Action"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(action);
+    (void)bar.appendMenu("Help");
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto enter_submenu = controller.handleKey(
+        bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(enter_submenu.action == MenuInteractionAction::state_changed);
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{0});
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0}});
+    CHECK(controller.popupDepth() == 2);
+
+    /*
+     * Once inside a child popup, Left is again local parent navigation. Only after returning to the
+     * root popup does another Left participate in horizontal top-level switching.
+     */
+    const auto close_child = controller.handleKey(
+        bar, KeyEvent{Key::left, true, KeyModifier::none});
+    CHECK(close_child.action == MenuInteractionAction::state_changed);
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{0});
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(controller.popupDepth() == 1);
+
+    const auto switch_previous = controller.handleKey(
+        bar, KeyEvent{Key::left, true, KeyModifier::none});
+    CHECK(switch_previous.action == MenuInteractionAction::state_changed);
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{1});
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{}});
+    CHECK(!controller.popupSelection().has_value());
+}
+
 TEST_CASE("Menu interaction closes state before returning a command activation request") {
     Command run{"Run"};
     MenuBarModel bar;

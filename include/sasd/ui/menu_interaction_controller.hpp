@@ -49,9 +49,14 @@ struct MenuInteractionResult {
  * invokes application callbacks itself. Callers may then repaint/dismiss/fix focus and finally execute
  * result.command if it is still live.
  *
+ * Root-popup horizontal navigation deliberately coordinates with the menu bar. Left switches to the
+ * previous top-level menu and Right switches to the next top-level menu when the currently selected root
+ * item is not a submenu. A selected submenu keeps precedence for Right so ordinary submenu entry still
+ * works. Switching top-level menus keeps the root popup open but clears its item selection because
+ * selection indices belong to the old menu and must never be carried into unrelated semantics.
+ *
  * The class models keyboard interaction only. Pointer hover/click behavior, mnemonic activation,
- * automatic switching between top-level menus while a root popup is open, native menu handles, and
- * popup geometry remain separate later layers.
+ * native menu handles, focus restoration, and popup geometry remain separate later layers.
  */
 class MenuInteractionController final {
 public:
@@ -215,6 +220,25 @@ private:
         return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none, {}};
     }
 
+    /**
+     * Switches a currently open root popup to an adjacent top-level menu.
+     *
+     * The popup remains structurally open, but all item selection is cleared. Reusing the previous
+     * root selection would silently reinterpret an index in a different MenuModel, which is exactly the
+     * kind of accidental semantic carry-over the value-state design is intended to prevent.
+     */
+    bool switchRootPopup(const MenuBarModel& bar, MenuNavigationDirection direction) {
+        const auto target = navigateMenuBar(bar, menu_bar_selection_, direction);
+        if (!target.has_value() || target == menu_bar_selection_) {
+            return false;
+        }
+
+        menu_bar_selection_ = target;
+        popup_path_ = MenuPath{};
+        popup_selections_.assign(1U, std::nullopt);
+        return true;
+    }
+
     [[nodiscard]] MenuInteractionResult handlePopupKey(const MenuBarModel& bar,
                                                        const KeyEvent& event,
                                                        bool normalized) {
@@ -229,6 +253,34 @@ private:
             popup_path_ = MenuPath{};
             popup_selections_.assign(1U, std::nullopt);
             return {MenuInteractionAction::state_changed, {}};
+        }
+
+        /*
+         * Horizontal movement at the root popup spans two interaction layers, so it belongs here rather
+         * than in interpretMenuPopupKey(). Left always means "previous top-level menu" when there is an
+         * alternative top-level target. Right normally means "next top-level menu", except that an
+         * enabled selected submenu keeps precedence and is entered by the ordinary popup interpreter.
+         * Nested popups are deliberately excluded: their Left/Right semantics remain local parent/child
+         * navigation and must not unexpectedly jump across the menu bar.
+         */
+        if (popup_path_->empty() && event.pressed && event.modifiers == KeyModifier::none &&
+            bar.menuCount() > 1U) {
+            if (event.key == Key::left) {
+                if (switchRootPopup(bar, MenuNavigationDirection::previous)) {
+                    return {MenuInteractionAction::state_changed, {}};
+                }
+            } else if (event.key == Key::right) {
+                bool selected_submenu = false;
+                const auto selection = popup_selections_.back();
+                if (selection.has_value() && *selection < current->itemCount()) {
+                    const MenuItem& item = current->itemAt(*selection);
+                    selected_submenu = item.kind() == MenuItemKind::submenu && item.isEnabled();
+                }
+
+                if (!selected_submenu && switchRootPopup(bar, MenuNavigationDirection::next)) {
+                    return {MenuInteractionAction::state_changed, {}};
+                }
+            }
         }
 
         const MenuPopupKeyResult interpreted =
@@ -269,7 +321,7 @@ private:
                 break;
             }
 
-            MenuItem& item = const_cast<MenuItem&>(current->itemAt(*interpreted.selection));
+            const MenuItem& item = current->itemAt(*interpreted.selection);
             Command* const command = item.command();
             if (command == nullptr) {
                 break;
