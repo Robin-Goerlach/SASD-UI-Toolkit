@@ -3,6 +3,8 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
 #include <sasd/ui/container.hpp>
+#include <sasd/ui/form_layout.hpp>
+#include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/radio_button.hpp>
@@ -629,14 +631,17 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
     }
 
     /*
-     * Exact base objects and current Box layouts are structural primitives with no terminal cells of
-     * their own. Do not generalize this to arbitrary subclasses: silently acknowledging a future
-     * control before it has terminal rendering would lose a valid pending update.
+     * These are known structural layout/container types with no terminal cells of their own. Keep
+     * the set explicit instead of acknowledging every Container subclass: a future composite control
+     * may derive from Container and still require presentation, so treating all Containers as layout
+     * would silently lose a valid pending visual update.
      */
     if (typeid(widget) == typeid(Widget) ||
         typeid(widget) == typeid(Container) ||
         dynamic_cast<const VBox*>(&widget) != nullptr ||
-        dynamic_cast<const HBox*>(&widget) != nullptr) {
+        dynamic_cast<const HBox*>(&widget) != nullptr ||
+        dynamic_cast<const GridLayout*>(&widget) != nullptr ||
+        dynamic_cast<const FormLayout*>(&widget) != nullptr) {
         return PresentationUpdateResult::synchronized;
     }
 
