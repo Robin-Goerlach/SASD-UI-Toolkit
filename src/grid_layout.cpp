@@ -88,13 +88,16 @@ template <typename MeasureChild>
     }
 
     /*
-     * Dense row-major placement cannot create an interior empty column. Trailing empty columns can
-     * occur in the final partial row and must not manufacture spacing after the final occupied track.
+     * Occupancy is defined by row-major cell assignment, not by measured extent. A visible child
+     * whose desired width is zero still occupies its column and therefore still establishes the
+     * spacing boundary to the previous occupied column. Trimming by trailing zero values would
+     * incorrectly conflate "occupied zero-width track" with "no track at all".
+     *
+     * Dense placement guarantees that the occupied columns are always a prefix of the configured
+     * column set, so the number of columns to retain is determined solely by how many visible cells
+     * were assigned. Empty columns after a partial final row are the only columns removed here.
      */
-    while (!metrics.column_widths.empty() &&
-           metrics.column_widths.back() == 0) {
-        metrics.column_widths.pop_back();
-    }
+    metrics.column_widths.resize(std::min(columns, visible_index));
 
     return metrics;
 }
@@ -371,10 +374,12 @@ void GridLayout::onArrange(Rect final_bounds) {
         ++visible_index;
     }
 
-    while (!metrics.column_widths.empty() &&
-           metrics.column_widths.back() == 0) {
-        metrics.column_widths.pop_back();
-    }
+    /*
+     * Keep exactly the columns that received at least one visible cell. A zero-width child still
+     * occupies a logical column; preserving that track keeps column spacing and child x origins
+     * identical between measurement and arrangement.
+     */
+    metrics.column_widths.resize(std::min(columns_, visible_index));
 
     const std::vector<Coordinate> column_widths =
         arrangedTracks(
