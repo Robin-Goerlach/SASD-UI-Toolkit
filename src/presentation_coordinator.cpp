@@ -13,13 +13,39 @@ void PresentationCoordinator::synchronizeWidget(Widget& widget,
 
     const bool was_pending = widget.isVisualUpdatePending();
     const bool refresh_requested = widget.isSubtreeRefreshPending();
+
+    /*
+     * A forced replay means an ancestor has already synchronized the presentation surface that owns
+     * this descendant. An invisible descendant therefore has nothing to draw or erase: offering it to
+     * an opaque leaf renderer after visible lower layers were replayed could erase those layers again
+     * (StackLayout exposes this ordering hazard directly).
+     *
+     * A pending invisible Widget is safe to acknowledge here because the ancestor's successful
+     * subtree refresh established the clean presentation baseline first. We deliberately do not walk
+     * descendants of an invisible container. They remain semantically present but have no visible
+     * representation; when the container becomes visible again its visibility transition requests a
+     * new subtree refresh and those descendants are replayed from their then-current state.
+     *
+     * This shortcut is only valid under force. An ordinary non-forced hide must still be offered to
+     * the sink so an incremental backend can remove the Widget's previous representation when no
+     * ancestor surface rebuild occurred.
+     */
+    if (force && !widget.isVisible()) {
+        if (was_pending || refresh_requested) {
+            widget.acknowledgeVisualUpdate();
+        }
+        return;
+    }
+
     const bool should_offer = was_pending || force;
     bool refresh_descendants = force;
     bool block_descendants = false;
 
     /*
-     * Do not filter on visibility here. A widget that just became invisible can still require a
-     * presentation update so a terminal/backend removes its previous representation.
+     * Do not filter an ordinary dirty invisible Widget here. A Widget that just became invisible can
+     * still require a presentation update so an incremental terminal/rendered backend removes its
+     * previous representation. The forced-replay case above is different because the owning surface
+     * has already been rebuilt by an ancestor.
      */
     if (should_offer) {
         ++result.requested;
@@ -66,14 +92,20 @@ void PresentationCoordinator::synchronizeWidget(Widget& widget,
         }
     }
 
-    if (block_descendants) {
+    if (block_descendants || !widget.isVisible()) {
+        /*
+         * Descendants of an invisible container are not part of the current visual surface. Pruning
+         * here also prevents a visible child from painting through a hidden parent. Dirty descendant
+         * state is intentionally retained and will be consumed when a later visible subtree replay
+         * makes that branch reachable again.
+         */
         return;
     }
 
     /*
      * Presentation follows visual parenting rather than generic Component ownership. During a forced
-     * subtree refresh every descendant is offered in adoption order so previously clean siblings are
-     * restored after the backend cleared/rebuilt the affected presentation surface.
+     * subtree refresh every visible descendant is offered in adoption order so previously clean
+     * siblings are restored after the backend cleared/rebuilt the affected presentation surface.
      */
     if (auto* container = dynamic_cast<Container*>(&widget)) {
         const std::size_t children = container->childCount();
