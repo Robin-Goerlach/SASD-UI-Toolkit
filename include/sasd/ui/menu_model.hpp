@@ -56,9 +56,6 @@ public:
     /** Creates a non-interactive separator entry. */
     [[nodiscard]] static MenuItem separator() noexcept;
 
-    /** Creates a submenu item that takes structural ownership of the nested MenuModel. */
-    [[nodiscard]] static MenuItem submenu(std::unique_ptr<MenuModel> submenu) noexcept;
-
     [[nodiscard]] MenuItemKind kind() const noexcept { return kind_; }
 
     /** Returns the currently live command for a command entry, or nullptr otherwise. */
@@ -102,10 +99,24 @@ public:
     [[nodiscard]] bool activate() const;
 
 private:
+    friend class MenuModel;
+
     MenuItem(MenuItemKind kind,
              Command::Reference command,
              std::optional<Shortcut> shortcut,
              std::unique_ptr<MenuModel> submenu) noexcept;
+
+    /**
+     * Creates the owning structural form of a submenu entry.
+     *
+     * This factory is intentionally private and available only to MenuModel. Public callers build
+     * submenu structure through MenuModel::appendSubmenu(), which always allocates a real nested model
+     * before the MenuItem is constructed. Keeping the raw ownership factory out of the public API makes
+     * the invariant "submenu kind implies a non-null nested MenuModel" unrepresentable through ordinary
+     * client code instead of asking every navigation/presentation consumer to defend against a
+     * synthetic null-submenu state.
+     */
+    [[nodiscard]] static MenuItem submenu(std::unique_ptr<MenuModel> submenu) noexcept;
 
     MenuItemKind kind_{MenuItemKind::separator};
     Command::Reference command_{};
@@ -160,6 +171,10 @@ public:
      * Therefore later sibling appends may move MenuItem values but cannot relocate the nested menu
      * itself. This mirrors MenuBarModel's stable builder-reference rule and keeps recursive setup code
      * predictable without exposing shared ownership.
+     *
+     * appendSubmenu() is also the sole public construction path for submenu items. It therefore
+     * guarantees that every MenuItem whose kind is submenu actually owns a non-null MenuModel; callers
+     * cannot manufacture an internally inconsistent submenu entry from a null unique_ptr.
      */
     MenuModel& appendSubmenu(std::string title) {
         auto nested = std::make_unique<MenuModel>(std::move(title));
