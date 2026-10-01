@@ -1,5 +1,6 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
@@ -46,4 +47,43 @@ TEST_CASE("GridLayout measures and renders terminal Labels through one metric po
     CHECK(buffer.at({1, 1}) == Cell{U'A'});
     CHECK(buffer.at({5, 1}) == Cell{U'B'});
     CHECK(buffer.at({1, 3}) == Cell{U'C'});
+}
+
+TEST_CASE("FormLayout renders shared labels and expanding terminal fields") {
+    ScreenBuffer buffer{{24, 6}};
+    TerminalMeasurementContext metrics;
+
+    Window window;
+    window.arrange({0, 0, 24, 6});
+
+    auto& form = window.emplace<FormLayout>();
+    form.setColumnSpacing(1);
+    form.setRowSpacing(1);
+
+    auto first = form.emplaceRow<Label>("Name", "Alice");
+    auto second = form.emplaceRow<Label>("Code", "42");
+    (void)first;
+    (void)second;
+
+    const Size desired =
+        form.measure(metrics, {{0, 0}, {22, 5}});
+
+    // label column=4, gap=1, field column=max(5,2)=5; two one-line rows plus one row gap.
+    CHECK(desired == Size{10, 3});
+
+    /*
+     * Give the form more width than its intrinsic desire. The label column remains four cells, while
+     * the field column expands to the remaining seventeen cells after the one-cell gap.
+     */
+    form.arrange({1, 1, 22, desired.height});
+
+    TerminalPresentationSink sink{buffer};
+    const auto pass =
+        PresentationCoordinator::synchronize(window, sink);
+
+    CHECK(pass.complete());
+    CHECK(buffer.at({1, 1}) == Cell{U'N'});
+    CHECK(buffer.at({6, 1}) == Cell{U'A'});
+    CHECK(buffer.at({1, 3}) == Cell{U'C'});
+    CHECK(buffer.at({6, 3}) == Cell{U'4'});
 }

@@ -1,3 +1,4 @@
+#include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
 
 #include <sasd/ui/measurement_context.hpp>
@@ -14,6 +15,19 @@ namespace {
 struct GridMetrics {
     std::vector<Coordinate> column_widths;
     std::vector<Coordinate> row_heights;
+};
+
+struct FormRowMetric {
+    Coordinate height{0};
+    bool active{false};
+};
+
+struct FormMetrics {
+    Coordinate label_width{0};
+    Coordinate field_width{0};
+    bool has_visible_label{false};
+    bool has_visible_field{false};
+    std::vector<FormRowMetric> rows;
 };
 
 [[nodiscard]] Coordinate saturatingAdd(Coordinate left, Coordinate right) noexcept {
@@ -35,9 +49,9 @@ struct GridMetrics {
 [[nodiscard]] MeasureConstraints childConstraints(
     const MeasureConstraints& parent) noexcept {
     /*
-     * A grid shares the parent extent across several cells. Passing the parent's minimum to every
-     * child would make each individual cell claim the full minimum. As with VBox/HBox, children get a
-     * zero minimum and inherit only the parent's maximum as a conservative per-child ceiling.
+     * Multi-child layouts share the parent extent. Passing the parent's minimum to every child would
+     * make each individual cell claim the full minimum. As with VBox/HBox, children get a zero
+     * minimum and inherit only the parent's maximum as a conservative per-child ceiling.
      */
     return {{0, 0}, parent.maximum};
 }
@@ -87,6 +101,59 @@ template <typename MeasureChild>
     return result;
 }
 
+template <typename MeasureChild>
+[[nodiscard]] FormMetrics collectFormMetrics(
+    FormLayout& form,
+    const MeasureConstraints& constraints,
+    MeasureChild&& measure_child) {
+    FormMetrics result;
+    result.rows.reserve(form.rowCount());
+
+    for (std::size_t row = 0; row < form.rowCount(); ++row) {
+        const std::size_t label_index = row * 2U;
+        const std::size_t field_index = label_index + 1U;
+
+        Widget& label = form.childAt(label_index);
+        Widget* field =
+            field_index < form.childCount()
+                ? &form.childAt(field_index)
+                : nullptr;
+
+        FormRowMetric row_metric;
+
+        if (label.isVisible()) {
+            const Size desired =
+                measure_child(label, childConstraints(constraints));
+            result.label_width =
+                std::max(result.label_width, desired.width);
+            row_metric.height =
+                std::max(row_metric.height, desired.height);
+            row_metric.active = true;
+            result.has_visible_label = true;
+        }
+
+        if (field != nullptr && field->isVisible()) {
+            const Size desired =
+                measure_child(*field, childConstraints(constraints));
+            result.field_width =
+                std::max(result.field_width, desired.width);
+            row_metric.height =
+                std::max(row_metric.height, desired.height);
+            row_metric.active = true;
+            result.has_visible_field = true;
+        }
+
+        /*
+         * Keep one metric entry for every structural pair, including fully hidden rows. Pair identity
+         * must not depend on visibility; otherwise hiding one label would reclassify every following
+         * field as a label cell.
+         */
+        result.rows.push_back(row_metric);
+    }
+
+    return result;
+}
+
 [[nodiscard]] Coordinate sumTracks(const std::vector<Coordinate>& tracks,
                                    Coordinate spacing) noexcept {
     Coordinate total = 0;
@@ -107,6 +174,34 @@ template <typename MeasureChild>
     return {
         sumTracks(metrics.column_widths, column_spacing),
         sumTracks(metrics.row_heights, row_spacing)};
+}
+
+[[nodiscard]] Size formDesiredSize(const FormMetrics& metrics,
+                                   Coordinate column_spacing,
+                                   Coordinate row_spacing) noexcept {
+    Coordinate width = metrics.label_width;
+    if (metrics.has_visible_label && metrics.has_visible_field) {
+        width = saturatingAdd(width, column_spacing);
+    }
+    if (metrics.has_visible_field) {
+        width = saturatingAdd(width, metrics.field_width);
+    }
+
+    Coordinate height = 0;
+    bool first_active = true;
+    for (const FormRowMetric& row : metrics.rows) {
+        if (!row.active) {
+            continue;
+        }
+
+        if (!first_active) {
+            height = saturatingAdd(height, row_spacing);
+        }
+        height = saturatingAdd(height, row.height);
+        first_active = false;
+    }
+
+    return {width, height};
 }
 
 /**
@@ -331,6 +426,143 @@ void GridLayout::onArrange(Rect final_bounds) {
                 : 0;
 
         child.arrange({x, y, width, height});
+    }
+}
+
+void FormLayout::setColumnSpacing(Coordinate spacing) {
+    if (spacing < 0) {
+        throw std::invalid_argument(
+            "FormLayout::setColumnSpacing requires non-negative spacing");
+    }
+    if (column_spacing_ == spacing) {
+        return;
+    }
+
+    column_spacing_ = spacing;
+    invalidateMeasure();
+}
+
+void FormLayout::setRowSpacing(Coordinate spacing) {
+    if (spacing < 0) {
+        throw std::invalid_argument(
+            "FormLayout::setRowSpacing requires non-negative spacing");
+    }
+    if (row_spacing_ == spacing) {
+        return;
+    }
+
+    row_spacing_ = spacing;
+    invalidateMeasure();
+}
+
+Size FormLayout::onMeasure(const MeasureConstraints& constraints) {
+    const FormMetrics metrics =
+        collectFormMetrics(
+            *this,
+            constraints,
+            [](Widget& child,
+               const MeasureConstraints& child_constraints) {
+                return child.measure(child_constraints);
+            });
+
+    return formDesiredSize(metrics, column_spacing_, row_spacing_);
+}
+
+Size FormLayout::onMeasure(const MeasurementContext& context,
+                           const MeasureConstraints& constraints) {
+    const FormMetrics metrics =
+        collectFormMetrics(
+            *this,
+            constraints,
+            [&context](Widget& child,
+                       const MeasureConstraints& child_constraints) {
+                return child.measure(context, child_constraints);
+            });
+
+    return formDesiredSize(metrics, column_spacing_, row_spacing_);
+}
+
+void FormLayout::onArrange(Rect final_bounds) {
+    /*
+     * Reconstruct track metrics from already measured child desired sizes. This preserves the normal
+     * measure-before-arrange contract and avoids retaining any MeasurementContext in layout state.
+     */
+    const FormMetrics metrics =
+        collectFormMetrics(
+            *this,
+            {},
+            [](Widget& child, const MeasureConstraints&) {
+                return child.desiredSize();
+            });
+
+    const Coordinate label_width =
+        metrics.has_visible_label
+            ? std::min(metrics.label_width, final_bounds.width)
+            : 0;
+
+    Coordinate field_x = label_width;
+    if (metrics.has_visible_label && metrics.has_visible_field) {
+        field_x = saturatingAdd(
+            field_x,
+            std::min(
+                column_spacing_,
+                remaining(final_bounds.width, field_x)));
+    }
+
+    /*
+     * FormLayout's key specialization over GridLayout is the expanding field column. Labels keep a
+     * stable intrinsic width while controls receive every remaining logical unit. This makes the form
+     * useful in resizable terminal/desktop surfaces without introducing general Grid star sizing yet.
+     */
+    const Coordinate field_width =
+        metrics.has_visible_field
+            ? remaining(final_bounds.width, field_x)
+            : 0;
+
+    std::size_t active_rows = 0;
+    for (const FormRowMetric& row : metrics.rows) {
+        if (row.active) {
+            ++active_rows;
+        }
+    }
+
+    Coordinate y = 0;
+    std::size_t processed_active = 0;
+
+    for (std::size_t row = 0; row < metrics.rows.size(); ++row) {
+        const FormRowMetric& row_metric = metrics.rows[row];
+        if (!row_metric.active) {
+            continue;
+        }
+
+        const Coordinate row_height =
+            std::min(row_metric.height, remaining(final_bounds.height, y));
+
+        const std::size_t label_index = row * 2U;
+        const std::size_t field_index = label_index + 1U;
+        Widget& label = childAt(label_index);
+
+        if (label.isVisible()) {
+            label.arrange({0, y, label_width, row_height});
+        }
+
+        if (field_index < childCount()) {
+            Widget& field = childAt(field_index);
+            if (field.isVisible()) {
+                field.arrange({field_x, y, field_width, row_height});
+            }
+        }
+
+        y = saturatingAdd(y, row_height);
+        ++processed_active;
+
+        if (processed_active < active_rows) {
+            y = saturatingAdd(
+                y,
+                std::min(
+                    row_spacing_,
+                    remaining(final_bounds.height, y)));
+        }
     }
 }
 
