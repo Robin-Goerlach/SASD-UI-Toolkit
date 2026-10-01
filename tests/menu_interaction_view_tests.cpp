@@ -6,6 +6,87 @@
 
 using namespace sasd::ui;
 
+TEST_CASE("Menu bar interaction view exposes current top-level selection and popup state") {
+    Command open{"Open"};
+    Command copy{"Copy"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& edit = bar.appendMenu("Edit");
+    file.appendCommand(open);
+    edit.appendCommand(copy);
+
+    MenuInteractionController controller;
+    CHECK(!menuBarInteractionView(bar, controller).has_value());
+    CHECK(controller.begin(bar, std::size_t{1}));
+
+    const auto active = menuBarInteractionView(bar, controller);
+    CHECK(active.has_value());
+    CHECK(active->menu == &edit);
+    CHECK(active->selection == 1U);
+    CHECK(!active->popup_open);
+
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto open_popup = menuBarInteractionView(bar, controller);
+    CHECK(open_popup.has_value());
+    CHECK(open_popup->menu == &edit);
+    CHECK(open_popup->selection == 1U);
+    CHECK(open_popup->popup_open);
+}
+
+TEST_CASE("Menu bar interaction view follows root-popup top-level switching") {
+    Command open{"Open"};
+    Command copy{"Copy"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& edit = bar.appendMenu("Edit");
+    file.appendCommand(open);
+    edit.appendCommand(copy);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto file_view = menuBarInteractionView(bar, controller);
+    CHECK(file_view.has_value());
+    CHECK(file_view->menu == &file);
+    CHECK(file_view->selection == 0U);
+    CHECK(file_view->popup_open);
+
+    /*
+     * Right on a selected root command switches to the next top-level menu. The presentation helper
+     * does not retain the old File pointer; it re-resolves the new controller index from MenuBarModel.
+     */
+    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
+
+    const auto edit_view = menuBarInteractionView(bar, controller);
+    CHECK(edit_view.has_value());
+    CHECK(edit_view->menu == &edit);
+    CHECK(edit_view->selection == 1U);
+    CHECK(edit_view->popup_open);
+}
+
+TEST_CASE("Menu bar interaction view fails closed for stale top-level selection") {
+    MenuBarModel bar;
+    (void)bar.appendMenu("File");
+    (void)bar.appendMenu("Edit");
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar, std::size_t{1}));
+    CHECK(menuBarInteractionView(bar, controller).has_value());
+
+    /*
+     * clear() can invalidate the selected top-level index between input and presentation. Observation
+     * must not invoke controller normalization as a hidden side effect; it simply refuses to expose a
+     * borrowed MenuModel pointer that cannot be proven against the current bar.
+     */
+    bar.clear();
+
+    CHECK(!menuBarInteractionView(bar, controller).has_value());
+    CHECK(controller.isActive());
+    CHECK(controller.menuBarSelection() == std::optional<std::size_t>{1});
+}
+
 TEST_CASE("Menu interaction view exposes every open popup level without retaining model pointers") {
     Command action{"Action"};
     MenuBarModel bar;

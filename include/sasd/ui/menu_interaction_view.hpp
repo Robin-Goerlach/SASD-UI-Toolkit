@@ -8,6 +8,50 @@
 namespace sasd::ui {
 
 /**
+ * Read-only description of the currently selected top-level menu.
+ *
+ * menu is a borrowed pointer into the caller-owned MenuBarModel. It is valid only for immediate,
+ * synchronous presentation work and must not be retained across structural mutation. selection is the
+ * current top-level index. popup_open reports whether the controller currently represents an open popup
+ * below this menu; concrete popup levels are still queried separately through menuPopupLevelView().
+ */
+struct MenuBarInteractionView {
+    const MenuModel* menu{nullptr};
+    std::size_t selection{0};
+    bool popup_open{false};
+};
+
+/**
+ * Resolves the controller's current top-level selection for immediate presentation.
+ *
+ * The helper is intentionally observational and side-effect free. If menu interaction is inactive, the
+ * controller has no selection, or the retained index is outside the current MenuBarModel, std::nullopt
+ * is returned rather than mutating the controller or guessing another top-level menu. This lets a
+ * presenter fail closed when application code clears or shortens the menu bar between input dispatch
+ * and frame construction.
+ *
+ * The returned pointer is re-resolved from the current MenuBarModel on every call. No pointer is cached
+ * in MenuInteractionController and none should be cached by the presenter. As with MenuPath, the index
+ * is transient interaction state rather than a persistent semantic identity: rebuilding the bar with a
+ * different menu at the same still-valid index cannot be distinguished without introducing explicit
+ * stable menu identities, which this view deliberately does not invent.
+ */
+[[nodiscard]] inline std::optional<MenuBarInteractionView>
+menuBarInteractionView(const MenuBarModel& bar,
+                       const MenuInteractionController& controller) noexcept {
+    if (!controller.isActive()) {
+        return std::nullopt;
+    }
+
+    const auto selection = controller.menuBarSelection();
+    if (!selection.has_value() || *selection >= bar.menuCount()) {
+        return std::nullopt;
+    }
+
+    return MenuBarInteractionView{&bar.menuAt(*selection), *selection, controller.popupOpen()};
+}
+
+/**
  * Read-only description of one currently open popup level.
  *
  * menu is a borrowed pointer into the caller-owned MenuBarModel. It is intentionally returned only as
