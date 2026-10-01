@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/menu_navigation.hpp>
+#include <sasd/ui/menu_path.hpp>
 
 #include <memory>
 #include <optional>
@@ -234,4 +235,83 @@ TEST_CASE("Popup menu key interpretation sanitizes stale non-navigation selectio
         menu, std::size_t{99}, KeyEvent{Key::down, true, KeyModifier::none});
     CHECK(recovered.action == MenuPopupKeyAction::select);
     CHECK(recovered.selection == std::optional<std::size_t>{0});
+}
+
+TEST_CASE("MenuPath resolves root and recursively nested submenu routes") {
+    MenuModel root{"Root"};
+    MenuModel& tools = root.appendSubmenu("Tools");
+    tools.appendSeparator();
+    MenuModel& advanced = tools.appendSubmenu("Advanced");
+
+    const MenuPath root_path{};
+    const MenuPath tools_path{0};
+    const MenuPath advanced_path{0, 1};
+
+    CHECK(resolveMenuPath(root, root_path) == &root);
+    CHECK(resolveMenuPath(root, tools_path) == &tools);
+    CHECK(resolveMenuPath(root, advanced_path) == &advanced);
+}
+
+TEST_CASE("MenuPath rejects command separator and out-of-range route elements") {
+    Command run{"Run"};
+    MenuModel root{"Root"};
+    root.appendCommand(run);
+    root.appendSeparator();
+    (void)root.appendSubmenu("Tools");
+
+    CHECK(resolveMenuPath(root, MenuPath{0}) == nullptr);
+    CHECK(resolveMenuPath(root, MenuPath{1}) == nullptr);
+    CHECK(resolveMenuPath(root, MenuPath{3}) == nullptr);
+    CHECK(resolveMenuPath(root, MenuPath{2, 0}) == nullptr);
+}
+
+TEST_CASE("MenuPath sanitization keeps only the provably valid structural prefix") {
+    MenuModel root{"Root"};
+    MenuModel& tools = root.appendSubmenu("Tools");
+    MenuModel& advanced = tools.appendSubmenu("Advanced");
+    (void)advanced;
+
+    const MenuPath deep_path{0, 0};
+    CHECK(sanitizeMenuPath(root, deep_path) == deep_path);
+
+    /*
+     * A presenter may retain a popup route while application code rebuilds one nested level. We do not
+     * guess a replacement submenu when the old index stops resolving. Recovery truncates to the deepest
+     * parent that still has a proven route, allowing the caller to close only the invalid descendant.
+     */
+    tools.clear();
+    CHECK(sanitizeMenuPath(root, deep_path) == MenuPath{0});
+
+    root.clear();
+    CHECK(sanitizeMenuPath(root, deep_path).empty());
+}
+
+TEST_CASE("MenuPath submenu entry is validated before producing child state") {
+    Command run{"Run"};
+    MenuModel root{"Root"};
+    root.appendCommand(run);
+    MenuModel& tools = root.appendSubmenu("Tools");
+    (void)tools.appendSubmenu("Advanced");
+
+    const auto tools_path = enterMenuSubmenu(root, MenuPath{}, 1);
+    CHECK(tools_path == std::optional<MenuPath>{MenuPath{1}});
+
+    const auto advanced_path = enterMenuSubmenu(root, *tools_path, 0);
+    CHECK(advanced_path == std::optional<MenuPath>{MenuPath{1, 0}});
+
+    CHECK(!enterMenuSubmenu(root, MenuPath{}, 0).has_value());
+    CHECK(!enterMenuSubmenu(root, MenuPath{99}, 0).has_value());
+    CHECK(!enterMenuSubmenu(root, MenuPath{}, 99).has_value());
+}
+
+TEST_CASE("MenuPath parent operation closes exactly one structural level") {
+    const MenuPath deep{2, 4, 1};
+
+    const auto parent = parentMenuPath(deep);
+    CHECK(parent == std::optional<MenuPath>{MenuPath{2, 4}});
+
+    const auto root = parentMenuPath(MenuPath{0});
+    CHECK(root == std::optional<MenuPath>{MenuPath{}});
+
+    CHECK(!parentMenuPath(MenuPath{}).has_value());
 }
