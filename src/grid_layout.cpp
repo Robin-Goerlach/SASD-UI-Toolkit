@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
-#include <utility>
 #include <vector>
 
 namespace sasd::ui {
@@ -49,20 +48,21 @@ struct FormMetrics {
 [[nodiscard]] MeasureConstraints childConstraints(
     const MeasureConstraints& parent) noexcept {
     /*
-     * Multi-child layouts share the parent extent. Passing the parent's minimum to every child would
-     * make each individual cell claim the full minimum. As with VBox/HBox, children get a zero
-     * minimum and inherit only the parent's maximum as a conservative per-child ceiling.
+     * Multi-child layouts share the parent extent. Passing the parent's minimum to each child would
+     * make every cell independently claim the complete parent minimum. Children therefore receive a
+     * zero minimum and only inherit the parent's maximum as a conservative per-child ceiling.
      */
     return {{0, 0}, parent.maximum};
 }
 
 template <typename MeasureChild>
-[[nodiscard]] GridMetrics collectMetrics(Container& grid,
-                                         std::size_t columns,
-                                         const MeasureConstraints& constraints,
-                                         MeasureChild&& measure_child) {
-    GridMetrics result;
-    result.column_widths.assign(columns, 0);
+[[nodiscard]] GridMetrics collectGridMetrics(
+    Container& grid,
+    std::size_t columns,
+    const MeasureConstraints& constraints,
+    MeasureChild&& measure_child) {
+    GridMetrics metrics;
+    metrics.column_widths.assign(columns, 0);
 
     std::size_t visible_index = 0;
     for (std::size_t index = 0; index < grid.childCount(); ++index) {
@@ -73,32 +73,30 @@ template <typename MeasureChild>
 
         const Size desired =
             measure_child(child, childConstraints(constraints));
-
         const std::size_t column = visible_index % columns;
         const std::size_t row = visible_index / columns;
 
-        if (row >= result.row_heights.size()) {
-            result.row_heights.push_back(0);
+        if (row >= metrics.row_heights.size()) {
+            metrics.row_heights.push_back(0);
         }
 
-        result.column_widths[column] =
-            std::max(result.column_widths[column], desired.width);
-        result.row_heights[row] =
-            std::max(result.row_heights[row], desired.height);
+        metrics.column_widths[column] =
+            std::max(metrics.column_widths[column], desired.width);
+        metrics.row_heights[row] =
+            std::max(metrics.row_heights[row], desired.height);
         ++visible_index;
     }
 
     /*
-     * If the last logical columns are empty, keeping zero-width tracks would still insert spacing
-     * after real content. Trim only trailing empty columns; interior empty columns cannot occur in the
-     * row-major no-span model because visible children fill cells densely.
+     * Dense row-major placement cannot create an interior empty column. Trailing empty columns can
+     * occur in the final partial row and must not manufacture spacing after the final occupied track.
      */
-    while (!result.column_widths.empty() &&
-           result.column_widths.back() == 0) {
-        result.column_widths.pop_back();
+    while (!metrics.column_widths.empty() &&
+           metrics.column_widths.back() == 0) {
+        metrics.column_widths.pop_back();
     }
 
-    return result;
+    return metrics;
 }
 
 template <typename MeasureChild>
@@ -106,8 +104,8 @@ template <typename MeasureChild>
     FormLayout& form,
     const MeasureConstraints& constraints,
     MeasureChild&& measure_child) {
-    FormMetrics result;
-    result.rows.reserve(form.rowCount());
+    FormMetrics metrics;
+    metrics.rows.reserve(form.rowCount());
 
     for (std::size_t row = 0; row < form.rowCount(); ++row) {
         const std::size_t label_index = row * 2U;
@@ -124,38 +122,38 @@ template <typename MeasureChild>
         if (label.isVisible()) {
             const Size desired =
                 measure_child(label, childConstraints(constraints));
-            result.label_width =
-                std::max(result.label_width, desired.width);
+            metrics.label_width =
+                std::max(metrics.label_width, desired.width);
             row_metric.height =
                 std::max(row_metric.height, desired.height);
             row_metric.active = true;
-            result.has_visible_label = true;
+            metrics.has_visible_label = true;
         }
 
         if (field != nullptr && field->isVisible()) {
             const Size desired =
                 measure_child(*field, childConstraints(constraints));
-            result.field_width =
-                std::max(result.field_width, desired.width);
+            metrics.field_width =
+                std::max(metrics.field_width, desired.width);
             row_metric.height =
                 std::max(row_metric.height, desired.height);
             row_metric.active = true;
-            result.has_visible_field = true;
+            metrics.has_visible_field = true;
         }
 
         /*
-         * Keep one metric entry for every structural pair, including fully hidden rows. Pair identity
-         * must not depend on visibility; otherwise hiding one label would reclassify every following
-         * field as a label cell.
+         * Preserve one metric entry per structural pair even when the complete row is hidden. Pair
+         * identity must never be repacked from the currently visible children.
          */
-        result.rows.push_back(row_metric);
+        metrics.rows.push_back(row_metric);
     }
 
-    return result;
+    return metrics;
 }
 
-[[nodiscard]] Coordinate sumTracks(const std::vector<Coordinate>& tracks,
-                                   Coordinate spacing) noexcept {
+[[nodiscard]] Coordinate sumTracks(
+    const std::vector<Coordinate>& tracks,
+    Coordinate spacing) noexcept {
     Coordinate total = 0;
 
     for (std::size_t index = 0; index < tracks.size(); ++index) {
@@ -168,17 +166,27 @@ template <typename MeasureChild>
     return total;
 }
 
-[[nodiscard]] Size desiredSize(const GridMetrics& metrics,
-                               Coordinate column_spacing,
-                               Coordinate row_spacing) noexcept {
+/**
+ * Computes GridLayout's intrinsic result.
+ *
+ * The explicit grid prefix is intentional. Widget already exposes desiredSize(), and an unqualified
+ * helper named desiredSize() inside a GridLayout member is hidden by that inherited member during C++
+ * name lookup. A distinct implementation-helper name avoids relying on subtle lookup rules and keeps
+ * warnings-as-errors builds identical across GCC, Clang and MSVC.
+ */
+[[nodiscard]] Size gridDesiredSize(
+    const GridMetrics& metrics,
+    Coordinate column_spacing,
+    Coordinate row_spacing) noexcept {
     return {
         sumTracks(metrics.column_widths, column_spacing),
         sumTracks(metrics.row_heights, row_spacing)};
 }
 
-[[nodiscard]] Size formDesiredSize(const FormMetrics& metrics,
-                                   Coordinate column_spacing,
-                                   Coordinate row_spacing) noexcept {
+[[nodiscard]] Size formDesiredSize(
+    const FormMetrics& metrics,
+    Coordinate column_spacing,
+    Coordinate row_spacing) noexcept {
     Coordinate width = metrics.label_width;
     if (metrics.has_visible_label && metrics.has_visible_field) {
         width = saturatingAdd(width, column_spacing);
@@ -193,7 +201,6 @@ template <typename MeasureChild>
         if (!row.active) {
             continue;
         }
-
         if (!first_active) {
             height = saturatingAdd(height, row_spacing);
         }
@@ -205,11 +212,10 @@ template <typename MeasureChild>
 }
 
 /**
- * Clips intrinsic track sizes against the final extent in deterministic track order.
+ * Clips intrinsic tracks against final space in deterministic track order.
  *
- * GridLayout deliberately mirrors VBox/HBox's current shortage policy: earlier tracks keep their
- * intrinsic size first; later tracks receive only the remaining extent. Extra space is not distributed
- * yet. That keeps the initial grid deterministic until M4 gains an explicit stretch/weight contract.
+ * This intentionally mirrors the first VBox/HBox shortage policy: earlier tracks keep their desired
+ * extent first, while later tracks receive only what remains. Extra space is not distributed yet.
  */
 [[nodiscard]] std::vector<Coordinate> arrangedTracks(
     const std::vector<Coordinate>& intrinsic,
@@ -220,8 +226,8 @@ template <typename MeasureChild>
 
     Coordinate cursor = 0;
     for (std::size_t index = 0; index < intrinsic.size(); ++index) {
-        const Coordinate available = remaining(final_extent, cursor);
-        const Coordinate extent = std::min(intrinsic[index], available);
+        const Coordinate extent =
+            std::min(intrinsic[index], remaining(final_extent, cursor));
         result.push_back(extent);
         cursor = saturatingAdd(cursor, extent);
 
@@ -308,7 +314,7 @@ void GridLayout::setRowSpacing(Coordinate spacing) {
 
 Size GridLayout::onMeasure(const MeasureConstraints& constraints) {
     const GridMetrics metrics =
-        collectMetrics(
+        collectGridMetrics(
             *this,
             columns_,
             constraints,
@@ -317,13 +323,14 @@ Size GridLayout::onMeasure(const MeasureConstraints& constraints) {
                 return child.measure(child_constraints);
             });
 
-    return desiredSize(metrics, column_spacing_, row_spacing_);
+    return gridDesiredSize(metrics, column_spacing_, row_spacing_);
 }
 
-Size GridLayout::onMeasure(const MeasurementContext& context,
-                           const MeasureConstraints& constraints) {
+Size GridLayout::onMeasure(
+    const MeasurementContext& context,
+    const MeasureConstraints& constraints) {
     const GridMetrics metrics =
-        collectMetrics(
+        collectGridMetrics(
             *this,
             columns_,
             constraints,
@@ -332,13 +339,13 @@ Size GridLayout::onMeasure(const MeasurementContext& context,
                 return child.measure(context, child_constraints);
             });
 
-    return desiredSize(metrics, column_spacing_, row_spacing_);
+    return gridDesiredSize(metrics, column_spacing_, row_spacing_);
 }
 
 void GridLayout::onArrange(Rect final_bounds) {
     /*
-     * Arrangement consumes the already measured desiredSize() values, preserving the same
-     * measure-before-arrange lifecycle as VBox/HBox. No MeasurementContext is retained by the layout.
+     * Rebuild track maxima from the children's last desiredSize() values. Layout therefore follows
+     * the normal measure-before-arrange lifecycle and does not retain a MeasurementContext.
      */
     GridMetrics metrics;
     metrics.column_widths.assign(columns_, 0);
@@ -352,7 +359,6 @@ void GridLayout::onArrange(Rect final_bounds) {
 
         const std::size_t column = visible_index % columns_;
         const std::size_t row = visible_index / columns_;
-
         if (row >= metrics.row_heights.size()) {
             metrics.row_heights.push_back(0);
         }
@@ -380,7 +386,6 @@ void GridLayout::onArrange(Rect final_bounds) {
             metrics.row_heights,
             row_spacing_,
             final_bounds.height);
-
     const std::vector<Coordinate> column_origins =
         trackOrigins(
             column_widths,
@@ -404,9 +409,8 @@ void GridLayout::onArrange(Rect final_bounds) {
         ++visible_index;
 
         /*
-         * A row/column can be completely clipped once final space is exhausted. Keep arranging later
-         * visible children into deterministic zero-extent cells instead of leaving stale geometry from
-         * a previous larger arrangement.
+         * Later tracks can be fully exhausted. Arrange their children into deterministic zero-extent
+         * cells rather than leaving stale geometry from a previous larger layout pass.
          */
         const Coordinate x =
             column < column_origins.size()
@@ -468,8 +472,9 @@ Size FormLayout::onMeasure(const MeasureConstraints& constraints) {
     return formDesiredSize(metrics, column_spacing_, row_spacing_);
 }
 
-Size FormLayout::onMeasure(const MeasurementContext& context,
-                           const MeasureConstraints& constraints) {
+Size FormLayout::onMeasure(
+    const MeasurementContext& context,
+    const MeasureConstraints& constraints) {
     const FormMetrics metrics =
         collectFormMetrics(
             *this,
@@ -484,8 +489,8 @@ Size FormLayout::onMeasure(const MeasurementContext& context,
 
 void FormLayout::onArrange(Rect final_bounds) {
     /*
-     * Reconstruct track metrics from already measured child desired sizes. This preserves the normal
-     * measure-before-arrange contract and avoids retaining any MeasurementContext in layout state.
+     * Reuse the measurement collector with each child's cached desired size. Structural row pairing is
+     * therefore identical in measure and arrange, including partially hidden and label-only rows.
      */
     const FormMetrics metrics =
         collectFormMetrics(
@@ -510,9 +515,8 @@ void FormLayout::onArrange(Rect final_bounds) {
     }
 
     /*
-     * FormLayout's key specialization over GridLayout is the expanding field column. Labels keep a
-     * stable intrinsic width while controls receive every remaining logical unit. This makes the form
-     * useful in resizable terminal/desktop surfaces without introducing general Grid star sizing yet.
+     * This is FormLayout's intentional specialization over GridLayout: the label track remains
+     * intrinsic while the field track consumes all remaining horizontal space.
      */
     const Coordinate field_width =
         metrics.has_visible_field
@@ -536,7 +540,9 @@ void FormLayout::onArrange(Rect final_bounds) {
         }
 
         const Coordinate row_height =
-            std::min(row_metric.height, remaining(final_bounds.height, y));
+            std::min(
+                row_metric.height,
+                remaining(final_bounds.height, y));
 
         const std::size_t label_index = row * 2U;
         const std::size_t field_index = label_index + 1U;
