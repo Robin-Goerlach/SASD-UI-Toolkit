@@ -24,6 +24,13 @@ namespace sasd::ui::terminal {
  * - if frame rendering rejects representability or directional metadata, the renderer's own transactional
  *   preflight leaves the previous buffer contents unchanged.
  *
+ * This function paints only the menu geometry that exists in the current interaction snapshot. It does not
+ * remember or erase geometry from an older popup that has since closed. Callers that repeatedly compose
+ * transient menus over stable application content should rebuild from an explicit base frame through
+ * composeMenuInteractionPresentation() rather than treating this in-place primitive as a retained overlay
+ * manager. Keeping old-frame damage outside this function prevents hidden presentation history from entering
+ * the semantic menu pipeline.
+ *
  * The function does not mutate MenuInteractionController, normalize stale semantic state, execute commands,
  * present the ScreenBuffer to a terminal device, or retain pointers into MenuBarModel. Allocation failures
  * are not converted to false; they follow the surrounding library's ordinary exception behavior.

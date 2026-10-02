@@ -1,7 +1,7 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/menu_frame_builder.hpp>
-#include <sasd/ui/terminal/menu_interaction_presentation.hpp>
 
 #include <optional>
 
@@ -112,101 +112,95 @@ TEST_CASE("Terminal menu frame builder rejects a child that cannot fit beside it
     CHECK(!buildMenuPresentationFrame(bar, controller, {0, 0}, {12, 8}).has_value());
 }
 
-TEST_CASE("Terminal menu interaction presentation renders the persistent bar without active interaction") {
+TEST_CASE("Terminal menu composition preserves the immutable base outside current menu chrome") {
+    ScreenBuffer base{{20, 6}};
+    base.clear(Cell{U'.'});
+
     MenuBarModel bar;
     (void)bar.appendMenu("File");
     (void)bar.appendMenu("Help");
     MenuInteractionController controller;
 
-    ScreenBuffer buffer{{24, 5}};
-    buffer.clear(Cell{U'.'});
-
-    CHECK(renderMenuInteractionPresentation(buffer, bar, controller, {1, 1}));
+    const auto composed = composeMenuInteractionPresentation(base, bar, controller);
+    CHECK(composed.has_value());
 
     /*
-     * The convenience boundary must not invent a separate layout contract. It uses the same one-cell
-     * padding on each side of a title as the standalone menu-bar renderer, so "File" starts at x=2 when
-     * the bar origin is x=1. Cells outside the painted title span remain untouched.
+     * The persistent bar overlays row zero, while unrelated application cells remain exactly as supplied
+     * by the explicit base frame. The source buffer is const input and must not become hidden mutable state.
      */
-    CHECK(buffer.at({1, 1}).code_point == U' ');
-    CHECK(buffer.at({2, 1}).code_point == U'F');
-    CHECK(buffer.at({5, 1}).code_point == U'e');
-    CHECK(buffer.at({6, 1}).code_point == U' ');
-    CHECK(buffer.at({0, 1}).code_point == U'.');
+    CHECK(composed->at({0, 0}).code_point == U' ');
+    CHECK(composed->at({1, 0}).code_point == U'F');
+    CHECK(composed->at({0, 2}).code_point == U'.');
+    CHECK(base.at({1, 0}).code_point == U'.');
+    CHECK(base.at({0, 2}).code_point == U'.');
 }
 
-TEST_CASE("Terminal menu interaction presentation carries fitted submenu direction through to cells") {
-    Command action{"Action"};
+TEST_CASE("Terminal menu composition restores covered base cells when a popup closes") {
+    Command open{"Open"};
     MenuBarModel bar;
     MenuModel& file = bar.appendMenu("File");
-    MenuModel& tools = file.appendSubmenu("Tools");
-    tools.appendCommand(action);
+    file.appendCommand(open);
+
+    ScreenBuffer base{{20, 6}};
+    base.clear(Cell{U'.'});
 
     MenuInteractionController controller;
     CHECK(controller.begin(bar));
     (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
-    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
 
-    ScreenBuffer buffer{{20, 8}};
-    buffer.clear(Cell{U'.'});
-
-    CHECK(renderMenuInteractionPresentation(buffer, bar, controller, {10, 0}));
+    const auto open_frame = composeMenuInteractionPresentation(base, bar, controller);
+    CHECK(open_frame.has_value());
+    CHECK(open_frame->at({1, 1}).code_point == U'O');
 
     /*
-     * This is intentionally an end-to-end presentation assertion rather than another placement-unit test.
-     * The builder must choose the left side, attach that decision to the parent frame layer, and the frame
-     * renderer must finally turn it into '<'. The child command itself begins at x=3 because its popup is
-     * fitted to x=2 and owns one leading padding cell.
+     * Closing the popup removes its geometry from current interaction state. Composition starts from base
+     * again, so the old popup cells are restored without an erase pass or retained damage rectangle.
      */
-    CHECK(buffer.at({17, 1}).code_point == U'<');
-    CHECK(buffer.at({17, 1}).style.inverse);
-    CHECK(buffer.at({3, 1}).code_point == U'A');
+    controller.reset();
+    const auto closed_frame = composeMenuInteractionPresentation(base, bar, controller);
+    CHECK(closed_frame.has_value());
+    CHECK(closed_frame->at({1, 1}).code_point == U'.');
+    CHECK(closed_frame->at({1, 0}).code_point == U'F');
 }
 
-TEST_CASE("Terminal menu interaction presentation leaves the previous frame intact for stale interaction") {
-    Command action{"Action"};
+TEST_CASE("Terminal menu composition fails closed without modifying the base frame") {
+    ScreenBuffer base{{12, 4}};
+    base.clear(Cell{U'#'});
+
     MenuBarModel bar;
-    MenuModel& file = bar.appendMenu("File");
-    MenuModel& tools = file.appendSubmenu("Tools");
-    tools.appendCommand(action);
-
-    MenuInteractionController controller;
-    CHECK(controller.begin(bar));
-    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
-    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
-    CHECK(controller.popupDepth() == 2U);
-
-    ScreenBuffer buffer{{20, 6}};
-    buffer.clear(Cell{U'Z'});
-
-    /*
-     * Presentation can race semantically with ordinary application-side menu rebuilding even in a single-
-     * threaded event loop: mutation may happen after one input transaction and before the next controller
-     * normalization. The orchestration helper must therefore fail before painting any part of the new frame.
-     */
-    file.clear();
-
-    CHECK(!renderMenuInteractionPresentation(buffer, bar, controller, {0, 0}));
-    CHECK(buffer.at({0, 0}).code_point == U'Z');
-    CHECK(buffer.at({19, 5}).code_point == U'Z');
-    CHECK(controller.popupDepth() == 2U);
-}
-
-TEST_CASE("Terminal menu interaction presentation preserves renderer fail-closed text semantics") {
-    MenuBarModel bar;
+    /* Combining marks are intentionally outside the current simple-cell rendering contract. */
     (void)bar.appendMenu("A\xCC\x81");
     MenuInteractionController controller;
 
-    ScreenBuffer buffer{{12, 3}};
-    buffer.clear(Cell{U'Q'});
+    const auto composed = composeMenuInteractionPresentation(base, bar, controller);
+    CHECK(!composed.has_value());
+
+    CHECK(base.at({0, 0}).code_point == U'#');
+    CHECK(base.at({5, 2}).code_point == U'#');
+}
+
+TEST_CASE("Terminal menu composition uses the base size as the popup fitting viewport") {
+    Command action{"Action"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(action);
+
+    ScreenBuffer base{{20, 8}};
+    base.clear(Cell{U'.'});
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
+
+    const auto composed = composeMenuInteractionPresentation(base, bar, controller, {10, 0});
+    CHECK(composed.has_value());
 
     /*
-     * A bar-only frame can be constructed without needing popup geometry, so unsupported combining text is
-     * finally rejected by renderMenuPresentationFrame(). The convenience boundary must preserve that
-     * transaction: no title cell may be cleared before the renderer has completed its representability
-     * preflight.
+     * The child cannot fit to the right of the root inside this 20-cell base/viewport, so the existing
+     * direction-aware placement policy opens it to the left and the composed parent row carries '<'.
      */
-    CHECK(!renderMenuInteractionPresentation(buffer, bar, controller));
-    CHECK(buffer.at({0, 0}).code_point == U'Q');
-    CHECK(buffer.at({11, 2}).code_point == U'Q');
+    CHECK(composed->at({17, 1}).code_point == U'<');
+    CHECK(composed->at({3, 1}).code_point == U'A');
 }
