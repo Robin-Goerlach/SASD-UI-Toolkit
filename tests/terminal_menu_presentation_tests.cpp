@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/terminal/menu_bar_presentation.hpp>
+#include <sasd/ui/terminal/menu_frame_presentation.hpp>
 #include <sasd/ui/terminal/menu_presentation.hpp>
 
 #include <optional>
@@ -188,4 +189,78 @@ TEST_CASE("Terminal popup renderer leaves the previous frame untouched when pref
     CHECK(!renderMenuPopupPresentation(buffer, {0, 0}, snapshot));
     CHECK(buffer.at({0, 0}).code_point == U'Z');
     CHECK(buffer.at({7, 1}).code_point == U'Z');
+}
+
+TEST_CASE("Terminal menu frame renderer composes bar and popup layers") {
+    ScreenBuffer buffer{{24, 5}};
+    buffer.clear(Cell{U'.'});
+
+    MenuFramePresentationSnapshot frame;
+    frame.menu_bar_origin = {1, 0};
+    frame.menu_bar.titles = {"File", "Help"};
+    frame.menu_bar.selection = std::size_t{0};
+
+    PositionedMenuPopupPresentationSnapshot popup;
+    popup.origin = {1, 1};
+    popup.snapshot.selection = std::size_t{0};
+    popup.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+    frame.popups.push_back(std::move(popup));
+
+    CHECK(renderMenuPresentationFrame(buffer, frame));
+
+    CHECK(buffer.at({2, 0}).code_point == U'F');
+    CHECK(buffer.at({1, 0}).style.inverse);
+    CHECK(buffer.at({2, 1}).code_point == U'O');
+    CHECK(buffer.at({1, 1}).style.inverse);
+    CHECK(buffer.at({0, 0}).code_point == U'.');
+}
+
+TEST_CASE("Terminal menu frame renderer preflights every layer before mutating the buffer") {
+    ScreenBuffer buffer{{12, 4}};
+    buffer.clear(Cell{U'Z'});
+
+    MenuFramePresentationSnapshot frame;
+    frame.menu_bar.titles = {"File"};
+
+    PositionedMenuPopupPresentationSnapshot invalid_popup;
+    invalid_popup.origin = {0, 1};
+    invalid_popup.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "A\xCC\x81", true, std::nullopt});
+    frame.popups.push_back(std::move(invalid_popup));
+
+    /*
+     * The menu bar is individually renderable, but the complete frame is not. Frame-level preflight must
+     * therefore reject the transaction before even the valid bar clears cells from the previous frame.
+     */
+    CHECK(!renderMenuPresentationFrame(buffer, frame));
+    CHECK(buffer.at({0, 0}).code_point == U'Z');
+    CHECK(buffer.at({0, 1}).code_point == U'Z');
+    CHECK(buffer.at({11, 3}).code_point == U'Z');
+}
+
+TEST_CASE("Terminal menu frame renderer paints later popup layers last") {
+    ScreenBuffer buffer{{12, 4}};
+    buffer.clear(Cell{U'.'});
+
+    MenuFramePresentationSnapshot frame;
+    frame.menu_bar.titles = {"File"};
+
+    PositionedMenuPopupPresentationSnapshot first;
+    first.origin = {0, 1};
+    first.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "First", true, std::nullopt});
+    frame.popups.push_back(std::move(first));
+
+    PositionedMenuPopupPresentationSnapshot second;
+    second.origin = {0, 1};
+    second.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Second", true, std::nullopt});
+    frame.popups.push_back(std::move(second));
+
+    CHECK(renderMenuPresentationFrame(buffer, frame));
+
+    /* Later layers define the visible result where transient popup rectangles overlap. */
+    CHECK(buffer.at({1, 1}).code_point == U'S');
+    CHECK(buffer.at({6, 1}).code_point == U'd');
 }
