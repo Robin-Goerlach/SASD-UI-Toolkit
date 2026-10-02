@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/shortcut.hpp>
+#include <sasd/ui/shortcut_display.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -137,4 +138,38 @@ TEST_CASE("ShortcutMap rejects unknown key bindings") {
     }
 
     CHECK(threw);
+}
+
+TEST_CASE("Shortcut display text formats every current function-key identity") {
+    CHECK(shortcutDisplayText({Key::f1, KeyModifier::none}) == "F1");
+    CHECK(shortcutDisplayText({Key::f5, KeyModifier::none}) == "F5");
+    CHECK(shortcutDisplayText({Key::f10, KeyModifier::none}) == "F10");
+    CHECK(shortcutDisplayText({Key::f12, KeyModifier::none}) == "F12");
+}
+
+TEST_CASE("Shortcut display text uses deterministic modifier order") {
+    const KeyModifier modifiers = KeyModifier::shift | KeyModifier::meta |
+                                  KeyModifier::control | KeyModifier::alt;
+
+    /*
+     * The input bit order is irrelevant. Presentation order is one toolkit-wide convention so a
+     * Terminal menu and a Rendered menu cannot label the same Shortcut differently merely because
+     * their renderers were implemented at different times.
+     */
+    CHECK(shortcutDisplayText({Key::f5, modifiers}) == "Ctrl+Alt+Shift+Meta+F5");
+    CHECK(shortcutDisplayText({Key::escape, KeyModifier::control | KeyModifier::shift}) ==
+          "Ctrl+Shift+Esc");
+}
+
+TEST_CASE("Shortcut display text covers current navigation keys and rejects unknown") {
+    CHECK(shortcutDisplayText({Key::enter, KeyModifier::none}) == "Enter");
+    CHECK(shortcutDisplayText({Key::delete_forward, KeyModifier::alt}) == "Alt+Delete");
+    CHECK(shortcutDisplayText({Key::page_up, KeyModifier::control}) == "Ctrl+PageUp");
+    CHECK(shortcutDisplayText({Key::left, KeyModifier::shift}) == "Shift+Left");
+
+    /*
+     * Key::unknown is deliberately not rendered as a modifier-only gesture. Shortcut::matches()
+     * rejects unknown identity, so displaying "Ctrl" here would advertise an action that cannot fire.
+     */
+    CHECK(shortcutDisplayText({Key::unknown, KeyModifier::control}).empty());
 }
