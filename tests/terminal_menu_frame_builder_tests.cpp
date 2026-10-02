@@ -204,3 +204,65 @@ TEST_CASE("Terminal menu composition uses the base size as the popup fitting vie
     CHECK(composed->at({17, 1}).code_point == U'<');
     CHECK(composed->at({3, 1}).code_point == U'A');
 }
+
+TEST_CASE("Terminal menu composed frame preserves the application caret while menus are inactive") {
+    ScreenBuffer base{{20, 6}};
+    base.clear(Cell{U'.'});
+
+    MenuBarModel bar;
+    (void)bar.appendMenu("File");
+    MenuInteractionController controller;
+
+    const std::optional<Point> base_caret{Point{7, 3}};
+    const auto composed = composeMenuInteractionFrame(base, base_caret, bar, controller);
+    CHECK(composed.has_value());
+    CHECK(composed->caret == base_caret);
+
+    /*
+     * Cell composition and caret composition are one frame-level result, but an inactive menu must not
+     * interfere with the caret request produced by the underlying application presentation.
+     */
+    CHECK(composed->buffer.at({1, 0}).code_point == U'F');
+    CHECK(base.at({7, 3}).code_point == U'.');
+}
+
+TEST_CASE("Terminal menu composed frame suppresses and later restores the application caret") {
+    ScreenBuffer base{{20, 6}};
+    base.clear(Cell{U'.'});
+
+    MenuBarModel bar;
+    (void)bar.appendMenu("File");
+    MenuInteractionController controller;
+    const std::optional<Point> base_caret{Point{5, 2}};
+
+    CHECK(controller.begin(bar));
+    const auto active_frame = composeMenuInteractionFrame(base, base_caret, bar, controller);
+    CHECK(active_frame.has_value());
+    CHECK(!active_frame->caret.has_value());
+
+    /*
+     * Menu activation owns keyboard attention only at the presentation level. Resetting the transient
+     * controller must therefore reveal the same base caret without any FocusManager/TextField round trip.
+     */
+    controller.reset();
+    const auto restored_frame = composeMenuInteractionFrame(base, base_caret, bar, controller);
+    CHECK(restored_frame.has_value());
+    CHECK(restored_frame->caret == base_caret);
+}
+
+TEST_CASE("Terminal menu composed frame fails closed before publishing caret metadata") {
+    ScreenBuffer base{{12, 4}};
+    base.clear(Cell{U'#'});
+
+    MenuBarModel bar;
+    (void)bar.appendMenu("A\xCC\x81");
+    MenuInteractionController controller;
+    const std::optional<Point> base_caret{Point{2, 2}};
+
+    const auto composed = composeMenuInteractionFrame(base, base_caret, bar, controller);
+    CHECK(!composed.has_value());
+
+    /* The rejected composition remains observational: neither source cells nor source metadata are mutable. */
+    CHECK(base.at({2, 2}).code_point == U'#');
+    CHECK(base_caret == std::optional<Point>{Point{2, 2}});
+}
