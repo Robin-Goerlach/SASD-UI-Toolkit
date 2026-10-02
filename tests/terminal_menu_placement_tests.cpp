@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/terminal/menu_placement.hpp>
+#include <sasd/ui/terminal/menu_viewport_placement.hpp>
 
 #include <limits>
 #include <optional>
@@ -80,4 +81,83 @@ TEST_CASE("Terminal submenu natural placement fails closed on coordinate overflo
         MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt});
 
     CHECK(!naturalSubmenuPopupOrigin(parent, 0).has_value());
+}
+
+TEST_CASE("Terminal viewport fitting preserves a naturally visible popup origin") {
+    MenuPopupPresentationSnapshot popup;
+    popup.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    const auto fitted = fitMenuPopupOriginToViewport(popup, {5, 3}, {20, 10});
+    CHECK(fitted.has_value());
+    CHECK(*fitted == Point{5, 3});
+}
+
+TEST_CASE("Terminal viewport fitting shifts right and bottom overflow inward") {
+    MenuPopupPresentationSnapshot popup;
+    popup.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    const auto measured = measureMenuPopupPresentation(popup);
+    CHECK(measured.has_value());
+    CHECK(measured->size == Size{6, 1});
+
+    /*
+     * A six-cell popup in a ten-cell viewport can start no farther right than x=4. Its one-row height in
+     * a four-row viewport similarly makes y=3 the final fully visible row. The fitting policy moves only
+     * the overflowing axes; it does not reinterpret menu ancestry or interaction state.
+     */
+    const auto fitted = fitMenuPopupOriginToViewport(popup, {8, 4}, {10, 4});
+    CHECK(fitted.has_value());
+    CHECK(*fitted == Point{4, 3});
+}
+
+TEST_CASE("Terminal viewport fitting clamps negative natural origins to the viewport") {
+    MenuPopupPresentationSnapshot popup;
+    popup.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    const auto fitted = fitMenuPopupOriginToViewport(popup, {-12, -7}, {20, 10});
+    CHECK(fitted.has_value());
+    CHECK(*fitted == Point{0, 0});
+}
+
+TEST_CASE("Terminal viewport fitting rejects popups that cannot fit completely") {
+    MenuPopupPresentationSnapshot too_wide;
+    too_wide.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Unavailable", true, std::nullopt});
+    CHECK(!fitMenuPopupOriginToViewport(too_wide, {0, 0}, {12, 5}).has_value());
+
+    MenuPopupPresentationSnapshot too_tall;
+    too_tall.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "One", true, std::nullopt});
+    too_tall.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Two", true, std::nullopt});
+    CHECK(!fitMenuPopupOriginToViewport(too_tall, {0, 0}, {20, 1}).has_value());
+}
+
+TEST_CASE("Terminal viewport fitting rejects malformed viewports and unrenderable popup text") {
+    MenuPopupPresentationSnapshot popup;
+    popup.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    CHECK(!fitMenuPopupOriginToViewport(popup, {0, 0}, {-1, 10}).has_value());
+    CHECK(!fitMenuPopupOriginToViewport(popup, {0, 0}, {20, -1}).has_value());
+
+    popup.items.clear();
+    popup.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "A\xCC\x81", true, std::nullopt});
+    CHECK(!fitMenuPopupOriginToViewport(popup, {0, 0}, {20, 10}).has_value());
+}
+
+TEST_CASE("Terminal viewport fitting permits an empty popup on the bottom edge") {
+    MenuPopupPresentationSnapshot popup;
+
+    const auto measured = measureMenuPopupPresentation(popup);
+    CHECK(measured.has_value());
+    CHECK(measured->size == Size{3, 0});
+
+    const auto fitted = fitMenuPopupOriginToViewport(popup, {9, 8}, {10, 4});
+    CHECK(fitted.has_value());
+    CHECK(*fitted == Point{7, 4});
 }
