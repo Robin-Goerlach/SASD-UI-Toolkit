@@ -52,15 +52,21 @@ TEST_CASE("Terminal menu frame builder carries flipped child direction into the 
     CHECK(controller.popupDepth() == 2U);
 
     /*
-     * The root popup is nine cells wide and naturally starts at x=10. In a 20-cell viewport the six-cell
-     * child cannot fit at x=19, but does fit immediately to the parent's left at x=4. The builder must keep
-     * that placement decision beside the parent snapshot so frame rendering can draw a '<' marker later.
+     * The root popup is nine cells wide and naturally starts at x=10. In a 20-cell viewport the child
+     * command popup is eight cells wide ("Action" plus the two outer padding cells), so it cannot fit at
+     * the natural right-hand x=19. The side-preserving fallback therefore opens it immediately to the
+     * parent's left at x=10-8=2. The builder must keep that placement decision beside the parent snapshot
+     * so frame rendering can draw a '<' marker later.
+     *
+     * Keeping this expectation derived from the measurement contract matters: popup width belongs to the
+     * presentation snapshot, not to the submenu title that opened it. The earlier expectation of x=4
+     * accidentally used the wrong child width and therefore tested arithmetic that the renderer never uses.
      */
     const auto frame = buildMenuPresentationFrame(bar, controller, {10, 0}, {20, 8});
     CHECK(frame.has_value());
     CHECK(frame->popups.size() == 2U);
     CHECK(frame->popups[0].origin == Point{10, 1});
-    CHECK(frame->popups[1].origin == Point{4, 1});
+    CHECK(frame->popups[1].origin == Point{2, 1});
     CHECK(frame->popups[0].active_submenu_direction.has_value());
     CHECK(frame->popups[0].active_submenu_direction->item_index == 0U);
     CHECK(frame->popups[0].active_submenu_direction->side == SubmenuPopupSide::left);
