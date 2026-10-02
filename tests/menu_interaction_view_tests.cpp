@@ -2,6 +2,7 @@
 
 #include <sasd/ui/menu_interaction_view.hpp>
 
+#include <memory>
 #include <optional>
 
 using namespace sasd::ui;
@@ -187,4 +188,124 @@ TEST_CASE("Menu interaction view rejects inactive and closed popup state") {
 
     controller.reset();
     CHECK(!menuPopupLevelView(bar, controller, 0).has_value());
+}
+
+TEST_CASE("Menu bar presentation snapshot owns titles and validated interaction state") {
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& edit = bar.appendMenu("Edit");
+    Command copy{"Copy"};
+    edit.appendCommand(copy);
+
+    MenuInteractionController controller;
+
+    /*
+     * The menu bar remains visible even when keyboard menu interaction is inactive. The owned snapshot
+     * therefore always copies structural titles, while selection/popup state is optional and validated
+     * independently against the controller.
+     */
+    const auto inactive = snapshotMenuBarPresentation(bar, controller);
+    CHECK(inactive.titles.size() == 2U);
+    CHECK(inactive.titles[0] == "File");
+    CHECK(inactive.titles[1] == "Edit");
+    CHECK(!inactive.selection.has_value());
+    CHECK(!inactive.popup_open);
+
+    CHECK(controller.begin(bar, std::size_t{1}));
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto active = snapshotMenuBarPresentation(bar, controller);
+    CHECK(active.titles.size() == 2U);
+    CHECK(active.selection == std::optional<std::size_t>{1});
+    CHECK(active.popup_open);
+
+    /*
+     * Frame data is owned. Mutating or deleting the semantic source after snapshot creation cannot
+     * change strings or indices already handed to a backend that is finishing the current frame.
+     */
+    file.setTitle("Changed");
+    bar.clear();
+    CHECK(active.titles[0] == "File");
+    CHECK(active.titles[1] == "Edit");
+    CHECK(active.selection == std::optional<std::size_t>{1});
+    CHECK(active.popup_open);
+
+    const auto stale = snapshotMenuBarPresentation(bar, controller);
+    CHECK(stale.titles.empty());
+    CHECK(!stale.selection.has_value());
+    CHECK(!stale.popup_open);
+}
+
+TEST_CASE("Popup presentation snapshot owns live item semantics for one render transaction") {
+    auto command = std::make_unique<Command>("Run");
+    command->setEnabled(true);
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(*command, Shortcut{Key::f1, KeyModifier::none});
+    file.appendSeparator();
+    MenuModel& tools = file.appendSubmenu("Tools");
+    (void)tools;
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+
+    const auto snapshot = snapshotMenuPopupPresentation(bar, controller, 0);
+    CHECK(snapshot.has_value());
+    CHECK(snapshot->selection == std::optional<std::size_t>{0});
+    CHECK(snapshot->items.size() == 3U);
+
+    CHECK(snapshot->items[0].kind == MenuItemKind::command);
+    CHECK(snapshot->items[0].text == "Run");
+    CHECK(snapshot->items[0].enabled);
+    CHECK(snapshot->items[0].shortcut.has_value());
+    CHECK(*snapshot->items[0].shortcut == Shortcut{Key::f1, KeyModifier::none});
+
+    CHECK(snapshot->items[1].kind == MenuItemKind::separator);
+    CHECK(snapshot->items[1].text.empty());
+    CHECK(!snapshot->items[1].enabled);
+    CHECK(!snapshot->items[1].shortcut.has_value());
+
+    CHECK(snapshot->items[2].kind == MenuItemKind::submenu);
+    CHECK(snapshot->items[2].text == "Tools");
+    CHECK(snapshot->items[2].enabled);
+
+    /*
+     * The snapshot intentionally outlives the exact semantic state it sampled. This is the reason for
+     * copying text/flags instead of handing a renderer string_view or Command/MenuItem references.
+     */
+    command->setText("Changed");
+    command->setEnabled(false);
+    command.reset();
+    file.clear();
+
+    CHECK(snapshot->items[0].text == "Run");
+    CHECK(snapshot->items[0].enabled);
+    CHECK(snapshot->items[2].text == "Tools");
+
+    CHECK(!snapshotMenuPopupPresentation(bar, controller, 1).has_value());
+}
+
+TEST_CASE("Popup presentation snapshot fails closed for a stale open level") {
+    Command action{"Action"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(action);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::down, true, KeyModifier::none});
+    (void)controller.handleKey(bar, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(controller.popupDepth() == 2U);
+
+    file.clear();
+
+    /* Root remains resolvable but empty; the vanished child level must not be fabricated. */
+    const auto root = snapshotMenuPopupPresentation(bar, controller, 0);
+    CHECK(root.has_value());
+    CHECK(root->items.empty());
+    CHECK(!root->selection.has_value());
+    CHECK(!snapshotMenuPopupPresentation(bar, controller, 1).has_value());
 }

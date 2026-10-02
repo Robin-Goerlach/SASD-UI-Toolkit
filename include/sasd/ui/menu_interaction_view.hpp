@@ -4,6 +4,8 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace sasd::ui {
 
@@ -153,6 +155,105 @@ menuPopupLevelView(const MenuBarModel& bar,
     }
 
     return MenuPopupLevelView{current, selection};
+}
+
+/**
+ * Owned presentation value for one semantic menu item.
+ *
+ * Unlike MenuItem itself, this type deliberately copies user-facing text and shortcut metadata. It is a
+ * frame/presentation snapshot, not a second semantic model: changing a Command or rebuilding a menu does
+ * not mutate an already-created snapshot. This lets a backend finish one render transaction without
+ * retaining string_views, Command references, or MenuModel/MenuItem pointers into a concurrently changed
+ * application model.
+ */
+struct MenuItemPresentationSnapshot {
+    MenuItemKind kind{MenuItemKind::separator};
+    std::string text{};
+    bool enabled{false};
+    std::optional<Shortcut> shortcut{};
+};
+
+/**
+ * Owned value snapshot for the complete top-level menu bar.
+ *
+ * titles is always copied from the current MenuBarModel so an inactive controller can still render the
+ * persistent menu bar. selection is populated only when the controller's active top-level index is
+ * currently valid. popup_open is true only for such a valid selection; stale controller state therefore
+ * cannot cause a presenter to draw an apparently open popup for a menu that no longer exists.
+ */
+struct MenuBarPresentationSnapshot {
+    std::vector<std::string> titles{};
+    std::optional<std::size_t> selection{};
+    bool popup_open{false};
+};
+
+/** Owned value snapshot for one currently resolvable popup level. */
+struct MenuPopupPresentationSnapshot {
+    std::vector<MenuItemPresentationSnapshot> items{};
+    std::optional<std::size_t> selection{};
+};
+
+/**
+ * Copies the current top-level menu-bar presentation state into self-contained values.
+ *
+ * This is intentionally a per-frame boundary rather than cached semantic state. Copying titles costs
+ * small allocations, but it removes model lifetime from the backend transaction and keeps the first
+ * presentation contract straightforward. Later profiling may introduce storage reuse without changing
+ * the semantic rule that backends consume owned frame data rather than retain MenuModel pointers.
+ */
+[[nodiscard]] inline MenuBarPresentationSnapshot
+snapshotMenuBarPresentation(const MenuBarModel& bar,
+                            const MenuInteractionController& controller) {
+    MenuBarPresentationSnapshot snapshot;
+    snapshot.titles.reserve(bar.menuCount());
+    for (std::size_t index = 0; index < bar.menuCount(); ++index) {
+        snapshot.titles.emplace_back(bar.menuAt(index).title());
+    }
+
+    const auto active = menuBarInteractionView(bar, controller);
+    if (active.has_value()) {
+        snapshot.selection = active->selection;
+        snapshot.popup_open = active->popup_open;
+    }
+
+    return snapshot;
+}
+
+/**
+ * Copies one currently open popup level into self-contained presentation values.
+ *
+ * The helper first uses menuPopupLevelView() to apply the same fail-closed path/selection validation as
+ * the borrowed view API. Only after that validation succeeds are item properties copied. Command text and
+ * enabled state are therefore sampled exactly once for this snapshot. Subsequent Command destruction,
+ * state changes, or structural menu mutation cannot invalidate the returned value.
+ *
+ * std::nullopt means the requested popup level cannot currently be proven to exist. The function never
+ * repairs MenuInteractionController; observation remains side-effect free.
+ */
+[[nodiscard]] inline std::optional<MenuPopupPresentationSnapshot>
+snapshotMenuPopupPresentation(const MenuBarModel& bar,
+                              const MenuInteractionController& controller,
+                              std::size_t level) {
+    const auto view = menuPopupLevelView(bar, controller, level);
+    if (!view.has_value() || view->menu == nullptr) {
+        return std::nullopt;
+    }
+
+    MenuPopupPresentationSnapshot snapshot;
+    snapshot.selection = view->selection;
+    snapshot.items.reserve(view->menu->itemCount());
+
+    for (std::size_t index = 0; index < view->menu->itemCount(); ++index) {
+        const MenuItem& item = view->menu->itemAt(index);
+        snapshot.items.push_back(MenuItemPresentationSnapshot{
+            item.kind(),
+            std::string{item.text()},
+            item.isEnabled(),
+            item.shortcut(),
+        });
+    }
+
+    return snapshot;
 }
 
 } // namespace sasd::ui
