@@ -91,11 +91,17 @@ TEST_CASE("Terminal menu bar renderer clips wide glyphs without orphaned cells")
     MenuBarPresentationSnapshot snapshot;
     snapshot.titles = {"界"};
 
-    /* The wide glyph starts at x=-1 after leading padding, so neither half may be emitted. */
+    /*
+     * The logical title span is four cells: leading padding, the two-cell glyph and trailing padding.
+     * With origin x=-2 the wide glyph would occupy x=-1..0, so it must be omitted atomically. The two
+     * visible cells are still part of the successfully rendered title span: x=0 is the cleared glyph
+     * continuation slot and x=1 is the trailing padding cell. Both must therefore contain ordinary blanks.
+     */
     CHECK(renderMenuBarPresentation(buffer, {-2, 0}, snapshot));
     CHECK(buffer.at({0, 0}).code_point == U' ');
     CHECK(buffer.at({0, 0}).role == CellRole::normal);
-    CHECK(buffer.at({1, 0}).code_point == U'.');
+    CHECK(buffer.at({1, 0}).code_point == U' ');
+    CHECK(buffer.at({1, 0}).role == CellRole::normal);
 }
 
 TEST_CASE("Terminal menu bar renderer leaves previous frame untouched when preflight fails") {
