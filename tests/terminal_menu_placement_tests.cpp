@@ -161,3 +161,96 @@ TEST_CASE("Terminal viewport fitting permits an empty popup on the bottom edge")
     CHECK(fitted.has_value());
     CHECK(*fitted == Point{7, 4});
 }
+
+TEST_CASE("Terminal submenu viewport placement preserves the preferred right side when it fits") {
+    PositionedMenuPopupPresentationSnapshot parent;
+    parent.origin = {2, 2};
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt});
+
+    MenuPopupPresentationSnapshot child;
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    const auto parent_size = measureMenuPopupPresentation(parent.snapshot);
+    CHECK(parent_size.has_value());
+    CHECK(parent_size->size == Size{9, 1});
+
+    const auto placement = fitSubmenuPopupToViewport(parent, 0, child, {20, 8});
+    CHECK(placement.has_value());
+    CHECK(placement->side == SubmenuPopupSide::right);
+    CHECK(placement->origin == Point{11, 2});
+}
+
+TEST_CASE("Terminal submenu viewport placement flips left when the preferred right side overflows") {
+    PositionedMenuPopupPresentationSnapshot parent;
+    parent.origin = {10, 1};
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt});
+
+    MenuPopupPresentationSnapshot child;
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    /*
+     * The parent is nine cells wide, so opening to the right would start at x=19 and overflow a 20-cell
+     * viewport. The six-cell child fits completely at x=4 on the parent's left side, which must be chosen
+     * instead of generic clamping that would overlap the parent rectangle.
+     */
+    const auto placement = fitSubmenuPopupToViewport(parent, 0, child, {20, 8});
+    CHECK(placement.has_value());
+    CHECK(placement->side == SubmenuPopupSide::left);
+    CHECK(placement->origin == Point{4, 1});
+}
+
+TEST_CASE("Terminal submenu viewport placement clamps only vertical overflow") {
+    PositionedMenuPopupPresentationSnapshot parent;
+    parent.origin = {1, 5};
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "One", true, std::nullopt});
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt});
+
+    MenuPopupPresentationSnapshot child;
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "A", true, std::nullopt});
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "B", true, std::nullopt});
+
+    const auto placement = fitSubmenuPopupToViewport(parent, 1, child, {30, 6});
+    CHECK(placement.has_value());
+    CHECK(placement->side == SubmenuPopupSide::right);
+    CHECK(placement->origin.y == 4);
+}
+
+TEST_CASE("Terminal submenu viewport placement rejects anchors and geometry without a side-preserving fit") {
+    PositionedMenuPopupPresentationSnapshot parent;
+    parent.origin = {2, 0};
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "Open", true, std::nullopt});
+
+    MenuPopupPresentationSnapshot child;
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "1234567890", true, std::nullopt});
+
+    CHECK(!fitSubmenuPopupToViewport(parent, 0, child, {20, 5}).has_value());
+
+    parent.snapshot.items[0] =
+        MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt};
+    parent.origin = {6, 0};
+
+    /* The child fits the viewport itself, but neither immediately right nor immediately left of parent. */
+    CHECK(!fitSubmenuPopupToViewport(parent, 0, child, {14, 5}).has_value());
+}
+
+TEST_CASE("Terminal submenu viewport placement fails closed for unrenderable snapshots") {
+    PositionedMenuPopupPresentationSnapshot parent;
+    parent.snapshot.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::submenu, "Tools", true, std::nullopt});
+
+    MenuPopupPresentationSnapshot child;
+    child.items.push_back(
+        MenuItemPresentationSnapshot{MenuItemKind::command, "A\xCC\x81", true, std::nullopt});
+
+    CHECK(!fitSubmenuPopupToViewport(parent, 0, child, {30, 10}).has_value());
+}
