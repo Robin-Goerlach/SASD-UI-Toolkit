@@ -1,23 +1,30 @@
 #pragma once
 
-#include <sasd/ui/terminal/menu_viewport_placement.hpp>
+#include <sasd/ui/terminal/menu_direction.hpp>
+#include <sasd/ui/terminal/menu_presentation.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace sasd::ui::terminal {
 
 /**
- * Directional chrome for the one submenu row that currently owns an open child popup.
+ * Checks whether one directional descriptor is structurally consistent with the popup snapshot it
+ * annotates.
  *
- * One popup level can have at most one direct child open at a time. Keeping only that active row and the
- * already-decided SubmenuPopupSide avoids copying placement state into every semantic menu item while still
- * giving the renderer enough information to draw a direction-sensitive indicator.
+ * The descriptor is presentation-only state. It is valid exactly when its item index names a submenu row;
+ * commands and separators cannot own an open child popup. Keeping this validation in the directional
+ * presentation layer lets both standalone rendering and whole-frame preflight share the same rule without
+ * duplicating it or moving terminal-only state into MenuModel.
  */
-struct ActiveSubmenuPresentationDirection {
-    std::size_t item_index{0};
-    SubmenuPopupSide side{SubmenuPopupSide::right};
-};
+[[nodiscard]] inline bool
+isValidActiveSubmenuPresentationDirection(
+    const MenuPopupPresentationSnapshot& snapshot,
+    ActiveSubmenuPresentationDirection direction) noexcept {
+    return direction.item_index < snapshot.items.size() &&
+           snapshot.items[direction.item_index].kind == MenuItemKind::submenu;
+}
 
 /**
  * Renders one terminal popup with direction-sensitive chrome for its active submenu row.
@@ -26,7 +33,7 @@ struct ActiveSubmenuPresentationDirection {
  * disabled styling, clipping and wide-cell handling. This wrapper deliberately does not duplicate that
  * logic. It validates the directional descriptor before any ScreenBuffer mutation, renders the complete
  * popup through renderMenuPopupPresentation(), and only then replaces the already-reserved submenu marker
- * cell with '<' when the child was viewport-fitted to the left. Right-opening children retain '>'.
+ * cell with '<' when the child opens to the left. Right-opening children retain '>'.
  *
  * The marker position does not change the popup measurement contract: both '<' and '>' occupy one narrow
  * terminal cell in the same reserved column. The selected/disabled row style is recomputed with the same
@@ -36,9 +43,9 @@ struct ActiveSubmenuPresentationDirection {
  * the buffer is untouched. Once descriptor validation and menu measurement succeed, the final glyph patch
  * cannot introduce a partial wide-cell state because both direction markers are single-cell ASCII.
  *
- * This layer intentionally consumes the side decision produced by fitSubmenuPopupToViewport() rather than
- * inferring direction from coordinates. A future overlap or gap policy may make coordinate inference
- * ambiguous, while the explicit side remains a stable presentation fact.
+ * This layer consumes an explicit side decision rather than inferring direction from coordinates. A future
+ * overlap or gap policy may make coordinate inference ambiguous, while the explicit side remains stable
+ * presentation data.
  *
  * @returns true when the popup was representable and rendered; false when the descriptor or popup failed
  *          preflight, with no ScreenBuffer mutation performed before failure.
@@ -50,8 +57,7 @@ renderDirectionalMenuPopupPresentation(
     const MenuPopupPresentationSnapshot& snapshot,
     ActiveSubmenuPresentationDirection direction,
     AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
-    if (direction.item_index >= snapshot.items.size() ||
-        snapshot.items[direction.item_index].kind != MenuItemKind::submenu) {
+    if (!isValidActiveSubmenuPresentationDirection(snapshot, direction)) {
         return false;
     }
 

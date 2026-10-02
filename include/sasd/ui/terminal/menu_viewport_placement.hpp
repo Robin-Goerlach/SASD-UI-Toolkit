@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/terminal/menu_direction.hpp>
 #include <sasd/ui/terminal/menu_frame_presentation.hpp>
 
 #include <algorithm>
@@ -76,18 +77,12 @@ fitMenuPopupOriginToViewport(const MenuPopupPresentationSnapshot& popup,
     };
 }
 
-/** Preferred horizontal side used for a viewport-fitted child submenu. */
-enum class SubmenuPopupSide {
-    right,
-    left,
-};
-
 /**
  * Result of submenu-aware viewport placement.
  *
  * Keeping the chosen side beside the origin makes the directional decision explicit presentation data.
- * The current cell renderer does not yet consume the side for arrow-glyph selection; callers must not
- * infer direction later from coordinates because future overlap/gap policies could make that ambiguous.
+ * Callers must not infer direction later from coordinates because future overlap/gap policies could make
+ * that ambiguous.
  */
 struct SubmenuPopupViewportPlacement {
     Point origin{};
