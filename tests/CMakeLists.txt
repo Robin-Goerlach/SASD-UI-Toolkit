@@ -69,6 +69,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_box_layout_tests.cpp
     terminal_grid_layout_tests.cpp
     terminal_stack_layout_tests.cpp
+    terminal_menu_presentation_tests.cpp
     terminal_button_tests.cpp
     terminal_check_box_tests.cpp
     terminal_radio_button_tests.cpp
