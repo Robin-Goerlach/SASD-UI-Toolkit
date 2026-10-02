@@ -85,7 +85,8 @@ TEST_CASE("Terminal empty popup keeps minimal chrome width without inventing row
 }
 
 TEST_CASE("Terminal popup renderer paints rows separators shortcuts and submenu markers") {
-    ScreenBuffer buffer{{24, 6}, Cell{U'.'}};
+    ScreenBuffer buffer{{24, 6}};
+    buffer.clear(Cell{U'.'});
 
     MenuPopupPresentationSnapshot snapshot;
     snapshot.selection = std::size_t{0};
@@ -157,7 +158,8 @@ TEST_CASE("Terminal popup renderer dims disabled commands without changing seman
 }
 
 TEST_CASE("Terminal popup renderer preserves wide-cell invariants under clipping") {
-    ScreenBuffer buffer{{3, 2}, Cell{U'.'}};
+    ScreenBuffer buffer{{3, 2}};
+    buffer.clear(Cell{U'.'});
     MenuPopupPresentationSnapshot snapshot;
     snapshot.items.push_back(MenuItemPresentationSnapshot{
         MenuItemKind::command,
@@ -179,7 +181,8 @@ TEST_CASE("Terminal popup renderer preserves wide-cell invariants under clipping
 }
 
 TEST_CASE("Terminal popup renderer leaves the previous frame untouched when preflight fails") {
-    ScreenBuffer buffer{{8, 2}, Cell{U'Z'}};
+    ScreenBuffer buffer{{8, 2}};
+    buffer.clear(Cell{U'Z'});
     MenuPopupPresentationSnapshot snapshot;
     snapshot.items.push_back(MenuItemPresentationSnapshot{
         MenuItemKind::command,
