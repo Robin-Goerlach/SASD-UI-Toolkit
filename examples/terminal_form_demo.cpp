@@ -6,7 +6,7 @@
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/label.hpp>
-#include <sasd/ui/menu_bar_model.hpp>
+#include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
