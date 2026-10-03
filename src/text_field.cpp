@@ -1,5 +1,6 @@
 #include <sasd/ui/text_field.hpp>
 
+#include <sasd/ui/clipboard.hpp>
 #include <sasd/ui/measurement_context.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
@@ -55,6 +56,25 @@ void TextField::setCursorPosition(std::size_t scalar_index) {
     invalidateVisual();
 }
 
+bool TextField::pasteFromClipboard(const Clipboard& clipboard) {
+    /*
+     * Clipboard returns an owned value, so no backend/native lifetime crosses into the mutation step.
+     * Reading happens before we touch TextField state. If a native clipboard implementation throws,
+     * the editor therefore remains exactly as it was before the paste request.
+     */
+    const auto clipboard_text = clipboard.readText();
+    if (!clipboard_text.has_value()) {
+        return false;
+    }
+
+    /*
+     * Reuse the exact same insertion/sanitization path as TextInputEvent. Keeping one mutation path is
+     * important: paste must not accidentally accept line separators or malformed UTF-8 that normal
+     * keyboard/IME text input would sanitize away.
+     */
+    return insertText(*clipboard_text);
+}
+
 Size TextField::onMeasure(const MeasurementContext& context, const MeasureConstraints&) {
     return context.measureTextField(text_);
 }
@@ -70,7 +90,7 @@ EventResult TextField::onEvent(const Event& event) {
          * (for example a pasted newline). Bubbling such text into a parent would be surprising and
          * could cause duplicate handling.
          */
-        insertText(text_input->text);
+        (void)insertText(text_input->text);
         return EventResult::handled;
     }
 
@@ -122,10 +142,10 @@ EventResult TextField::onEvent(const Event& event) {
     return EventResult::handled;
 }
 
-void TextField::insertText(std::string_view text) {
+bool TextField::insertText(std::string_view text) {
     const std::string sanitized = utf8::sanitizeSingleLine(text);
     if (sanitized.empty()) {
-        return;
+        return false;
     }
 
     const std::size_t byte_offset =
@@ -135,6 +155,7 @@ void TextField::insertText(std::string_view text) {
     text_.insert(byte_offset, sanitized);
     cursor_position_ += inserted_scalars;
     textChanged();
+    return true;
 }
 
 void TextField::eraseBeforeCursor() {

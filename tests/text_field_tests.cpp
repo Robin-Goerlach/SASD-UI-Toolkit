@@ -3,13 +3,17 @@
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/testing/memory_clipboard.hpp>
 #include <sasd/ui/text_field.hpp>
 
 #include <cstdint>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 using namespace sasd::ui;
+using sasd::ui::testing::MemoryClipboard;
 
 namespace {
 
@@ -29,6 +33,16 @@ public:
 
 private:
     mutable int field_calls_{0};
+};
+
+class ThrowingReadClipboard final : public Clipboard {
+public:
+    [[nodiscard]] std::optional<std::string> readText() const override {
+        throw std::runtime_error{"synthetic clipboard read failure"};
+    }
+
+    void writeText(std::string) override {}
+    void clear() override {}
 };
 
 } // namespace
@@ -75,6 +89,65 @@ TEST_CASE("TextField filters pasted line controls but owns focused text input") 
 
     CHECK(result.handled());
     CHECK(field.text() == "ab");
+}
+
+TEST_CASE("TextField pastes clipboard text through the normal sanitized insertion path") {
+    TextField field{std::string{"A\xCE\xA9" "B"}}; // A + U+03A9 + B
+    MemoryClipboard clipboard;
+
+    field.setCursorPosition(2);
+    clipboard.writeText(std::string{"X\n\xE7\x95\x8C"}); // X + newline + U+754C
+
+    /*
+     * Programmatic paste deliberately does not require focus. A menu/command layer may already have
+     * established the editing target while transient menu interaction owns keyboard focus routing.
+     */
+    CHECK(field.pasteFromClipboard(clipboard));
+    CHECK(field.text() == std::string{"A\xCE\xA9X\xE7\x95\x8C" "B"});
+    CHECK(field.cursorPosition() == 4);
+}
+
+TEST_CASE("TextField clipboard paste is a no-op when no insertable text exists") {
+    TextField field{"abc"};
+    TextFieldMeasurementContext context;
+    MemoryClipboard clipboard;
+
+    (void)field.measure(context);
+    field.acknowledgeVisualUpdate();
+    field.setCursorPosition(1);
+    field.acknowledgeVisualUpdate();
+    CHECK(field.isMeasureValid());
+    CHECK(!field.isVisualUpdatePending());
+
+    CHECK(!field.pasteFromClipboard(clipboard));
+    CHECK(field.text() == "abc");
+    CHECK(field.cursorPosition() == 1);
+    CHECK(field.isMeasureValid());
+    CHECK(!field.isVisualUpdatePending());
+
+    clipboard.writeText("\n\t");
+    CHECK(!field.pasteFromClipboard(clipboard));
+    CHECK(field.text() == "abc");
+    CHECK(field.cursorPosition() == 1);
+    CHECK(field.isMeasureValid());
+    CHECK(!field.isVisualUpdatePending());
+}
+
+TEST_CASE("TextField leaves state unchanged when clipboard reading fails") {
+    TextField field{"abc"};
+    ThrowingReadClipboard clipboard;
+    field.setCursorPosition(1);
+
+    bool threw = false;
+    try {
+        (void)field.pasteFromClipboard(clipboard);
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+
+    CHECK(threw);
+    CHECK(field.text() == "abc");
+    CHECK(field.cursorPosition() == 1);
 }
 
 TEST_CASE("TextField Left Right Home End navigate Unicode scalars") {
@@ -167,7 +240,6 @@ TEST_CASE("TextField cursor movement invalidates presentation but not measuremen
     CHECK(field.isMeasureValid());
     CHECK(field.isVisualUpdatePending());
 }
-
 
 TEST_CASE("TextField text style is presentation-only") {
     TextField field{"abc"};

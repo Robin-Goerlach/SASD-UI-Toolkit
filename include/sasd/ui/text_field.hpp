@@ -9,6 +9,8 @@
 
 namespace sasd::ui {
 
+class Clipboard;
+
 /**
  * Single-line editable UTF-8 text control.
  *
@@ -49,6 +51,26 @@ public:
     /** Moves the insertion cursor, clamping positions beyond the current text end. */
     void setCursorPosition(std::size_t scalar_index);
 
+    /**
+     * Reads UTF-8 text from a backend-neutral clipboard and inserts it at the current cursor.
+     *
+     * The clipboard service is supplied explicitly rather than retained by TextField. This keeps the
+     * widget independent of Application/Backend lifetime and lets command or menu code decide which
+     * clipboard instance is currently appropriate. Clipboard text passes through the same single-line
+     * sanitization as TextInputEvent, so pasted line separators/control characters cannot violate the
+     * TextField content invariant.
+     *
+     * The operation does not require logical focus: it is an explicit programmatic editing request,
+     * analogous to setText(). It returns true only when sanitized text was actually inserted. Missing
+     * clipboard text, an empty payload, or a payload that sanitizes to empty returns false without
+     * invalidating measurement/presentation. Native clipboard read failures are intentionally allowed
+     * to propagate according to the Clipboard contract; TextField is unchanged if readText() throws.
+     *
+     * Copy/cut are deliberately not guessed here. Their conventional behavior depends on a selection
+     * model, which TextField does not yet expose.
+     */
+    [[nodiscard]] bool pasteFromClipboard(const Clipboard& clipboard);
+
 protected:
     [[nodiscard]] Size onMeasure(const MeasurementContext& context,
                                  const MeasureConstraints& constraints) override;
@@ -62,7 +84,8 @@ protected:
     [[nodiscard]] EventResult onEvent(const Event& event) override;
 
 private:
-    void insertText(std::string_view text);
+    /** Inserts sanitized text and reports whether the content actually changed. */
+    [[nodiscard]] bool insertText(std::string_view text);
     void eraseBeforeCursor();
     void eraseAtCursor();
     void moveCursorLeft();
