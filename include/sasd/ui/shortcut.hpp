@@ -93,19 +93,25 @@ public:
     void clear() noexcept { bindings_.clear(); }
 
     /**
-     * Attempts to execute the command bound to an exact key-press event.
+     * Resolves one exact key-press gesture to a lifetime-safe Command reference without executing it.
      *
-     * A matching but disabled command returns false because Command::execute() rejected the semantic
-     * action. This deliberately leaves the event available to a caller's surrounding routing policy.
-     * An expired command is removed lazily and also returns false.
+     * This is the non-reentrant half of shortcut handling. A caller that must dismiss transient UI,
+     * finish focus/presentation work, or otherwise stabilize application state before entering client
+     * callbacks can resolve the gesture first and execute the returned Command later. The returned
+     * reference does not keep either the ShortcutMap or Command alive.
      *
-     * No binding storage is touched after Command::execute() begins. Client execution may destroy the
-     * command, clear/rebind this map through external code, or otherwise mutate UI state; dispatch()
-     * therefore copies the lifetime-safe Command::Reference before entering client code.
+     * A live disabled Command still resolves. Matching and semantic eligibility are intentionally
+     * different questions: state may change between resolution and later execution, and Command::execute()
+     * remains the single authority that accepts or rejects execution. Releases, unknown keys, unmatched
+     * gestures and expired bindings return an empty reference.
+     *
+     * The map may be mutated or destroyed after this function returns. The copied Command::Reference is
+     * independent of binding storage and safely becomes empty if the Command itself is destroyed before
+     * the caller executes it.
      */
-    [[nodiscard]] bool dispatch(const KeyEvent& event) {
+    [[nodiscard]] Command::Reference resolve(const KeyEvent& event) {
         if (!event.pressed || event.key == Key::unknown) {
-            return false;
+            return {};
         }
 
         compactExpired();
@@ -115,11 +121,24 @@ public:
             bindings_.end(),
             [&event](const Binding& candidate) { return candidate.shortcut.matches(event); });
 
-        if (binding == bindings_.end()) {
-            return false;
-        }
+        return binding != bindings_.end() ? binding->command : Command::Reference{};
+    }
 
-        const Command::Reference command_reference = binding->command;
+    /**
+     * Attempts to execute the command bound to an exact key-press event.
+     *
+     * A matching but disabled command returns false because Command::execute() rejected the semantic
+     * action. This deliberately leaves the event available to a caller's surrounding routing policy.
+     * An expired command is removed lazily and also returns false.
+     *
+     * dispatch() is the convenience form for callers that do not require a two-phase transaction. It
+     * delegates gesture resolution to resolve(), copies only the lifetime-safe Command::Reference, and
+     * then enters application code. No ShortcutMap storage is accessed after Command::execute() begins;
+     * client execution may destroy the Command, clear/rebind this map through external code, or otherwise
+     * mutate UI state.
+     */
+    [[nodiscard]] bool dispatch(const KeyEvent& event) {
+        const Command::Reference command_reference = resolve(event);
         Command* const command = command_reference.get();
         if (command == nullptr) {
             return false;
