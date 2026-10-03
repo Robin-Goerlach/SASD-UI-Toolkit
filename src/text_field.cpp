@@ -18,6 +18,7 @@ TextField::TextField(std::string text)
     : TextField() {
     text_ = utf8::sanitizeSingleLine(text);
     cursor_position_ = utf8::scalarCount(text_);
+    selection_anchor_ = cursor_position_;
 }
 
 void TextField::setTextStyle(TextStyle style) {
@@ -37,23 +38,82 @@ void TextField::setText(std::string text) {
     }
 
     text_ = std::move(sanitized);
-    cursor_position_ = std::min(cursor_position_, utf8::scalarCount(text_));
+
+    /*
+     * Programmatic text replacement preserves the semantic scalar positions when possible. Clamping
+     * anchor and cursor independently is important: a directed selection remains directed after the
+     * content shrinks unless one or both endpoints are forced onto the new end.
+     */
+    const std::size_t scalar_count = utf8::scalarCount(text_);
+    cursor_position_ = std::min(cursor_position_, scalar_count);
+    selection_anchor_ = std::min(selection_anchor_, scalar_count);
     textChanged();
 }
 
 void TextField::setCursorPosition(std::size_t scalar_index) {
     const std::size_t clamped = std::min(scalar_index, utf8::scalarCount(text_));
-    if (cursor_position_ == clamped) {
+    if (cursor_position_ == clamped && selection_anchor_ == clamped) {
         return;
     }
 
     cursor_position_ = clamped;
+    selection_anchor_ = clamped;
 
     /*
-     * Cursor motion can change caret position and a backend-specific horizontal viewport, but it does
-     * not change intrinsic content size. Visual invalidation is therefore sufficient.
+     * Cursor/selection motion can change caret position, selection highlighting and a backend-specific
+     * horizontal viewport, but it does not change intrinsic content size. Visual invalidation is
+     * therefore sufficient.
      */
     invalidateVisual();
+}
+
+std::size_t TextField::selectionStart() const noexcept {
+    return std::min(selection_anchor_, cursor_position_);
+}
+
+std::size_t TextField::selectionEnd() const noexcept {
+    return std::max(selection_anchor_, cursor_position_);
+}
+
+void TextField::setSelection(std::size_t anchor_scalar_index,
+                             std::size_t cursor_scalar_index) {
+    const std::size_t scalar_count = utf8::scalarCount(text_);
+    const std::size_t clamped_anchor = std::min(anchor_scalar_index, scalar_count);
+    const std::size_t clamped_cursor = std::min(cursor_scalar_index, scalar_count);
+
+    if (selection_anchor_ == clamped_anchor && cursor_position_ == clamped_cursor) {
+        return;
+    }
+
+    selection_anchor_ = clamped_anchor;
+    cursor_position_ = clamped_cursor;
+
+    /*
+     * Selection is presentation/editing state only. Measurement remains valid because neither the text
+     * bytes nor their intrinsic geometry changed.
+     */
+    invalidateVisual();
+}
+
+void TextField::clearSelection() {
+    if (!hasSelection()) {
+        return;
+    }
+
+    selection_anchor_ = cursor_position_;
+    invalidateVisual();
+}
+
+std::string TextField::selectedText() const {
+    if (!hasSelection()) {
+        return {};
+    }
+
+    const std::size_t begin =
+        utf8::byteOffsetForScalarIndex(text_, selectionStart());
+    const std::size_t end =
+        utf8::byteOffsetForScalarIndex(text_, selectionEnd());
+    return text_.substr(begin, end - begin);
 }
 
 bool TextField::pasteFromClipboard(const Clipboard& clipboard) {
@@ -68,9 +128,9 @@ bool TextField::pasteFromClipboard(const Clipboard& clipboard) {
     }
 
     /*
-     * Reuse the exact same insertion/sanitization path as TextInputEvent. Keeping one mutation path is
-     * important: paste must not accidentally accept line separators or malformed UTF-8 that normal
-     * keyboard/IME text input would sanitize away.
+     * Reuse the exact same replacement/insertion/sanitization path as TextInputEvent. Keeping one
+     * mutation path is important: paste must not accidentally accept line separators or malformed
+     * UTF-8 that normal keyboard/IME text input would sanitize away.
      */
     return insertText(*clipboard_text);
 }
@@ -143,22 +203,54 @@ EventResult TextField::onEvent(const Event& event) {
 }
 
 bool TextField::insertText(std::string_view text) {
+    /*
+     * Sanitize before touching an existing selection. This gives rejected/empty input strict no-op
+     * semantics: a clipboard containing only filtered controls must not erase selected user text.
+     */
     const std::string sanitized = utf8::sanitizeSingleLine(text);
     if (sanitized.empty()) {
         return false;
     }
 
-    const std::size_t byte_offset =
-        utf8::byteOffsetForScalarIndex(text_, cursor_position_);
-    const std::size_t inserted_scalars = utf8::scalarCount(sanitized);
+    const std::size_t insertion_scalar = selectionStart();
+    const std::size_t begin =
+        utf8::byteOffsetForScalarIndex(text_, insertion_scalar);
+    const std::size_t end =
+        utf8::byteOffsetForScalarIndex(text_, selectionEnd());
 
-    text_.insert(byte_offset, sanitized);
-    cursor_position_ += inserted_scalars;
+    if (end > begin) {
+        text_.erase(begin, end - begin);
+    }
+
+    const std::size_t inserted_scalars = utf8::scalarCount(sanitized);
+    text_.insert(begin, sanitized);
+    cursor_position_ = insertion_scalar + inserted_scalars;
+    selection_anchor_ = cursor_position_;
     textChanged();
     return true;
 }
 
+bool TextField::eraseSelection() {
+    if (!hasSelection()) {
+        return false;
+    }
+
+    const std::size_t start = selectionStart();
+    const std::size_t begin = utf8::byteOffsetForScalarIndex(text_, start);
+    const std::size_t end = utf8::byteOffsetForScalarIndex(text_, selectionEnd());
+
+    text_.erase(begin, end - begin);
+    cursor_position_ = start;
+    selection_anchor_ = start;
+    return true;
+}
+
 void TextField::eraseBeforeCursor() {
+    if (eraseSelection()) {
+        textChanged();
+        return;
+    }
+
     if (cursor_position_ == 0) {
         return;
     }
@@ -170,10 +262,16 @@ void TextField::eraseBeforeCursor() {
 
     text_.erase(begin, end - begin);
     --cursor_position_;
+    selection_anchor_ = cursor_position_;
     textChanged();
 }
 
 void TextField::eraseAtCursor() {
+    if (eraseSelection()) {
+        textChanged();
+        return;
+    }
+
     const std::size_t scalar_count = utf8::scalarCount(text_);
     if (cursor_position_ >= scalar_count) {
         return;
@@ -185,16 +283,27 @@ void TextField::eraseAtCursor() {
         utf8::byteOffsetForScalarIndex(text_, cursor_position_ + 1);
 
     text_.erase(begin, end - begin);
+    selection_anchor_ = cursor_position_;
     textChanged();
 }
 
 void TextField::moveCursorLeft() {
+    if (hasSelection()) {
+        setCursorPosition(selectionStart());
+        return;
+    }
+
     if (cursor_position_ != 0) {
         setCursorPosition(cursor_position_ - 1);
     }
 }
 
 void TextField::moveCursorRight() {
+    if (hasSelection()) {
+        setCursorPosition(selectionEnd());
+        return;
+    }
+
     const std::size_t scalar_count = utf8::scalarCount(text_);
     if (cursor_position_ < scalar_count) {
         setCursorPosition(cursor_position_ + 1);

@@ -53,6 +53,8 @@ TEST_CASE("TextField is focusable and sanitizes initial single-line UTF-8") {
     CHECK(field.isFocusable());
     CHECK(field.text() == std::string{"AB\xEF\xBF\xBD("});
     CHECK(field.cursorPosition() == 4);
+    CHECK(field.selectionAnchor() == 4);
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField uses control-specific measurement hook") {
@@ -76,6 +78,7 @@ TEST_CASE("TextField inserts TextInputEvent at Unicode scalar cursor") {
     CHECK(result.handled());
     CHECK(field.text() == std::string{"A\xE7\x95\x8C" "XB"});
     CHECK(field.cursorPosition() == 3);
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField filters pasted line controls but owns focused text input") {
@@ -89,6 +92,64 @@ TEST_CASE("TextField filters pasted line controls but owns focused text input") 
 
     CHECK(result.handled());
     CHECK(field.text() == "ab");
+}
+
+TEST_CASE("TextField selection preserves anchor direction and returns Unicode text") {
+    TextField field{std::string{"A\xCE\xA9\xE7\x95\x8C" "B"}}; // A + Omega + CJK + B
+
+    field.setSelection(3, 1);
+
+    CHECK(field.hasSelection());
+    CHECK(field.selectionAnchor() == 3);
+    CHECK(field.cursorPosition() == 1);
+    CHECK(field.selectionStart() == 1);
+    CHECK(field.selectionEnd() == 3);
+    CHECK(field.selectedText() == std::string{"\xCE\xA9\xE7\x95\x8C"});
+}
+
+TEST_CASE("TextField selection endpoints clamp independently and cursor movement collapses it") {
+    TextField field{"abcd"};
+
+    field.setSelection(99, 1);
+    CHECK(field.selectionAnchor() == 4);
+    CHECK(field.cursorPosition() == 1);
+    CHECK(field.selectionStart() == 1);
+    CHECK(field.selectionEnd() == 4);
+
+    field.setCursorPosition(2);
+    CHECK(!field.hasSelection());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 2);
+}
+
+TEST_CASE("TextField text input replaces the selected scalar range") {
+    TextField field{std::string{"A\xCE\xA9\xE7\x95\x8C" "B"}};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setSelection(3, 1);
+    const auto result = EventDispatcher::dispatch(field, TextInputEvent{"XY"});
+
+    CHECK(result.handled());
+    CHECK(field.text() == "AXYB");
+    CHECK(field.cursorPosition() == 3);
+    CHECK(field.selectionAnchor() == 3);
+    CHECK(!field.hasSelection());
+}
+
+TEST_CASE("TextField rejected input does not destroy an existing selection") {
+    TextField field{"abcd"};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+    field.setSelection(1, 3);
+
+    const auto result = EventDispatcher::dispatch(field, TextInputEvent{"\n\t"});
+
+    CHECK(result.handled());
+    CHECK(field.text() == "abcd");
+    CHECK(field.selectionStart() == 1);
+    CHECK(field.selectionEnd() == 3);
+    CHECK(field.hasSelection());
 }
 
 TEST_CASE("TextField pastes clipboard text through the normal sanitized insertion path") {
@@ -105,6 +166,23 @@ TEST_CASE("TextField pastes clipboard text through the normal sanitized insertio
     CHECK(field.pasteFromClipboard(clipboard));
     CHECK(field.text() == std::string{"A\xCE\xA9X\xE7\x95\x8C" "B"});
     CHECK(field.cursorPosition() == 4);
+}
+
+TEST_CASE("TextField clipboard paste replaces selection only after insertable text is available") {
+    TextField field{"abcd"};
+    MemoryClipboard clipboard;
+    field.setSelection(1, 3);
+
+    clipboard.writeText("\n\t");
+    CHECK(!field.pasteFromClipboard(clipboard));
+    CHECK(field.text() == "abcd");
+    CHECK(field.hasSelection());
+
+    clipboard.writeText("XY");
+    CHECK(field.pasteFromClipboard(clipboard));
+    CHECK(field.text() == "aXYd");
+    CHECK(field.cursorPosition() == 3);
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField clipboard paste is a no-op when no insertable text exists") {
@@ -136,7 +214,7 @@ TEST_CASE("TextField clipboard paste is a no-op when no insertable text exists")
 TEST_CASE("TextField leaves state unchanged when clipboard reading fails") {
     TextField field{"abc"};
     ThrowingReadClipboard clipboard;
-    field.setCursorPosition(1);
+    field.setSelection(0, 2);
 
     bool threw = false;
     try {
@@ -147,7 +225,8 @@ TEST_CASE("TextField leaves state unchanged when clipboard reading fails") {
 
     CHECK(threw);
     CHECK(field.text() == "abc");
-    CHECK(field.cursorPosition() == 1);
+    CHECK(field.selectionStart() == 0);
+    CHECK(field.selectionEnd() == 2);
 }
 
 TEST_CASE("TextField Left Right Home End navigate Unicode scalars") {
@@ -173,6 +252,22 @@ TEST_CASE("TextField Left Right Home End navigate Unicode scalars") {
     CHECK(field.cursorPosition() == 3);
 }
 
+TEST_CASE("TextField unmodified arrows collapse selection toward the requested edge") {
+    TextField field{"abcd"};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setSelection(1, 3);
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::left, true, KeyModifier::none});
+    CHECK(field.cursorPosition() == 1);
+    CHECK(!field.hasSelection());
+
+    field.setSelection(1, 3);
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::right, true, KeyModifier::none});
+    CHECK(field.cursorPosition() == 3);
+    CHECK(!field.hasSelection());
+}
+
 TEST_CASE("TextField Backspace and Delete remove complete UTF-8 scalars") {
     TextField field{std::string{"A\xE7\x95\x8C" "B"}};
     FocusManager focus;
@@ -188,6 +283,25 @@ TEST_CASE("TextField Backspace and Delete remove complete UTF-8 scalars") {
 
     CHECK(field.text() == "A");
     CHECK(field.cursorPosition() == 1);
+}
+
+TEST_CASE("TextField Backspace and Delete remove the whole selection before scalar deletion") {
+    TextField field{std::string{"A\xCE\xA9\xE7\x95\x8C" "B"}};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setSelection(1, 3);
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::backspace, true, KeyModifier::none});
+    CHECK(field.text() == "AB");
+    CHECK(field.cursorPosition() == 1);
+    CHECK(!field.hasSelection());
+
+    field.setText(std::string{"A\xCE\xA9\xE7\x95\x8C" "B"});
+    field.setSelection(3, 1);
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::delete_forward, true, KeyModifier::none});
+    CHECK(field.text() == "AB");
+    CHECK(field.cursorPosition() == 1);
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField editing key releases are consumed without repeating mutation") {
@@ -216,6 +330,7 @@ TEST_CASE("TextField modified navigation remains available for future selection 
 
     CHECK(!result.handled());
     CHECK(field.cursorPosition() == 3);
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField ignores editing input without logical focus") {
@@ -227,7 +342,7 @@ TEST_CASE("TextField ignores editing input without logical focus") {
     CHECK(field.text() == "abc");
 }
 
-TEST_CASE("TextField cursor movement invalidates presentation but not measurement") {
+TEST_CASE("TextField cursor and selection movement invalidate presentation but not measurement") {
     TextField field{"abc"};
     TextFieldMeasurementContext context;
 
@@ -235,8 +350,12 @@ TEST_CASE("TextField cursor movement invalidates presentation but not measuremen
     field.acknowledgeVisualUpdate();
     CHECK(field.isMeasureValid());
 
-    field.setCursorPosition(1);
+    field.setSelection(0, 2);
+    CHECK(field.isMeasureValid());
+    CHECK(field.isVisualUpdatePending());
 
+    field.acknowledgeVisualUpdate();
+    field.clearSelection();
     CHECK(field.isMeasureValid());
     CHECK(field.isVisualUpdatePending());
 }
