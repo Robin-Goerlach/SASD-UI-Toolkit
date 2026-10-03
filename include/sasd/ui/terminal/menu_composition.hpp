@@ -19,48 +19,30 @@ namespace sasd::ui::terminal {
 using MenuComposedPresentationFrame = TerminalPresentationFrame;
 
 /**
- * Composes the current terminal menu interaction over an immutable application/base frame and caret request.
+ * Composes the current terminal menu interaction over an immutable application/base buffer and caret.
  *
- * Menus are transient overlays. Rendering directly into a long-lived ScreenBuffer is sufficient for one
- * frame, but it cannot by itself restore cells that belonged to a popup which has just closed: the current
- * menu snapshot quite correctly contains no geometry for that old popup anymore. Remembering every prior
- * popup rectangle inside menu code would introduce retained damage state and couple presentation lifetime
- * to interaction history.
+ * This is the lowest-level frame-composition primitive. It intentionally keeps the original explicit
+ * buffer/caret form so compatibility callers can continue to use it and so all menu-overlay semantics live
+ * in exactly one implementation. The TerminalPresentationFrame overload below delegates here rather than
+ * duplicating overlay lifetime, caret-suppression, placement, or failure behavior.
  *
- * This helper chooses the simpler correctness-first model. It copies the supplied base frame, renders the
- * complete current menu interaction into that owned copy, and returns the composed value only after the
- * existing builder/renderer pipeline accepts the whole interaction. Callers can therefore rebuild every
- * visible menu frame from stable application content. When a popup closes, composing again from the same
- * base naturally restores the cells that had been covered by the old popup without any explicit erase
- * operation or stale-rectangle bookkeeping.
+ * Menus are transient overlays. The supplied buffer is copied before any menu chrome is applied. Closing a
+ * popup and composing again from the same application base therefore restores the cells that were previously
+ * covered without retaining old popup rectangles or coupling presentation lifetime to interaction history.
  *
- * The caret follows the same current-state rule. While MenuInteractionController is active, menu navigation
- * owns keyboard attention and the application caret is suppressed in the composed metadata. The base caret
- * is not destroyed or rewritten; when menu interaction becomes inactive and composition runs again, the
- * original base caret is propagated again. This avoids mutating FocusManager/TextField state merely to hide
- * a terminal cursor during a transient menu interaction.
+ * While MenuInteractionController is active, menu navigation owns keyboard attention at the presentation
+ * level. The semantic application focus remains untouched, but the application hardware caret is suppressed
+ * in the composed frame. When the controller becomes inactive, the supplied base caret is propagated again.
  *
- * The returned TerminalPresentationFrame is intentionally backend-generic. Menu composition decides the
- * overlay policy, but the resulting buffer/caret pair no longer carries menu-specific type semantics. This
- * keeps later transport or additional overlay stages free to consume one common terminal frame contract.
+ * The base buffer is never mutated. Its size is the viewport used by the menu frame builder, keeping source
+ * geometry, popup fitting, and the final composed frame mechanically consistent.
  *
- * The base buffer is never mutated. Its size is also the viewport used by the menu frame builder because
- * renderMenuInteractionPresentation() derives placement from the destination copy's size. This keeps base
- * geometry, viewport fitting, and the final composed frame mechanically consistent.
+ * Failure is transactional at the owned-frame boundary. If current menu state is stale, text is not safely
+ * representable, or placement cannot produce a complete frame, std::nullopt is returned and neither base
+ * cells nor base caret metadata are changed. Allocation failure while copying the base remains an exception.
  *
- * Failure is transactional at the owned-frame boundary. If menu state is stale, text is not representable,
- * or placement cannot produce a complete frame, std::nullopt is returned and neither base cells nor base
- * caret metadata are modified. Allocation failures while copying the base remain ordinary exceptions rather
- * than being translated into a semantic presentation failure.
- *
- * The explicit base-frame contract is intentional. This function does not know how the application frame
- * or caret was produced, does not retain a previous composed frame, and does not present bytes to
- * TerminalSession. A later optimization may replace the full copy with damage-aware composition while
- * preserving the same observable contract: each menu frame is derived from current semantic state plus an
- * explicit base frame and base caret request.
- *
- * @returns an owned terminal presentation frame, or std::nullopt when the menu interaction cannot be
- *          presented completely under the current terminal presentation policy.
+ * @returns an owned terminal presentation frame, or std::nullopt when the complete interaction cannot be
+ *          represented under the current terminal presentation policy.
  */
 [[nodiscard]] inline std::optional<TerminalPresentationFrame>
 composeMenuInteractionFrame(
@@ -85,12 +67,40 @@ composeMenuInteractionFrame(
      * from the underlying widget tree. Hiding only the presentation caret keeps those two responsibilities
      * separate and lets a later reset expose the original caret again without a focus round trip.
      */
-    const std::optional<Point> composed_caret = controller.isActive() ? std::nullopt : base_caret;
+    const std::optional<Point> composed_caret =
+        controller.isActive() ? std::nullopt : base_caret;
 
     return TerminalPresentationFrame{
         std::move(composed),
         composed_caret,
     };
+}
+
+/**
+ * Composes menus directly from a complete immutable TerminalPresentationFrame.
+ *
+ * ADR 0076 made TerminalPresentationSink::captureFrame() the explicit ownership boundary between mutable
+ * widget presentation and downstream frame processing. Accepting that value directly here means callers no
+ * longer need to split a captured frame back into `buffer` and `caret` merely to feed the next stage.
+ *
+ * The input frame remains immutable and independent. This overload delegates to the established buffer/caret
+ * primitive, which performs the one required buffer copy and preserves exactly the same fail-closed and
+ * caret-suppression semantics. No second menu-rendering implementation is introduced.
+ */
+[[nodiscard]] inline std::optional<TerminalPresentationFrame>
+composeMenuInteractionFrame(
+    const TerminalPresentationFrame& base,
+    const MenuBarModel& bar,
+    const MenuInteractionController& controller,
+    Point menu_bar_origin = {},
+    AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
+    return composeMenuInteractionFrame(
+        base.buffer,
+        base.caret,
+        bar,
+        controller,
+        menu_bar_origin,
+        ambiguous_width);
 }
 
 /**

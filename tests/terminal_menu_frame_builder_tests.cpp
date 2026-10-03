@@ -266,3 +266,44 @@ TEST_CASE("Terminal menu composed frame fails closed before publishing caret met
     CHECK(base.at({2, 2}).code_point == U'#');
     CHECK(base_caret == std::optional<Point>{Point{2, 2}});
 }
+
+TEST_CASE("Terminal menu composition accepts a captured presentation frame as one immutable base value") {
+    TerminalPresentationFrame base{ScreenBuffer{{20, 6}}, Point{7, 3}};
+    base.buffer.clear(Cell{U'.'});
+
+    MenuBarModel bar;
+    (void)bar.appendMenu("File");
+    MenuInteractionController controller;
+
+    const auto composed = composeMenuInteractionFrame(base, bar, controller);
+    CHECK(composed.has_value());
+    CHECK(composed->caret == base.caret);
+    CHECK(composed->buffer.at({1, 0}).code_point == U'F');
+
+    /*
+     * A captured frame is an immutable base value for the composition stage. The overload must not require
+     * callers to dismantle that value, and composing menu chrome must not mutate either of its members.
+     */
+    CHECK(base.buffer.at({1, 0}).code_point == U'.');
+    CHECK(base.caret == std::optional<Point>{Point{7, 3}});
+}
+
+TEST_CASE("Terminal menu composition from a complete frame keeps active-menu caret suppression semantics") {
+    TerminalPresentationFrame base{ScreenBuffer{{20, 6}}, Point{5, 2}};
+    base.buffer.clear(Cell{U'.'});
+
+    MenuBarModel bar;
+    (void)bar.appendMenu("File");
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+
+    const auto composed = composeMenuInteractionFrame(base, bar, controller);
+    CHECK(composed.has_value());
+    CHECK(!composed->caret.has_value());
+
+    /*
+     * The complete-frame overload is only a value-oriented boundary. It delegates to the established
+     * composition primitive, so active menu interaction must suppress presentation caret state identically.
+     */
+    CHECK(base.caret == std::optional<Point>{Point{5, 2}});
+}
