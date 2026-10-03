@@ -1,5 +1,6 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/terminal/presentation_frame.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_session.hpp>
 #include <sasd/ui/terminal/testing/mock_terminal_device.hpp>
@@ -97,6 +98,40 @@ TEST_CASE("TerminalSession presents ScreenBuffer as one ANSI byte write") {
     CHECK(bytes.ends_with("\x1B[1;2H\x1B[?25h"));
 }
 
+TEST_CASE("TerminalSession presents complete TerminalPresentationFrame through the same transport path") {
+    MockTerminalDevice device;
+    TerminalSession session{device};
+
+    TerminalPresentationFrame frame{ScreenBuffer{{2, 1}}, Point{1, 0}};
+    frame.buffer.set({0, 0}, Cell{U'A'});
+    frame.buffer.set({1, 0}, Cell{U'B'});
+
+    session.present(frame);
+
+    CHECK(device.writeCount() == 1);
+    CHECK(device.writes().size() == 1);
+
+    const std::string& bytes = device.writes().front();
+    CHECK(bytes.find("AB") != std::string::npos);
+    CHECK(bytes.ends_with("\x1B[1;2H\x1B[?25h"));
+
+    /*
+     * Closing the session and retrying through the frame overload must inherit the primitive overload's
+     * active-session guard. This protects the one-way delegation contract from accidentally growing an
+     * independent transport path with different lifetime semantics later.
+     */
+    session.close();
+
+    bool threw = false;
+    try {
+        session.present(frame);
+    } catch (const std::logic_error&) {
+        threw = true;
+    }
+    CHECK(threw);
+    CHECK(device.writeCount() == 1);
+}
+
 TEST_CASE("TerminalSession transport failure leaves native session active for retry or close") {
     MockTerminalDevice device;
     TerminalSession session{device};
@@ -151,7 +186,6 @@ TEST_CASE("TerminalSession forwards explicit session options") {
 
     CHECK(device.lastOptions() == options);
 }
-
 
 TEST_CASE("TerminalSession polls currently available input bytes without decoding") {
     MockTerminalDevice device;

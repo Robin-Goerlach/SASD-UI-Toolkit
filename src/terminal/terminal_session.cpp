@@ -1,6 +1,7 @@
 #include <sasd/ui/terminal/terminal_session.hpp>
 
 #include <sasd/ui/terminal/ansi_frame_encoder.hpp>
+#include <sasd/ui/terminal/presentation_frame.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 
 #include <stdexcept>
@@ -42,6 +43,15 @@ void TerminalSession::present(const ScreenBuffer& buffer,
 
     const std::string frame = AnsiFrameEncoder::encode(buffer, caret);
     device_.write(frame);
+}
+
+void TerminalSession::present(const TerminalPresentationFrame& frame) {
+    /*
+     * Keep TerminalPresentationFrame as transport input rather than a second transport implementation.
+     * Delegating to the established primitive guarantees that active-state validation, ANSI encoding,
+     * write failure behavior, and future transport fixes stay identical for both public entry points.
+     */
+    present(frame.buffer, frame.caret);
 }
 
 std::string TerminalSession::pollInputBytes() {

@@ -8,12 +8,13 @@
 namespace sasd::ui::terminal {
 
 class ScreenBuffer;
+struct TerminalPresentationFrame;
 
 /**
  * RAII owner of one active TerminalDevice session.
  *
  * TerminalSession deliberately contains no widget/event-loop policy. It ensures native terminal state
- * is restored and provides the narrow output bridge from ScreenBuffer/caret to TerminalDevice bytes.
+ * is restored and provides the narrow output bridge from presentation-frame data to TerminalDevice bytes.
  */
 class TerminalSession final {
 public:
@@ -35,12 +36,30 @@ public:
     [[nodiscard]] Size size() const;
 
     /**
-     * Encodes and writes one complete ScreenBuffer frame.
+     * Encodes and writes one complete ScreenBuffer frame with optional hardware-caret metadata.
+     *
+     * This is the primitive transport operation. Higher presentation layers may use the
+     * TerminalPresentationFrame overload below when buffer and caret already travel as one owned value.
+     * Keeping this overload public remains useful for simple callers and preserves the established API.
      *
      * The session remains active if transport throws; callers may retry or close explicitly.
      */
     void present(const ScreenBuffer& buffer,
                  std::optional<Point> caret = std::nullopt);
+
+    /**
+     * Presents one complete TerminalPresentationFrame without unpacking it at the call site.
+     *
+     * TerminalPresentationFrame is deliberately a passive presentation value. This overload adds no
+     * composition, focus, menu, or event-loop policy to TerminalSession; it merely delegates the frame's
+     * buffer and caret to the existing primitive present(buffer, caret) operation. Consequently both
+     * overloads share the same active-session checks, ANSI encoding, transport behavior, and retry semantics.
+     *
+     * Keeping delegation one-way is important for maintainability: there remains exactly one implementation
+     * of terminal byte emission, while callers that already own a complete frame do not have to split its
+     * metadata apart merely to cross the transport boundary.
+     */
+    void present(const TerminalPresentationFrame& frame);
 
     /**
      * Polls bytes that are already available from the active device without blocking.
