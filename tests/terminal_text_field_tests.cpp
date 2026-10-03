@@ -24,6 +24,40 @@ TEST_CASE("TerminalMeasurementContext reserves TextField chrome and end caret ce
     CHECK(text.measure(context) == Size{6, 1});
 }
 
+TEST_CASE("Terminal presentation sink captures an owned frame with current caret metadata") {
+    ScreenBuffer buffer{{12, 2}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 12, 2});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({1, 0, field.measure(metrics).width, 1});
+    CHECK(focus.requestFocus(field));
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(sink.caretPosition().has_value());
+
+    const auto captured = sink.captureFrame();
+    CHECK(captured.caret == sink.caretPosition());
+    CHECK(captured.buffer.at({2, 0}).code_point == U'a');
+
+    /*
+     * captureFrame() is an ownership boundary, not a view. The widget presentation buffer remains the
+     * mutable work surface for later synchronization passes, while consumers can safely retain the captured
+     * frame as immutable base content for overlays or transport. Proving independence in both directions
+     * protects that lifetime contract from a future shortcut that accidentally aliases ScreenBuffer storage.
+     */
+    buffer.set({2, 0}, Cell{U'X'});
+    CHECK(captured.buffer.at({2, 0}).code_point == U'a');
+
+    auto independent = captured;
+    independent.buffer.set({2, 0}, Cell{U'Y'});
+    CHECK(captured.buffer.at({2, 0}).code_point == U'a');
+    CHECK(buffer.at({2, 0}).code_point == U'X');
+}
+
 TEST_CASE("Terminal TextField renders normal focused and disabled chrome") {
     ScreenBuffer buffer{{16, 3}};
     TerminalMeasurementContext metrics;

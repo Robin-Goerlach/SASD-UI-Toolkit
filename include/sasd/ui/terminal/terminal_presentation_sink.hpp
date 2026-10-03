@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/presentation/presentation_sink.hpp>
+#include <sasd/ui/terminal/presentation_frame.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/text_metrics.hpp>
 
@@ -49,6 +50,31 @@ public:
      */
     [[nodiscard]] const std::optional<Point>& caretPosition() const noexcept {
         return caret_position_;
+    }
+
+    /**
+     * Captures the sink's current cells and hardware-caret request as one owned terminal frame.
+     *
+     * TerminalPresentationSink itself deliberately renders into caller-owned mutable storage. That is the
+     * right contract while PresentationCoordinator is incrementally synchronizing widgets, but later
+     * composition stages should not have to retain a reference to that mutable working surface. This method
+     * therefore creates an explicit value snapshot at the presentation boundary.
+     *
+     * The returned TerminalPresentationFrame owns an independent copy of ScreenBuffer and copies the current
+     * optional caret. Mutating either the sink's working buffer or the returned frame afterwards cannot affect
+     * the other. This is particularly important for transient overlays: menu composition can safely treat the
+     * captured frame as immutable base content while the next widget synchronization pass continues to reuse
+     * the sink and its original buffer.
+     *
+     * The ambiguous-width policy is intentionally not copied into TerminalPresentationFrame. It is a policy
+     * used while producing cell geometry; once cells and caret coordinates have been captured, the generic
+     * frame represents the resulting presentation value rather than the process that created it.
+     *
+     * Copying the full buffer is intentionally accepted at this stage. A later optimization can introduce
+     * move/reuse or damage-aware capture without weakening the owned-frame contract.
+     */
+    [[nodiscard]] TerminalPresentationFrame captureFrame() const {
+        return TerminalPresentationFrame{buffer_, caret_position_};
     }
 
     [[nodiscard]] PresentationUpdateResult synchronize(const Widget& widget) override;
