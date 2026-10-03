@@ -12,6 +12,7 @@
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
+#include <sasd/ui/shortcut.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
@@ -85,12 +86,20 @@ int main() {
 
         /*
          * Commands are declared before both MenuBarModel and the Widget tree. Their semantic identity is
-         * shared by menu items and bound Buttons, while destruction happens in the opposite direction:
-         * Widgets and menus release their non-owning references before the Commands themselves die.
+         * shared by menu items, ShortcutMap and bound Buttons, while destruction happens in the opposite
+         * direction: Widgets, shortcut bindings and menus release their non-owning references before the
+         * Commands themselves die.
          */
         Command greet_command{"Greet"};
         Command exit_command{"Exit"};
         Command help_command{"Help"};
+
+        /*
+         * The Help menu advertises F1 as presentation metadata, while ShortcutMap below owns the actual
+         * input-routing policy. Keeping display metadata and dispatch registration separate is deliberate:
+         * merely showing a menu item must never install an application-global keyboard route implicitly.
+         */
+        const Shortcut help_shortcut{Key::f1, KeyModifier::none};
 
         MenuBarModel menu_bar;
         MenuModel& actions_menu = menu_bar.appendMenu("Actions");
@@ -99,9 +108,17 @@ int main() {
         actions_menu.appendCommand(exit_command);
 
         MenuModel& help_menu = menu_bar.appendMenu("Help");
-        help_menu.appendCommand(help_command);
+        help_menu.appendCommand(help_command, help_shortcut);
 
         MenuInteractionController menu_interaction;
+
+        /*
+         * ShortcutMap is an explicit application-scoped routing object. The demo intentionally binds F1
+         * here instead of hard-coding help behavior into the terminal backend, Widget base class, or menu
+         * controller. A future window/focus-scope policy can own a different map without changing Command.
+         */
+        ShortcutMap shortcuts;
+        shortcuts.bind(help_shortcut, help_command);
 
         /*
          * RadioGroup is semantic and non-visual. It is deliberately not inferred from VBox siblings.
@@ -162,7 +179,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 opens menu. Tab moves focus. Space toggles/selects controls.");
+            "F10 opens menu. F1 help. Tab moves focus. Space toggles/selects controls.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -176,9 +193,9 @@ int main() {
         FocusManager focus;
 
         /*
-         * Button activation and menu activation deliberately share the same Command callback. This is the
-         * practical reason Command is semantic and backend-neutral: neither the Button nor the menu item
-         * owns a duplicate copy of application behavior.
+         * Button activation, menu activation and shortcut activation deliberately share the same Command
+         * callback. This is the practical reason Command is semantic and backend-neutral: none of the
+         * presentation/input surfaces owns a duplicate copy of application behavior.
          */
         greet_command.setOnExecuted([&] {
             std::string value{name.text()};
@@ -202,7 +219,7 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10 menu; arrows navigate menus/radios; Tab changes focus; Enter/Space activates.");
+                "Help: F10 menu; F1 shortcut; arrows navigate menus/radios; Tab changes focus; Enter/Space activates.");
         });
 
         exit_command.setOnExecuted([&] {
@@ -331,9 +348,21 @@ int main() {
 
                             /*
                              * Active menu mode owns all keyboard input, including keys the current menu
-                             * interpreter deliberately ignores. Falling through to FocusTraversal here would
-                             * make menu behavior depend on whichever Widget happened to remain focused.
+                             * interpreter deliberately ignores. Falling through to shortcuts or
+                             * FocusTraversal here would make menu behavior depend on whichever application
+                             * scope happened to register the same gesture.
                              */
+                            return;
+                        }
+
+                        /*
+                         * Application shortcuts run only after transient menu mode has declined ownership.
+                         * dispatch() enters arbitrary Command callbacks synchronously, so return immediately
+                         * on success and do not touch ShortcutMap again from this event transaction. Disabled
+                         * or unmatched commands return false and intentionally leave the key available to the
+                         * remaining focus/routing policy below.
+                         */
+                        if (shortcuts.dispatch(*key)) {
                             return;
                         }
                     }
@@ -358,20 +387,9 @@ int main() {
                     if (const auto* key = std::get_if<KeyEvent>(&event);
                         key != nullptr &&
                         key->pressed &&
-                        key->modifiers == KeyModifier::none) {
-                        if (key->key == Key::f1) {
-                            /*
-                             * F1 remains an application-level convenience in addition to the Help menu.
-                             * Both routes update the same status presentation without introducing Help
-                             * behavior into the terminal backend or a generic Widget base class.
-                             */
-                            (void)help_command.execute();
-                            return;
-                        }
-
-                        if (key->key == Key::escape) {
-                            application.requestExit();
-                        }
+                        key->modifiers == KeyModifier::none &&
+                        key->key == Key::escape) {
+                        application.requestExit();
                     }
                 });
 
@@ -418,7 +436,7 @@ int main() {
              * Backend polling is deliberately non-blocking. This small sleep bounds idle CPU usage while
              * keeping the demo responsive and allows TerminalEventPump's incomplete-sequence timeout to
              * advance. A later wait/wakeup abstraction can replace polling without changing decoding,
-             * menu semantics, or widget semantics.
+             * menu semantics, shortcut routing, or widget semantics.
              */
             std::this_thread::sleep_for(8ms);
         }
