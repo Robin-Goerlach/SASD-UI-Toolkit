@@ -17,6 +17,65 @@ TEST_CASE("Shortcut matches only exact key presses") {
     CHECK(!help.matches(KeyEvent{Key::f2, true, KeyModifier::none}));
 }
 
+TEST_CASE("ShortcutMap resolves bindings without entering application callbacks") {
+    Command command{"Deferred"};
+    ShortcutMap shortcuts;
+    int executions = 0;
+    command.setOnExecuted([&executions] { ++executions; });
+
+    const Shortcut gesture{Key::f8, KeyModifier::control};
+    shortcuts.bind(gesture, command);
+
+    const Command::Reference resolved =
+        shortcuts.resolve(KeyEvent{Key::f8, true, KeyModifier::control});
+
+    CHECK(resolved.get() == &command);
+    CHECK(executions == 0);
+
+    /*
+     * Resolution deliberately returns a copied lifetime-safe semantic reference rather than a pointer
+     * into ShortcutMap storage. A transient routing scope may therefore be torn down or rebound before
+     * the caller enters application code, which is useful for menu/overlay dismissal transactions.
+     */
+    shortcuts.clear();
+    CHECK(resolved.get() == &command);
+    CHECK(resolved.get()->execute());
+    CHECK(executions == 1);
+}
+
+TEST_CASE("ShortcutMap resolved references expire safely before deferred execution") {
+    ShortcutMap shortcuts;
+    auto command = std::make_unique<Command>("Temporary");
+
+    shortcuts.bind({Key::f9, KeyModifier::none}, *command);
+    const Command::Reference resolved =
+        shortcuts.resolve(KeyEvent{Key::f9, true, KeyModifier::none});
+
+    CHECK(resolved.get() == command.get());
+    command.reset();
+
+    /*
+     * Deferred execution must re-check semantic lifetime. Command::Reference carries no ownership and
+     * therefore becomes empty instead of leaving a raw pointer dangling after application-side teardown.
+     */
+    CHECK(resolved.get() == nullptr);
+}
+
+TEST_CASE("ShortcutMap resolve keeps matching separate from command eligibility") {
+    Command command{"Disabled"};
+    ShortcutMap shortcuts;
+    command.setEnabled(false);
+    shortcuts.bind({Key::f5, KeyModifier::alt}, command);
+
+    const Command::Reference resolved =
+        shortcuts.resolve(KeyEvent{Key::f5, true, KeyModifier::alt});
+
+    CHECK(resolved.get() == &command);
+    CHECK(!resolved.get()->execute());
+    CHECK(!shortcuts.resolve(KeyEvent{Key::f5, false, KeyModifier::alt}));
+    CHECK(!shortcuts.resolve(KeyEvent{Key::f5, true, KeyModifier::shift}));
+}
+
 TEST_CASE("ShortcutMap dispatches exact bindings to Command") {
     Command command{"Help"};
     ShortcutMap shortcuts;
