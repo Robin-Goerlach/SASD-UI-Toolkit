@@ -138,15 +138,24 @@ TEST_CASE("Backend clipboard discovery defaults to unsupported") {
     CHECK(const_backend.clipboard() == nullptr);
 }
 
-TEST_CASE("MockBackend exposes a lifetime-owned clipboard when capability is enabled") {
+TEST_CASE("MockBackend exposes clipboard only while a capable backend is initialized") {
     BackendCapabilities capabilities{};
     capabilities.clipboard = true;
     MockBackend backend{capabilities};
 
+    /*
+     * Capability answers the static question "can this backend provide a clipboard?". Discovery
+     * answers the dynamic question "is that service usable right now?". Keeping the service hidden
+     * before initialize() mirrors native backends whose clipboard implementation may require an
+     * active platform runtime, display connection or application session.
+     */
+    CHECK(backend.capabilities().clipboard);
+    CHECK(backend.clipboard() == nullptr);
+
+    backend.initialize();
+
     Clipboard* clipboard = backend.clipboard();
     CHECK(clipboard != nullptr);
-    CHECK(backend.capabilities().clipboard);
-
     clipboard->writeText("shared service");
 
     /*
@@ -160,4 +169,14 @@ TEST_CASE("MockBackend exposes a lifetime-owned clipboard when capability is ena
     const auto text = const_clipboard->readText();
     CHECK(text.has_value());
     CHECK(*text == "shared service");
+
+    backend.shutdown();
+
+    /*
+     * A pointer obtained while the backend was active must not be rediscovered after shutdown. Tests
+     * deliberately do not dereference the previously borrowed pointer here: the public contract only
+     * promises that borrowed service access is valid while the backend facility is usable.
+     */
+    CHECK(backend.clipboard() == nullptr);
+    CHECK(const_backend.clipboard() == nullptr);
 }

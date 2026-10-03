@@ -13,10 +13,12 @@ namespace sasd::ui::testing {
  * Deterministic headless backend used to validate the platform-neutral core and backend contracts.
  * It is test infrastructure, not a user-facing presentation backend.
  *
- * Optional services follow the configured capability set. In particular, clipboard() returns the
- * backend-owned MemoryClipboard only when BackendCapabilities::clipboard is true. Keeping capability
- * reporting and service discovery coherent here gives future consumer tests one reliable headless
- * environment without teaching production backends fake clipboard behavior.
+ * Optional services follow both the configured capability set and the backend lifecycle. In
+ * particular, clipboard() returns the backend-owned MemoryClipboard only while the backend is
+ * initialized and BackendCapabilities::clipboard is true. Capability reporting describes what the
+ * backend can provide; service discovery describes what is usable now. Keeping those two concepts
+ * distinct gives future consumer tests a realistic lifecycle without teaching production backends
+ * fake clipboard behavior.
  */
 class MockBackend final : public Backend {
 public:
@@ -29,12 +31,21 @@ public:
     void shutdown() noexcept override;
     [[nodiscard]] std::optional<Event> pollEvent() override;
 
+    /**
+     * Exposes the backend-owned clipboard only while this backend is active.
+     *
+     * A configured capability is deliberately not enough on its own. Native services frequently
+     * depend on platform state created by initialize(), so the headless backend follows the same
+     * lifecycle shape instead of making clipboard access accidentally valid before startup or after
+     * shutdown. The pointer remains non-owning and is valid only while this backend stays alive and
+     * initialized.
+     */
     [[nodiscard]] Clipboard* clipboard() noexcept override {
-        return capabilities_.clipboard ? &clipboard_ : nullptr;
+        return initialized_ && capabilities_.clipboard ? &clipboard_ : nullptr;
     }
 
     [[nodiscard]] const Clipboard* clipboard() const noexcept override {
-        return capabilities_.clipboard ? &clipboard_ : nullptr;
+        return initialized_ && capabilities_.clipboard ? &clipboard_ : nullptr;
     }
 
     void postEvent(Event event);
