@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/terminal/menu_interaction_presentation.hpp>
+#include <sasd/ui/terminal/presentation_frame.hpp>
 
 #include <optional>
 #include <utility>
@@ -8,17 +9,14 @@
 namespace sasd::ui::terminal {
 
 /**
- * Complete owned terminal frame metadata after transient menu composition.
+ * Compatibility name retained for the menu-composition frame introduced by ADR 0073.
  *
- * The cell buffer and hardware-caret request intentionally travel together. Menus can visually cover
- * application content without changing the semantic focus owner, so carrying only the composed cells would
- * leave the caller with no authoritative answer about whether the application's caret should still be
- * exposed while menu interaction owns keyboard attention.
+ * The payload is not inherently menu-specific: it is the terminal backend's general owned frame value.
+ * Keeping this alias avoids needless source churn for code written against the immediately preceding API
+ * while allowing later terminal presentation/transport layers to depend on TerminalPresentationFrame
+ * without importing menu-specific vocabulary.
  */
-struct MenuComposedPresentationFrame {
-    ScreenBuffer buffer;
-    std::optional<Point> caret{};
-};
+using MenuComposedPresentationFrame = TerminalPresentationFrame;
 
 /**
  * Composes the current terminal menu interaction over an immutable application/base frame and caret request.
@@ -42,6 +40,10 @@ struct MenuComposedPresentationFrame {
  * original base caret is propagated again. This avoids mutating FocusManager/TextField state merely to hide
  * a terminal cursor during a transient menu interaction.
  *
+ * The returned TerminalPresentationFrame is intentionally backend-generic. Menu composition decides the
+ * overlay policy, but the resulting buffer/caret pair no longer carries menu-specific type semantics. This
+ * keeps later transport or additional overlay stages free to consume one common terminal frame contract.
+ *
  * The base buffer is never mutated. Its size is also the viewport used by the menu frame builder because
  * renderMenuInteractionPresentation() derives placement from the destination copy's size. This keeps base
  * geometry, viewport fitting, and the final composed frame mechanically consistent.
@@ -57,10 +59,10 @@ struct MenuComposedPresentationFrame {
  * preserving the same observable contract: each menu frame is derived from current semantic state plus an
  * explicit base frame and base caret request.
  *
- * @returns an owned composed frame, or std::nullopt when the menu interaction cannot be presented completely
- *          under the current terminal presentation policy.
+ * @returns an owned terminal presentation frame, or std::nullopt when the menu interaction cannot be
+ *          presented completely under the current terminal presentation policy.
  */
-[[nodiscard]] inline std::optional<MenuComposedPresentationFrame>
+[[nodiscard]] inline std::optional<TerminalPresentationFrame>
 composeMenuInteractionFrame(
     const ScreenBuffer& base,
     std::optional<Point> base_caret,
@@ -85,7 +87,7 @@ composeMenuInteractionFrame(
      */
     const std::optional<Point> composed_caret = controller.isActive() ? std::nullopt : base_caret;
 
-    return MenuComposedPresentationFrame{
+    return TerminalPresentationFrame{
         std::move(composed),
         composed_caret,
     };
