@@ -1,14 +1,18 @@
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/command.hpp>
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/menu_bar_model.hpp>
+#include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
+#include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
@@ -17,6 +21,7 @@
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <exception>
@@ -33,11 +38,15 @@ using namespace sasd::ui;
 using namespace sasd::ui::terminal;
 
 /**
- * Re-measures and arranges the simple demo form for the current terminal size.
+ * Re-measures and arranges the demo form for the current terminal size.
  *
- * Window itself intentionally has no built-in layout policy yet, so the sample makes the root-form
- * arrangement explicit. Keeping this visible in example code is preferable to inventing implicit
- * Window behavior before more than one backend has validated the desired semantics.
+ * Row zero is intentionally reserved for the semantic menu bar. The Widget tree itself still knows
+ * nothing about terminal menus: the form starts one cell below the top edge and menu presentation is
+ * composed later as a transient overlay over the captured application frame.
+ *
+ * Keeping this relationship explicit in the demo is useful at the current architecture stage. Window
+ * still has no implicit client-area/menu-bar policy, and inventing one here would incorrectly couple a
+ * backend-neutral Widget to terminal-specific presentation geometry.
  */
 void layoutForm(Window& window,
                 VBox& form,
@@ -45,12 +54,17 @@ void layoutForm(Window& window,
                 Size terminal_size) {
     window.arrange({0, 0, terminal_size.width, terminal_size.height});
 
+    const Coordinate content_height =
+        std::max<Coordinate>(0, terminal_size.height - 1);
+    const Size content_size{terminal_size.width, content_height};
+
     /*
-     * Give the form the complete screen as its parent constraints. VBox computes natural child
-     * heights and stretches each visible child across the available terminal width.
+     * VBox receives only the space below the menu row. Measurement and arrangement therefore agree on
+     * the same available client rectangle even after a terminal resize. Tiny terminals collapse the
+     * client height to zero instead of producing a negative layout extent.
      */
-    (void)form.measure(metrics, {{0, 0}, terminal_size});
-    form.arrange({0, 0, terminal_size.width, terminal_size.height});
+    (void)form.measure(metrics, {{0, 0}, content_size});
+    form.arrange({0, 1, terminal_size.width, content_height});
 }
 
 } // namespace
@@ -68,6 +82,26 @@ int main() {
         ScreenBuffer screen{initial_size};
         TerminalPresentationSink presentation{screen};
         TerminalMeasurementContext metrics;
+
+        /*
+         * Commands are declared before both MenuBarModel and the Widget tree. Their semantic identity is
+         * shared by menu items and bound Buttons, while destruction happens in the opposite direction:
+         * Widgets and menus release their non-owning references before the Commands themselves die.
+         */
+        Command greet_command{"Greet"};
+        Command exit_command{"Exit"};
+        Command help_command{"Help"};
+
+        MenuBarModel menu_bar;
+        MenuModel& actions_menu = menu_bar.appendMenu("Actions");
+        actions_menu.appendCommand(greet_command);
+        actions_menu.appendSeparator();
+        actions_menu.appendCommand(exit_command);
+
+        MenuModel& help_menu = menu_bar.appendMenu("Help");
+        help_menu.appendCommand(help_command);
+
+        MenuInteractionController menu_interaction;
 
         /*
          * RadioGroup is semantic and non-visual. It is deliberately not inferred from VBox siblings.
@@ -120,26 +154,33 @@ int main() {
         hi_style.setTextStyle(radio_style);
         (void)hello_style.setSelected(true);
 
-        auto& greet = form.emplace<Button>("Greet");
+        auto& greet = form.emplace<Button>();
+        greet.bindCommand(greet_command);
         TextStyle greet_style;
         greet_style.foreground = Color::bright_green;
         greet_style.bold = true;
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab moves focus. Space toggles/selects controls. F1 help.");
+            "F10 opens menu. Tab moves focus. Space toggles/selects controls.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
 
-        auto& exit = form.emplace<Button>("Exit");
+        auto& exit = form.emplace<Button>();
+        exit.bindCommand(exit_command);
         TextStyle exit_style;
         exit_style.foreground = Color::bright_red;
         exit.setTextStyle(exit_style);
 
         FocusManager focus;
 
-        greet.setOnActivated([&] {
+        /*
+         * Button activation and menu activation deliberately share the same Command callback. This is the
+         * practical reason Command is semantic and backend-neutral: neither the Button nor the menu item
+         * owns a duplicate copy of application behavior.
+         */
+        greet_command.setOnExecuted([&] {
             std::string value{name.text()};
             if (value.empty()) {
                 value = "world";
@@ -159,6 +200,15 @@ int main() {
                 greeting_word + ", " + value + std::string(1, punctuation));
         });
 
+        help_command.setOnExecuted([&] {
+            status.setText(
+                "Help: F10 menu; arrows navigate menus/radios; Tab changes focus; Enter/Space activates.");
+        });
+
+        exit_command.setOnExecuted([&] {
+            application.requestExit();
+        });
+
         enthusiastic.setOnCheckedChanged([&](bool checked) {
             status.setText(
                 checked
@@ -174,16 +224,38 @@ int main() {
             status.setText("Greeting word selected: Hi");
         });
 
-        exit.setOnActivated([&] {
-            application.requestExit();
-        });
-
         layoutForm(window, form, metrics, initial_size);
         (void)focus.requestFocus(name);
 
+        /**
+         * Captures the current application frame, composes menu presentation over that immutable value,
+         * then transports the resulting complete frame. The lambda contains no widget synchronization;
+         * callers decide when the base application presentation is current before invoking it.
+         *
+         * A failed composition is treated as a demo-level presentation error. The lower menu API remains
+         * transactional and simply returns std::nullopt; the demo chooses to surface that condition because
+         * continuing with a stale visible menu would be more confusing than terminating with diagnostics.
+         */
+        const auto present_current_frame = [&] {
+            const TerminalPresentationFrame base_frame = presentation.captureFrame();
+            const auto composed = composeMenuInteractionFrame(
+                base_frame,
+                menu_bar,
+                menu_interaction,
+                {0, 0},
+                presentation.ambiguousWidthMode());
+
+            if (!composed.has_value()) {
+                throw std::runtime_error(
+                    "terminal demo menu state cannot be represented in the current viewport");
+            }
+
+            backend.session().present(*composed);
+        };
+
         /*
-         * Initial full presentation. TerminalPresentationSink writes only into ScreenBuffer;
-         * TerminalSession performs the final ANSI/VT byte transport to the real console.
+         * Initial full presentation. The Widget tree first updates the reusable ScreenBuffer, then
+         * captureFrame() establishes an owned base value and menu composition adds the persistent menu bar.
          */
         const auto initial_pass =
             PresentationCoordinator::synchronize(window, presentation);
@@ -191,16 +263,29 @@ int main() {
             throw std::runtime_error(
                 "terminal demo contains presentation state the current Cell model cannot render");
         }
-        backend.session().present(screen, presentation.caretPosition());
+        present_current_frame();
+
+        /*
+         * Command activation returned by MenuInteractionController is intentionally delayed until after
+         * the menu has been repainted closed. This follows the controller contract: transient presentation
+         * state is stabilized first, then arbitrary application callbacks are allowed to run.
+         */
+        Command::Reference pending_menu_command;
 
         while (!application.exitRequested()) {
             bool resized = false;
+            bool menu_presentation_changed = false;
 
             (void)application.processRoutedEvents(
                 [&](const Event& event) -> Widget* {
                     if (std::holds_alternative<KeyEvent>(event) ||
                         std::holds_alternative<TextInputEvent>(event)) {
-                        return focus.focusedWidget();
+                        /*
+                         * While menu interaction is active, keyboard ownership belongs to the menu layer.
+                         * Returning no Widget prevents a focused TextField or Button from consuming an arrow,
+                         * Enter, Escape, or text event before the application-level menu controller sees it.
+                         */
+                        return menu_interaction.isActive() ? nullptr : focus.focusedWidget();
                     }
 
                     // Resize and future backend-level events are handled outside widget routing.
@@ -212,6 +297,45 @@ int main() {
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
                         return;
+                    }
+
+                    if (const auto* key = std::get_if<KeyEvent>(&event); key != nullptr) {
+                        /*
+                         * F10 is application policy for entering/leaving keyboard menu mode. It is not baked
+                         * into MenuInteractionController because other applications may choose Alt, a mouse
+                         * gesture, a platform mnemonic convention, or no global activation key at all.
+                         */
+                        if (key->pressed &&
+                            key->modifiers == KeyModifier::none &&
+                            key->key == Key::f10) {
+                            if (menu_interaction.isActive()) {
+                                menu_interaction.reset();
+                            } else {
+                                (void)menu_interaction.begin(menu_bar);
+                            }
+                            menu_presentation_changed = true;
+                            return;
+                        }
+
+                        if (menu_interaction.isActive()) {
+                            const MenuInteractionResult menu_result =
+                                menu_interaction.handleKey(menu_bar, *key);
+
+                            if (menu_result.action != MenuInteractionAction::none) {
+                                menu_presentation_changed = true;
+                            }
+
+                            if (menu_result.action == MenuInteractionAction::activate_command) {
+                                pending_menu_command = menu_result.command;
+                            }
+
+                            /*
+                             * Active menu mode owns all keyboard input, including keys the current menu
+                             * interpreter deliberately ignores. Falling through to FocusTraversal here would
+                             * make menu behavior depend on whichever Widget happened to remain focused.
+                             */
+                            return;
+                        }
                     }
 
                     /*
@@ -237,16 +361,15 @@ int main() {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             /*
-                             * Function keys are ordinary semantic KeyEvents. The sample deliberately
-                             * handles F1 at application scope instead of baking Help behavior into the
-                             * terminal backend or a Widget base class.
+                             * F1 remains an application-level convenience in addition to the Help menu.
+                             * Both routes update the same status presentation without introducing Help
+                             * behavior into the terminal backend or a generic Widget base class.
                              */
-                            status.setText(
-                                "Help: Tab moves focus; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
+                            (void)help_command.execute();
                             return;
                         }
 
-                        if (key->key == Key::f10 || key->key == Key::escape) {
+                        if (key->key == Key::escape) {
                             application.requestExit();
                         }
                     }
@@ -257,8 +380,8 @@ int main() {
             }
 
             /*
-             * Content changes such as the greeting Label can invalidate natural sizes without a
-             * terminal resize. Re-measure only when required; cursor/focus-only changes stay visual.
+             * Content changes such as the greeting Label can invalidate natural sizes without a terminal
+             * resize. Re-measure only when required; cursor/focus-only changes stay visual.
              */
             if (!form.isMeasureValid()) {
                 layoutForm(window, form, metrics, backend.terminalSize());
@@ -274,15 +397,28 @@ int main() {
                  */
             }
 
-            if (pass.requested != 0 || resized) {
-                backend.session().present(screen, presentation.caretPosition());
+            if (pass.requested != 0 || resized || menu_presentation_changed) {
+                present_current_frame();
+            }
+
+            if (Command* command = pending_menu_command.get(); command != nullptr) {
+                /*
+                 * handleKey() already closed the controller before returning the lifetime-safe reference.
+                 * Because presentation above observes that closed state first, command callbacks may now
+                 * rebuild menus, alter Widgets, or request application exit without re-entering transient
+                 * popup state. Any Widget changes become part of the next normal synchronization pass.
+                 */
+                pending_menu_command = {};
+                (void)command->execute();
+            } else {
+                pending_menu_command = {};
             }
 
             /*
-             * Backend polling is deliberately non-blocking. This small sleep bounds idle CPU usage
-             * while keeping the first demo responsive and allows TerminalEventPump's 30 ms incomplete
-             * sequence timeout to advance. A later wait/wakeup abstraction can replace polling without
-             * changing decoding or widget semantics.
+             * Backend polling is deliberately non-blocking. This small sleep bounds idle CPU usage while
+             * keeping the demo responsive and allows TerminalEventPump's incomplete-sequence timeout to
+             * advance. A later wait/wakeup abstraction can replace polling without changing decoding,
+             * menu semantics, or widget semantics.
              */
             std::this_thread::sleep_for(8ms);
         }
