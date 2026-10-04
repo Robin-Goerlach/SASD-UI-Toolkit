@@ -5,6 +5,7 @@
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
+#include <sasd/ui/terminal/terminal_text_field_hit_test.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -227,7 +228,6 @@ TEST_CASE("Combining TextField content is deferred without damaging previous cel
     CHECK(buffer.at({2, 0}) == Cell{U'o'});
 }
 
-
 TEST_CASE("Focused terminal TextField styles reserved caret space continuously") {
     ScreenBuffer buffer{{10, 2}};
     TerminalMeasurementContext metrics;
@@ -252,4 +252,132 @@ TEST_CASE("Focused terminal TextField styles reserved caret space continuously")
     // x=4 is the reserved end-caret cell between "abc" and the right chrome delimiter.
     CHECK(buffer.at({4, 0}).code_point == U' ');
     CHECK(buffer.at({4, 0}).style == expected);
+}
+
+TEST_CASE("Terminal TextField hit testing maps discrete cells to scalar caret boundaries") {
+    Window window;
+    window.arrange({0, 0, 12, 3});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({2, 1, 6, 1}); // chrome + "abc" + one end-caret cell
+
+    /*
+     * Terminal pointers identify whole cells. The hit tester evaluates the center of each interior
+     * cell, so a one-cell scalar lands on its following caret boundary. Chrome has no text-center
+     * meaning and therefore clamps directly to the first/last representable boundary.
+     */
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {2, 1}) ==
+          std::optional<std::size_t>{0});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {3, 1}) ==
+          std::optional<std::size_t>{1});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {4, 1}) ==
+          std::optional<std::size_t>{2});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {5, 1}) ==
+          std::optional<std::size_t>{3});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {6, 1}) ==
+          std::optional<std::size_t>{3});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {7, 1}) ==
+          std::optional<std::size_t>{3});
+
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {8, 1}).has_value());
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {4, 0}).has_value());
+}
+
+TEST_CASE("Terminal TextField hit testing uses lead and continuation cells of wide scalars") {
+    Window window;
+    window.arrange({0, 0, 12, 2});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
+    field.arrange({0, 0, 7, 1}); // five interior cells: A, wide glyph, B, caret room
+
+    /*
+     * The two physical cells of U+754C provide exactly the sub-scalar precision a terminal can
+     * honestly report. Its lead-cell center lies before the scalar midpoint; its continuation-cell
+     * center lies after it. No grapheme or pixel precision is fabricated.
+     */
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {1, 0}) ==
+          std::optional<std::size_t>{1}); // A
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {2, 0}) ==
+          std::optional<std::size_t>{1}); // wide lead -> before U+754C
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {3, 0}) ==
+          std::optional<std::size_t>{2}); // continuation -> after U+754C
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {4, 0}) ==
+          std::optional<std::size_t>{3}); // B
+}
+
+TEST_CASE("Terminal TextField hit testing follows the presentation horizontal viewport") {
+    ScreenBuffer buffer{{10, 2}};
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 10, 2});
+
+    auto& field = window.emplace<TextField>("abcdef");
+    field.arrange({1, 0, 5, 1}); // three interior cells
+    CHECK(focus.requestFocus(field));
+    field.setCursorPosition(6);
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(buffer.at({2, 0}).code_point == U'e');
+    CHECK(buffer.at({3, 0}).code_point == U'f');
+    CHECK(*sink.caretPosition() == Point{4, 0});
+
+    /*
+     * Presentation has scrolled away a..d. The left chrome therefore clamps to scalar boundary 4;
+     * clicks in the visible e/f cells advance only within the represented suffix. This couples the
+     * regression to actual painted cells so a future viewport-policy change cannot silently leave
+     * pointer geometry on the old rule.
+     */
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {1, 0}) ==
+          std::optional<std::size_t>{4});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {2, 0}) ==
+          std::optional<std::size_t>{5});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {3, 0}) ==
+          std::optional<std::size_t>{6});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {4, 0}) ==
+          std::optional<std::size_t>{6});
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {5, 0}) ==
+          std::optional<std::size_t>{6});
+}
+
+TEST_CASE("Terminal TextField captured drag clamps to current visible caret boundaries") {
+    Window window;
+    window.arrange({0, 0, 10, 2});
+
+    auto& field = window.emplace<TextField>("abcdef");
+    field.arrange({1, 0, 5, 1});
+    field.setCursorPosition(6);
+
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {-100, 20}).has_value());
+    CHECK(TerminalTextFieldHitTest::caretIndexForDrag(field, {-100, 20}) ==
+          std::optional<std::size_t>{4});
+    CHECK(TerminalTextFieldHitTest::caretIndexForDrag(field, {100, -20}) ==
+          std::optional<std::size_t>{6});
+}
+
+TEST_CASE("Terminal TextField hit testing honors ancestor offsets and rejects unsupported state") {
+    Window window;
+    window.arrange({10, 5, 20, 4});
+
+    auto& box = window.emplace<VBox>();
+    box.arrange({2, 1, 10, 2});
+    auto& field = box.emplace<TextField>("abc");
+    field.arrange({1, 0, 6, 1});
+
+    // Absolute field x is 10 + 2 + 1 = 13; content begins at x=14.
+    CHECK(TerminalTextFieldHitTest::caretIndexAt(field, {14, 6}) ==
+          std::optional<std::size_t>{1});
+
+    field.setEnabled(false);
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {14, 6}).has_value());
+    field.setEnabled(true);
+
+    field.setVisible(false);
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {14, 6}).has_value());
+    field.setVisible(true);
+
+    field.setText(std::string{"e\xCC\x81"}); // unsupported combining sequence in current Cell model
+    CHECK(!TerminalTextFieldHitTest::caretIndexAt(field, {14, 6}).has_value());
+    CHECK(!TerminalTextFieldHitTest::caretIndexForDrag(field, {100, 100}).has_value());
 }
