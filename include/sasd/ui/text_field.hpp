@@ -22,6 +22,12 @@ class Clipboard;
  * cursorPosition(). This anchor/cursor model preserves direction for Shift+navigation without
  * introducing backend or platform shortcut state into the widget.
  *
+ * TextField also participates in backend-neutral primary-pointer capture while a text-selection
+ * gesture is active. Core deliberately does not translate pointer coordinates into scalar indices:
+ * rendered/terminal presentation layers own that geometry and update the existing selection APIs.
+ * TextField's responsibility is only to claim and retire the gesture so PointerRouter can deliver
+ * move/release events reliably after the pointer leaves the field bounds.
+ *
  * M2/M4 deliberately edit by Unicode scalar rather than grapheme cluster. Combining/ZWJ sequences are
  * retained in text but cursor/selection boundaries can currently step through their individual
  * scalars. Full grapheme-aware editing is a later Unicode-text milestone and is documented as such
@@ -141,14 +147,22 @@ protected:
                                  const MeasureConstraints& constraints) override;
 
     /**
-     * Handles TextInputEvent, unmodified editing/navigation, and Shift+Left/Right/Home/End selection.
+     * Handles text/key editing plus backend-neutral primary-pointer gesture ownership.
      *
-     * Editing requires logical focus and local visibility/enabled state. Key release for recognized
-     * gestures is consumed without repeating the operation. Unmodified navigation collapses a selection
-     * toward the requested edge, while Shift navigation preserves the stable anchor and moves only the
-     * active cursor. Control/Alt/Meta combinations remain available to higher-level shortcut policy.
+     * Pointer handling is intentionally geometry-free: a visible/enabled TextField claims a primary
+     * press, consumes captured move/release events, and thereby gives PointerRouter a stable gesture
+     * target. A presentation-specific interaction helper translates coordinates into Unicode-scalar
+     * selection endpoints before routing each event.
+     *
+     * TextInputEvent and key editing still require logical focus. Key release for recognized gestures
+     * is consumed without repeating the operation. Unmodified navigation collapses a selection toward
+     * the requested edge, while Shift navigation preserves the stable anchor and moves only the active
+     * cursor. Control/Alt/Meta combinations remain available to higher-level shortcut policy.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
+
+    /** Retires transient pointer-selection gesture ownership when PointerRouter drops capture. */
+    void onPointerCaptureLost() noexcept override;
 
 private:
     /**
@@ -174,6 +188,13 @@ private:
     TextStyle text_style_{};
     std::size_t cursor_position_{0};
     std::size_t selection_anchor_{0};
+
+    /*
+     * True only between a handled primary press and its matching release/capture loss. No coordinate
+     * or selection geometry is stored here: this flag exists solely so the Core widget can participate
+     * in PointerRouter's lifetime-safe capture protocol without learning about rendered font metrics.
+     */
+    bool pointer_selection_active_{false};
 };
 
 } // namespace sasd::ui

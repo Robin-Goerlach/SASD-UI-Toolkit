@@ -187,6 +187,45 @@ Size TextField::onMeasure(const MeasurementContext& context, const MeasureConstr
 }
 
 EventResult TextField::onEvent(const Event& event) {
+    /*
+     * Pointer capture participation is intentionally checked before logical focus. Desktop hosts often
+     * focus a TextField on the same press, but capture mechanics must not depend on focus policy or on
+     * event-order details outside this control. Geometry remains outside Core: presentation-specific
+     * code maps the pointer position to scalar indices and updates selection before routing the event.
+     */
+    if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+        if (!isEnabled() || !isVisible()) {
+            return EventResult::ignored;
+        }
+
+        if (pointer->action == PointerAction::press &&
+            pointer->button == PointerButton::primary) {
+            pointer_selection_active_ = true;
+            return EventResult::handled;
+        }
+
+        if (!pointer_selection_active_) {
+            return EventResult::ignored;
+        }
+
+        if (pointer->action == PointerAction::move) {
+            /*
+             * PointerRouter delivers captured motion directly to the field even after the geometric
+             * pointer leaves its bounds. Consuming it here preserves capture ownership; scalar movement
+             * has already been applied (when representable) by the rendered interaction layer.
+             */
+            return EventResult::handled;
+        }
+
+        if (pointer->action == PointerAction::release &&
+            pointer->button == PointerButton::primary) {
+            pointer_selection_active_ = false;
+            return EventResult::handled;
+        }
+
+        return EventResult::ignored;
+    }
+
     if (!hasFocus() || !isEnabled() || !isVisible()) {
         return EventResult::ignored;
     }
@@ -300,6 +339,16 @@ EventResult TextField::onEvent(const Event& event) {
     }
 
     return EventResult::handled;
+}
+
+void TextField::onPointerCaptureLost() noexcept {
+    /*
+     * Capture may disappear without a matching release when a routing surface is left, the field is
+     * detached/destroyed, or a host explicitly cancels the gesture. Retiring only transient gesture
+     * ownership is important: the semantic selection itself remains exactly where the last trustworthy
+     * pointer/key update left it.
+     */
+    pointer_selection_active_ = false;
 }
 
 bool TextField::insertText(std::string_view text) {
