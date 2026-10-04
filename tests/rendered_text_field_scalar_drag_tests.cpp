@@ -77,6 +77,76 @@ public:
 
 } // namespace
 
+TEST_CASE("RenderedTextFieldHitTest strict scalar mapping differs intentionally from caret boundaries") {
+    ScalarDragMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 160, 60});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({10, 10, 80, 14});
+
+    /*
+     * The default one-unit border places the text viewport at x=11. Each scalar occupies an
+     * eight-unit half-open span: scalar zero is x=[11,19), scalar one is x=[19,27), and so on.
+     *
+     * The right half of scalar zero is the critical distinction. caretIndexAt() answers the nearest
+     * insertion boundary, so x=18 is closer to boundary one. scalarIndexAt() instead answers which
+     * painted scalar is physically under the pointer and therefore must still report scalar zero.
+     * Multi-click selection depends on preserving this difference instead of reverse-engineering a
+     * text scalar from caret placement.
+     */
+    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {11, 15}, metrics) ==
+          std::optional<std::size_t>{0});
+    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {18, 15}, metrics) ==
+          std::optional<std::size_t>{0});
+    CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {18, 15}, metrics) ==
+          std::optional<std::size_t>{1});
+    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {19, 15}, metrics) ==
+          std::optional<std::size_t>{1});
+    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {34, 15}, metrics) ==
+          std::optional<std::size_t>{2});
+
+    /*
+     * x=35 is exactly after the final shaped scalar. The editable viewport continues to the right,
+     * but strict scalar hit-testing must not coerce either this boundary or later blank space onto the
+     * final character. Captured scalarIndexForDrag() has a different contract and is tested below.
+     */
+    CHECK(!RenderedTextFieldHitTest::scalarIndexAt(field, {35, 15}, metrics).has_value());
+    CHECK(!RenderedTextFieldHitTest::scalarIndexAt(field, {60, 15}, metrics).has_value());
+}
+
+TEST_CASE("RenderedTextFieldHitTest strict scalar mapping follows the shared horizontal viewport") {
+    ScalarDragMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 120, 60});
+
+    auto& field = window.emplace<TextField>("abcdef");
+    field.arrange({10, 10, 20, 14});
+    field.setCursorPosition(5);
+
+    /*
+     * This field is deliberately too narrow for the complete text, forcing the shared rendered
+     * viewport to scroll toward the active cursor. Neither caret nor scalar hit testing may assume
+     * scalar zero starts at the left content edge once that happens. At the leftmost visible shaped
+     * position, both APIs must therefore resolve to the viewport's actual first visible scalar.
+     *
+     * We intentionally compare the APIs rather than hard-code the viewport-start index here. The
+     * viewport policy owns that exact start decision; this regression protects the more important
+     * architectural invariant that presentation and both hit-test modes consume the same viewport.
+     */
+    const auto left_caret =
+        RenderedTextFieldHitTest::caretIndexAt(field, {11, 15}, metrics);
+    const auto left_scalar =
+        RenderedTextFieldHitTest::scalarIndexAt(field, {11, 15}, metrics);
+
+    CHECK(left_caret.has_value());
+    CHECK(left_scalar.has_value());
+    CHECK(*left_scalar == *left_caret);
+    CHECK(*left_scalar > 0);
+}
+
 TEST_CASE("RenderedTextFieldHitTest captured scalar drag clamps outside points to visible text") {
     ScalarDragMetrics metrics;
 
