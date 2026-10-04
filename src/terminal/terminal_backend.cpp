@@ -8,7 +8,21 @@
 namespace sasd::ui::terminal {
 
 TerminalBackend::TerminalBackend()
-    : TerminalBackend{createNativeTerminalDevice()} {}
+    : TerminalBackend{TerminalSessionOptions{}, TerminalEventPumpOptions{}} {}
+
+TerminalBackend::TerminalBackend(TerminalSessionOptions session_options,
+                                 TerminalEventPumpOptions pump_options)
+    : TerminalBackend{
+          createNativeTerminalDevice(),
+          session_options,
+          pump_options} {
+    /*
+     * Keep native-device selection in exactly one place. The public convenience overload carries only
+     * portable session/pump intent, while the injected constructor below remains the single owner of
+     * validation and stored backend state. This avoids duplicating lifecycle logic merely to let a
+     * production host opt into pointer reporting.
+     */
+}
 
 TerminalBackend::TerminalBackend(std::unique_ptr<TerminalDevice> device,
                                  TerminalSessionOptions session_options,

@@ -23,6 +23,16 @@ public:
     TerminalBackend();
 
     /**
+     * Creates a native terminal backend with explicit portable session/pump policy.
+     *
+     * This overload is intentionally separate from the injected-device constructor below. Production
+     * hosts can opt into capabilities such as terminal pointer reporting without having to know about
+     * createNativeTerminalDevice() or take ownership of a platform adapter themselves.
+     */
+    explicit TerminalBackend(TerminalSessionOptions session_options,
+                             TerminalEventPumpOptions pump_options = {});
+
+    /**
      * Dependency-injected constructor used by tests and embedders.
      *
      * device must be non-null and is owned exclusively by the backend.
