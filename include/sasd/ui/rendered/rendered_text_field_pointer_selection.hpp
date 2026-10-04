@@ -5,6 +5,7 @@
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
 #include <sasd/ui/text/selection_boundaries.hpp>
+#include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
@@ -32,15 +33,17 @@ public:
      *
      * Primary press:
      * - HitTest locates the TextField under the pointer.
+     * - an exact unmodified triple click selects the complete single-line TextField content;
      * - an unmodified double click uses scalarIndexAt() plus Core's basic word-boundary policy;
      * - an exact Shift press preserves the existing semantic anchor and moves only the active end;
      * - every other successful press collapses selection at caretIndexAt();
      * - TextField handles the press, allowing PointerRouter to establish capture.
      *
-     * Double-click word selection is atomic in this first slice. Once the TextField has consumed the
-     * double-click press, the helper immediately releases the just-created capture so the matching
-     * release cannot collapse the selected word through ordinary drag-finalization logic. Word-wise
-     * double-click dragging is deliberately deferred to a later gesture-granularity feature.
+     * Multi-click semantic selections are atomic in this slice. Once the TextField has consumed an
+     * unmodified double/triple-click press, the helper immediately releases the just-created capture so
+     * the matching release cannot collapse the semantic range through ordinary drag-finalization logic.
+     * Word-/line-granular multi-click dragging is deliberately deferred until gesture granularity has
+     * an explicit state model of its own.
      *
      * Captured move/release for ordinary/Shift-started gestures:
      * - the current captured Widget is queried from PointerRouter; no Widget pointer is retained here;
@@ -50,8 +53,8 @@ public:
      *
      * Shift is deliberately interpreted only when it is the exact modifier set. Control/Alt/Meta
      * combinations remain available for later word-selection or platform-specific policies instead of
-     * being silently treated as ordinary Shift extension today. Likewise, the word-selection gesture
-     * currently requires exact no-modifier double click; modified multi-click policy is left open.
+     * being silently treated as ordinary Shift extension today. Likewise, double/triple-click semantic
+     * selection currently requires exact no-modifier input; modified multi-click policy is left open.
      *
      * If a primary press hits a TextField but its required scalar geometry cannot be represented by the
      * metric provider, the event is still consumed by the TextField but any capture created by that
@@ -65,7 +68,7 @@ public:
         const RenderedMeasurementContext& metrics) {
         TextField* pressed_field = nullptr;
         bool press_mapping_failed = false;
-        bool atomic_double_click_selection = false;
+        bool atomic_multi_click_selection = false;
 
         if (!pointer_router.hasCapture() &&
             event.action == PointerAction::press &&
@@ -82,11 +85,29 @@ public:
             }
 
             if (pressed_field != nullptr) {
+                const bool exact_unmodified_triple_click =
+                    event.modifiers == KeyModifier::none &&
+                    event.click_count == 3;
                 const bool exact_unmodified_double_click =
                     event.modifiers == KeyModifier::none &&
                     event.click_count == 2;
 
-                if (exact_unmodified_double_click) {
+                if (exact_unmodified_triple_click) {
+                    /*
+                     * TextField is intrinsically single-line. Its whole-content selection therefore is
+                     * the natural single-line counterpart of desktop editors' triple-click line
+                     * selection, and it requires no font/shaping lookup once HitTest has established the
+                     * semantic target. Keeping this decision in the interaction helper avoids teaching
+                     * Core TextField about native click-count conventions.
+                     *
+                     * Use scalarCount() rather than UTF-8 byte length so the selection stays in exactly
+                     * the same Unicode-scalar domain as every other TextField selection operation.
+                     */
+                    pressed_field->setSelection(
+                        0,
+                        utf8::scalarCount(pressed_field->text()));
+                    atomic_multi_click_selection = true;
+                } else if (exact_unmodified_double_click) {
                     /*
                      * Word selection needs the scalar whose painted span is under the pointer, not the
                      * nearest insertion boundary. Using caretIndexAt() here would select the following
@@ -102,7 +123,7 @@ public:
                                 pressed_field->text(),
                                 *scalar)) {
                             pressed_field->setSelection(word->start, word->end);
-                            atomic_double_click_selection = true;
+                            atomic_multi_click_selection = true;
                         } else if (const auto caret = RenderedTextFieldHitTest::caretIndexAt(
                                        *pressed_field,
                                        event.position,
@@ -189,12 +210,12 @@ public:
 
         if (pressed_field != nullptr &&
             pointer_router.capturedWidget() == pressed_field &&
-            (press_mapping_failed || atomic_double_click_selection)) {
+            (press_mapping_failed || atomic_multi_click_selection)) {
             /*
-             * Two cases intentionally retire the just-created TextField capture immediately:
+             * Two categories intentionally retire the just-created TextField capture immediately:
              *
              * 1. unsupported geometry must not start a drag from stale selection state;
-             * 2. an atomic double-click word selection must survive the matching release unchanged.
+             * 2. an atomic multi-click semantic selection must survive the matching release unchanged.
              *
              * releaseCapture() invokes TextField::onPointerCaptureLost(), so Core's transient gesture
              * flag is also retired through the normal lifetime-safe handshake rather than by a special

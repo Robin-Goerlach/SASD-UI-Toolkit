@@ -366,3 +366,110 @@ TEST_CASE("Rendered TextField modified double click does not claim unmodified wo
         PointerEvent{{75, 15}, PointerAction::release, PointerButton::primary, 2},
         metrics);
 }
+
+TEST_CASE("Rendered TextField unmodified triple click selects the complete single-line content") {
+    ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
+
+    Window window;
+    window.arrange({0, 0, 220, 60});
+
+    auto& field = window.emplace<TextField>("alpha beta gamma");
+    field.arrange({10, 10, 180, 14});
+    field.setSelection(6, 10);
+
+    /*
+     * A TextField is semantically one line, so exact unmodified triple click selects that complete
+     * line/content regardless of which glyph was hit. The range is still expressed in Unicode-scalar
+     * indices; no UTF-8 byte offset or rendered advance leaks into TextField state.
+     */
+    const auto press = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{
+            {75, 15},
+            PointerAction::press,
+            PointerButton::primary,
+            3,
+            KeyModifier::none},
+        metrics);
+
+    CHECK(press.handled);
+    CHECK(!press.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionStart() == 0);
+    CHECK(field.selectionEnd() == utf8::scalarCount(field.text()));
+    CHECK(field.selectedText() == "alpha beta gamma");
+}
+
+TEST_CASE("Rendered TextField triple-click selection survives the matching release") {
+    ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
+
+    Window window;
+    window.arrange({0, 0, 220, 60});
+
+    auto& field = window.emplace<TextField>("Gr\xC3\xB6\xC3\x9F" "e Welt");
+    field.arrange({10, 10, 180, 14});
+
+    (void)RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{35, 15}, PointerAction::press, PointerButton::primary, 3},
+        metrics);
+
+    const std::string selected_before_release = field.selectedText();
+
+    const auto release = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{35, 15}, PointerAction::release, PointerButton::primary, 3},
+        metrics);
+
+    /*
+     * Multi-click selection is atomic for now. The press immediately retires TextField capture, so a
+     * later release cannot be interpreted as character-drag finalization and shrink the full selection.
+     */
+    CHECK(!release.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectedText() == selected_before_release);
+    CHECK(field.selectedText() == "Gr\xC3\xB6\xC3\x9F" "e Welt");
+}
+
+TEST_CASE("Rendered TextField modified triple click remains outside select-all policy") {
+    ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
+
+    Window window;
+    window.arrange({0, 0, 220, 60});
+
+    auto& field = window.emplace<TextField>("alpha beta");
+    field.arrange({10, 10, 160, 14});
+    field.setSelection(0, 5);
+
+    const auto press = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{
+            {75, 15},
+            PointerAction::press,
+            PointerButton::primary,
+            3,
+            KeyModifier::control},
+        metrics);
+
+    /*
+     * Exact no-modifier input owns the new triple-click contract. Ctrl/Alt/Meta combinations remain
+     * available for future platform policy and therefore follow today's ordinary fresh-caret path.
+     */
+    CHECK(press.handled);
+    CHECK(press.capture_active);
+    CHECK(field.selectionAnchor() == field.cursorPosition());
+    CHECK(!field.hasSelection());
+
+    (void)RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{75, 15}, PointerAction::release, PointerButton::primary, 3},
+        metrics);
+}
