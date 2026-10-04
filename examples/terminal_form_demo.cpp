@@ -5,9 +5,11 @@
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
+#include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/menu_interaction_controller.hpp>
+#include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
@@ -18,6 +20,7 @@
 #include <sasd/ui/terminal/terminal_backend.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
 #include <sasd/ui/terminal/terminal_presentation_sink.hpp>
+#include <sasd/ui/terminal/terminal_text_field_pointer_selection.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -75,7 +78,15 @@ int main() {
         using namespace sasd::ui;
         using namespace sasd::ui::terminal;
 
-        TerminalBackend backend;
+        /*
+         * Pointer reporting is an explicit host capability rather than a hidden TerminalBackend side
+         * effect. Enabling it here asks TerminalSession to own xterm button-event tracking plus SGR
+         * coordinates for exactly the demo lifetime; RAII restores those modes together with the
+         * native terminal state during shutdown.
+         */
+        TerminalSessionOptions session_options;
+        session_options.pointer_input = true;
+        TerminalBackend backend{session_options};
         Application application{backend};
 
         const Size initial_size = backend.terminalSize();
@@ -179,7 +190,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 opens menu. F1 help. Tab moves focus. Space toggles/selects controls.");
+            "F10 menu. F1 help. Tab focus. Mouse clicks controls; drag selects text.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -191,6 +202,14 @@ int main() {
         exit.setTextStyle(exit_style);
 
         FocusManager focus;
+
+        /*
+         * PointerRouter is host-owned for the same reason FocusManager is: both describe interaction
+         * state that spans multiple backend events. It remains backend-neutral and contains no terminal
+         * escape/protocol state. TerminalTextFieldPointerSelection below contributes only cell geometry
+         * before delegating gesture ownership back to this router.
+         */
+        PointerRouter pointer_router;
 
         /*
          * Button activation, menu activation and shortcut activation deliberately share the same Command
@@ -219,7 +238,7 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10 menu; F1 shortcut; arrows navigate menus/radios; Tab changes focus; Enter/Space activates.");
+                "Help: F10 menu; F1 shortcut; arrows navigate menus/radios; mouse clicks controls and drags text selection.");
         });
 
         exit_command.setOnExecuted([&] {
@@ -305,7 +324,14 @@ int main() {
                         return menu_interaction.isActive() ? nullptr : focus.focusedWidget();
                     }
 
-                    // Resize and future backend-level events are handled outside widget routing.
+                    /*
+                     * PointerRouter owns pointer hit testing/capture and TerminalTextFieldPointerSelection
+                     * adds terminal-specific text geometry in the fallback handler below. Returning nullptr
+                     * here is essential: Application must not perform a second ordinary dispatch of the
+                     * same PointerEvent after that helper has already routed it through Core.
+                     *
+                     * Resize and other backend-level events are likewise handled outside Widget routing.
+                     */
                     return nullptr;
                 },
                 [&](const Event& event) {
@@ -313,6 +339,48 @@ int main() {
                         screen.resize(resize->size);
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
+                        return;
+                    }
+
+                    if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        /*
+                         * The current terminal MenuInteractionController is keyboard-driven. While a menu
+                         * overlay is active, do not send fresh pointer input through to covered application
+                         * widgets underneath it. Entering menu mode explicitly releases any older capture
+                         * below, so ignoring pointer reports here cannot strand a TextField/Button gesture.
+                         */
+                        if (menu_interaction.isActive()) {
+                            return;
+                        }
+
+                        /*
+                         * Focus-on-primary-press is host policy, not terminal geometry. This mirrors the
+                         * SDL3 demo: the deepest focusable Core widget receives logical focus before the
+                         * same semantic PointerEvent is routed. Labels/non-focusable chrome simply leave
+                         * the current focus unchanged.
+                         */
+                        if (!pointer_router.hasCapture() &&
+                            pointer->action == PointerAction::press &&
+                            pointer->button == PointerButton::primary) {
+                            Widget* hit = HitTest::deepestAt(window, pointer->position);
+                            if (hit != nullptr && hit->canReceiveFocus()) {
+                                (void)focus.requestFocus(*hit);
+                            }
+                        }
+
+                        /*
+                         * Route every application pointer event through the terminal TextField seam. For
+                         * ordinary controls this is behaviorally the normal PointerRouter path. TextFields
+                         * additionally receive cell-to-scalar caret mapping before dispatch, so a press can
+                         * place/collapse the selection and captured motion can extend it outside the field.
+                         * The presentation width mode is supplied explicitly so painting and hit geometry
+                         * cannot silently disagree about East Asian ambiguous-width characters.
+                         */
+                        (void)TerminalTextFieldPointerSelection::route(
+                            window,
+                            pointer_router,
+                            *pointer,
+                            presentation.ambiguousWidthMode());
                         return;
                     }
 
@@ -328,6 +396,13 @@ int main() {
                             if (menu_interaction.isActive()) {
                                 menu_interaction.reset();
                             } else {
+                                /*
+                                 * Modal menu interaction supersedes an in-progress application pointer
+                                 * gesture. Releasing Core capture keeps TextField/Button transient state
+                                 * synchronized and preserves any semantic selection reached before F10.
+                                 * Later SGR motion/release reports are ignored while the menu is active.
+                                 */
+                                pointer_router.releaseCapture();
                                 (void)menu_interaction.begin(menu_bar);
                             }
                             menu_presentation_changed = true;
