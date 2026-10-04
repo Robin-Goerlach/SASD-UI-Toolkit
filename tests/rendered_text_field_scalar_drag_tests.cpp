@@ -129,14 +129,17 @@ TEST_CASE("RenderedTextFieldHitTest captured scalar drag respects current horizo
     field.setCursorPosition(2); // Shared viewport starts at scalar 1 so U+754C is visible.
 
     /*
-     * The drag mapper may clamp only inside the *current* rendered viewport. It must not jump to the
-     * off-screen leading 'A' or to trailing 'B' when those scalars are not currently representable by
-     * visible shaped spans.
+     * The drag mapper may clamp only inside the *current* rendered viewport. It must not jump back to
+     * the off-screen leading 'A'. The viewport has seventeen logical text units here: U+754C consumes
+     * sixteen of them and the first unit of trailing 'B' is still genuinely painted. Because the
+     * scalar mapper intentionally treats partially clipped positive-width spans as visible, a far-right
+     * captured drag correctly clamps to scalar 2 rather than pretending that visible fragment does not
+     * exist.
      */
     CHECK(RenderedTextFieldHitTest::scalarIndexForDrag(field, {-100, 15}, metrics) ==
           std::optional<std::size_t>{1});
     CHECK(RenderedTextFieldHitTest::scalarIndexForDrag(field, {1000, 15}, metrics) ==
-          std::optional<std::size_t>{1});
+          std::optional<std::size_t>{2});
 }
 
 TEST_CASE("RenderedTextFieldHitTest captured scalar drag stays conservative for invalid geometry") {
