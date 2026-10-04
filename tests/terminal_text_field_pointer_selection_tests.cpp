@@ -19,6 +19,16 @@ TEST_CASE("Terminal TextField pointer selection collapses on press and extends t
     auto& field = window.emplace<TextField>("abcdef");
     field.arrange({1, 1, 8, 1}); // left/right chrome + six interior terminal cells
 
+    /*
+     * TextField intentionally initializes its semantic cursor at end-of-text. Terminal viewport
+     * geometry follows that cursor, so a six-cell interior containing six one-cell scalars would start
+     * scrolled at scalar 1 in order to reserve a representable caret cell. This regression wants to
+     * exercise a press on the unscrolled "b" cell and then prove that later captured motion can move
+     * the active end. Put the cursor at zero explicitly rather than relying on constructor state that
+     * legitimately affects viewport geometry.
+     */
+    field.setCursorPosition(0);
+
     PointerRouter pointer_router;
 
     /*
