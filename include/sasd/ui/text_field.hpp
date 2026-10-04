@@ -19,8 +19,8 @@ class Clipboard;
  * selection highlighting and horizontal viewport scrolling belong to presentation backends.
  *
  * The cursor is the active selection end. A collapsed selection has selectionAnchor() equal to
- * cursorPosition(). This anchor/cursor model preserves direction for later Shift+navigation without
- * introducing backend or input-policy state into the widget.
+ * cursorPosition(). This anchor/cursor model preserves direction for Shift+navigation without
+ * introducing backend or platform shortcut state into the widget.
  *
  * M2/M4 deliberately edit by Unicode scalar rather than grapheme cluster. Combining/ZWJ sequences are
  * retained in text but cursor/selection boundaries can currently step through their individual
@@ -80,7 +80,7 @@ public:
      *
      * Both positions are clamped independently to the current scalar count. Direction is preserved by
      * retaining the supplied anchor and cursor instead of normalizing them. Presentation backends may
-     * use selectionStart()/selectionEnd() for the geometric range while input policy can later use the
+     * use selectionStart()/selectionEnd() for the geometric range while input handling uses the
      * original anchor to implement Shift+navigation correctly.
      */
     void setSelection(std::size_t anchor_scalar_index, std::size_t cursor_scalar_index);
@@ -141,11 +141,12 @@ protected:
                                  const MeasureConstraints& constraints) override;
 
     /**
-     * Handles TextInputEvent plus unmodified Left/Right/Home/End/Backspace/Delete key events.
+     * Handles TextInputEvent, unmodified editing/navigation, and Shift+Left/Right/Home/End selection.
      *
      * Editing requires logical focus and local visibility/enabled state. Key release for recognized
-     * editing keys is consumed without repeating the operation. Unmodified navigation collapses a
-     * programmatically established selection toward the requested edge before ordinary scalar movement.
+     * gestures is consumed without repeating the operation. Unmodified navigation collapses a selection
+     * toward the requested edge, while Shift navigation preserves the stable anchor and moves only the
+     * active cursor. Control/Alt/Meta combinations remain available to higher-level shortcut policy.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
 

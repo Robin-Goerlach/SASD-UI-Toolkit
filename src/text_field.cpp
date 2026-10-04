@@ -202,24 +202,77 @@ EventResult TextField::onEvent(const Event& event) {
     }
 
     const auto* key = std::get_if<KeyEvent>(&event);
-    if (key == nullptr || key->modifiers != KeyModifier::none) {
+    if (key == nullptr) {
         return EventResult::ignored;
     }
 
-    const bool editing_key =
+    const bool unmodified = key->modifiers == KeyModifier::none;
+    const bool shift_only = key->modifiers == KeyModifier::shift;
+    if (!unmodified && !shift_only) {
+        /*
+         * Control/Alt/Meta combinations remain available to application/window shortcut policy. This is
+         * especially important while printable-key shortcuts are still being designed separately from
+         * the TextField editing contract.
+         */
+        return EventResult::ignored;
+    }
+
+    const bool navigation_key =
         key->key == Key::left ||
         key->key == Key::right ||
         key->key == Key::home ||
-        key->key == Key::end ||
-        key->key == Key::backspace ||
-        key->key == Key::delete_forward;
+        key->key == Key::end;
+
+    const bool editing_key =
+        navigation_key ||
+        (unmodified &&
+         (key->key == Key::backspace || key->key == Key::delete_forward));
 
     if (!editing_key) {
+        /*
+         * Shift modifies only navigation in this slice. In particular, Shift+Backspace/Delete is left
+         * untouched rather than inventing platform-specific deletion aliases accidentally.
+         */
         return EventResult::ignored;
     }
 
-    // Desktop backends may report releases; consume them without repeating the editing operation.
+    // Desktop backends may report releases; consume recognized gestures without repeating the action.
     if (!key->pressed) {
+        return EventResult::handled;
+    }
+
+    if (shift_only) {
+        /*
+         * Shift navigation moves only the active cursor and deliberately preserves selection_anchor_.
+         * The first Shift movement starts from a collapsed anchor/cursor pair; repeated movements extend
+         * or shrink the same directed selection. Crossing the anchor is valid and simply reverses the
+         * normalized selection direction while the stable anchor stays unchanged.
+         */
+        const std::size_t scalar_count = utf8::scalarCount(text_);
+        std::size_t target = cursor_position_;
+
+        switch (key->key) {
+        case Key::left:
+            if (target > 0) {
+                --target;
+            }
+            break;
+        case Key::right:
+            if (target < scalar_count) {
+                ++target;
+            }
+            break;
+        case Key::home:
+            target = 0;
+            break;
+        case Key::end:
+            target = scalar_count;
+            break;
+        default:
+            break;
+        }
+
+        setSelection(selection_anchor_, target);
         return EventResult::handled;
     }
 

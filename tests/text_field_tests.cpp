@@ -268,6 +268,99 @@ TEST_CASE("TextField unmodified arrows collapse selection toward the requested e
     CHECK(!field.hasSelection());
 }
 
+TEST_CASE("TextField Shift arrows extend shrink and cross a stable selection anchor") {
+    TextField field{std::string{"A\xE7\x95\x8C" "BC"}}; // A + U+754C + B + C
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setCursorPosition(2);
+
+    const auto first_left =
+        EventDispatcher::dispatch(field, KeyEvent{Key::left, true, KeyModifier::shift});
+    CHECK(first_left.handled());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 1);
+    CHECK(field.selectedText() == std::string{"\xE7\x95\x8C"});
+
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::left, true, KeyModifier::shift});
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 0);
+    CHECK(field.selectionStart() == 0);
+    CHECK(field.selectionEnd() == 2);
+
+    /*
+     * Moving the active end back to the anchor collapses the selection without losing the anchor. One
+     * more Shift+Right then creates a forward selection from that same anchor, proving direction is a
+     * consequence of the active cursor and not a rewritten normalized range.
+     */
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::right, true, KeyModifier::shift});
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::right, true, KeyModifier::shift});
+    CHECK(!field.hasSelection());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 2);
+
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::right, true, KeyModifier::shift});
+    CHECK(field.hasSelection());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 3);
+    CHECK(field.selectedText() == "B");
+}
+
+TEST_CASE("TextField Shift Home and End extend from the existing anchor") {
+    TextField field{"abcdef"};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setCursorPosition(3);
+    const auto home =
+        EventDispatcher::dispatch(field, KeyEvent{Key::home, true, KeyModifier::shift});
+    CHECK(home.handled());
+    CHECK(field.selectionAnchor() == 3);
+    CHECK(field.cursorPosition() == 0);
+    CHECK(field.selectedText() == "abc");
+
+    const auto end =
+        EventDispatcher::dispatch(field, KeyEvent{Key::end, true, KeyModifier::shift});
+    CHECK(end.handled());
+    CHECK(field.selectionAnchor() == 3);
+    CHECK(field.cursorPosition() == 6);
+    CHECK(field.selectedText() == "def");
+}
+
+TEST_CASE("TextField Shift navigation releases are consumed without changing selection") {
+    TextField field{"abc"};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    field.setCursorPosition(2);
+    CHECK(EventDispatcher::dispatch(
+        field, KeyEvent{Key::left, true, KeyModifier::shift}).handled());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 1);
+
+    CHECK(EventDispatcher::dispatch(
+        field, KeyEvent{Key::left, false, KeyModifier::shift}).handled());
+    CHECK(field.selectionAnchor() == 2);
+    CHECK(field.cursorPosition() == 1);
+}
+
+TEST_CASE("TextField leaves non-Shift modifier combinations to higher-level policy") {
+    TextField field{"abc"};
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
+
+    const auto control_left = EventDispatcher::dispatch(
+        field, KeyEvent{Key::left, true, KeyModifier::control});
+    const auto shift_delete = EventDispatcher::dispatch(
+        field, KeyEvent{Key::delete_forward, true, KeyModifier::shift});
+
+    CHECK(!control_left.handled());
+    CHECK(!shift_delete.handled());
+    CHECK(field.cursorPosition() == 3);
+    CHECK(!field.hasSelection());
+    CHECK(field.text() == "abc");
+}
+
 TEST_CASE("TextField Backspace and Delete remove complete UTF-8 scalars") {
     TextField field{std::string{"A\xE7\x95\x8C" "B"}};
     FocusManager focus;
@@ -320,31 +413,23 @@ TEST_CASE("TextField editing key releases are consumed without repeating mutatio
     CHECK(field.text() == "a");
 }
 
-TEST_CASE("TextField modified navigation remains available for future selection shortcuts") {
-    TextField field{"abc"};
-    FocusManager focus;
-    CHECK(focus.requestFocus(field));
-
-    const auto result =
-        EventDispatcher::dispatch(field, KeyEvent{Key::left, true, KeyModifier::shift});
-
-    CHECK(!result.handled());
-    CHECK(field.cursorPosition() == 3);
-    CHECK(!field.hasSelection());
-}
-
 TEST_CASE("TextField ignores editing input without logical focus") {
     TextField field{"abc"};
 
     CHECK(!EventDispatcher::dispatch(field, TextInputEvent{"X"}).handled());
     CHECK(!EventDispatcher::dispatch(
         field, KeyEvent{Key::backspace, true, KeyModifier::none}).handled());
+    CHECK(!EventDispatcher::dispatch(
+        field, KeyEvent{Key::left, true, KeyModifier::shift}).handled());
     CHECK(field.text() == "abc");
+    CHECK(!field.hasSelection());
 }
 
 TEST_CASE("TextField cursor and selection movement invalidate presentation but not measurement") {
     TextField field{"abc"};
     TextFieldMeasurementContext context;
+    FocusManager focus;
+    CHECK(focus.requestFocus(field));
 
     (void)field.measure(context);
     field.acknowledgeVisualUpdate();
@@ -356,6 +441,11 @@ TEST_CASE("TextField cursor and selection movement invalidate presentation but n
 
     field.acknowledgeVisualUpdate();
     field.clearSelection();
+    CHECK(field.isMeasureValid());
+    CHECK(field.isVisualUpdatePending());
+
+    field.acknowledgeVisualUpdate();
+    (void)EventDispatcher::dispatch(field, KeyEvent{Key::left, true, KeyModifier::shift});
     CHECK(field.isMeasureValid());
     CHECK(field.isVisualUpdatePending());
 }
