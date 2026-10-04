@@ -14,7 +14,7 @@
 #include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
-#include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
+#include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab moves focus. Space toggles/selects controls. F1 help.");
+            "Tab moves focus. Drag in Name selects text. Space toggles/selects controls. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -335,9 +335,9 @@ int main(int argc, char** argv) {
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
                         /*
-                         * Desktop focus-on-primary-press is host policy, not PointerRouter policy.
-                         * Keep FocusManager independent from pointer mechanics while still providing
-                         * familiar Button/TextField behavior in this concrete desktop demo.
+                         * Desktop focus-on-primary-press remains host policy. The rendered TextField
+                         * selection helper deliberately does not own FocusManager because focus scope,
+                         * modal policy and top-level window activation are application/host concerns.
                          */
                         if (pointer->action == PointerAction::press &&
                             pointer->button == PointerButton::primary) {
@@ -346,25 +346,21 @@ int main(int argc, char** argv) {
                             if (hit != nullptr && hit->canReceiveFocus()) {
                                 (void)focus.requestFocus(*hit);
                             }
-
-                            /*
-                             * TextField cursor placement is rendered-presentation geometry, not Core
-                             * editing geometry. Use the same viewport/font metrics as painting; when
-                             * a shaping boundary is not representable, keep the existing cursor
-                             * instead of guessing.
-                             */
-                            if (auto* field = dynamic_cast<TextField*>(hit)) {
-                                if (const auto scalar =
-                                        RenderedTextFieldHitTest::caretIndexAt(
-                                            *field,
-                                            pointer->position,
-                                            backend)) {
-                                    field->setCursorPosition(*scalar);
-                                }
-                            }
                         }
 
-                        (void)pointer_router.route(window, *pointer);
+                        /*
+                         * Route all pointer events through the rendered TextField selection seam. For
+                         * non-TextField controls it is behaviorally identical to PointerRouter::route().
+                         * For a TextField press/move/release gesture it additionally translates shaped
+                         * pixel positions into Unicode-scalar boundaries while PointerRouter capture
+                         * owns gesture lifetime. This removes the demo's former click-only caret policy
+                         * and exercises the same reusable path covered by the M4 selection tests.
+                         */
+                        (void)RenderedTextFieldPointerSelection::route(
+                            window,
+                            pointer_router,
+                            *pointer,
+                            backend);
                         return;
                     }
 
@@ -422,7 +418,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; drag in Name selects text; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 
