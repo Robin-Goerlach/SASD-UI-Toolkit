@@ -25,8 +25,12 @@ struct EscapeResult {
      * Pointer input shares the CSI transport with keyboard sequences, but keeping it as a separate
      * optional here avoids widening the keyboard parser's local responsibilities into a second Event
      * variant. Exactly one semantic payload is produced by any recognized escape sequence.
+     *
+     * The explicit empty initializer is intentional. EscapeResult remains an aggregate so the parser's
+     * compact return sites stay readable, while legacy keyboard-only initializers may omit this newly
+     * added tail member without triggering -Wmissing-field-initializers under warnings-as-errors builds.
      */
-    std::optional<PointerEvent> pointer_event;
+    std::optional<PointerEvent> pointer_event{};
 };
 
 [[nodiscard]] std::size_t expectedUtf8Length(unsigned char first) noexcept {
