@@ -156,12 +156,13 @@ if(SASD_UI_BUILD_SDL3_ADAPTER AND NOT SASD_UI_SDL3_TEST_FONT STREQUAL "")
         test_main.cpp
         rendered_sdl3_software_device_tests.cpp
         rendered_sdl3_window_backend_tests.cpp
+        rendered_sdl3_text_field_word_drag_tests.cpp
     )
 
     target_link_libraries(sasd_ui_sdl3_tests
         PRIVATE
             SASD::UI::Rendered::SDL3
-            # The window-backend tests intentionally use SDL_PushEvent() to inject native events.
+            # The adapter tests intentionally inject SDL_Event values through SDL's native queue.
             # Keep that native test dependency local instead of making SDL3 a PUBLIC dependency of
             # the experimental adapter target merely to expose SDL headers to tests.
             SDL3::SDL3
