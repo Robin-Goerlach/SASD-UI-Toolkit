@@ -8,10 +8,12 @@
 namespace sasd::ui::terminal {
 
 /**
- * Session options shared by native terminal-device implementations.
+ * Session options shared by terminal-session and native-device lifetime code.
  *
- * These describe portable intent. Platform adapters decide which termios/Win32 flags or ANSI session
- * sequences are required to provide the requested behavior.
+ * These describe portable intent rather than exposing termios, Win32 or DEC/xterm details to callers.
+ * Native TerminalDevice implementations decide which host-console flags are required for raw input and
+ * ANSI/VT transport. TerminalSession may additionally own portable ANSI session protocols whose enable
+ * and disable bytes must be paired with the same RAII lifetime, such as pointer reporting.
  */
 struct TerminalSessionOptions {
     /** Use the terminal's alternate screen so application UI does not overwrite shell history. */
@@ -20,10 +22,19 @@ struct TerminalSessionOptions {
     /**
      * Configure immediate/raw-style keyboard input suitable for semantic event parsing.
      *
-     * The current M2 step establishes/restores raw mode but input-byte parsing is implemented
-     * separately. Keeping the option here makes the lifetime boundary explicit before reads begin.
+     * Input-byte parsing is implemented separately. Keeping the option here makes the lifetime boundary
+     * explicit before reads begin.
      */
     bool raw_input{true};
+
+    /**
+     * Request terminal pointer reports suitable for click-and-drag interaction.
+     *
+     * This is deliberately opt-in. When enabled, TerminalSession requests xterm-compatible button-event
+     * tracking plus SGR coordinates for the lifetime of the session and restores the terminal on close.
+     * The byte decoder remains a separate responsibility and merely understands reports that arrive.
+     */
+    bool pointer_input{false};
 
     friend constexpr bool operator==(const TerminalSessionOptions&,
                                      const TerminalSessionOptions&) = default;
@@ -56,15 +67,17 @@ public:
     [[nodiscard]] virtual Size size() const = 0;
 
     /**
-     * Enters one terminal UI session.
+     * Enters one native terminal UI session.
      *
      * Calling this twice without an intervening endSession() is an error. Implementations may enable
-     * raw input, Virtual Terminal processing and alternate-screen mode according to options.
+     * raw input, Virtual Terminal processing and alternate-screen support according to the portable
+     * options. Cross-platform ANSI protocols owned by TerminalSession are layered on top only after
+     * this native transition succeeds.
      */
     virtual void beginSession(const TerminalSessionOptions& options) = 0;
 
     /**
-     * Restores all session-owned terminal state.
+     * Restores all native session-owned terminal state.
      *
      * Must be idempotent and noexcept; best-effort output restoration is preferable to throwing from
      * a destructor path.

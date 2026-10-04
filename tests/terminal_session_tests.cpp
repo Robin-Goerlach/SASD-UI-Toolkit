@@ -29,6 +29,106 @@ TEST_CASE("TerminalSession begins once and restores device on destruction") {
     CHECK(device.endCount() == 1);
 }
 
+TEST_CASE("TerminalSession leaves pointer reporting opt-in and silent by default") {
+    MockTerminalDevice device;
+
+    TerminalSession session{device};
+
+    CHECK(session.active());
+    CHECK(!session.pointerInputEnabled());
+    CHECK(device.writeCount() == 0);
+    CHECK(device.writes().empty());
+}
+
+TEST_CASE("TerminalSession owns SGR drag pointer reporting for its RAII lifetime") {
+    MockTerminalDevice device;
+    TerminalSessionOptions options;
+    options.pointer_input = true;
+
+    {
+        TerminalSession session{device, options};
+
+        CHECK(session.active());
+        CHECK(session.pointerInputEnabled());
+        CHECK(device.active());
+        CHECK(device.lastOptions() == options);
+        CHECK(device.writeCount() == 1);
+        CHECK(device.writes().size() == 1);
+
+        /*
+         * DECSET 1002 is intentionally used instead of all-motion 1003: click-and-drag selection needs
+         * movement while a button is held, not a permanent stream of hover reports. DECSET 1006 then
+         * selects the SGR coordinate representation understood by AnsiInputDecoder.
+         */
+        CHECK(device.writes()[0] == std::string{"\x1B[?1002h\x1B[?1006h"});
+    }
+
+    CHECK(!device.active());
+    CHECK(device.endCount() == 1);
+    CHECK(device.writeCount() == 2);
+    CHECK(device.writes().size() == 2);
+
+    /*
+     * Protocol teardown happens before native endSession(), while the device is still writable and VT
+     * output is still configured. Reversing the enable order also avoids leaving SGR encoding selected
+     * after button-event tracking has been released.
+     */
+    CHECK(device.writes()[1] == std::string{"\x1B[?1006l\x1B[?1002l"});
+}
+
+TEST_CASE("TerminalSession rolls native state back when pointer reporting activation fails") {
+    MockTerminalDevice device;
+    device.setFailWrite(true);
+
+    TerminalSessionOptions options;
+    options.pointer_input = true;
+
+    bool threw = false;
+    try {
+        TerminalSession session{device, options};
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+
+    CHECK(threw);
+    CHECK(!device.active());
+    CHECK(device.beginCount() == 1);
+    CHECK(device.endCount() == 1);
+
+    /*
+     * One write attempts activation and the second is the constructor's best-effort inverse sequence.
+     * The mock fails both writes before recording bytes, which is useful here: endSession() must still
+     * execute even when protocol recovery itself cannot reach the terminal.
+     */
+    CHECK(device.writeCount() == 2);
+    CHECK(device.writes().empty());
+}
+
+TEST_CASE("TerminalSession still restores native state when pointer shutdown write fails") {
+    MockTerminalDevice device;
+    TerminalSessionOptions options;
+    options.pointer_input = true;
+
+    TerminalSession session{device, options};
+    CHECK(session.pointerInputEnabled());
+    CHECK(device.writes().size() == 1);
+
+    device.setFailWrite(true);
+    session.close();
+
+    CHECK(!session.active());
+    CHECK(!session.pointerInputEnabled());
+    CHECK(!device.active());
+    CHECK(device.endCount() == 1);
+    CHECK(device.writeCount() == 2);
+    CHECK(device.writes().size() == 1);
+
+    // close() remains idempotent after a failed best-effort pointer-protocol teardown.
+    session.close();
+    CHECK(device.endCount() == 1);
+    CHECK(device.writeCount() == 2);
+}
+
 TEST_CASE("TerminalSession rejects non-interactive device before native mutation") {
     MockTerminalDevice device;
     device.setInteractive(false);

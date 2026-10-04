@@ -14,7 +14,8 @@ struct TerminalPresentationFrame;
  * RAII owner of one active TerminalDevice session.
  *
  * TerminalSession deliberately contains no widget/event-loop policy. It ensures native terminal state
- * is restored and provides the narrow output bridge from presentation-frame data to TerminalDevice bytes.
+ * is restored, owns session-scoped ANSI protocols such as optional pointer reporting, and provides the
+ * narrow output bridge from presentation-frame data to TerminalDevice bytes.
  */
 class TerminalSession final {
 public:
@@ -31,6 +32,14 @@ public:
     [[nodiscard]] const TerminalDevice& device() const noexcept { return device_; }
 
     [[nodiscard]] bool active() const noexcept { return active_; }
+
+    /**
+     * True while this session owns enabled terminal pointer reporting.
+     *
+     * This reports protocol lifetime only; it does not imply that a particular Widget currently owns
+     * PointerRouter capture or that a pointer event is pending.
+     */
+    [[nodiscard]] bool pointerInputEnabled() const noexcept { return pointer_input_enabled_; }
 
     /** Delegates current visible cell dimensions to the active native device. */
     [[nodiscard]] Size size() const;
@@ -70,15 +79,17 @@ public:
     [[nodiscard]] std::string pollInputBytes();
 
     /**
-     * Restores the device immediately.
+     * Restores session-owned ANSI protocols and then the native device immediately.
      *
-     * Idempotent and noexcept. The destructor calls the same operation.
+     * Idempotent and noexcept. Pointer-reporting shutdown is best-effort because close() is also the
+     * destructor path; native endSession() is still called even when the final protocol write fails.
      */
     void close() noexcept;
 
 private:
     TerminalDevice& device_;
     bool active_{false};
+    bool pointer_input_enabled_{false};
 };
 
 } // namespace sasd::ui::terminal
