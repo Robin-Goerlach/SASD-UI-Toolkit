@@ -1,5 +1,6 @@
 #include "rendered/sdl3/sdl3_pointer_event_translation.hpp"
 
+#include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
 
 #include <cmath>
@@ -44,9 +45,42 @@ namespace {
     }
 }
 
+[[nodiscard]] KeyModifier pointerModifiers(SDL_Keymod native_modifiers) noexcept {
+    KeyModifier result = KeyModifier::none;
+
+    if ((native_modifiers & SDL_KMOD_SHIFT) != 0U) {
+        result = result | KeyModifier::shift;
+    }
+    if ((native_modifiers & SDL_KMOD_CTRL) != 0U) {
+        result = result | KeyModifier::control;
+    }
+    if ((native_modifiers & SDL_KMOD_ALT) != 0U) {
+        result = result | KeyModifier::alt;
+    }
+    if ((native_modifiers & SDL_KMOD_GUI) != 0U) {
+        result = result | KeyModifier::meta;
+    }
+
+    return result;
+}
+
 } // namespace
 
 std::optional<PointerEvent> translateLogicalPointerEvent(const SDL_Event& event) noexcept {
+    /*
+     * SDL_MouseMotionEvent and SDL_MouseButtonEvent do not embed keyboard modifiers. Sample SDL's
+     * keyboard modifier state exactly when the native event crosses into SASD semantic input instead
+     * of making later interaction code query mutable platform-global state again. The returned
+     * PointerEvent therefore owns one stable backend-neutral snapshot for the rest of its lifetime.
+     */
+    return translateLogicalPointerEvent(event, SDL_GetModState());
+}
+
+std::optional<PointerEvent> translateLogicalPointerEvent(
+    const SDL_Event& event,
+    SDL_Keymod native_modifiers) noexcept {
+    const KeyModifier modifiers = pointerModifiers(native_modifiers);
+
     if (event.type == SDL_EVENT_MOUSE_MOTION) {
         const auto position = logicalPoint(event.motion.x, event.motion.y);
         if (!position.has_value()) {
@@ -57,7 +91,8 @@ std::optional<PointerEvent> translateLogicalPointerEvent(const SDL_Event& event)
             *position,
             PointerAction::move,
             PointerButton::none,
-            0};
+            0,
+            modifiers};
     }
 
     if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
@@ -73,7 +108,8 @@ std::optional<PointerEvent> translateLogicalPointerEvent(const SDL_Event& event)
                 ? PointerAction::press
                 : PointerAction::release,
             pointerButton(event.button.button),
-            event.button.clicks};
+            event.button.clicks,
+            modifiers};
     }
 
     return std::nullopt;

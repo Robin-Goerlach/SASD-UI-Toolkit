@@ -1,10 +1,13 @@
 #include "test_framework.hpp"
 
+#include "rendered/sdl3/sdl3_pointer_event_translation.hpp"
 #include "rendered/sdl3/sdl3_software_device.hpp"
 
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
 #include <sasd/ui/text/utf8.hpp>
+
+#include <SDL3/SDL.h>
 
 #include <cstddef>
 #include <optional>
@@ -123,4 +126,39 @@ TEST_CASE("SDL3 software device honors text clipping") {
 
     // The glyph run starts at x=0, but clipping must keep pixels left of x=20 untouched.
     CHECK(device.pixelAt({2, 8}) == Rgba8{0, 0, 0, 255});
+}
+
+TEST_CASE("SDL3 pointer translator preserves a deterministic keyboard modifier snapshot") {
+    SDL_Event native{};
+    native.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    native.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    native.button.button = SDL_BUTTON_LEFT;
+    native.button.clicks = 1;
+    native.button.x = 24.5F;
+    native.button.y = 12.5F;
+
+    /*
+     * Mouse button/motion events in SDL do not contain keyboard modifiers. The adapter therefore
+     * samples native modifier state at the SDL -> SASD boundary. Exercise the deterministic overload
+     * with an explicit native snapshot so this regression does not depend on process-global keyboard
+     * state maintained by the host runner.
+     */
+    const auto pointer = detail::translateLogicalPointerEvent(
+        native,
+        static_cast<SDL_Keymod>(
+            SDL_KMOD_SHIFT | SDL_KMOD_CTRL | SDL_KMOD_GUI));
+
+    CHECK(pointer.has_value());
+    if (!pointer.has_value()) {
+        return;
+    }
+
+    CHECK(pointer->action == PointerAction::press);
+    CHECK(pointer->button == PointerButton::primary);
+    CHECK(pointer->position == Point{24, 12});
+    CHECK(pointer->click_count == 1);
+    CHECK(hasModifier(pointer->modifiers, KeyModifier::shift));
+    CHECK(hasModifier(pointer->modifiers, KeyModifier::control));
+    CHECK(!hasModifier(pointer->modifiers, KeyModifier::alt));
+    CHECK(hasModifier(pointer->modifiers, KeyModifier::meta));
 }

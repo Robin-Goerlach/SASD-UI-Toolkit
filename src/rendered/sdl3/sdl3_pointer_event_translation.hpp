@@ -12,14 +12,25 @@ namespace sasd::ui::rendered::sdl3::detail {
  * Converts one SDL mouse event whose x/y fields are already expressed in SASD logical coordinates.
  *
  * Window ownership/filtering and SDL_RenderCoordinatesFromWindow() remain responsibilities of the
- * window backend. This small private seam isolates the deterministic semantic mapping from SDL's
- * platform mouse-state machinery, which is especially important for headless/offscreen tests.
+ * window backend. SDL mouse events do not carry a keyboard-modifier snapshot themselves, so this
+ * production overload samples SDL_GetModState() at the translation boundary and stores the resulting
+ * backend-neutral modifier state in PointerEvent.
  *
  * Unsupported SDL event kinds, non-finite coordinates and values outside Coordinate range return
  * nullopt instead of manufacturing a misleading semantic PointerEvent.
  */
 [[nodiscard]] std::optional<PointerEvent> translateLogicalPointerEvent(
     const SDL_Event& event) noexcept;
+
+/**
+ * Deterministic overload used when the caller already owns the native keyboard-modifier snapshot.
+ *
+ * Keeping this overload explicit avoids teaching Core about SDL_Keymod while allowing adapter tests
+ * to verify Shift/Control/Alt/GUI mapping without depending on process-global keyboard state.
+ */
+[[nodiscard]] std::optional<PointerEvent> translateLogicalPointerEvent(
+    const SDL_Event& event,
+    SDL_Keymod native_modifiers) noexcept;
 
 /**
  * Converts an SDL top-level mouse enter/leave notification into the backend-neutral surface event.
