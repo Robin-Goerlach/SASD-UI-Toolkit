@@ -104,6 +104,19 @@ void TextField::clearSelection() {
     invalidateVisual();
 }
 
+void TextField::selectAll() {
+    /*
+     * Keep complete-content selection on the same public scalar API as pointer and keyboard selection.
+     * That matters for architecture: Ctrl+A, menu Select All and rendered triple-click can all express
+     * intent through one Core operation instead of each caller knowing how TextField counts UTF-8 text.
+     *
+     * The operation deliberately creates a forward selection. Direction is observable through the
+     * stable anchor/active cursor model, so choosing one canonical direction avoids accidental caller-
+     * differences while still allowing later Shift navigation to continue from the end of the content.
+     */
+    setSelection(0, utf8::scalarCount(text_));
+}
+
 std::string TextField::selectedText() const {
     if (!hasSelection()) {
         return {};
