@@ -53,6 +53,19 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     return base;
 }
 
+[[nodiscard]] TextStyle textFieldSelectionStyle(TextStyle base) noexcept {
+    /*
+     * Selection is applied after the normal TextField control overlays have been resolved. Toggling
+     * rather than forcing inverse keeps the selected run distinguishable in both unfocused fields
+     * and focused fields whose complete base presentation is already inverse.
+     *
+     * Keep every unrelated semantic/user style bit intact. In particular foreground colour, bold,
+     * dim and underline remain properties of the field; selection changes contrast only.
+     */
+    base.inverse = !base.inverse;
+    return base;
+}
+
 [[nodiscard]] PresentationUpdateResult renderLabel(DisplayList& display_list,
                                                    const Label& label,
                                                    Color background_color) {
@@ -444,9 +457,69 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     const TextStyle style = controlTextStyle(field, field.textStyle());
 
     /*
+     * Selection uses the same complete shaped UTF-8 run as the ordinary field text. We therefore
+     * need only two additional scalar-boundary advances, not independently shaped substrings. That
+     * preserves ligature/kerning context and makes the overlay a pure clipping/styling decision.
+     *
+     * Resolve every potentially unsupported metric and every widened coordinate before appending
+     * any command. PresentationSink has no rollback API, so a failed selection boundary must leave
+     * the previous DisplayList completely untouched just like a failed caret preflight.
+     */
+    std::optional<Rect> selection_clip;
+    if (field.hasSelection() && !layout->content.isEmpty()) {
+        const auto selection_start_advance =
+            metrics->textAdvanceToScalar(field.text(), field.selectionStart());
+        const auto selection_end_advance =
+            metrics->textAdvanceToScalar(field.text(), field.selectionEnd());
+
+        if (!selection_start_advance.has_value() ||
+            !selection_end_advance.has_value() ||
+            *selection_start_advance < 0 ||
+            *selection_end_advance < *selection_start_advance) {
+            return PresentationUpdateResult::deferred;
+        }
+
+        const std::int64_t selection_left_wide =
+            static_cast<std::int64_t>(layout->text_origin.x) +
+            static_cast<std::int64_t>(*selection_start_advance);
+        const std::int64_t selection_right_wide =
+            static_cast<std::int64_t>(layout->text_origin.x) +
+            static_cast<std::int64_t>(*selection_end_advance);
+
+        const std::int64_t content_left = layout->content.x;
+        const std::int64_t content_right =
+            static_cast<std::int64_t>(layout->content.x) +
+            static_cast<std::int64_t>(layout->content.width);
+
+        const std::int64_t visible_left =
+            std::max(selection_left_wide, content_left);
+        const std::int64_t visible_right =
+            std::min(selection_right_wide, content_right);
+
+        if (visible_right > visible_left) {
+            const auto selection_x = detail::narrowCoordinate(visible_left);
+            const std::int64_t selection_width_wide =
+                visible_right - visible_left;
+
+            if (!selection_x.has_value() ||
+                selection_width_wide >
+                    static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max())) {
+                return PresentationUpdateResult::deferred;
+            }
+
+            selection_clip = Rect{
+                *selection_x,
+                layout->content.y,
+                static_cast<Coordinate>(selection_width_wide),
+                layout->content.height};
+        }
+    }
+
+    /*
      * Everything fallible was preflighted above. From this point onward the commands form one
-     * coherent field repaint: clear old pixels, draw chrome, draw clipped full-context text, then
-     * place the caret last so it remains visible over the glyph run.
+     * coherent field repaint: clear old pixels, draw chrome, draw the clipped full-context base run,
+     * optionally replay that exact same run through the selection clip, then place the caret last so
+     * it remains visible over both text passes.
      */
     eraseWidget(display_list, layout->bounds, background_color);
     if (theme.control_border_thickness > 0) {
@@ -462,6 +535,14 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
             field.text(),
             style,
             layout->content);
+
+        if (selection_clip.has_value()) {
+            display_list.drawText(
+                layout->text_origin,
+                field.text(),
+                textFieldSelectionStyle(style),
+                *selection_clip);
+        }
     }
 
     if (layout->caret.has_value()) {
