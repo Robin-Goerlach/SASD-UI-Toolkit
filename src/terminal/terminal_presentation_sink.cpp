@@ -457,6 +457,19 @@ PresentationUpdateResult renderRadioButton(ScreenBuffer& buffer,
     return result;
 }
 
+/**
+ * Derives a terminal selection overlay without changing the semantic TextStyle contract.
+ *
+ * TextField focus already uses inverse video across the complete control. A selected range must still
+ * remain visible while focused, so selection cannot simply force inverse=true. Toggling the existing
+ * inverse bit creates contrast in both states: unfocused selection becomes inverse, while selection in
+ * an inverse-focused field becomes non-inverse. All other user/backend style attributes are preserved.
+ */
+[[nodiscard]] TextStyle textFieldSelectionStyle(TextStyle base) noexcept {
+    base.inverse = !base.inverse;
+    return base;
+}
+
 TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
                                       const TextField& field,
                                       AmbiguousWidthMode ambiguous_width) {
@@ -538,6 +551,10 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
     const std::int64_t start_column =
         start_index < scalars.size() ? scalars[start_index].column : total_columns;
 
+    const std::size_t selection_start = std::min(field.selectionStart(), scalars.size());
+    const std::size_t selection_end = std::min(field.selectionEnd(), scalars.size());
+    const TextStyle selected_style = textFieldSelectionStyle(style);
+
     for (std::size_t index = start_index; index < scalars.size(); ++index) {
         const ScalarLayout& scalar = scalars[index];
         const std::int64_t relative = scalar.column - start_column;
@@ -551,12 +568,19 @@ TextFieldRenderResult renderTextField(ScreenBuffer& buffer,
             break;
         }
 
+        /*
+         * TextField selection endpoints are Unicode-scalar indices, exactly the same indexing domain as
+         * this preflighted scalar vector for simple-cell-renderable text. Apply the overlay per scalar so
+         * clipping never changes semantic selection boundaries and a two-cell glyph receives one coherent
+         * style on both its lead and continuation cells through writeScalar().
+         */
+        const bool selected = index >= selection_start && index < selection_end;
         writeScalar(buffer,
                     rect.x + 1 + relative,
                     rect.y,
                     scalar.value,
                     scalar.width,
-                    style);
+                    selected ? selected_style : style);
     }
 
     std::optional<Point> caret;
