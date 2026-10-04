@@ -169,3 +169,65 @@ TEST_CASE("RenderedTextFieldHitTest maps an empty editable field to scalar zero"
     CHECK(RenderedTextFieldHitTest::caretIndexAt(field, {20, 15}, metrics) ==
           std::optional<std::size_t>{0});
 }
+
+TEST_CASE("RenderedTextFieldHitTest clamps captured drag positions outside the field") {
+    HitTestMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 100, 50});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({10, 10, 40, 14});
+
+    /*
+     * caretIndexAt() intentionally rejects both points because they are outside the Widget. During a
+     * captured drag, however, ownership has already been established by an earlier press. The drag
+     * mapper therefore clamps x to the nearest representable boundary and ignores y for this
+     * single-line caret decision.
+     */
+    CHECK(!RenderedTextFieldHitTest::caretIndexAt(field, {-100, -100}, metrics).has_value());
+    CHECK(!RenderedTextFieldHitTest::caretIndexAt(field, {1000, 1000}, metrics).has_value());
+
+    CHECK(RenderedTextFieldHitTest::caretIndexForDrag(field, {-100, -100}, metrics) ==
+          std::optional<std::size_t>{0});
+    CHECK(RenderedTextFieldHitTest::caretIndexForDrag(field, {1000, 1000}, metrics) ==
+          std::optional<std::size_t>{3});
+}
+
+TEST_CASE("RenderedTextFieldHitTest captured drag respects the current scrolled viewport") {
+    HitTestMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 100, 50});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
+    field.arrange({10, 10, 20, 14});
+    field.setCursorPosition(2); // current viewport begins at scalar 1.
+
+    /*
+     * A captured drag does not invent off-screen geometry. It can only return caret boundaries that
+     * the current viewport/shaping provider can represent. Updating TextField with the returned
+     * active end may scroll the viewport; the next motion is then evaluated against that new state.
+     */
+    CHECK(RenderedTextFieldHitTest::caretIndexForDrag(field, {-100, 15}, metrics) ==
+          std::optional<std::size_t>{1});
+    CHECK(RenderedTextFieldHitTest::caretIndexForDrag(field, {1000, 15}, metrics) ==
+          std::optional<std::size_t>{2});
+}
+
+TEST_CASE("RenderedTextFieldHitTest captured drag remains conservative for disabled or unsupported fields") {
+    HitTestMetrics metrics;
+
+    Window window;
+    window.arrange({0, 0, 100, 50});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({10, 10, 40, 14});
+
+    field.setEnabled(false);
+    CHECK(!RenderedTextFieldHitTest::caretIndexForDrag(field, {1000, 15}, metrics).has_value());
+
+    field.setEnabled(true);
+    UnsupportedVisibleBoundaryMetrics unsupported;
+    CHECK(!RenderedTextFieldHitTest::caretIndexForDrag(field, {1000, 15}, unsupported).has_value());
+}
