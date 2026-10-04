@@ -25,6 +25,10 @@ const TextInputEvent& textAt(const std::vector<Event>& events, std::size_t index
     return std::get<TextInputEvent>(events.at(index));
 }
 
+const PointerEvent& pointerAt(const std::vector<Event>& events, std::size_t index) {
+    return std::get<PointerEvent>(events.at(index));
+}
+
 } // namespace
 
 TEST_CASE("AnsiInputDecoder emits UTF-8 text input without byte splitting assumptions") {
@@ -340,5 +344,95 @@ TEST_CASE("AnsiInputDecoder keeps split function-key escape sequences incrementa
 
     CHECK(events.size() == 1);
     CHECK(keyAt(events, 0).key == Key::f10);
+    CHECK(!decoder.hasPendingInput());
+}
+
+TEST_CASE("AnsiInputDecoder decodes SGR mouse press and release into zero-based pointer cells") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1B[<0;12;4M"
+        "\x1B[<0;12;4m");
+
+    CHECK(events.size() == 2);
+
+    const PointerEvent& press = pointerAt(events, 0);
+    CHECK(press.position == Point{11, 3});
+    CHECK(press.action == PointerAction::press);
+    CHECK(press.button == PointerButton::primary);
+    CHECK(press.click_count == 1);
+    CHECK(press.modifiers == KeyModifier::none);
+
+    const PointerEvent& release = pointerAt(events, 1);
+    CHECK(release.position == Point{11, 3});
+    CHECK(release.action == PointerAction::release);
+    CHECK(release.button == PointerButton::primary);
+    CHECK(release.click_count == 1);
+    CHECK(release.modifiers == KeyModifier::none);
+}
+
+TEST_CASE("AnsiInputDecoder maps SGR mouse buttons modifiers and motion without leaking held-button state") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1B[<29;3;2M"  // middle + Shift + Meta/Alt + Ctrl press
+        "\x1B[<36;9;5M"  // motion + Shift, low button bits describe held primary
+        "\x1B[<2;10;6M"); // secondary press
+
+    CHECK(events.size() == 3);
+
+    const PointerEvent& modified_press = pointerAt(events, 0);
+    CHECK(modified_press.position == Point{2, 1});
+    CHECK(modified_press.action == PointerAction::press);
+    CHECK(modified_press.button == PointerButton::middle);
+    CHECK(modified_press.modifiers ==
+          (KeyModifier::shift | KeyModifier::alt | KeyModifier::control));
+
+    const PointerEvent& motion = pointerAt(events, 1);
+    CHECK(motion.position == Point{8, 4});
+    CHECK(motion.action == PointerAction::move);
+    CHECK(motion.button == PointerButton::none);
+    CHECK(motion.click_count == 0);
+    CHECK(motion.modifiers == KeyModifier::shift);
+
+    const PointerEvent& secondary_press = pointerAt(events, 2);
+    CHECK(secondary_press.position == Point{9, 5});
+    CHECK(secondary_press.action == PointerAction::press);
+    CHECK(secondary_press.button == PointerButton::secondary);
+}
+
+TEST_CASE("AnsiInputDecoder keeps split SGR mouse reports pending until the CSI final arrives") {
+    AnsiInputDecoder decoder;
+
+    CHECK(decoder.feed("\x1B[<0;20").empty());
+    CHECK(decoder.hasPendingInput());
+
+    const auto events = decoder.feed(";7M");
+
+    CHECK(events.size() == 1);
+    CHECK(pointerAt(events, 0).position == Point{19, 6});
+    CHECK(pointerAt(events, 0).action == PointerAction::press);
+    CHECK(pointerAt(events, 0).button == PointerButton::primary);
+    CHECK(!decoder.hasPendingInput());
+}
+
+TEST_CASE("AnsiInputDecoder consumes unsupported or malformed SGR mouse reports atomically") {
+    AnsiInputDecoder decoder;
+
+    const auto events = decoder.feed(
+        "\x1B[<64;5;5M"   // wheel: current PointerEvent has no wheel delta
+        "\x1B[<128;5;5M"  // extended button family not represented yet
+        "\x1B[<0;0;4M"    // terminal coordinates are one-based
+        "\x1B[<0;4;0M"
+        "\x1B[<0;4M"      // malformed: missing y coordinate
+        "Z");
+
+    /*
+     * Complete-but-unsupported reports disappear as complete CSI units. Their private '<', decimal
+     * parameters and final bytes must never leak into TextInputEvent, while later ordinary input keeps
+     * its normal meaning.
+     */
+    CHECK(events.size() == 1);
+    CHECK(textAt(events, 0).text == "Z");
     CHECK(!decoder.hasPendingInput());
 }

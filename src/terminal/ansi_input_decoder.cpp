@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,6 +20,13 @@ struct EscapeResult {
     std::size_t consumed{0};
     bool need_more{false};
     std::optional<KeyEvent> event;
+
+    /*
+     * Pointer input shares the CSI transport with keyboard sequences, but keeping it as a separate
+     * optional here avoids widening the keyboard parser's local responsibilities into a second Event
+     * variant. Exactly one semantic payload is produced by any recognized escape sequence.
+     */
+    std::optional<PointerEvent> pointer_event;
 };
 
 [[nodiscard]] std::size_t expectedUtf8Length(unsigned char first) noexcept {
@@ -94,9 +102,39 @@ void appendScalarText(std::vector<Event>& events, char32_t scalar) {
 
         const unsigned digit = static_cast<unsigned>(character - '0');
         if (result > 999U) {
-            // Terminal parameters relevant here are tiny. Reject pathological/unbounded values.
+            // Terminal parameters relevant to keyboard sequences are deliberately kept small.
             return std::nullopt;
         }
+        result = result * 10U + digit;
+    }
+
+    return result;
+}
+
+/**
+ * Parses an arbitrary unsigned decimal without relying on locale or integer-wrap behavior.
+ *
+ * SGR mouse coordinates are terminal-cell positions and can legitimately be larger than the small
+ * keyboard parameters accepted by parseUnsigned(). They still need an explicit overflow guard because
+ * input bytes are untrusted process input and must never wrap into a plausible coordinate.
+ */
+[[nodiscard]] std::optional<std::uint64_t> parseWideUnsigned(std::string_view text) noexcept {
+    if (text.empty()) {
+        return std::nullopt;
+    }
+
+    std::uint64_t result = 0;
+    for (const char character : text) {
+        if (character < '0' || character > '9') {
+            return std::nullopt;
+        }
+
+        const auto digit = static_cast<std::uint64_t>(character - '0');
+        constexpr auto maximum = std::numeric_limits<std::uint64_t>::max();
+        if (result > (maximum - digit) / 10U) {
+            return std::nullopt;
+        }
+
         result = result * 10U + digit;
     }
 
@@ -175,6 +213,159 @@ struct CsiParameters {
     }
 }
 
+[[nodiscard]] KeyModifier sgrMouseModifiers(unsigned code) noexcept {
+    KeyModifier modifiers = KeyModifier::none;
+
+    if ((code & 4U) != 0U) {
+        modifiers = modifiers | KeyModifier::shift;
+    }
+    if ((code & 8U) != 0U) {
+        /*
+         * xterm calls this the Meta bit. In the terminal input conventions already used by this
+         * decoder, Meta/Alt keyboard intent is represented by KeyModifier::alt, so pointer reports use
+         * the same portable semantic value instead of exposing an emulator-specific distinction.
+         */
+        modifiers = modifiers | KeyModifier::alt;
+    }
+    if ((code & 16U) != 0U) {
+        modifiers = modifiers | KeyModifier::control;
+    }
+
+    return modifiers;
+}
+
+[[nodiscard]] std::optional<PointerButton> sgrMouseButton(unsigned code) noexcept {
+    switch (code & 3U) {
+    case 0U:
+        return PointerButton::primary;
+    case 1U:
+        return PointerButton::middle;
+    case 2U:
+        return PointerButton::secondary;
+    default:
+        return std::nullopt;
+    }
+}
+
+/**
+ * Decodes one complete xterm SGR-1006 mouse report into the backend-neutral PointerEvent model.
+ *
+ * parameters contains the CSI parameter bytes including the leading '<', while final is either 'M'
+ * (press/motion) or 'm' (release). The transport is one-based in terminal cells; SASD UI geometry is
+ * zero-based, so conversion happens exactly once at this backend boundary.
+ *
+ * Wheel reports are deliberately consumed without an event because PointerEvent does not yet model a
+ * wheel delta. Extended button encodings above the classic three-button/modifier/motion bit set are
+ * likewise left for a future pointer-model extension. Rejecting those reports atomically is safer than
+ * pretending that unsupported information is an ordinary button click.
+ */
+[[nodiscard]] std::optional<PointerEvent> parseSgrMouse(
+    std::string_view parameters,
+    char final) noexcept {
+    if (parameters.empty() || parameters.front() != '<') {
+        return std::nullopt;
+    }
+
+    const std::string_view body = parameters.substr(1);
+    const std::size_t first_separator = body.find(';');
+    if (first_separator == std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    const std::size_t second_separator = body.find(';', first_separator + 1);
+    if (second_separator == std::string_view::npos ||
+        body.find(';', second_separator + 1) != std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    const auto raw_code = parseWideUnsigned(body.substr(0, first_separator));
+    const auto raw_x = parseWideUnsigned(
+        body.substr(first_separator + 1, second_separator - first_separator - 1));
+    const auto raw_y = parseWideUnsigned(body.substr(second_separator + 1));
+
+    if (!raw_code || !raw_x || !raw_y ||
+        *raw_code > static_cast<std::uint64_t>(std::numeric_limits<unsigned>::max())) {
+        return std::nullopt;
+    }
+
+    const unsigned code = static_cast<unsigned>(*raw_code);
+
+    /*
+     * Classic SGR mouse reports use bits 0..6. Higher bits encode additional buttons/protocol
+     * extensions that PointerButton cannot faithfully represent yet. Bit 6 is wheel intent, which is
+     * recognized here only so it can be consumed as one complete report without leaking CSI digits as
+     * text; no synthetic press event is emitted for it.
+     */
+    if ((code & ~0x7FU) != 0U || (code & 64U) != 0U) {
+        return std::nullopt;
+    }
+
+    constexpr std::uint64_t max_one_based_coordinate =
+        static_cast<std::uint64_t>(std::numeric_limits<Coordinate>::max()) + 1U;
+    if (*raw_x == 0U || *raw_y == 0U ||
+        *raw_x > max_one_based_coordinate || *raw_y > max_one_based_coordinate) {
+        return std::nullopt;
+    }
+
+    PointerEvent event;
+    event.position = {
+        static_cast<Coordinate>(*raw_x - 1U),
+        static_cast<Coordinate>(*raw_y - 1U)};
+    event.modifiers = sgrMouseModifiers(code);
+
+    const bool motion = (code & 32U) != 0U;
+
+    if (final == 'm') {
+        // SGR 1006 uses a lowercase final specifically for a button release.
+        if (motion) {
+            return std::nullopt;
+        }
+
+        const auto button = sgrMouseButton(code);
+        if (!button) {
+            return std::nullopt;
+        }
+
+        event.action = PointerAction::release;
+        event.button = *button;
+        event.click_count = 1;
+        return event;
+    }
+
+    if (final != 'M') {
+        return std::nullopt;
+    }
+
+    if (motion) {
+        /*
+         * The low button bits describe which button is held while xterm reports motion. PointerEvent's
+         * current contract reserves button=none for movement; PointerRouter already owns the active
+         * captured gesture after a press, so duplicating held-button state here would violate that
+         * contract without adding useful information.
+         */
+        event.action = PointerAction::move;
+        event.button = PointerButton::none;
+        event.click_count = 0;
+        return event;
+    }
+
+    const auto button = sgrMouseButton(code);
+    if (!button) {
+        return std::nullopt;
+    }
+
+    event.action = PointerAction::press;
+    event.button = *button;
+
+    /*
+     * SGR reports one transition but carries no native multi-click count. Treat the transition as one
+     * ordinary click for now. A later terminal gesture layer may derive double/triple-click counts from
+     * timing and position without contaminating this byte decoder with clock state.
+     */
+    event.click_count = 1;
+    return event;
+}
+
 [[nodiscard]] EscapeResult parseCsi(std::string_view input, bool flush) {
     // input starts with ESC '['.
     std::size_t final_index = 2;
@@ -201,8 +392,19 @@ struct CsiParameters {
 
     const char final = input[final_index];
     const std::string_view parameters = input.substr(2, final_index - 2);
-    const CsiParameters parsed = parseCsiParameters(parameters);
     const std::size_t consumed = final_index + 1;
+
+    /*
+     * SGR mouse reporting is a CSI family too. Recognize its private '<' introducer before generic
+     * keyboard parameter parsing; otherwise the leading '<' would merely make primary parsing fail and
+     * the report would be discarded as an unknown key sequence.
+     */
+    if ((final == 'M' || final == 'm') &&
+        !parameters.empty() && parameters.front() == '<') {
+        return {consumed, false, std::nullopt, parseSgrMouse(parameters, final)};
+    }
+
+    const CsiParameters parsed = parseCsiParameters(parameters);
 
     KeyModifier modifiers = parsed.modifiers;
     std::optional<Key> key;
@@ -385,6 +587,9 @@ std::vector<Event> AnsiInputDecoder::decode(bool flush) {
 
             if (parsed.event) {
                 events.emplace_back(*parsed.event);
+            }
+            if (parsed.pointer_event) {
+                events.emplace_back(*parsed.pointer_event);
             }
             offset += parsed.consumed;
             continue;
