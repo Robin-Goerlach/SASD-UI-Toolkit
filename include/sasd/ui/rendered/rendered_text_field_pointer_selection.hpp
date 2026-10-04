@@ -96,16 +96,11 @@ public:
                     /*
                      * TextField is intrinsically single-line. Its whole-content selection therefore is
                      * the natural single-line counterpart of desktop editors' triple-click line
-                     * selection, and it requires no font/shaping lookup once HitTest has established the
-                     * semantic target. Keeping this decision in the interaction helper avoids teaching
-                     * Core TextField about native click-count conventions.
-                     *
-                     * Use scalarCount() rather than UTF-8 byte length so the selection stays in exactly
-                     * the same Unicode-scalar domain as every other TextField selection operation.
+                     * selection. Delegate the actual scalar range to Core's selectAll() operation so
+                     * future menu/command integrations and this rendered gesture share one semantic
+                     * definition of "complete TextField content".
                      */
-                    pressed_field->setSelection(
-                        0,
-                        utf8::scalarCount(pressed_field->text()));
+                    pressed_field->selectAll();
                     atomic_multi_click_selection = true;
                 } else if (exact_unmodified_double_click) {
                     /*
