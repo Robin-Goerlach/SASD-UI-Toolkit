@@ -144,6 +144,89 @@ enum class PointPolicy {
     return candidates.back().index;
 }
 
+[[nodiscard]] std::optional<std::size_t> mapScalarIndex(
+    const TextField& field,
+    Point point,
+    const RenderedMeasurementContext& metrics) {
+    if (!field.isVisible() || !field.isEnabled() ||
+        !HitTest::contains(field, point)) {
+        return std::nullopt;
+    }
+
+    const auto absolute = detail::absoluteRectOf(field);
+    if (!absolute.has_value()) {
+        return std::nullopt;
+    }
+
+    const RenderedThemeMetrics theme = metrics.themeMetrics().normalized();
+    const auto viewport =
+        detail::buildTextFieldViewport(field, *absolute, metrics, theme);
+    if (!viewport.has_value() || viewport->content.isEmpty() ||
+        viewport->start_index >= viewport->scalar_count) {
+        return std::nullopt;
+    }
+
+    /*
+     * Unlike caret mapping, text-scalar hit testing must not clamp border/trailing-space clicks onto
+     * text. Multi-click selection needs the scalar whose shaped span is genuinely under the pointer.
+     */
+    const std::int64_t pointer_relative =
+        static_cast<std::int64_t>(point.x) -
+        static_cast<std::int64_t>(viewport->content.x);
+    const std::int64_t capacity =
+        static_cast<std::int64_t>(viewport->text_capacity);
+
+    if (pointer_relative < 0 || pointer_relative >= capacity) {
+        return std::nullopt;
+    }
+
+    Coordinate start_advance = viewport->start_advance;
+
+    for (std::size_t index = viewport->start_index;
+         index < viewport->scalar_count;
+         ++index) {
+        const auto measured_end =
+            metrics.textAdvanceToScalar(field.text(), index + 1);
+        if (!measured_end.has_value() ||
+            *measured_end < start_advance ||
+            *measured_end < viewport->start_advance) {
+            /*
+             * Do not jump across an unrepresentable or retrograde shaping boundary. Returning no hit
+             * is safer than attributing pixels to the wrong logical scalar.
+             */
+            return std::nullopt;
+        }
+
+        const std::int64_t relative_start =
+            static_cast<std::int64_t>(start_advance) -
+            static_cast<std::int64_t>(viewport->start_advance);
+        const std::int64_t relative_end =
+            static_cast<std::int64_t>(*measured_end) -
+            static_cast<std::int64_t>(viewport->start_advance);
+
+        if (relative_start >= capacity) {
+            break;
+        }
+
+        const std::int64_t visible_end = std::min(relative_end, capacity);
+
+        /*
+         * A zero-advance scalar has no independently hittable horizontal span in this scalar-based
+         * model. It remains part of the shaped text run, but selecting it by geometry would require a
+         * richer grapheme/cluster contract that M4 intentionally does not pretend to provide yet.
+         */
+        if (visible_end > relative_start &&
+            pointer_relative >= relative_start &&
+            pointer_relative < visible_end) {
+            return index;
+        }
+
+        start_advance = *measured_end;
+    }
+
+    return std::nullopt;
+}
+
 } // namespace
 
 std::optional<std::size_t> RenderedTextFieldHitTest::caretIndexAt(
@@ -166,6 +249,13 @@ std::optional<std::size_t> RenderedTextFieldHitTest::caretIndexForDrag(
         point,
         metrics,
         PointPolicy::allow_captured_drag);
+}
+
+std::optional<std::size_t> RenderedTextFieldHitTest::scalarIndexAt(
+    const TextField& field,
+    Point point,
+    const RenderedMeasurementContext& metrics) {
+    return mapScalarIndex(field, point, metrics);
 }
 
 } // namespace sasd::ui::rendered

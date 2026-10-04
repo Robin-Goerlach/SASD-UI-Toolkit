@@ -14,11 +14,11 @@ namespace rendered {
 class RenderedMeasurementContext;
 
 /**
- * Maps a logical pointer position to the insertion-caret scalar used by a rendered TextField.
+ * Maps logical pointer positions onto rendered TextField scalar geometry.
  *
  * The mapping deliberately lives in the Rendered layer rather than TextField/Core because it depends
  * on font shaping, scalar advances and the current horizontal viewport. It uses the exact same
- * viewport builder as RenderedPresentationSink, preventing pointer placement and painted caret
+ * viewport builder as RenderedPresentationSink, preventing pointer placement and painted text/caret
  * geometry from silently diverging.
  */
 class RenderedTextFieldHitTest final {
@@ -57,6 +57,24 @@ public:
      * scalar through TextField's existing selection APIs.
      */
     [[nodiscard]] static std::optional<std::size_t> caretIndexForDrag(
+        const TextField& field,
+        Point point,
+        const RenderedMeasurementContext& metrics);
+
+    /**
+     * Returns the Unicode-scalar whose shaped horizontal span actually contains point.
+     *
+     * This differs intentionally from caretIndexAt(): caret placement chooses the nearest boundary,
+     * while multi-click selection needs to know which visible text scalar was hit. Empty trailing
+     * viewport space, borders and zero-width spans therefore return std::nullopt instead of being
+     * coerced to a neighboring scalar. A scalar that is partially clipped at the right viewport edge
+     * remains hittable over its visible portion.
+     *
+     * The result uses logical scalar order, not grapheme clusters or bidirectional visual clusters.
+     * Those richer text semantics remain a later Unicode-text concern; this API only supplies the
+     * geometry fact needed by a higher-level selection policy.
+     */
+    [[nodiscard]] static std::optional<std::size_t> scalarIndexAt(
         const TextField& field,
         Point point,
         const RenderedMeasurementContext& metrics);
