@@ -78,6 +78,25 @@ public:
         const TextField& field,
         Point point,
         const RenderedMeasurementContext& metrics);
+
+    /**
+     * Returns the visible Unicode-scalar targeted by an already captured drag gesture.
+     *
+     * This is the scalar-span counterpart of caretIndexForDrag(). Once capture has established that a
+     * TextField owns the gesture, motion may be vertically or horizontally outside the Widget. The
+     * horizontal position is therefore clamped to the first/last *hittable visible scalar span* rather
+     * than rejected. Blank viewport space to the right of short text likewise maps to the last visible
+     * scalar, which is the useful semantic target for word-granular dragging.
+     *
+     * Zero-width spans are never invented as geometric targets. Disabled/hidden fields, empty visible
+     * text, unsupported shaping boundaries and viewports with no positive-width scalar span still return
+     * std::nullopt. Like every hit-test helper in this class, the method is read-only and performs no
+     * scrolling or selection mutation itself.
+     */
+    [[nodiscard]] static std::optional<std::size_t> scalarIndexForDrag(
+        const TextField& field,
+        Point point,
+        const RenderedMeasurementContext& metrics);
 };
 
 } // namespace rendered

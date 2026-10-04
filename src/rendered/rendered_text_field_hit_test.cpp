@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace sasd::ui::rendered {
@@ -147,8 +148,13 @@ enum class PointPolicy {
 [[nodiscard]] std::optional<std::size_t> mapScalarIndex(
     const TextField& field,
     Point point,
-    const RenderedMeasurementContext& metrics) {
-    if (!field.isVisible() || !field.isEnabled() ||
+    const RenderedMeasurementContext& metrics,
+    PointPolicy point_policy) {
+    if (!field.isVisible() || !field.isEnabled()) {
+        return std::nullopt;
+    }
+
+    if (point_policy == PointPolicy::require_inside_field &&
         !HitTest::contains(field, point)) {
         return std::nullopt;
     }
@@ -167,8 +173,11 @@ enum class PointPolicy {
     }
 
     /*
-     * Unlike caret mapping, text-scalar hit testing must not clamp border/trailing-space clicks onto
-     * text. Multi-click selection needs the scalar whose shaped span is genuinely under the pointer.
+     * Ordinary scalar hit testing answers the strict question "which painted scalar span is under this
+     * point?" and therefore rejects borders, outside coordinates and trailing blank viewport space.
+     * A captured drag answers a different question: gesture ownership is already known, so horizontal
+     * positions beyond visible text should target the first/last hittable visible scalar rather than
+     * make the gesture stop updating. Vertical position is irrelevant for a captured single-line drag.
      */
     const std::int64_t pointer_relative =
         static_cast<std::int64_t>(point.x) -
@@ -176,11 +185,14 @@ enum class PointPolicy {
     const std::int64_t capacity =
         static_cast<std::int64_t>(viewport->text_capacity);
 
-    if (pointer_relative < 0 || pointer_relative >= capacity) {
+    if (point_policy == PointPolicy::require_inside_field &&
+        (pointer_relative < 0 || pointer_relative >= capacity)) {
         return std::nullopt;
     }
 
     Coordinate start_advance = viewport->start_advance;
+    std::optional<std::size_t> first_hittable;
+    std::optional<std::size_t> last_hittable;
 
     for (std::size_t index = viewport->start_index;
          index < viewport->scalar_count;
@@ -192,7 +204,7 @@ enum class PointPolicy {
             *measured_end < viewport->start_advance) {
             /*
              * Do not jump across an unrepresentable or retrograde shaping boundary. Returning no hit
-             * is safer than attributing pixels to the wrong logical scalar.
+             * is safer than attributing pixels to the wrong logical scalar, even for captured drags.
              */
             return std::nullopt;
         }
@@ -215,13 +227,39 @@ enum class PointPolicy {
          * model. It remains part of the shaped text run, but selecting it by geometry would require a
          * richer grapheme/cluster contract that M4 intentionally does not pretend to provide yet.
          */
-        if (visible_end > relative_start &&
-            pointer_relative >= relative_start &&
-            pointer_relative < visible_end) {
-            return index;
+        if (visible_end > relative_start) {
+            if (!first_hittable.has_value()) {
+                first_hittable = index;
+            }
+            last_hittable = index;
+
+            if (point_policy == PointPolicy::allow_captured_drag &&
+                pointer_relative < relative_start) {
+                /*
+                 * Motion is left of the first positive-width span (or left of a later span after one or
+                 * more zero-width boundaries). For a captured drag, clamp to the earliest hittable span
+                 * rather than inventing a target for a zero-width scalar.
+                 */
+                return first_hittable;
+            }
+
+            if (pointer_relative >= relative_start &&
+                pointer_relative < visible_end) {
+                return index;
+            }
         }
 
         start_advance = *measured_end;
+    }
+
+    if (point_policy == PointPolicy::allow_captured_drag) {
+        /*
+         * Reaching here means the pointer is at/right of every positive-width visible span. Returning
+         * the last one makes trailing blank space and arbitrarily far-right captured motion behave like
+         * the right edge of the current viewport. If no span had positive width, there is no honest
+         * scalar geometry to return.
+         */
+        return last_hittable;
     }
 
     return std::nullopt;
@@ -255,7 +293,22 @@ std::optional<std::size_t> RenderedTextFieldHitTest::scalarIndexAt(
     const TextField& field,
     Point point,
     const RenderedMeasurementContext& metrics) {
-    return mapScalarIndex(field, point, metrics);
+    return mapScalarIndex(
+        field,
+        point,
+        metrics,
+        PointPolicy::require_inside_field);
+}
+
+std::optional<std::size_t> RenderedTextFieldHitTest::scalarIndexForDrag(
+    const TextField& field,
+    Point point,
+    const RenderedMeasurementContext& metrics) {
+    return mapScalarIndex(
+        field,
+        point,
+        metrics,
+        PointPolicy::allow_captured_drag);
 }
 
 } // namespace sasd::ui::rendered

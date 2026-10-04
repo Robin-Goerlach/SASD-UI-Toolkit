@@ -120,6 +120,7 @@ add_executable(sasd_ui_rendered_tests
     rendered_check_box_tests.cpp
     rendered_radio_button_tests.cpp
     rendered_text_field_hit_test_tests.cpp
+    rendered_text_field_scalar_drag_tests.cpp
     rendered_text_field_selection_tests.cpp
     rendered_text_field_shift_click_tests.cpp
 )
