@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Tab moves focus. Drag in Name selects text. Space toggles/selects controls. F1 help.");
+            "Drag selects characters; double-click drag selects words in Name. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -253,6 +253,14 @@ int main(int argc, char** argv) {
 
         FocusManager focus;
         PointerRouter pointer_router;
+
+        /*
+         * Keep rendered multi-event selection policy next to the PointerRouter that owns capture.
+         * GestureState stores only Unicode-scalar word-origin information, never Widget ownership or
+         * native SDL state. The host therefore preserves just enough transient policy to support
+         * double-click-and-drag while PointerRouter remains the sole authority for gesture lifetime.
+         */
+        RenderedTextFieldPointerSelection::GestureState text_selection_gesture;
 
         greet.setOnActivated([&] {
             std::string value{name.text()};
@@ -324,11 +332,14 @@ int main(int argc, char** argv) {
                         /*
                          * Surface leave is host lifecycle, not a Widget event. Core cannot assume
                          * native mouse capture continues outside this SDL window, so retire hover and
-                         * any active semantic capture conservatively. Enter needs no action: the next
+                         * any active semantic capture conservatively. Retire the paired rendered word
+                         * gesture state at the same boundary rather than waiting for another pointer
+                         * event to observe that capture disappeared. Enter needs no action: the next
                          * real PointerEvent rebuilds hover from trustworthy logical coordinates.
                          */
                         if (surface->action == PointerSurfaceAction::left) {
                             pointer_router.leaveRoot();
+                            text_selection_gesture.reset();
                         }
                         return;
                     }
@@ -349,18 +360,20 @@ int main(int argc, char** argv) {
                         }
 
                         /*
-                         * Route all pointer events through the rendered TextField selection seam. For
-                         * non-TextField controls it is behaviorally identical to PointerRouter::route().
-                         * For a TextField press/move/release gesture it additionally translates shaped
-                         * pixel positions into Unicode-scalar boundaries while PointerRouter capture
-                         * owns gesture lifetime. This removes the demo's former click-only caret policy
-                         * and exercises the same reusable path covered by the M4 selection tests.
+                         * Route all pointer events through the stateful rendered TextField selection
+                         * seam. For non-TextField controls it remains behaviorally identical to
+                         * PointerRouter::route(). Ordinary/Shift TextField drags stay character based,
+                         * while an unmodified double click now preserves its semantic word origin across
+                         * captured move/release events and extends only by complete word/punctuation
+                         * runs. GestureState carries no Widget pointer; PointerRouter capture continues
+                         * to own the actual interaction lifetime.
                          */
                         (void)RenderedTextFieldPointerSelection::route(
                             window,
                             pointer_router,
                             *pointer,
-                            backend);
+                            backend,
+                            text_selection_gesture);
                         return;
                     }
 
@@ -418,7 +431,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; drag in Name selects text; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 
