@@ -122,12 +122,24 @@ enum class PointerButton : std::uint8_t {
  * click_count is meaningful for press/release events when the native backend can provide it; zero is
  * used for movement. Target selection is intentionally not embedded in the event and is handled by
  * HitTest plus the normal EventDispatcher routing boundary.
+ *
+ * modifiers is a semantic snapshot of the keyboard modifier state associated with this pointer
+ * observation. Keeping it on PointerEvent rather than asking Widgets or interaction helpers to query
+ * a native keyboard API is important for backend independence and deterministic routing. Backends that
+ * cannot report modifier state reliably may leave the field at KeyModifier::none; desktop adapters
+ * should populate it when their platform input model provides a trustworthy snapshot.
+ *
+ * The modifier snapshot deliberately does not encode pointer-button state. PointerButton identifies
+ * the button transition for press/release, while future richer pointer-state needs can evolve without
+ * overloading keyboard modifiers. A trailing default keeps existing aggregate construction source-
+ * compatible while enabling interactions such as Shift+click selection in later M4 slices.
  */
 struct PointerEvent {
     Point position{};
     PointerAction action{PointerAction::move};
     PointerButton button{PointerButton::none};
     std::uint8_t click_count{0};
+    KeyModifier modifiers{KeyModifier::none};
 };
 
 /**
