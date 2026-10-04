@@ -612,12 +612,14 @@ TEST_CASE("SDL3 pointer click moves TextField cursor and replay emits matching c
         pointer_router.route(window, *pointer);
 
     /*
-     * TextField currently has no pointer gesture of its own, so the press is geometrically targeted
-     * but intentionally not captured/handled. Caret placement is host/rendered policy above.
+     * TextField now owns the semantic primary-pointer gesture so PointerRouter can capture the field
+     * for subsequent drag selection. The rendered host still supplies the metric-correct scalar above;
+     * handling/capture here confirms that the press can continue as a drag without leaking pixel or
+     * shaping knowledge into Core.
      */
     CHECK(routed.targeted);
-    CHECK(!routed.handled);
-    CHECK(!routed.capture_active);
+    CHECK(routed.handled);
+    CHECK(routed.capture_active);
 
     display.clear();
     const auto replay =
