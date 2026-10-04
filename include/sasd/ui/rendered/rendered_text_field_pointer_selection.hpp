@@ -4,6 +4,7 @@
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
+#include <sasd/ui/text/selection_boundaries.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
@@ -31,12 +32,17 @@ public:
      *
      * Primary press:
      * - HitTest locates the TextField under the pointer.
-     * - caretIndexAt() maps the press to an exact scalar boundary.
-     * - an unmodified successful press collapses selection at that boundary;
+     * - an unmodified double click uses scalarIndexAt() plus Core's basic word-boundary policy;
      * - an exact Shift press preserves the existing semantic anchor and moves only the active end;
+     * - every other successful press collapses selection at caretIndexAt();
      * - TextField handles the press, allowing PointerRouter to establish capture.
      *
-     * Captured move/release:
+     * Double-click word selection is atomic in this first slice. Once the TextField has consumed the
+     * double-click press, the helper immediately releases the just-created capture so the matching
+     * release cannot collapse the selected word through ordinary drag-finalization logic. Word-wise
+     * double-click dragging is deliberately deferred to a later gesture-granularity feature.
+     *
+     * Captured move/release for ordinary/Shift-started gestures:
      * - the current captured Widget is queried from PointerRouter; no Widget pointer is retained here;
      * - caretIndexForDrag() maps even out-of-bounds positions against the current rendered viewport;
      * - the selection anchor established by the press stays stable while only the active cursor moves;
@@ -44,12 +50,13 @@ public:
      *
      * Shift is deliberately interpreted only when it is the exact modifier set. Control/Alt/Meta
      * combinations remain available for later word-selection or platform-specific policies instead of
-     * being silently treated as ordinary Shift extension today.
+     * being silently treated as ordinary Shift extension today. Likewise, the word-selection gesture
+     * currently requires exact no-modifier double click; modified multi-click policy is left open.
      *
-     * If a primary press hits a TextField but its scalar boundary cannot be represented by the metric
-     * provider, the event is still consumed by the TextField but any capture created by that press is
-     * immediately released. This prevents a later move from extending a stale pre-existing anchor while
-     * preserving the conservative "do not guess text geometry" rule.
+     * If a primary press hits a TextField but its required scalar geometry cannot be represented by the
+     * metric provider, the event is still consumed by the TextField but any capture created by that
+     * press is immediately released. This prevents a later move from extending stale selection state
+     * while preserving the conservative "do not guess text geometry" rule.
      */
     [[nodiscard]] static PointerRouteResult route(
         Widget& root,
@@ -58,6 +65,7 @@ public:
         const RenderedMeasurementContext& metrics) {
         TextField* pressed_field = nullptr;
         bool press_mapping_failed = false;
+        bool atomic_double_click_selection = false;
 
         if (!pointer_router.hasCapture() &&
             event.action == PointerAction::press &&
@@ -74,10 +82,60 @@ public:
             }
 
             if (pressed_field != nullptr) {
-                if (const auto scalar = RenderedTextFieldHitTest::caretIndexAt(
-                        *pressed_field,
-                        event.position,
-                        metrics)) {
+                const bool exact_unmodified_double_click =
+                    event.modifiers == KeyModifier::none &&
+                    event.click_count == 2;
+
+                if (exact_unmodified_double_click) {
+                    /*
+                     * Word selection needs the scalar whose painted span is under the pointer, not the
+                     * nearest insertion boundary. Using caretIndexAt() here would select the following
+                     * word when the pointer lies in the right half of the final glyph of the current
+                     * word. ADR 0090 introduced scalarIndexAt() specifically to keep those two geometry
+                     * questions separate.
+                     */
+                    if (const auto scalar = RenderedTextFieldHitTest::scalarIndexAt(
+                            *pressed_field,
+                            event.position,
+                            metrics)) {
+                        if (const auto word = text::basicWordRangeAt(
+                                pressed_field->text(),
+                                *scalar)) {
+                            pressed_field->setSelection(word->start, word->end);
+                            atomic_double_click_selection = true;
+                        } else if (const auto caret = RenderedTextFieldHitTest::caretIndexAt(
+                                       *pressed_field,
+                                       event.position,
+                                       metrics)) {
+                            /*
+                             * Whitespace is intentionally not a "word" in the basic boundary policy.
+                             * Falling back to ordinary caret placement is less surprising than selecting
+                             * an arbitrary separator run and keeps empty/spacing clicks conservative.
+                             */
+                            pressed_field->setSelection(*caret, *caret);
+                        } else {
+                            press_mapping_failed = true;
+                        }
+                    } else {
+                        /*
+                         * scalarIndexAt() can legitimately return nullopt for blank interior space after
+                         * the rendered text. In that case retain normal click behavior if an insertion
+                         * caret can still be mapped; otherwise use the same unsupported-geometry path as
+                         * an ordinary press.
+                         */
+                        if (const auto caret = RenderedTextFieldHitTest::caretIndexAt(
+                                *pressed_field,
+                                event.position,
+                                metrics)) {
+                            pressed_field->setSelection(*caret, *caret);
+                        } else {
+                            press_mapping_failed = true;
+                        }
+                    }
+                } else if (const auto scalar = RenderedTextFieldHitTest::caretIndexAt(
+                               *pressed_field,
+                               event.position,
+                               metrics)) {
                     const bool extends_existing_selection =
                         event.modifiers == KeyModifier::shift;
 
@@ -87,10 +145,6 @@ public:
                          * that already belongs to TextField and move only the active end to the newly
                          * mapped scalar. This works for both collapsed and directed selections and
                          * naturally permits crossing the anchor without normalizing away direction.
-                         *
-                         * Crucially, the anchor is read before PointerRouter dispatch. Core TextField
-                         * owns gesture lifetime but does not know rendered geometry or decide where the
-                         * click landed.
                          */
                         pressed_field->setSelection(
                             pressed_field->selectionAnchor(),
@@ -133,14 +187,18 @@ public:
 
         PointerRouteResult result = pointer_router.route(root, event);
 
-        if (press_mapping_failed &&
-            pressed_field != nullptr &&
-            pointer_router.capturedWidget() == pressed_field) {
+        if (pressed_field != nullptr &&
+            pointer_router.capturedWidget() == pressed_field &&
+            (press_mapping_failed || atomic_double_click_selection)) {
             /*
-             * TextField handled the primary press so the event does not unexpectedly bubble as if the
-             * editor were inert, but unsupported shaping geometry must not create a drag based on old
-             * selection state. Retire that just-created capture immediately and report the final router
-             * state rather than the transient state returned by route().
+             * Two cases intentionally retire the just-created TextField capture immediately:
+             *
+             * 1. unsupported geometry must not start a drag from stale selection state;
+             * 2. an atomic double-click word selection must survive the matching release unchanged.
+             *
+             * releaseCapture() invokes TextField::onPointerCaptureLost(), so Core's transient gesture
+             * flag is also retired through the normal lifetime-safe handshake rather than by a special
+             * back door in this helper.
              */
             pointer_router.releaseCapture();
             result.capture_active = false;

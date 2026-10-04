@@ -2,8 +2,8 @@
 
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
-#include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
+#include <sasd/ui/text/selection_boundaries.hpp>
 #include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/window.hpp>
@@ -59,6 +59,11 @@ TEST_CASE("Rendered TextField exact Shift press preserves the existing selection
     field.arrange({10, 10, 80, 14});
     field.setSelection(1, 3);
 
+    /*
+     * The one-unit default border puts text x=0 at global x=11. Scalar five therefore lies at x=51.
+     * Shift+press must keep anchor=1 and move only the active end to five. Collapsing at the click
+     * would lose exactly the semantic state Shift is supposed to extend.
+     */
     const auto press = RenderedTextFieldPointerSelection::route(
         window,
         pointer_router,
@@ -96,13 +101,18 @@ TEST_CASE("Rendered TextField Shift press preserves directed anchor when extendi
 
     auto& field = window.emplace<TextField>("abcdef");
     field.arrange({10, 10, 80, 14});
+
+    /*
+     * A directed selection may have anchor > cursor. Shift+click must not normalize that pair before
+     * extension because TextField intentionally stores direction for later keyboard/pointer changes.
+     */
     field.setSelection(4, 2);
 
     const auto press = RenderedTextFieldPointerSelection::route(
         window,
         pointer_router,
         PointerEvent{
-            {19, 15},
+            {19, 15}, // scalar 1
             PointerAction::press,
             PointerButton::primary,
             1,
@@ -138,7 +148,7 @@ TEST_CASE("Rendered TextField drag after Shift press keeps the pre-existing anch
         window,
         pointer_router,
         PointerEvent{
-            {43, 15},
+            {43, 15}, // scalar 4
             PointerAction::press,
             PointerButton::primary,
             1,
@@ -149,10 +159,14 @@ TEST_CASE("Rendered TextField drag after Shift press keeps the pre-existing anch
     CHECK(field.selectionAnchor() == 1);
     CHECK(field.cursorPosition() == 4);
 
+    /*
+     * Once capture exists, later motion must continue the same Shift-started gesture. The helper must
+     * not silently replace anchor=1 with the press boundary (4); only the active end follows motion.
+     */
     const auto move = RenderedTextFieldPointerSelection::route(
         window,
         pointer_router,
-        PointerEvent{{27, 15}, PointerAction::move, PointerButton::none, 0},
+        PointerEvent{{27, 15}, PointerAction::move, PointerButton::none, 0}, // scalar 2
         metrics);
 
     CHECK(move.handled);
@@ -180,6 +194,11 @@ TEST_CASE("Rendered TextField reserves combined modifiers instead of treating th
     field.arrange({10, 10, 80, 14});
     field.setSelection(1, 3);
 
+    /*
+     * Only exact Shift currently has defined extension semantics. Keeping Ctrl/Alt/Meta combinations
+     * out of that rule leaves room for later word-selection/platform policy without changing today's
+     * contract. Until such policy exists, the press follows the ordinary fresh-anchor behavior.
+     */
     const auto press = RenderedTextFieldPointerSelection::route(
         window,
         pointer_router,
@@ -203,56 +222,147 @@ TEST_CASE("Rendered TextField reserves combined modifiers instead of treating th
         metrics);
 }
 
-TEST_CASE("Rendered TextField scalar hit mapping distinguishes glyph spans from caret boundaries") {
-    ShiftClickMetrics metrics;
+TEST_CASE("Basic word boundary policy keeps word-like Unicode together and splits punctuation") {
+    const std::string_view text_value = "Gr\xC3\xB6\xC3\x9F" "e,world";
 
-    Window window;
-    window.arrange({0, 0, 160, 60});
+    const auto german = text::basicWordRangeAt(text_value, 2);
+    CHECK(german.has_value());
+    CHECK(german->start == 0);
+    CHECK(german->end == 5);
 
-    auto& field = window.emplace<TextField>("abc");
-    field.arrange({10, 10, 80, 14});
+    const auto comma = text::basicWordRangeAt(text_value, 5);
+    CHECK(comma.has_value());
+    CHECK(comma->start == 5);
+    CHECK(comma->end == 6);
 
-    /*
-     * The default one-unit border places the text viewport at x=11. Each scalar occupies an eight-unit
-     * shaped span, so x=11..18 belongs to scalar zero and x=19 starts scalar one. This is deliberately
-     * different from caretIndexAt(), whose midpoint rule may choose a neighboring insertion boundary.
-     */
-    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {11, 15}, metrics) ==
-          std::optional<std::size_t>{0});
-    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {18, 15}, metrics) ==
-          std::optional<std::size_t>{0});
-    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {19, 15}, metrics) ==
-          std::optional<std::size_t>{1});
-    CHECK(RenderedTextFieldHitTest::scalarIndexAt(field, {34, 15}, metrics) ==
-          std::optional<std::size_t>{2});
-
-    // x=35 is exactly after the final shaped scalar; trailing viewport space is not text.
-    CHECK(!RenderedTextFieldHitTest::scalarIndexAt(field, {35, 15}, metrics).has_value());
-    CHECK(!RenderedTextFieldHitTest::scalarIndexAt(field, {60, 15}, metrics).has_value());
+    const auto english = text::basicWordRangeAt(text_value, 8);
+    CHECK(english.has_value());
+    CHECK(english->start == 6);
+    CHECK(english->end == 11);
 }
 
-TEST_CASE("Rendered TextField scalar hit mapping follows the current horizontal viewport") {
+TEST_CASE("Basic word boundary policy rejects whitespace and preserves combining marks in word run") {
+    const std::string_view text_value = "a\xCC\x81 b"; // a + combining acute, space, b
+
+    const auto accented = text::basicWordRangeAt(text_value, 1);
+    CHECK(accented.has_value());
+    CHECK(accented->start == 0);
+    CHECK(accented->end == 2);
+
+    CHECK(!text::basicWordRangeAt(text_value, 2).has_value());
+    CHECK(!text::basicWordRangeAt(text_value, 4).has_value());
+}
+
+TEST_CASE("Rendered TextField unmodified double click selects the word under the painted scalar") {
     ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
 
     Window window;
-    window.arrange({0, 0, 120, 60});
+    window.arrange({0, 0, 200, 60});
 
-    auto& field = window.emplace<TextField>("abcdef");
-    field.arrange({10, 10, 20, 14});
-    field.setCursorPosition(5);
+    auto& field = window.emplace<TextField>("alpha beta");
+    field.arrange({10, 10, 120, 14});
 
     /*
-     * The narrow field scrolls so later scalars are visible. scalarIndexAt() must use the shared
-     * viewport builder instead of assuming scalar zero begins at the left edge. Whatever the exact
-     * start chosen by the viewport policy, the leftmost visible shaped span must map to that scalar,
-     * not to an off-screen predecessor.
+     * Text starts at x=11 and each scalar is eight units wide. x=47 lies in the right half of scalar
+     * four ('a' in "alpha"). caretIndexAt() would choose boundary five, but scalarIndexAt() must still
+     * identify scalar four so the double click selects "alpha" rather than treating the separator as
+     * the semantic target.
      */
-    const auto left_caret =
-        RenderedTextFieldHitTest::caretIndexAt(field, {11, 15}, metrics);
-    const auto left_scalar =
-        RenderedTextFieldHitTest::scalarIndexAt(field, {11, 15}, metrics);
+    const auto press = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{
+            {47, 15},
+            PointerAction::press,
+            PointerButton::primary,
+            2,
+            KeyModifier::none},
+        metrics);
 
-    CHECK(left_caret.has_value());
-    CHECK(left_scalar.has_value());
-    CHECK(*left_scalar == *left_caret);
+    CHECK(press.handled);
+    CHECK(!press.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionStart() == 0);
+    CHECK(field.selectionEnd() == 5);
+    CHECK(field.selectedText() == "alpha");
+
+    /*
+     * Atomic double-click selection retires capture after the press. The matching release therefore
+     * cannot run ordinary captured-drag finalization and collapse the selected word back to a caret.
+     */
+    const auto release = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{47, 15}, PointerAction::release, PointerButton::primary, 2},
+        metrics);
+
+    CHECK(!release.capture_active);
+    CHECK(field.selectedText() == "alpha");
+}
+
+TEST_CASE("Rendered TextField double click selects punctuation separately from adjacent words") {
+    ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
+
+    Window window;
+    window.arrange({0, 0, 200, 60});
+
+    auto& field = window.emplace<TextField>("alpha,beta");
+    field.arrange({10, 10, 120, 14});
+
+    const auto press = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{
+            {53, 15}, // scalar five, comma
+            PointerAction::press,
+            PointerButton::primary,
+            2,
+            KeyModifier::none},
+        metrics);
+
+    CHECK(press.handled);
+    CHECK(!press.capture_active);
+    CHECK(field.selectionStart() == 5);
+    CHECK(field.selectionEnd() == 6);
+    CHECK(field.selectedText() == ",");
+}
+
+TEST_CASE("Rendered TextField modified double click does not claim unmodified word-selection policy") {
+    ShiftClickMetrics metrics;
+    PointerRouter pointer_router;
+
+    Window window;
+    window.arrange({0, 0, 200, 60});
+
+    auto& field = window.emplace<TextField>("alpha beta");
+    field.arrange({10, 10, 120, 14});
+    field.setSelection(0, 2);
+
+    const auto press = RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{
+            {75, 15},
+            PointerAction::press,
+            PointerButton::primary,
+            2,
+            KeyModifier::control},
+        metrics);
+
+    /*
+     * Ctrl+double-click has no contract yet. It intentionally follows ordinary fresh-anchor click
+     * behavior rather than silently inheriting the unmodified word-selection policy.
+     */
+    CHECK(press.handled);
+    CHECK(press.capture_active);
+    CHECK(field.selectionAnchor() == field.cursorPosition());
+    CHECK(!field.hasSelection());
+
+    (void)RenderedTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{75, 15}, PointerAction::release, PointerButton::primary, 2},
+        metrics);
 }
