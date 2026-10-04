@@ -24,6 +24,7 @@ add_executable(sasd_ui_tests
     layout_tests.cpp
     pointer_router_tests.cpp
     text_field_tests.cpp
+    text_field_clipboard_tests.cpp
     utf8_tests.cpp
     widget_controls_tests.cpp
     visual_invalidation_tests.cpp

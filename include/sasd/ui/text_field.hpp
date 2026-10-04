@@ -107,11 +107,34 @@ public:
      * deleting an existing selection or invalidating measurement/presentation. Native clipboard read
      * failures are intentionally allowed to propagate according to the Clipboard contract; TextField is
      * unchanged if readText() throws.
-     *
-     * Copy/cut are deliberately deferred until the selection contract has also been integrated into the
-     * surrounding command/menu surfaces and presentation backends.
      */
     [[nodiscard]] bool pasteFromClipboard(const Clipboard& clipboard);
+
+    /**
+     * Copies the currently selected UTF-8 text into a backend-neutral clipboard.
+     *
+     * A collapsed selection returns false and deliberately leaves existing clipboard contents untouched.
+     * The operation is programmatic and does not require logical focus, visibility or enabled state;
+     * callers such as menu/command layers are responsible for deciding whether Copy is appropriate in
+     * their current interaction scope.
+     *
+     * Clipboard write failures propagate according to the Clipboard contract. TextField itself is never
+     * mutated by Copy, so a failed write cannot disturb text, cursor or selection state.
+     */
+    [[nodiscard]] bool copySelectionToClipboard(Clipboard& clipboard) const;
+
+    /**
+     * Copies the selected UTF-8 text to the clipboard and removes that range from the field.
+     *
+     * Cut writes first and mutates the field only after the clipboard accepted the payload. This ordering
+     * protects user text from loss when a native clipboard write fails. A collapsed selection returns
+     * false without touching either clipboard or TextField state. Successful removal collapses the
+     * selection at its lower scalar boundary and invalidates text-dependent measurement/presentation.
+     *
+     * Like paste/copy, this is an explicit programmatic editing operation. Focus and command enablement
+     * remain policies of the caller rather than hidden preconditions inside the semantic widget.
+     */
+    [[nodiscard]] bool cutSelectionToClipboard(Clipboard& clipboard);
 
 protected:
     [[nodiscard]] Size onMeasure(const MeasurementContext& context,

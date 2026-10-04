@@ -135,6 +135,53 @@ bool TextField::pasteFromClipboard(const Clipboard& clipboard) {
     return insertText(*clipboard_text);
 }
 
+bool TextField::copySelectionToClipboard(Clipboard& clipboard) const {
+    if (!hasSelection()) {
+        /*
+         * A collapsed selection is not equivalent to an empty payload. Writing an empty string here
+         * would silently clear/replace a user's existing clipboard despite there being nothing to copy.
+         * Returning false lets command/menu policy disable or ignore Copy without side effects.
+         */
+        return false;
+    }
+
+    /*
+     * selectedText() returns an owned UTF-8 value, matching Clipboard's owned-value contract. No view
+     * into TextField storage escapes to a backend that may retain or synchronously transform the bytes.
+     * Clipboard failures intentionally propagate; Copy itself does not mutate this TextField.
+     */
+    clipboard.writeText(selectedText());
+    return true;
+}
+
+bool TextField::cutSelectionToClipboard(Clipboard& clipboard) {
+    if (!hasSelection()) {
+        return false;
+    }
+
+    /*
+     * Capture the selected text before touching editor state, then write it before deletion. Native
+     * clipboard operations can fail (for example because another process temporarily owns/locks the
+     * platform facility). If writeText() throws, the user's selected text and selection therefore remain
+     * intact rather than being destroyed before we know the clipboard accepted the payload.
+     */
+    const std::string selection = selectedText();
+    clipboard.writeText(selection);
+
+    /*
+     * No external callback occurs between the successful write and this local mutation. With a live
+     * selection established above, eraseSelection() collapses at selectionStart() and cannot fail under
+     * the TextField invariants. Keep the bool check anyway so this helper remains defensive if its
+     * internal contract evolves later.
+     */
+    if (!eraseSelection()) {
+        return false;
+    }
+
+    textChanged();
+    return true;
+}
+
 Size TextField::onMeasure(const MeasurementContext& context, const MeasureConstraints&) {
     return context.measureTextField(text_);
 }
