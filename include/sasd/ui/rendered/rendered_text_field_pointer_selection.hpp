@@ -32,14 +32,19 @@ public:
      * Primary press:
      * - HitTest locates the TextField under the pointer.
      * - caretIndexAt() maps the press to an exact scalar boundary.
-     * - a successful mapping collapses selection at that boundary before routing the press.
+     * - an unmodified successful press collapses selection at that boundary;
+     * - an exact Shift press preserves the existing semantic anchor and moves only the active end;
      * - TextField handles the press, allowing PointerRouter to establish capture.
      *
      * Captured move/release:
      * - the current captured Widget is queried from PointerRouter; no Widget pointer is retained here;
      * - caretIndexForDrag() maps even out-of-bounds positions against the current rendered viewport;
-     * - the original TextField selectionAnchor() stays stable while only the active cursor moves;
+     * - the selection anchor established by the press stays stable while only the active cursor moves;
      * - release is finally routed so PointerRouter can retire capture normally.
+     *
+     * Shift is deliberately interpreted only when it is the exact modifier set. Control/Alt/Meta
+     * combinations remain available for later word-selection or platform-specific policies instead of
+     * being silently treated as ordinary Shift extension today.
      *
      * If a primary press hits a TextField but its scalar boundary cannot be represented by the metric
      * provider, the event is still consumed by the TextField but any capture created by that press is
@@ -73,12 +78,31 @@ public:
                         *pressed_field,
                         event.position,
                         metrics)) {
-                    /*
-                     * A fresh pointer gesture always starts from a collapsed anchor/cursor pair. The
-                     * subsequent captured moves therefore preserve exactly this press boundary as the
-                     * stable anchor, matching keyboard Shift-selection semantics.
-                     */
-                    pressed_field->setSelection(*scalar, *scalar);
+                    const bool extends_existing_selection =
+                        event.modifiers == KeyModifier::shift;
+
+                    if (extends_existing_selection) {
+                        /*
+                         * Shift+press mirrors keyboard Shift navigation: preserve the semantic anchor
+                         * that already belongs to TextField and move only the active end to the newly
+                         * mapped scalar. This works for both collapsed and directed selections and
+                         * naturally permits crossing the anchor without normalizing away direction.
+                         *
+                         * Crucially, the anchor is read before PointerRouter dispatch. Core TextField
+                         * owns gesture lifetime but does not know rendered geometry or decide where the
+                         * click landed.
+                         */
+                        pressed_field->setSelection(
+                            pressed_field->selectionAnchor(),
+                            *scalar);
+                    } else {
+                        /*
+                         * A normal primary gesture starts from a fresh collapsed anchor/cursor pair.
+                         * Subsequent captured moves therefore preserve exactly this press boundary as
+                         * the stable anchor.
+                         */
+                        pressed_field->setSelection(*scalar, *scalar);
+                    }
                 } else {
                     press_mapping_failed = true;
                 }
@@ -97,9 +121,10 @@ public:
                         event.position,
                         metrics)) {
                     /*
-                     * Preserve the original pointer-down anchor and move only the active end. Crossing
-                     * the anchor is valid and naturally reverses the directed selection without any
-                     * special-case normalization in the interaction layer.
+                     * Preserve the anchor established at pointer-down and move only the active end.
+                     * For an ordinary press that anchor is the press boundary; for Shift+press it is
+                     * the pre-existing TextField anchor. Crossing it remains a valid directed selection
+                     * in either case.
                      */
                     captured->setSelection(captured->selectionAnchor(), *scalar);
                 }
