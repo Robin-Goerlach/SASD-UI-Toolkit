@@ -17,6 +17,7 @@
 #include <sasd/ui/shortcut.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/menu_frame_builder.hpp>
+#include <sasd/ui/terminal/menu_hover_interaction.hpp>
 #include <sasd/ui/terminal/menu_pointer_interaction.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
@@ -120,6 +121,16 @@ int main() {
         MenuBarModel menu_bar;
         MenuModel& actions_menu = menu_bar.appendMenu("Actions");
         actions_menu.appendCommand(greet_command);
+
+        /*
+         * Keep one deliberately small nested menu in the demo so delayed hover opening is observable in
+         * real terminal use rather than existing only in deterministic unit tests. Reusing help_command is
+         * also intentional: one semantic Command may appear on several menu surfaces without duplicating
+         * application behavior or inventing a terminal-only callback.
+         */
+        MenuModel& more_menu = actions_menu.appendSubmenu("More");
+        more_menu.appendCommand(help_command);
+
         actions_menu.appendSeparator();
         actions_menu.appendCommand(exit_command);
 
@@ -195,7 +206,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 menu. F1 help. Mouse clicks menus; drag selects text; double-click+drag selects words.");
+            "F10 menu. F1 help. Mouse menus + hover submenus; drag text; double-click+drag selects words.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -239,6 +250,15 @@ int main() {
         TerminalMenuPointerInteraction::GestureState menu_pointer_gesture;
 
         /*
+         * Delayed submenu opening is a second, independent piece of host-owned transient menu state. It
+         * owns only value identity plus a monotonic timestamp; it has no worker thread, timer callback,
+         * MenuItem pointer, or retained presentation frame. Pointer handling below first performs immediate
+         * row/title semantics and then feeds the same event into this timing policy. The normal main loop
+         * advances the deadline, so hover opening remains deterministic and synchronized with presentation.
+         */
+        TerminalMenuHoverInteraction menu_hover;
+
+        /*
          * Button activation, menu activation and shortcut activation deliberately share the same Command
          * callback. This is the practical reason Command is semantic and backend-neutral: none of the
          * presentation/input surfaces owns a duplicate copy of application behavior.
@@ -265,7 +285,7 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10/menu clicks; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
+                "Help: F10/menu clicks; hover More > to open it; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
         });
 
         exit_command.setOnExecuted([&] {
@@ -370,6 +390,7 @@ int main() {
                          * old click. Semantic menu selection itself remains owned by the controller.
                          */
                         menu_pointer_gesture.reset();
+                        menu_hover.reset();
                         screen.resize(resize->size);
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
@@ -416,6 +437,24 @@ int main() {
                                 *pointer,
                                 presentation.ambiguousWidthMode(),
                                 menu_pointer_gesture);
+
+                            /*
+                             * Hover timing observes the same physical event only after immediate pointer
+                             * semantics have run. That ordering is important: popup-row motion may have just
+                             * truncated an invalid descendant path or switched the active root menu, and the
+                             * timing layer must capture the post-transition semantic scope while still using
+                             * the exact pre-event presentation frame that proved the physical row hit.
+                             *
+                             * Press/release/outside motion automatically retire a pending hover candidate.
+                             * Repeated motion within one row preserves its original first-observed timestamp,
+                             * so a noisy all-motion terminal cannot postpone the submenu deadline forever.
+                             */
+                            menu_hover.observe(
+                                menu_interaction,
+                                *menu_frame,
+                                *pointer,
+                                presentation.ambiguousWidthMode(),
+                                TerminalMenuHoverInteraction::Clock::now());
 
                             if (menu_result.has_value()) {
                                 /*
@@ -504,6 +543,7 @@ int main() {
                              * a later physical release cannot complete an interaction started in the old scope.
                              */
                             menu_pointer_gesture.reset();
+                            menu_hover.reset();
 
                             if (menu_interaction.isActive()) {
                                 menu_interaction.reset();
@@ -532,6 +572,7 @@ int main() {
                              * semantic change. A subsequent release must never complete across input modes.
                              */
                             menu_pointer_gesture.reset();
+                            menu_hover.reset();
 
                             const MenuInteractionResult menu_result =
                                 menu_interaction.handleKey(menu_bar, *key);
@@ -593,6 +634,23 @@ int main() {
 
             if (application.exitRequested()) {
                 break;
+            }
+
+            /*
+             * Delayed submenu hover is advanced from the ordinary host loop rather than from a background
+             * timer. The event loop already wakes frequently for non-blocking backend polling, so the same
+             * monotonic clock can commit a pending submenu deadline without another thread or callback.
+             *
+             * advance() is intentionally semantic only: when the deadline expires it asks Core to open the
+             * still-selected submenu and returns state_changed. Presentation remains a separate transaction
+             * below, which rebuilds placement from the new MenuPath before anything is drawn.
+             */
+            const MenuInteractionResult hover_result = menu_hover.advance(
+                menu_bar,
+                menu_interaction,
+                TerminalMenuHoverInteraction::Clock::now());
+            if (hover_result.action != MenuInteractionAction::none) {
+                menu_presentation_changed = true;
             }
 
             /*
