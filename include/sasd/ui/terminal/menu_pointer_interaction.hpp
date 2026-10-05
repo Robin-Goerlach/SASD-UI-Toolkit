@@ -25,17 +25,18 @@ namespace sasd::ui::terminal {
  *   rebuild presentation and delay application callbacks without learning a terminal-specific state machine.
  *
  * Pointer motion over a visible popup row is translated into the same backend-neutral selectPopupItem()
- * transaction used by a Primary press. The adapter therefore owns only terminal geometry; Core still proves
- * whether the row is currently selectable and whether selecting it invalidates deeper popup descendants.
- * Motion does not open submenus and does not activate Commands. Whether the terminal produces only
- * button-held motion (xterm mode 1002) or future passive/all-motion reports is a TerminalSession protocol
- * policy and intentionally remains outside this semantic adapter.
+ * transaction used by a Primary press. Motion over a different visible top-level title while menu interaction
+ * is already active switches the selected root popup using the controller's established begin()+Enter
+ * transition. This mirrors desktop menu bars without moving terminal geometry into Core. Motion still does not
+ * open child submenus and does not activate Commands. Whether the terminal produces button-held motion or
+ * passive/all-motion reports is a TerminalSession protocol policy outside this semantic adapter.
  *
  * Stateful handling additionally gives popup items desktop-style press/release completion: press selects and
  * arms one popup identity, and a matching release asks the backend-neutral controller to open that selected
- * submenu or activate that selected Command. Motion may change semantic selection while deliberately leaving
- * the armed press identity unchanged. A later release can therefore complete only when geometry and current
- * Core selection still prove the originally armed item; motion never silently retargets a click.
+ * submenu or activate that selected Command. Motion may change semantic popup-row selection while deliberately
+ * leaving the armed press identity unchanged. A top-level title switch is different: it replaces the root menu
+ * model, so any armed popup identity is retired before the switch to prevent the same numeric level/index from
+ * being reinterpreted in another top-level menu.
  */
 class TerminalMenuPointerInteraction final {
 public:
@@ -70,9 +71,10 @@ public:
      * Stateless pointer handling for menu selection and modal consumption.
      *
      * Primary press can open/switch a top-level menu, select an enabled popup row, or dismiss an active menu
-     * from outside. Pointer motion over an active popup can select a row but never opens/activates it. Releases
-     * remain consumed while a menu is active but cannot activate Commands or open child popups because this
-     * overload intentionally retains no press identity between events.
+     * from outside. Pointer motion over an active popup can select a row, and motion over a different visible
+     * top-level title switches the open root popup to that title. Motion never activates a Command or opens a
+     * child submenu. Releases remain consumed while a menu is active but cannot complete popup items because
+     * this overload intentionally retains no press identity between events.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -88,9 +90,11 @@ public:
      *
      * A Primary press on a visible popup row first performs the same selectPopupItem() transaction as the
      * stateless overload and records only that painted level/row identity. Motion can update Core's current
-     * row selection, but deliberately does not rewrite the armed identity. A later Primary release must hit
-     * the exact same topmost popup row and Core must still prove that identity as the current selection;
-     * otherwise completion is cancelled while the menu remains active.
+     * row selection, but deliberately does not rewrite the armed identity while remaining in the same root
+     * menu. If motion switches to another top-level title, the armed identity is reset because level/row values
+     * are meaningful only within the old root menu model. A later Primary release must hit the exact same
+     * topmost popup row and Core must still prove that identity as the current selection; otherwise completion
+     * is cancelled while the menu remains active.
      *
      * Even a matching geometric release is only a request. The adapter first asks
      * MenuInteractionController::openPopupSubmenu() whether the selected live item owns a child popup. A
@@ -100,8 +104,8 @@ public:
      * Command::Reference without executing client code, so the host can repaint before callbacks run.
      *
      * Separator and disabled rows remain consumed but cannot complete semantically. An already-open submenu
-     * is a no-op and preserves its descendants. Motion-driven selection does not add delayed submenu opening,
-     * menu-bar title switching, or passive terminal tracking; those are separate policies.
+     * is a no-op and preserves its descendants. Motion-driven selection does not add delayed submenu opening;
+     * that remains a separate policy.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -296,9 +300,52 @@ private:
             }
 
             /*
-             * Moving across menu chrome, a title, or outside the popup surface remains modal/consumed while
-             * interaction is active but does not clear the current row selection. Title-hover switching and
-             * delayed submenu policy are intentionally separate decisions rather than side effects here.
+             * Once a transient menu is active, moving over another visible top-level title follows the familiar
+             * desktop-menu rule: replace the root popup immediately, but do not select any row in the new menu.
+             * Popup hit testing remains first because popups are painted above the bar and therefore own any
+             * overlapping cell. A title index is rechecked against the current semantic model before begin()
+             * so a stale presentation snapshot is consumed rather than allowed to trigger begin()'s fallback.
+             */
+            if (const auto title =
+                    TerminalMenuHitTest::menuBarIndexAt(frame, event.position, ambiguous_width);
+                title.has_value()) {
+                if (*title >= bar.menuCount()) {
+                    return MenuInteractionResult{};
+                }
+
+                const bool same_open_title =
+                    controller.menuBarSelection() == *title && controller.popupOpen();
+                if (same_open_title) {
+                    /*
+                     * Do not collapse descendants merely because the pointer crossed the already-active title.
+                     * This also preserves an armed popup click when motion briefly traverses that same title and
+                     * later returns to the original row before release.
+                     */
+                    return MenuInteractionResult{};
+                }
+
+                if (gesture_state != nullptr) {
+                    /*
+                     * A top-level switch replaces the root MenuModel. The same numeric {level,item_index}
+                     * could name a completely different item after the switch, so an armed popup press must
+                     * never survive this semantic scope boundary.
+                     */
+                    gesture_state->reset();
+                }
+
+                if (!controller.begin(bar, *title)) {
+                    return MenuInteractionResult{};
+                }
+
+                return controller.handleKey(
+                    bar,
+                    KeyEvent{Key::enter, true, KeyModifier::none});
+            }
+
+            /*
+             * Moving across other menu chrome or outside the popup surface remains modal/consumed while
+             * interaction is active but does not clear the current row selection. Delayed submenu opening and
+             * submenu-close timing remain separate policy decisions rather than side effects here.
              */
             return MenuInteractionResult{};
         }
