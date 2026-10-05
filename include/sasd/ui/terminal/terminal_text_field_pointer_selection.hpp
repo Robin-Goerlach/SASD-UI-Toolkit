@@ -4,6 +4,7 @@
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/terminal/terminal_text_field_hit_test.hpp>
 #include <sasd/ui/text/selection_boundaries.hpp>
+#include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
@@ -30,6 +31,7 @@ public:
      * Maps one terminal PointerEvent to TextField selection state and routes the event through Core.
      *
      * For a fresh primary press on a TextField:
+     * - an exact unmodified triple click selects the complete semantic TextField contents;
      * - an exact unmodified double click selects the basic semantic word/punctuation run under the
      *   actually painted scalar;
      * - double click on whitespace or trailing caret space falls back to ordinary caret placement;
@@ -37,16 +39,17 @@ public:
      * - exact Shift+press preserves TextField's existing selection anchor and moves only the active end;
      * - unsupported/unrepresentable terminal geometry leaves semantic selection unchanged.
      *
-     * Word selection is atomic in this slice. After Core has processed the double-click press, any
-     * capture just acquired by that TextField is released immediately. This prevents the existing
-     * character-granular drag/release path from collapsing or partially extending the complete word
-     * before a dedicated word-drag gesture state exists.
+     * Double- and triple-click semantic selections are atomic in this stateless interaction layer.
+     * After Core has processed the multi-click press, any capture just acquired by that TextField is
+     * released immediately. This prevents the existing character-granular drag/release path from
+     * collapsing or partially extending a complete word/all-text selection before dedicated
+     * word-granular gesture state exists.
      *
      * Ordinary character-granular gestures retain capture. Their move and matching primary release use
      * caretIndexForDrag(), so the stable semantic selection anchor survives motion outside the control
      * while the active cursor follows the representable terminal viewport.
      *
-     * Triple-click select-all, word-granular dragging and auto-scroll remain separate later policies.
+     * Word-granular double-click dragging and auto-scroll remain separate later policies.
      */
     [[nodiscard]] static PointerRouteResult route(
         Widget& root,
@@ -55,13 +58,13 @@ public:
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
         TextField* pressed_field = nullptr;
         bool press_mapping_failed = false;
-        bool atomic_word_selection = false;
+        bool atomic_multi_click_selection = false;
 
         if (!pointer_router.hasCapture() &&
             event.action == PointerAction::press &&
             event.button == PointerButton::primary) {
             /*
-             * HitTest is used here only to decide whether TextField-specific terminal geometry should
+             * HitTest is used here only to decide whether TextField-specific terminal semantics should
              * be prepared. It does not establish capture. PointerRouter still dispatches the event and
              * captures whichever Widget actually handles the press after normal bubbling.
              *
@@ -74,11 +77,29 @@ public:
             }
 
             if (pressed_field != nullptr) {
+                const bool exact_unmodified_triple_click =
+                    event.modifiers == KeyModifier::none &&
+                    event.click_count == 3;
                 const bool exact_unmodified_double_click =
                     event.modifiers == KeyModifier::none &&
                     event.click_count == 2;
 
-                if (exact_unmodified_double_click) {
+                if (exact_unmodified_triple_click) {
+                    /*
+                     * TextField is intrinsically single-line, so whole-content selection is the natural
+                     * terminal counterpart of desktop triple-click line selection. Once HitTest has
+                     * identified the TextField target no terminal scalar geometry is required: the
+                     * semantic selection is simply the complete Unicode-scalar interval [0,count).
+                     *
+                     * utf8::scalarCount() is intentionally used instead of std::string::size(). TextField
+                     * selection indices are Unicode-scalar indices throughout Core, and a multi-byte
+                     * UTF-8 scalar must therefore contribute exactly one semantic position.
+                     */
+                    pressed_field->setSelection(
+                        0,
+                        utf8::scalarCount(pressed_field->text()));
+                    atomic_multi_click_selection = true;
+                } else if (exact_unmodified_double_click) {
                     /*
                      * Word selection needs text identity, not a nearest insertion position. The strict
                      * scalar hit therefore rejects chrome and reserved caret space and maps both cells
@@ -99,7 +120,7 @@ public:
                              * must not subsequently erode that range. A later word-drag slice can add
                              * explicit host-owned gesture state without changing this atomic contract.
                              */
-                            atomic_word_selection = true;
+                            atomic_multi_click_selection = true;
                         } else if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
                                        *pressed_field,
                                        event.position,
@@ -146,8 +167,8 @@ public:
                     } else {
                         /*
                          * Every ordinary primary press starts a new character-granular gesture from a
-                         * collapsed anchor/cursor pair. Modified double clicks intentionally land here;
-                         * only exact unmodified double click receives word-selection semantics.
+                         * collapsed anchor/cursor pair. Modified multi-clicks intentionally land here;
+                         * only exact unmodified double/triple clicks receive special semantic selection.
                          */
                         pressed_field->setSelection(*caret, *caret);
                     }
@@ -194,12 +215,12 @@ public:
 
         if (pressed_field != nullptr &&
             pointer_router.capturedWidget() == pressed_field &&
-            (press_mapping_failed || atomic_word_selection)) {
+            (press_mapping_failed || atomic_multi_click_selection)) {
             /*
-             * Unsupported geometry and atomic double-click word selection intentionally retire the
-             * capture created by this same TextField press. releaseCapture() also invokes TextField's
-             * normal noexcept capture-lost cleanup, keeping Core gesture state synchronized with the
-             * semantic selection that has already been committed.
+             * Unsupported geometry and atomic double/triple-click semantic selections intentionally
+             * retire the capture created by this same TextField press. releaseCapture() also invokes
+             * TextField's normal noexcept capture-lost cleanup, keeping Core gesture state synchronized
+             * with the semantic selection that has already been committed.
              */
             pointer_router.releaseCapture();
             result.capture_active = false;
