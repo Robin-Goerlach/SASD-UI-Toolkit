@@ -36,6 +36,28 @@ TEST_CASE("TerminalSession leaves pointer reporting opt-in and silent by default
 
     CHECK(session.active());
     CHECK(!session.pointerInputEnabled());
+    CHECK(!session.pointerTrackingMode().has_value());
+    CHECK(device.writeCount() == 0);
+    CHECK(device.writes().empty());
+}
+
+TEST_CASE("TerminalSession keeps tracking policy inert until pointer input is enabled") {
+    MockTerminalDevice device;
+    TerminalSessionOptions options;
+    options.pointer_tracking = TerminalPointerTrackingMode::all_motion;
+
+    TerminalSession session{device, options};
+
+    /*
+     * Tracking mode refines an enabled pointer session; it is not a second enable switch. Keeping the
+     * existing pointer_input gate authoritative preserves silent defaults and lets applications prepare a
+     * preferred policy in configuration without emitting terminal protocol bytes until pointer input is
+     * explicitly requested.
+     */
+    CHECK(session.active());
+    CHECK(!session.pointerInputEnabled());
+    CHECK(!session.pointerTrackingMode().has_value());
+    CHECK(device.lastOptions() == options);
     CHECK(device.writeCount() == 0);
     CHECK(device.writes().empty());
 }
@@ -50,14 +72,17 @@ TEST_CASE("TerminalSession owns SGR drag pointer reporting for its RAII lifetime
 
         CHECK(session.active());
         CHECK(session.pointerInputEnabled());
+        CHECK(session.pointerTrackingMode().has_value());
+        CHECK(*session.pointerTrackingMode() == TerminalPointerTrackingMode::button_events);
         CHECK(device.active());
         CHECK(device.lastOptions() == options);
         CHECK(device.writeCount() == 1);
         CHECK(device.writes().size() == 1);
 
         /*
-         * DECSET 1002 is intentionally used instead of all-motion 1003: click-and-drag selection needs
-         * movement while a button is held, not a permanent stream of hover reports. DECSET 1006 then
+         * button_events deliberately preserves DECSET 1002 as the default: click-and-drag selection needs
+         * movement while a button is held, but existing applications should not start receiving a permanent
+         * stream of passive hover reports merely because the tracking-mode option was added. DECSET 1006 then
          * selects the SGR coordinate representation understood by AnsiInputDecoder.
          */
         CHECK(device.writes()[0] == std::string{"\x1B[?1002h\x1B[?1006h"});
@@ -74,6 +99,43 @@ TEST_CASE("TerminalSession owns SGR drag pointer reporting for its RAII lifetime
      * after button-event tracking has been released.
      */
     CHECK(device.writes()[1] == std::string{"\x1B[?1006l\x1B[?1002l"});
+}
+
+TEST_CASE("TerminalSession owns opt-in SGR all-motion reporting for its RAII lifetime") {
+    MockTerminalDevice device;
+    TerminalSessionOptions options;
+    options.pointer_input = true;
+    options.pointer_tracking = TerminalPointerTrackingMode::all_motion;
+
+    {
+        TerminalSession session{device, options};
+
+        CHECK(session.active());
+        CHECK(session.pointerInputEnabled());
+        CHECK(session.pointerTrackingMode().has_value());
+        CHECK(*session.pointerTrackingMode() == TerminalPointerTrackingMode::all_motion);
+        CHECK(device.lastOptions() == options);
+        CHECK(device.writeCount() == 1);
+        CHECK(device.writes().size() == 1);
+
+        /*
+         * DECSET 1003 is selected instead of 1002, not in addition to it. The protocol asks compatible
+         * terminals for passive motion as well as button activity, while DECSET 1006 keeps the same SGR
+         * coordinate format consumed by the existing decoder/event-pump pipeline.
+         */
+        CHECK(device.writes()[0] == std::string{"\x1B[?1003h\x1B[?1006h"});
+    }
+
+    CHECK(!device.active());
+    CHECK(device.endCount() == 1);
+    CHECK(device.writeCount() == 2);
+    CHECK(device.writes().size() == 2);
+
+    /*
+     * Teardown must disable the exact tracking policy that this session enabled. Accidentally sending 1002l
+     * here would leave all-motion reporting active in the user's shell after application exit.
+     */
+    CHECK(device.writes()[1] == std::string{"\x1B[?1006l\x1B[?1003l"});
 }
 
 TEST_CASE("TerminalSession rolls native state back when pointer reporting activation fails") {
@@ -104,6 +166,29 @@ TEST_CASE("TerminalSession rolls native state back when pointer reporting activa
     CHECK(device.writes().empty());
 }
 
+TEST_CASE("TerminalSession all-motion activation failure uses the same transactional rollback boundary") {
+    MockTerminalDevice device;
+    device.setFailWrite(true);
+
+    TerminalSessionOptions options;
+    options.pointer_input = true;
+    options.pointer_tracking = TerminalPointerTrackingMode::all_motion;
+
+    bool threw = false;
+    try {
+        TerminalSession session{device, options};
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+
+    CHECK(threw);
+    CHECK(!device.active());
+    CHECK(device.beginCount() == 1);
+    CHECK(device.endCount() == 1);
+    CHECK(device.writeCount() == 2);
+    CHECK(device.writes().empty());
+}
+
 TEST_CASE("TerminalSession still restores native state when pointer shutdown write fails") {
     MockTerminalDevice device;
     TerminalSessionOptions options;
@@ -111,6 +196,7 @@ TEST_CASE("TerminalSession still restores native state when pointer shutdown wri
 
     TerminalSession session{device, options};
     CHECK(session.pointerInputEnabled());
+    CHECK(session.pointerTrackingMode().has_value());
     CHECK(device.writes().size() == 1);
 
     device.setFailWrite(true);
@@ -118,6 +204,7 @@ TEST_CASE("TerminalSession still restores native state when pointer shutdown wri
 
     CHECK(!session.active());
     CHECK(!session.pointerInputEnabled());
+    CHECK(!session.pointerTrackingMode().has_value());
     CHECK(!device.active());
     CHECK(device.endCount() == 1);
     CHECK(device.writeCount() == 2);

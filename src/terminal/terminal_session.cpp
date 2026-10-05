@@ -4,25 +4,50 @@
 #include <sasd/ui/terminal/presentation_frame.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 
 namespace sasd::ui::terminal {
 namespace {
 
-/*
- * Button-event tracking (DECSET 1002) reports presses, releases, and motion while a button is held.
- * That is the narrowest tracking mode that supports click-and-drag selection without asking the
- * terminal to stream hover motion continuously. SGR mode (DECSET 1006) supplies unambiguous decimal,
- * one-based coordinates that AnsiInputDecoder already knows how to convert into PointerEvent values.
+/**
+ * Complete enable/disable byte pair for one pointer tracking policy.
  *
- * Both modes are enabled in one transport write so normal devices cannot observe an application-level
- * gap between the two requests. Teardown reverses the order: first stop SGR encoding, then stop
- * button-event tracking. The byte sequences are kept private to the terminal session boundary rather
- * than leaking protocol details into callers or Widgets.
+ * DECSET 1002 is button-event tracking: presses, releases, and motion while a button is held. DECSET 1003
+ * is all-motion tracking and additionally reports passive movement with no button pressed. The modes are
+ * selected as alternatives rather than stacking both requests; either one is paired with DECSET 1006 so
+ * AnsiInputDecoder receives the same SGR decimal coordinate representation.
+ *
+ * Keeping the pair as one value matters for failure handling. A constructor write may fail after emitting an
+ * unknown prefix, so rollback always has the exact inverse sequence for the selected policy available without
+ * inferring state from partially published member fields.
  */
-constexpr std::string_view enable_pointer_input = "\x1B[?1002h\x1B[?1006h";
-constexpr std::string_view disable_pointer_input = "\x1B[?1006l\x1B[?1002l";
+struct PointerProtocolBytes {
+    std::string_view enable;
+    std::string_view disable;
+};
+
+[[nodiscard]] constexpr std::optional<PointerProtocolBytes>
+pointerProtocolBytes(TerminalPointerTrackingMode mode) noexcept {
+    switch (mode) {
+    case TerminalPointerTrackingMode::button_events:
+        return PointerProtocolBytes{
+            "\x1B[?1002h\x1B[?1006h",
+            "\x1B[?1006l\x1B[?1002l"};
+    case TerminalPointerTrackingMode::all_motion:
+        return PointerProtocolBytes{
+            "\x1B[?1003h\x1B[?1006h",
+            "\x1B[?1006l\x1B[?1003l"};
+    }
+
+    /*
+     * Strongly typed callers cannot normally reach this branch. Returning std::nullopt still makes the
+     * session fail closed if an out-of-range enum value arrives through an explicit cast or serialized
+     * configuration rather than silently choosing a different terminal protocol.
+     */
+    return std::nullopt;
+}
 
 /**
  * Best-effort protocol restoration for noexcept/rollback paths.
@@ -49,6 +74,19 @@ TerminalSession::TerminalSession(TerminalDevice& device,
         throw std::runtime_error("TerminalSession requires an interactive terminal device");
     }
 
+    std::optional<PointerProtocolBytes> pointer_protocol;
+    if (options.pointer_input) {
+        pointer_protocol = pointerProtocolBytes(options.pointer_tracking);
+        if (!pointer_protocol.has_value()) {
+            /*
+             * Validate portable protocol intent before native terminal mutation. Although ordinary enum use
+             * cannot create an invalid value, this keeps a cast/configuration error transactional and avoids
+             * entering raw/alternate-screen mode only to reject the cross-platform protocol afterwards.
+             */
+            throw std::invalid_argument("TerminalSession received an invalid pointer tracking mode");
+        }
+    }
+
     /*
      * Native setup is transactional by TerminalDevice contract. Cross-platform ANSI session protocols
      * are layered only after that setup succeeds because their bytes require a usable output transport
@@ -56,19 +94,19 @@ TerminalSession::TerminalSession(TerminalDevice& device,
      */
     device_.beginSession(options);
 
-    if (options.pointer_input) {
+    if (pointer_protocol.has_value()) {
         try {
-            device_.write(enable_pointer_input);
-            pointer_input_enabled_ = true;
+            device_.write(pointer_protocol->enable);
+            pointer_tracking_ = options.pointer_tracking;
         } catch (...) {
             /*
-             * A real transport can fail after having emitted some bytes. We therefore attempt the full
-             * inverse sequence even though pointer_input_enabled_ was not published yet. endSession()
-             * follows regardless, giving construction the same strong lifetime guarantee as the native
-             * beginSession() contract: a throwing TerminalSession constructor does not leave us owning
-             * an active device session.
+             * A real transport can fail after having emitted some bytes. We therefore attempt the complete
+             * inverse for the requested tracking policy even though pointer_tracking_ was not published yet.
+             * endSession() follows regardless, giving construction the same strong lifetime guarantee as the
+             * native beginSession() contract: a throwing TerminalSession constructor does not leave us owning
+             * an active device session or intentionally enabled terminal protocol.
              */
-            bestEffortWrite(device_, disable_pointer_input);
+            bestEffortWrite(device_, pointer_protocol->disable);
             device_.endSession();
             throw;
         }
@@ -132,9 +170,18 @@ void TerminalSession::close() noexcept {
      */
     active_ = false;
 
-    if (pointer_input_enabled_) {
-        pointer_input_enabled_ = false;
-        bestEffortWrite(device_, disable_pointer_input);
+    if (pointer_tracking_.has_value()) {
+        const TerminalPointerTrackingMode mode = *pointer_tracking_;
+        pointer_tracking_.reset();
+
+        /*
+         * Only a validated mode is ever published, so lookup should always succeed. Keep shutdown noexcept and
+         * fail closed if memory/state corruption somehow violates that invariant: native restoration below is
+         * still more important than surfacing an exception from a destructor path.
+         */
+        if (const auto protocol = pointerProtocolBytes(mode); protocol.has_value()) {
+            bestEffortWrite(device_, protocol->disable);
+        }
     }
 
     /*

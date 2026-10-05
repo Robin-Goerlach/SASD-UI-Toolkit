@@ -39,7 +39,20 @@ public:
      * This reports protocol lifetime only; it does not imply that a particular Widget currently owns
      * PointerRouter capture or that a pointer event is pending.
      */
-    [[nodiscard]] bool pointerInputEnabled() const noexcept { return pointer_input_enabled_; }
+    [[nodiscard]] bool pointerInputEnabled() const noexcept {
+        return pointer_tracking_.has_value();
+    }
+
+    /**
+     * Returns the tracking mode currently owned by this session, or std::nullopt when pointer input is off.
+     *
+     * Exposing the active portable mode is useful for diagnostics and tests without leaking DEC/xterm numeric
+     * protocol constants. It is still only lifetime state: consumers must not infer Widget hover/capture from it.
+     */
+    [[nodiscard]] std::optional<TerminalPointerTrackingMode>
+    pointerTrackingMode() const noexcept {
+        return pointer_tracking_;
+    }
 
     /** Delegates current visible cell dimensions to the active native device. */
     [[nodiscard]] Size size() const;
@@ -89,7 +102,7 @@ public:
 private:
     TerminalDevice& device_;
     bool active_{false};
-    bool pointer_input_enabled_{false};
+    std::optional<TerminalPointerTrackingMode> pointer_tracking_{};
 };
 
 } // namespace sasd::ui::terminal

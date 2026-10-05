@@ -8,6 +8,20 @@
 namespace sasd::ui::terminal {
 
 /**
+ * Selects how an enabled terminal pointer session reports movement.
+ *
+ * button_events is the conservative default used by the existing click-and-drag path: terminals report
+ * presses, releases, and movement while a button is held. all_motion additionally asks compatible terminals
+ * to report passive pointer movement with no button held, which is useful for hover-driven interaction but can
+ * produce a substantially higher event rate. SGR coordinate encoding remains a separate session protocol and
+ * is enabled for either tracking mode by TerminalSession.
+ */
+enum class TerminalPointerTrackingMode {
+    button_events,
+    all_motion,
+};
+
+/**
  * Session options shared by terminal-session and native-device lifetime code.
  *
  * These describe portable intent rather than exposing termios, Win32 or DEC/xterm details to callers.
@@ -28,13 +42,23 @@ struct TerminalSessionOptions {
     bool raw_input{true};
 
     /**
-     * Request terminal pointer reports suitable for click-and-drag interaction.
+     * Request terminal pointer reports.
      *
-     * This is deliberately opt-in. When enabled, TerminalSession requests xterm-compatible button-event
-     * tracking plus SGR coordinates for the lifetime of the session and restores the terminal on close.
-     * The byte decoder remains a separate responsibility and merely understands reports that arrive.
+     * This remains deliberately opt-in. When false, pointer_tracking is only stored as configuration and no
+     * terminal mouse protocol bytes are emitted. When true, TerminalSession enables the selected tracking mode
+     * plus SGR coordinates for exactly the session lifetime and restores both protocols on close.
      */
     bool pointer_input{false};
+
+    /**
+     * Chooses the movement-reporting policy used when pointer_input is enabled.
+     *
+     * button_events preserves the established DECSET 1002 behavior and therefore keeps existing applications
+     * quiet unless a mouse button is held. all_motion selects DECSET 1003 so hosts that deliberately need
+     * passive hover can receive movement with no button pressed. The option has no side effect by itself while
+     * pointer_input remains false.
+     */
+    TerminalPointerTrackingMode pointer_tracking{TerminalPointerTrackingMode::button_events};
 
     friend constexpr bool operator==(const TerminalSessionOptions&,
                                      const TerminalSessionOptions&) = default;
