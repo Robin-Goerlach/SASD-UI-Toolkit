@@ -345,3 +345,118 @@ TEST_CASE("Terminal TextField scalar hit remains conservative for unsupported co
     field.setText(std::string{"e\xCC\x81"}); // unsupported combining sequence in current Cell model
     CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}).has_value());
 }
+
+TEST_CASE("Terminal TextField unmodified double click selects a complete basic word atomically") {
+    Window window;
+    window.arrange({0, 0, 24, 3});
+
+    auto& field = window.emplace<TextField>("alpha beta");
+    field.arrange({0, 0, 13, 1}); // chrome + ten scalars + reserved end-caret cell
+
+    PointerRouter pointer_router;
+
+    /*
+     * Content begins at x=1, so x=3 is the cell painted with scalar index 2 ('p'). The terminal hit
+     * layer identifies that actual scalar and Core basicWordRangeAt() expands it to [0,5), selecting
+     * the whole word "alpha". This proves that cell geometry and semantic word boundaries remain
+     * separate responsibilities joined only by a Unicode-scalar index.
+     */
+    const auto press = TerminalTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{3, 0}, PointerAction::press, PointerButton::primary, 2});
+
+    CHECK(press.targeted);
+    CHECK(press.handled);
+    CHECK(!press.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionAnchor() == 0);
+    CHECK(field.cursorPosition() == 5);
+    CHECK(field.selectedText() == "alpha");
+
+    /*
+     * Word selection is intentionally atomic until terminal word-drag state exists. The press briefly
+     * follows normal Core routing so TextField receives its standard event, then the helper releases
+     * the newly acquired capture. A later physical release must therefore not collapse the committed
+     * semantic word range through the ordinary character-drag path.
+     */
+    (void)TerminalTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{3, 0}, PointerAction::release, PointerButton::primary, 2});
+
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionAnchor() == 0);
+    CHECK(field.cursorPosition() == 5);
+    CHECK(field.selectedText() == "alpha");
+}
+
+TEST_CASE("Terminal TextField double click treats both cells of a wide scalar as one word target") {
+    Window window;
+    window.arrange({0, 0, 14, 2});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
+    field.arrange({0, 0, 7, 1}); // chrome + A + two-cell U+754C + B + caret room
+    field.setCursorPosition(0);
+
+    PointerRouter pointer_router;
+
+    /*
+     * The wide scalar U+754C occupies content cells x=2 and x=3. Double-click the continuation cell,
+     * which must still resolve to scalar index 1. Core classifies A/U+754C/B as one contiguous
+     * word-like run, so the complete three-scalar UTF-8 text is selected. No terminal continuation-cell
+     * concept leaks into the word-boundary helper.
+     */
+    const auto press = TerminalTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{3, 0}, PointerAction::press, PointerButton::primary, 2});
+
+    CHECK(press.handled);
+    CHECK(!press.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionAnchor() == 0);
+    CHECK(field.cursorPosition() == 3);
+    CHECK(field.selectedText() == std::string{"A\xE7\x95\x8C" "B"});
+}
+
+TEST_CASE("Terminal TextField double click on whitespace falls back to ordinary caret behavior") {
+    Window window;
+    window.arrange({0, 0, 24, 3});
+
+    auto& field = window.emplace<TextField>("alpha beta");
+    field.arrange({0, 0, 13, 1});
+
+    PointerRouter pointer_router;
+
+    /*
+     * Scalar index 5 is the separating space at content cell x=6. basicWordRangeAt() deliberately
+     * returns nullopt for whitespace, so double click must not invent a whitespace word. It instead
+     * uses caret geometry; the one-cell midpoint tie maps to boundary 6, immediately after the space.
+     * Because this is ordinary caret behavior rather than an atomic word selection, Core capture stays
+     * alive until the matching release just like a normal character-granular gesture.
+     */
+    const auto press = TerminalTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{6, 0}, PointerAction::press, PointerButton::primary, 2});
+
+    CHECK(press.handled);
+    CHECK(press.capture_active);
+    CHECK(pointer_router.capturedWidget() == &field);
+    CHECK(field.selectionAnchor() == 6);
+    CHECK(field.cursorPosition() == 6);
+    CHECK(!field.hasSelection());
+
+    const auto release = TerminalTextFieldPointerSelection::route(
+        window,
+        pointer_router,
+        PointerEvent{{6, 0}, PointerAction::release, PointerButton::primary, 2});
+
+    CHECK(release.handled);
+    CHECK(!release.capture_active);
+    CHECK(!pointer_router.hasCapture());
+    CHECK(field.selectionAnchor() == 6);
+    CHECK(field.cursorPosition() == 6);
+    CHECK(!field.hasSelection());
+}

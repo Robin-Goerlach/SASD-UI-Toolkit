@@ -3,18 +3,19 @@
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/terminal/terminal_text_field_hit_test.hpp>
+#include <sasd/ui/text/selection_boundaries.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
 namespace sasd::ui::terminal {
 
 /**
- * Applies terminal TextField caret/selection geometry before performing normal Core pointer routing.
+ * Applies terminal TextField selection geometry before performing normal Core pointer routing.
  *
- * This helper is intentionally the terminal counterpart of the rendered interaction seam, but it is
- * smaller because current SGR mouse input reports only ordinary press/move/release semantics. Core
- * PointerRouter remains the sole owner of capture lifetime, TextField remains the sole owner of the
- * semantic anchor/cursor pair, and TerminalTextFieldHitTest contributes only cell-based geometry.
+ * Core PointerRouter remains the sole owner of capture lifetime, TextField remains the sole owner of
+ * the semantic anchor/cursor pair, and TerminalTextFieldHitTest contributes only cell-based geometry.
+ * TerminalEventPump may enrich raw SGR transitions with click counts, but this interaction seam owns
+ * the meaning of those counts for TextField selection.
  *
  * Logical focus is deliberately not owned here. Focus-on-primary-press is a top-level host/window
  * policy because modal scopes and application-specific focus rules are not terminal geometry. A host
@@ -29,17 +30,23 @@ public:
      * Maps one terminal PointerEvent to TextField selection state and routes the event through Core.
      *
      * For a fresh primary press on a TextField:
+     * - an exact unmodified double click selects the basic semantic word/punctuation run under the
+     *   actually painted scalar;
+     * - double click on whitespace or trailing caret space falls back to ordinary caret placement;
      * - ordinary press collapses the selection at the mapped caret boundary;
      * - exact Shift+press preserves TextField's existing selection anchor and moves only the active end;
      * - unsupported/unrepresentable terminal geometry leaves semantic selection unchanged.
      *
-     * Once PointerRouter capture belongs to a TextField, move and matching primary release use
-     * caretIndexForDrag(). The stable semantic selection anchor therefore survives motion outside the
-     * control while the active cursor follows the representable terminal viewport.
+     * Word selection is atomic in this slice. After Core has processed the double-click press, any
+     * capture just acquired by that TextField is released immediately. This prevents the existing
+     * character-granular drag/release path from collapsing or partially extending the complete word
+     * before a dedicated word-drag gesture state exists.
      *
-     * No auto-scroll, multi-click synthesis or word-granular terminal selection is hidden in this
-     * first interaction layer. Those policies can be added later without changing TextField or
-     * PointerRouter ownership contracts.
+     * Ordinary character-granular gestures retain capture. Their move and matching primary release use
+     * caretIndexForDrag(), so the stable semantic selection anchor survives motion outside the control
+     * while the active cursor follows the representable terminal viewport.
+     *
+     * Triple-click select-all, word-granular dragging and auto-scroll remain separate later policies.
      */
     [[nodiscard]] static PointerRouteResult route(
         Widget& root,
@@ -48,6 +55,7 @@ public:
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
         TextField* pressed_field = nullptr;
         bool press_mapping_failed = false;
+        bool atomic_word_selection = false;
 
         if (!pointer_router.hasCapture() &&
             event.action == PointerAction::press &&
@@ -66,10 +74,62 @@ public:
             }
 
             if (pressed_field != nullptr) {
-                if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
-                        *pressed_field,
-                        event.position,
-                        ambiguous_width)) {
+                const bool exact_unmodified_double_click =
+                    event.modifiers == KeyModifier::none &&
+                    event.click_count == 2;
+
+                if (exact_unmodified_double_click) {
+                    /*
+                     * Word selection needs text identity, not a nearest insertion position. The strict
+                     * scalar hit therefore rejects chrome and reserved caret space and maps both cells
+                     * of one wide glyph to the same Unicode scalar.
+                     */
+                    if (const auto scalar = TerminalTextFieldHitTest::scalarIndexAt(
+                            *pressed_field,
+                            event.position,
+                            ambiguous_width)) {
+                        if (const auto word = text::basicWordRangeAt(
+                                pressed_field->text(),
+                                *scalar)) {
+                            pressed_field->setSelection(word->start, word->end);
+
+                            /*
+                             * The complete semantic run is committed on the press. We deliberately
+                             * retire capture after routing because character-granular drag semantics
+                             * must not subsequently erode that range. A later word-drag slice can add
+                             * explicit host-owned gesture state without changing this atomic contract.
+                             */
+                            atomic_word_selection = true;
+                        } else if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
+                                       *pressed_field,
+                                       event.position,
+                                       ambiguous_width)) {
+                            /*
+                             * Whitespace is not a word in the current basic boundary policy. Fall back
+                             * to the same useful insertion behavior as an ordinary click instead of
+                             * inventing a whitespace word-selection rule.
+                             */
+                            pressed_field->setSelection(*caret, *caret);
+                        } else {
+                            press_mapping_failed = true;
+                        }
+                    } else if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
+                                   *pressed_field,
+                                   event.position,
+                                   ambiguous_width)) {
+                        /*
+                         * A strict scalar miss may still be valid insertion geometry, most notably the
+                         * reserved trailing caret cell. Preserve ordinary caret behavior there while
+                         * keeping chrome/trailing space from masquerading as text identity.
+                         */
+                        pressed_field->setSelection(*caret, *caret);
+                    } else {
+                        press_mapping_failed = true;
+                    }
+                } else if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
+                               *pressed_field,
+                               event.position,
+                               ambiguous_width)) {
                     const bool extends_existing_selection =
                         event.modifiers == KeyModifier::shift;
 
@@ -86,8 +146,8 @@ public:
                     } else {
                         /*
                          * Every ordinary primary press starts a new character-granular gesture from a
-                         * collapsed anchor/cursor pair. Other modifier combinations deliberately do
-                         * not acquire special semantics yet; only exact Shift extends an old selection.
+                         * collapsed anchor/cursor pair. Modified double clicks intentionally land here;
+                         * only exact unmodified double click receives word-selection semantics.
                          */
                         pressed_field->setSelection(*caret, *caret);
                     }
@@ -133,13 +193,13 @@ public:
         PointerRouteResult result = pointer_router.route(root, event);
 
         if (pressed_field != nullptr &&
-            press_mapping_failed &&
-            pointer_router.capturedWidget() == pressed_field) {
+            pointer_router.capturedWidget() == pressed_field &&
+            (press_mapping_failed || atomic_word_selection)) {
             /*
-             * Geometry failure is not a reason to suppress normal Widget dispatch, but retaining
-             * capture would create a half-started selection gesture. Release only the capture created
-             * by this same TextField press. releaseCapture() also invokes TextField's normal noexcept
-             * capture-lost cleanup, keeping Core gesture state synchronized with routing state.
+             * Unsupported geometry and atomic double-click word selection intentionally retire the
+             * capture created by this same TextField press. releaseCapture() also invokes TextField's
+             * normal noexcept capture-lost cleanup, keeping Core gesture state synchronized with the
+             * semantic selection that has already been committed.
              */
             pointer_router.releaseCapture();
             result.capture_active = false;
