@@ -20,6 +20,16 @@ namespace {
     };
 }
 
+[[nodiscard]] PointerEvent primaryRelease(Point position) {
+    return PointerEvent{
+        position,
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+}
+
 [[nodiscard]] Point popupRowPoint(const MenuFramePresentationSnapshot& frame,
                                   std::size_t level,
                                   std::size_t row) {
@@ -124,23 +134,264 @@ TEST_CASE("Terminal menu pointer press selects an enabled popup row without acti
     CHECK(frame->popups.size() == 1U);
 
     /*
-     * Pointer press is a selection transaction only. The exact row identity comes from terminal presentation
-     * geometry, but the backend-neutral controller verifies the live MenuModel before retaining index 1.
-     * Command activation is intentionally deferred to a later press/release policy, so merely selecting Save
-     * cannot enter application callback code.
+     * The stateless overload intentionally remains a selection transaction only. The exact row identity
+     * comes from terminal presentation geometry, but no press identity is retained across calls, so even a
+     * later release on Save cannot enter application callback code. Hosts that want click activation opt into
+     * the explicit GestureState overload tested below.
      */
-    const auto result = TerminalMenuPointerInteraction::handle(
+    const Point save_point = popupRowPoint(*frame, 0U, 1U);
+    const auto press_result = TerminalMenuPointerInteraction::handle(
         bar,
         controller,
         *frame,
-        primaryPress(popupRowPoint(*frame, 0U, 1U)));
+        primaryPress(save_point));
 
-    CHECK(result.has_value());
-    CHECK(result->action == MenuInteractionAction::state_changed);
+    CHECK(press_result.has_value());
+    CHECK(press_result->action == MenuInteractionAction::state_changed);
     CHECK(controller.isActive());
     CHECK(controller.popupOpen());
     CHECK(controller.popupSelection() == std::optional<std::size_t>{1U});
     CHECK(executions == 0);
+
+    const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(release_frame.has_value());
+    const auto release_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *release_frame,
+        primaryRelease(popupRowPoint(*release_frame, 0U, 1U)));
+
+    CHECK(release_result.has_value());
+    CHECK(release_result->action == MenuInteractionAction::none);
+    CHECK(controller.isActive());
+    CHECK(executions == 0);
+}
+
+TEST_CASE("Terminal menu pointer stateful matching release returns command only after menu state closes") {
+    Command save{"Save"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(save);
+
+    MenuInteractionController controller;
+    bool callback_saw_closed_menu = false;
+    int executions = 0;
+    save.setOnExecuted([&] {
+        ++executions;
+        callback_saw_closed_menu = !controller.isActive();
+    });
+
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const auto press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(press_frame.has_value());
+    const Point press_point = popupRowPoint(*press_frame, 0U, 0U);
+
+    const auto press_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *press_frame,
+        primaryPress(press_point),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(press_result.has_value());
+    CHECK(press_result->action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(gesture.hasPressedPopupItem());
+    CHECK(executions == 0);
+
+    /*
+     * Rebuild the frame after press selection. This models the host contract: release hit testing uses the
+     * presentation state actually visible after the press, not the pre-press snapshot. Geometry is unchanged
+     * here, but the selected-row highlight belongs to the newer transaction.
+     */
+    const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(release_frame.has_value());
+    const auto release_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *release_frame,
+        primaryRelease(popupRowPoint(*release_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(release_result.has_value());
+    CHECK(release_result->action == MenuInteractionAction::activate_command);
+    CHECK(!controller.isActive());
+    CHECK(!controller.popupOpen());
+    CHECK(!gesture.hasPressedPopupItem());
+
+    /*
+     * The pointer layer never executes application code. MenuInteractionController captures a lifetime-safe
+     * Command::Reference and closes transient state first; the host is free to repaint the closed menu before
+     * entering arbitrary client code. Execute manually here to prove the callback observes that invariant.
+     */
+    CHECK(executions == 0);
+    Command* const command = release_result->command.get();
+    CHECK(command == &save);
+    if (command != nullptr) {
+        CHECK(command->execute());
+    }
+    CHECK(executions == 1);
+    CHECK(callback_saw_closed_menu);
+}
+
+TEST_CASE("Terminal menu pointer stateful release on another row cancels command activation") {
+    Command open{"Open"};
+    Command save{"Save"};
+    int open_executions = 0;
+    int save_executions = 0;
+    open.setOnExecuted([&] { ++open_executions; });
+    save.setOnExecuted([&] { ++save_executions; });
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(open);
+    file.appendCommand(save);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const auto press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(press_frame.has_value());
+    (void)TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *press_frame,
+        primaryPress(popupRowPoint(*press_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(gesture.hasPressedPopupItem());
+
+    const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(release_frame.has_value());
+    const auto release_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *release_frame,
+        primaryRelease(popupRowPoint(*release_frame, 0U, 1U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    /*
+     * Release geometry must match the row armed by press. A different row does not become a surprise second
+     * selection or activation target; the original press selection remains visible and the physical click
+     * simply completes as a cancelled activation inside the modal menu scope.
+     */
+    CHECK(release_result.has_value());
+    CHECK(release_result->action == MenuInteractionAction::none);
+    CHECK(controller.isActive());
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(!gesture.hasPressedPopupItem());
+    CHECK(open_executions == 0);
+    CHECK(save_executions == 0);
+}
+
+TEST_CASE("Terminal menu pointer stateful activation fails closed when selected command changes before release") {
+    Command save{"Save"};
+    int executions = 0;
+    save.setOnExecuted([&] { ++executions; });
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    file.appendCommand(save);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const auto press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(press_frame.has_value());
+    (void)TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *press_frame,
+        primaryPress(popupRowPoint(*press_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+
+    /*
+     * Application semantics may change between physical press and release. Disabling the selected Command
+     * makes the retained selection stale. The release still lands on the same painted row, but the Core
+     * activation transaction normalizes first and treats any repair as a reason to refuse activation in the
+     * same transaction. A second deliberate user gesture would be required against the repaired model.
+     */
+    save.setEnabled(false);
+    const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(release_frame.has_value());
+    const auto release_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *release_frame,
+        primaryRelease(popupRowPoint(*release_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(release_result.has_value());
+    CHECK(release_result->action == MenuInteractionAction::state_changed);
+    CHECK(!release_result->command);
+    CHECK(controller.isActive());
+    CHECK(controller.popupOpen());
+    CHECK(!controller.popupSelection().has_value());
+    CHECK(!gesture.hasPressedPopupItem());
+    CHECK(executions == 0);
+}
+
+TEST_CASE("Terminal menu pointer stateful submenu release stays selected without opening the child") {
+    Command nested{"Nested"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    tools.appendCommand(nested);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const auto press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(press_frame.has_value());
+    (void)TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *press_frame,
+        primaryPress(popupRowPoint(*press_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(controller.popupDepth() == 1U);
+
+    const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
+    CHECK(release_frame.has_value());
+    const auto release_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *release_frame,
+        primaryRelease(popupRowPoint(*release_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    /*
+     * Command activation and submenu opening are separate semantic operations. A matching release over a
+     * selected submenu therefore remains consumed but does not synthesize Right/Enter and does not open the
+     * child yet. The next menu-pointer slice can define submenu gesture policy independently.
+     */
+    CHECK(release_result.has_value());
+    CHECK(release_result->action == MenuInteractionAction::none);
+    CHECK(controller.isActive());
+    CHECK(controller.popupOpen());
+    CHECK(controller.popupDepth() == 1U);
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(!gesture.hasPressedPopupItem());
 }
 
 TEST_CASE("Terminal menu pointer consumes separator and disabled rows without selecting them") {

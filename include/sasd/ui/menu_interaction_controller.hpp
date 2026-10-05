@@ -62,9 +62,10 @@ struct MenuInteractionResult {
  * later popup navigation rather than through a second ad-hoc scanning rule.
  *
  * Pointer geometry remains outside this class. Backends may translate their geometry into the explicit
- * selectPopupItem() semantic transaction, but they cannot inject coordinates, native handles, or retained
- * presentation pointers into Core state. Hover policy, click/release gesture interpretation, mnemonic
- * activation, native menu handles, focus restoration, and concrete popup geometry remain separate layers.
+ * selectPopupItem() and activatePopupItem() semantic transactions, but they cannot inject coordinates,
+ * native handles, or retained presentation pointers into Core state. Hover policy, press/release gesture
+ * interpretation, mnemonic activation, native menu handles, focus restoration, and concrete popup geometry
+ * remain separate layers.
  */
 class MenuInteractionController final {
 public:
@@ -158,41 +159,8 @@ public:
                     {}};
         }
 
-        const MenuModel& root = bar.menuAt(*menu_bar_selection_);
-        const MenuModel* current = &root;
-
-        /*
-         * Resolve only the currently open path prefix needed to reach the requested level. normalizeAgainst()
-         * should already guarantee these checks for a stable model, but keeping the transaction defensive
-         * makes stale/mutated input fail closed instead of turning an old presentation index into itemAt()
-         * undefined intent or an unrelated semantic selection.
-         */
-        for (std::size_t depth = 0; depth < level; ++depth) {
-            if (depth >= popup_path_->size()) {
-                return {normalized ? MenuInteractionAction::state_changed
-                                   : MenuInteractionAction::none,
-                        {}};
-            }
-
-            const std::size_t parent_index = (*popup_path_)[depth];
-            if (parent_index >= current->itemCount()) {
-                return {normalized ? MenuInteractionAction::state_changed
-                                   : MenuInteractionAction::none,
-                        {}};
-            }
-
-            const MenuItem& parent = current->itemAt(parent_index);
-            const MenuModel* const child = parent.submenu();
-            if (!parent.isEnabled() || parent.kind() != MenuItemKind::submenu || child == nullptr) {
-                return {normalized ? MenuInteractionAction::state_changed
-                                   : MenuInteractionAction::none,
-                        {}};
-            }
-
-            current = child;
-        }
-
-        if (item_index >= current->itemCount()) {
+        const MenuModel* const current = popupMenuAtLevel(bar, level);
+        if (current == nullptr || item_index >= current->itemCount()) {
             return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
                     {}};
         }
@@ -232,6 +200,74 @@ public:
     }
 
     /**
+     * Activates one exact selected command in an already-open popup level.
+     *
+     * This transaction is intentionally separate from selectPopupItem(). Pointer adapters can therefore use
+     * press for selection and release for activation without forcing Core to understand a physical gesture.
+     * The request succeeds only when the supplied level is the deepest open popup, the supplied item remains
+     * the current semantic selection at that level, and the live item is an enabled Command entry.
+     * Submenus, separators, disabled/expired Commands, unrelated selections, and stale indices are rejected.
+     *
+     * Activation is commit-like, so any normalization repair causes this transaction to fail closed with
+     * state_changed instead of activating an identity that came from pre-repair interaction state. A later
+     * explicit gesture may activate the repaired model. This is deliberately more conservative than ordinary
+     * navigation, where continuing after normalization is harmless.
+     *
+     * On success the lifetime-safe Command::Reference is captured first, then all transient menu state is
+     * closed before activate_command is returned. The controller never invokes Command client code itself;
+     * the host can repaint the closed menu and only then execute the returned command.
+     */
+    [[nodiscard]] MenuInteractionResult activatePopupItem(const MenuBarModel& bar,
+                                                          std::size_t level,
+                                                          std::size_t item_index) {
+        if (!isActive() || !popupOpen()) {
+            return {};
+        }
+
+        const bool normalized = normalizeAgainst(bar);
+        if (!isActive() || !popupOpen()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        if (normalized) {
+            return {MenuInteractionAction::state_changed, {}};
+        }
+
+        if (level >= popup_selections_.size() || level + 1U != popup_selections_.size()) {
+            return {};
+        }
+
+        const MenuModel* const current = popupMenuAtLevel(bar, level);
+        if (current == nullptr || item_index >= current->itemCount()) {
+            return {};
+        }
+
+        if (!popup_selections_[level].has_value() ||
+            *popup_selections_[level] != item_index) {
+            return {};
+        }
+
+        const MenuItem& item = current->itemAt(item_index);
+        if (!item.isEnabled() || item.kind() != MenuItemKind::command) {
+            return {};
+        }
+
+        Command* const command = item.command();
+        if (command == nullptr) {
+            return {};
+        }
+
+        /*
+         * Capture the lifetime-safe semantic reference before reset() destroys every transient index/path.
+         * No MenuItem or MenuModel pointer escapes this synchronous transaction.
+         */
+        Command::Reference command_reference = command->reference();
+        reset();
+        return {MenuInteractionAction::activate_command, std::move(command_reference)};
+    }
+
+    /**
      * Applies one keyboard event to the current interaction state.
      *
      * The controller must first be activated with begin(). Inactive controllers ignore input instead
@@ -254,6 +290,48 @@ public:
     }
 
 private:
+    /**
+     * Resolves one currently-open popup level against the controller's value state.
+     *
+     * The helper retains no pointer. Returned MenuModel* values are borrowed only for the immediate caller
+     * transaction and are re-derived from the supplied MenuBarModel every time. Bounds/type checks precede
+     * each indexed access so a stale route fails with nullptr rather than being reinterpreted.
+     *
+     * Callers normally invoke this after normalizeAgainst(), but keeping the checks complete makes the
+     * helper robust and lets both selectPopupItem() and activatePopupItem() share one structural proof.
+     */
+    [[nodiscard]] const MenuModel* popupMenuAtLevel(const MenuBarModel& bar,
+                                                    std::size_t level) const noexcept {
+        if (!menu_bar_selection_.has_value() ||
+            *menu_bar_selection_ >= bar.menuCount() ||
+            !popup_path_.has_value() ||
+            level >= popup_selections_.size()) {
+            return nullptr;
+        }
+
+        const MenuModel* current = &bar.menuAt(*menu_bar_selection_);
+        for (std::size_t depth = 0; depth < level; ++depth) {
+            if (depth >= popup_path_->size()) {
+                return nullptr;
+            }
+
+            const std::size_t parent_index = (*popup_path_)[depth];
+            if (parent_index >= current->itemCount()) {
+                return nullptr;
+            }
+
+            const MenuItem& parent = current->itemAt(parent_index);
+            const MenuModel* const child = parent.submenu();
+            if (parent.kind() != MenuItemKind::submenu || child == nullptr) {
+                return nullptr;
+            }
+
+            current = child;
+        }
+
+        return current;
+    }
+
     /**
      * Revalidates retained indices after arbitrary semantic-menu mutation.
      *
