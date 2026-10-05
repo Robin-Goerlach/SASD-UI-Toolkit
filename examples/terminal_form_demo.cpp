@@ -16,6 +16,8 @@
 #include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/shortcut.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
+#include <sasd/ui/terminal/menu_frame_builder.hpp>
+#include <sasd/ui/terminal/menu_pointer_interaction.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/terminal_backend.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
@@ -356,14 +358,79 @@ int main() {
                     }
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        const bool menu_was_active = menu_interaction.isActive();
+                        const bool primary_press_without_widget_capture =
+                            !pointer_router.hasCapture() &&
+                            pointer->action == PointerAction::press &&
+                            pointer->button == PointerButton::primary;
+
                         /*
-                         * The current terminal MenuInteractionController is keyboard-driven. While a menu
-                         * overlay is active, do not send fresh pointer input through to covered application
-                         * widgets underneath it. Entering menu mode explicitly releases any older capture
-                         * below, so ignoring pointer reports here cannot strand a TextField/Button gesture.
+                         * Menu pointer interaction gets first refusal only while a transient menu is
+                         * already active or for a fresh uncaptured primary press that could land on the
+                         * persistent menu bar. An application Widget that already owns Core capture keeps
+                         * that gesture; a second hit-test layer must not steal it merely because the pointer
+                         * happens to cross row zero during a drag.
+                         *
+                         * TerminalMenuPointerInteraction deliberately consumes final presentation geometry,
+                         * not MenuBarModel rectangles. Rebuild one owned frame from the pre-event controller
+                         * state and the current ScreenBuffer viewport so hit testing uses the same fitted and
+                         * left/right-flipped popup placement as rendering. The frame is ephemeral and never
+                         * retained across structural menu mutation.
                          */
-                        if (menu_interaction.isActive()) {
-                            return;
+                        if (menu_was_active || primary_press_without_widget_capture) {
+                            const auto menu_frame = buildMenuPresentationFrame(
+                                menu_bar,
+                                menu_interaction,
+                                {0, 0},
+                                screen.size(),
+                                presentation.ambiguousWidthMode());
+
+                            if (!menu_frame.has_value()) {
+                                throw std::runtime_error(
+                                    "terminal demo menu pointer frame cannot be represented in the current viewport");
+                            }
+
+                            const auto menu_result = TerminalMenuPointerInteraction::handle(
+                                menu_bar,
+                                menu_interaction,
+                                *menu_frame,
+                                *pointer,
+                                presentation.ambiguousWidthMode());
+
+                            if (menu_result.has_value()) {
+                                /*
+                                 * An engaged result means the transient menu scope owns this physical event,
+                                 * even when its semantic action is `none`. Keep that modal boundary strict:
+                                 * no consumed title/popup/outside-dismiss press, motion, or release may also
+                                 * reach a Widget underneath the overlay.
+                                 *
+                                 * Entering or leaving an active menu scope also terminates any application
+                                 * pointer capture/word-drag residue. The normal PointerRouter release hook
+                                 * remains responsible for clearing Widget transient state; the separate
+                                 * GestureState contains no Widget pointer and is reset explicitly beside it.
+                                 */
+                                if (menu_was_active || menu_interaction.isActive()) {
+                                    pointer_router.releaseCapture();
+                                    text_selection_gesture.reset();
+                                }
+
+                                if (menu_result->action != MenuInteractionAction::none) {
+                                    menu_presentation_changed = true;
+                                }
+
+                                /*
+                                 * The current first pointer slice does not activate popup commands yet, but
+                                 * honoring the standard MenuInteractionResult contract here keeps the host's
+                                 * delayed-command lifecycle identical for keyboard and later pointer
+                                 * activation. Any future activation will therefore repaint the closed menu
+                                 * before arbitrary Command client code is executed below.
+                                 */
+                                if (menu_result->action ==
+                                    MenuInteractionAction::activate_command) {
+                                    pending_menu_command = menu_result->command;
+                                }
+                                return;
+                            }
                         }
 
                         /*
