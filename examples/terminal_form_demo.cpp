@@ -15,6 +15,7 @@
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/shortcut.hpp>
+#include <sasd/ui/terminal/menu_close_interaction.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/menu_frame_builder.hpp>
 #include <sasd/ui/terminal/menu_hover_interaction.hpp>
@@ -259,6 +260,16 @@ int main() {
         TerminalMenuHoverInteraction menu_hover;
 
         /*
+         * Submenu closing has a separate grace policy instead of being folded into hover opening. The
+         * distinction matters geometrically: moving onto another real popup row should keep using immediate
+         * Core selection/path coherence, while a brief trip through cells belonging to no popup at all may
+         * simply be the physical path from a parent popup into its child. This host-owned object therefore
+         * stores only value scope plus a monotonic timestamp and closes descendants only after its grace
+         * expires. Like menu_hover it owns no thread, callback, MenuItem pointer, or presentation frame.
+         */
+        TerminalMenuCloseInteraction menu_close;
+
+        /*
          * Button activation, menu activation and shortcut activation deliberately share the same Command
          * callback. This is the practical reason Command is semantic and backend-neutral: none of the
          * presentation/input surfaces owns a duplicate copy of application behavior.
@@ -385,12 +396,14 @@ int main() {
                     if (const auto* resize = std::get_if<ResizeEvent>(&event)) {
                         /*
                          * Menu press identity is tied to one presented popup geometry transaction. A resize
-                         * can reposition/fold popups before the release arrives, so cancel that transient
-                         * identity rather than allowing a later cell hit in the new geometry to complete an
-                         * old click. Semantic menu selection itself remains owned by the controller.
+                         * can reposition/fold popups before the release arrives, so cancel every geometry-
+                         * derived transient identity rather than allowing an old click/hover/close deadline
+                         * to complete against newly fitted popup coordinates. Semantic menu selection itself
+                         * remains owned by the controller and survives the resize.
                          */
                         menu_pointer_gesture.reset();
                         menu_hover.reset();
+                        menu_close.reset();
                         screen.resize(resize->size);
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
@@ -439,22 +452,29 @@ int main() {
                                 menu_pointer_gesture);
 
                             /*
-                             * Hover timing observes the same physical event only after immediate pointer
-                             * semantics have run. That ordering is important: popup-row motion may have just
-                             * truncated an invalid descendant path or switched the active root menu, and the
-                             * timing layer must capture the post-transition semantic scope while still using
-                             * the exact pre-event presentation frame that proved the physical row hit.
+                             * Both timing policies observe the same physical event only after immediate pointer
+                             * semantics have run. Popup-row motion may have just selected another ancestor,
+                             * truncated old descendants, or switched the active root; capturing the resulting
+                             * controller scope prevents either timer from reinterpreting stale geometry later.
                              *
-                             * Press/release/outside motion automatically retire a pending hover candidate.
-                             * Repeated motion within one row preserves its original first-observed timestamp,
-                             * so a noisy all-motion terminal cannot postpone the submenu deadline forever.
+                             * Hover opening and close grace intentionally receive the same monotonic timestamp.
+                             * A popup-row hit can arm/preserve opening while it cancels close grace; motion through
+                             * non-popup geometry does the inverse. Press/release resets both timing policies, so
+                             * click completion never inherits a deadline from an older motion gesture.
                              */
+                            const auto menu_timing_now = std::chrono::steady_clock::now();
                             menu_hover.observe(
                                 menu_interaction,
                                 *menu_frame,
                                 *pointer,
                                 presentation.ambiguousWidthMode(),
-                                TerminalMenuHoverInteraction::Clock::now());
+                                menu_timing_now);
+                            menu_close.observe(
+                                menu_interaction,
+                                *menu_frame,
+                                *pointer,
+                                presentation.ambiguousWidthMode(),
+                                menu_timing_now);
 
                             if (menu_result.has_value()) {
                                 /*
@@ -538,12 +558,13 @@ int main() {
                             key->modifiers == KeyModifier::none &&
                             key->key == Key::f10) {
                             /*
-                             * Switching menu scope from the keyboard invalidates any pending pointer click.
-                             * Retire the presentation-value press identity before opening/closing the menu so
-                             * a later physical release cannot complete an interaction started in the old scope.
+                             * Switching menu scope from the keyboard invalidates every pending pointer-owned
+                             * menu transaction. Retire press identity, delayed open, and delayed close before
+                             * opening/closing the menu so a later physical event cannot complete across scopes.
                              */
                             menu_pointer_gesture.reset();
                             menu_hover.reset();
+                            menu_close.reset();
 
                             if (menu_interaction.isActive()) {
                                 menu_interaction.reset();
@@ -566,13 +587,15 @@ int main() {
 
                         if (menu_interaction.isActive()) {
                             /*
-                             * Keyboard input and a pending pointer click are competing completion policies
-                             * for the same transient menu state. The moment keyboard policy takes ownership,
-                             * cancel the pointer press identity even if this particular key later produces no
-                             * semantic change. A subsequent release must never complete across input modes.
+                             * Keyboard input and pending pointer-owned menu timing are competing completion
+                             * policies for the same transient menu state. The moment keyboard policy takes
+                             * ownership, cancel the pointer press identity and both timers even if this key
+                             * later produces no semantic change. No later release/hover/close deadline may
+                             * complete across the input-mode boundary.
                              */
                             menu_pointer_gesture.reset();
                             menu_hover.reset();
+                            menu_close.reset();
 
                             const MenuInteractionResult menu_result =
                                 menu_interaction.handleKey(menu_bar, *key);
@@ -637,19 +660,30 @@ int main() {
             }
 
             /*
-             * Delayed submenu hover is advanced from the ordinary host loop rather than from a background
-             * timer. The event loop already wakes frequently for non-blocking backend polling, so the same
-             * monotonic clock can commit a pending submenu deadline without another thread or callback.
+             * Delayed submenu opening and closing are advanced from the ordinary host loop rather than from
+             * background timers. The loop already wakes frequently for non-blocking backend polling, so one
+             * monotonic timestamp can commit either pending transaction without another thread or callback.
              *
-             * advance() is intentionally semantic only: when the deadline expires it asks Core to open the
-             * still-selected submenu and returns state_changed. Presentation remains a separate transaction
-             * below, which rebuilds placement from the new MenuPath before anything is drawn.
+             * The two policies remain semantically independent. Hover opening asks Core to open one still-
+             * selected submenu after a stable row delay; close grace collapses descendants only after the
+             * pointer stayed outside popup rows long enough. In normal input only one candidate is pending,
+             * but advancing both against the same current controller state also makes stale scope fail closed.
+             * Presentation remains a later transaction that rebuilds popup placement from the resulting path.
              */
+            const auto menu_timing_now = std::chrono::steady_clock::now();
             const MenuInteractionResult hover_result = menu_hover.advance(
                 menu_bar,
                 menu_interaction,
-                TerminalMenuHoverInteraction::Clock::now());
+                menu_timing_now);
             if (hover_result.action != MenuInteractionAction::none) {
+                menu_presentation_changed = true;
+            }
+
+            const MenuInteractionResult close_result = menu_close.advance(
+                menu_bar,
+                menu_interaction,
+                menu_timing_now);
+            if (close_result.action != MenuInteractionAction::none) {
                 menu_presentation_changed = true;
             }
 
@@ -680,9 +714,12 @@ int main() {
                  * The controller activation transaction already closed menu state before returning the
                  * lifetime-safe reference. Because presentation above observes that closed state first,
                  * both keyboard and pointer callbacks may now rebuild menus, alter Widgets, or request
-                 * application exit without re-entering transient popup state. Any Widget changes become
-                 * part of the next normal synchronization pass.
+                 * application exit without re-entering transient popup state. Clear both host-owned timing
+                 * policies as an explicit callback boundary too: arbitrary command code should always enter
+                 * with no deferred menu transaction left behind, even if a future activation path changes.
                  */
+                menu_hover.reset();
+                menu_close.reset();
                 pending_menu_command = {};
                 (void)command->execute();
             } else {
