@@ -15,20 +15,18 @@
 namespace sasd::ui::terminal {
 
 /**
- * Maps terminal-cell pointer positions onto TextField Unicode-scalar caret boundaries.
+ * Maps terminal-cell pointer positions onto TextField Unicode-scalar geometry.
  *
  * The semantic TextField remains backend-neutral. This helper is terminal-specific because the
  * mapping depends on fixed terminal cells, East Asian width policy and the TextField's current
  * horizontally scrolled terminal viewport. It is deliberately read-only: gesture ownership belongs
- * to PointerRouter, while applying the returned scalar index belongs to higher-level interaction
- * policy through TextField::setCursorPosition()/setSelection().
+ * to PointerRouter, while applying returned caret/scalar information belongs to higher-level
+ * interaction policy through TextField::setCursorPosition()/setSelection().
  *
- * Terminal pointer coordinates identify whole cells rather than sub-pixel positions. For an interior
- * cell we treat the pointer as being at that cell's horizontal center. This gives deterministic and
- * useful behavior without inventing unavailable precision: a one-cell scalar maps to its following
- * caret boundary, while the lead and continuation cells of a two-cell scalar naturally map to the
- * boundary before/after that scalar. Exact midpoint ties choose the later boundary, matching the
- * rendered TextField caret policy.
+ * Terminal pointer coordinates identify whole cells rather than sub-pixel positions. Caret mapping
+ * treats an interior cell as its horizontal center, while scalar mapping answers a different question:
+ * which actually painted Unicode scalar owns this cell? Keeping those contracts separate prevents a
+ * trailing caret-space cell or control chrome from being mistaken for text during word selection.
  */
 class TerminalTextFieldHitTest final {
 public:
@@ -47,6 +45,81 @@ public:
         Point point,
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
         return mapCaretIndex(field, point, ambiguous_width, PointPolicy::require_inside_field);
+    }
+
+    /**
+     * Returns the Unicode-scalar index whose painted terminal cells contain point.
+     *
+     * Unlike caretIndexAt(), this operation does not choose a nearest boundary and never clamps chrome
+     * or trailing caret space onto text. It succeeds only when point lies on cells occupied by one
+     * scalar in the current terminal viewport. Both cells of a two-cell scalar return the same scalar
+     * index; a wide scalar that cannot be painted completely at the right edge has no hit geometry.
+     *
+     * This stricter contract is intended for semantic operations such as double-click word selection,
+     * where callers need the identity of text actually under the pointer rather than a nearby insertion
+     * position. Hidden/disabled fields, clipped-out points and unsupported Unicode geometry return
+     * std::nullopt rather than manufacturing a scalar identity.
+     */
+    [[nodiscard]] static std::optional<std::size_t> scalarIndexAt(
+        const TextField& field,
+        Point point,
+        AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
+        if (!field.isVisible() || !field.isEnabled() || !HitTest::contains(field, point)) {
+            return std::nullopt;
+        }
+
+        const auto viewport = buildViewport(field, ambiguous_width);
+        if (!viewport.has_value()) {
+            return std::nullopt;
+        }
+
+        const std::int64_t raw_cell =
+            static_cast<std::int64_t>(point.x) - viewport->content_x;
+        if (raw_cell < 0 || raw_cell >= viewport->viewport_width) {
+            /*
+             * Left/right chrome and points outside the text interior do not identify a scalar. This is
+             * intentionally stricter than caretIndexAt(), which clamps chrome to a useful insertion
+             * boundary. Word selection must never turn UI chrome into adjacent text ownership.
+             */
+            return std::nullopt;
+        }
+
+        for (std::size_t index = viewport->start_index;
+             index < viewport->scalar_count;
+             ++index) {
+            const ScalarGeometry& scalar = viewport->scalars[index];
+            const std::int64_t relative_start = scalar.column - viewport->start_column;
+            const std::int64_t relative_end =
+                relative_start + static_cast<std::int64_t>(scalar.width);
+
+            if (relative_start >= viewport->viewport_width) {
+                break;
+            }
+
+            if (relative_end > viewport->viewport_width) {
+                /*
+                 * TerminalPresentationSink refuses to paint a partial wide scalar at the right edge.
+                 * Treat the corresponding cells as non-text geometry as well; reporting a scalar here
+                 * would make interaction disagree with what the user can actually see.
+                 */
+                break;
+            }
+
+            if (raw_cell >= relative_start && raw_cell < relative_end) {
+                /*
+                 * A wide scalar owns both its lead and continuation cells. Returning the same semantic
+                 * index for the complete half-open cell span preserves Unicode-scalar identity without
+                 * pretending that a continuation cell is independent text.
+                 */
+                return index;
+            }
+        }
+
+        /*
+         * A remaining interior cell is presentation space (most importantly the reserved caret cell),
+         * not text. Returning nullopt keeps strict scalar-hit semantics distinct from caret clamping.
+         */
+        return std::nullopt;
     }
 
     /**

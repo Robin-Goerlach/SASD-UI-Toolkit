@@ -3,6 +3,7 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/pointer_router.hpp>
+#include <sasd/ui/terminal/terminal_text_field_hit_test.hpp>
 #include <sasd/ui/terminal/terminal_text_field_pointer_selection.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/window.hpp>
@@ -233,4 +234,114 @@ TEST_CASE("Terminal TextField pointer selection delegates non TextField controls
     CHECK(!pointer_router.hasCapture());
     CHECK(!button.isPressed());
     CHECK(activations == 1);
+}
+
+TEST_CASE("Terminal TextField scalar hit identifies only cells occupied by visible text") {
+    Window window;
+    window.arrange({0, 0, 14, 3});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({2, 1, 6, 1}); // chrome + three scalars + one reserved caret cell
+    field.setCursorPosition(0);
+
+    /*
+     * Scalar hits answer a stricter question than caret hits. The left/right chrome and the reserved
+     * end-caret cell are valid insertion geometry, but none of them is a Unicode scalar under the
+     * pointer. Only the three cells actually painted with a/b/c may produce scalar identities.
+     */
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {2, 1}).has_value());
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {3, 1}) ==
+          std::optional<std::size_t>{0});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {4, 1}) ==
+          std::optional<std::size_t>{1});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {5, 1}) ==
+          std::optional<std::size_t>{2});
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {6, 1}).has_value());
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {7, 1}).has_value());
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {8, 1}).has_value());
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {4, 0}).has_value());
+}
+
+TEST_CASE("Terminal TextField scalar hit maps both wide-glyph cells to one Unicode scalar") {
+    Window window;
+    window.arrange({0, 0, 14, 2});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C" "B"});
+    field.arrange({0, 0, 7, 1}); // five interior cells: A, wide scalar, B, caret room
+    field.setCursorPosition(0);
+
+    /*
+     * U+754C occupies one lead and one continuation cell in the terminal presentation. Those are two
+     * physical cells but one semantic Unicode scalar. Word selection must therefore receive index 1
+     * from either cell instead of treating the continuation cell as a second character.
+     */
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}) ==
+          std::optional<std::size_t>{0});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {2, 0}) ==
+          std::optional<std::size_t>{1});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {3, 0}) ==
+          std::optional<std::size_t>{1});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {4, 0}) ==
+          std::optional<std::size_t>{2});
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {5, 0}).has_value());
+}
+
+TEST_CASE("Terminal TextField scalar hit follows horizontal viewport and excludes caret space") {
+    Window window;
+    window.arrange({0, 0, 12, 2});
+
+    auto& field = window.emplace<TextField>("abcdef");
+    field.arrange({1, 0, 5, 1}); // three interior cells
+    field.setCursorPosition(6);
+
+    /*
+     * The established terminal viewport scrolls to scalar 4 so e/f plus the end caret fit. Strict
+     * scalar mapping must therefore expose only global indices 4 and 5. The third interior cell is
+     * still a valid caret location but deliberately has no scalar identity.
+     */
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}).has_value());
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {2, 0}) ==
+          std::optional<std::size_t>{4});
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {3, 0}) ==
+          std::optional<std::size_t>{5});
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {4, 0}).has_value());
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {5, 0}).has_value());
+}
+
+TEST_CASE("Terminal TextField scalar hit does not expose an unpaintable partial wide scalar") {
+    Window window;
+    window.arrange({0, 0, 10, 2});
+
+    auto& field = window.emplace<TextField>(std::string{"A\xE7\x95\x8C"});
+    field.arrange({0, 0, 4, 1}); // two interior cells: only A can be painted completely
+    field.setCursorPosition(0);
+
+    CHECK(TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}) ==
+          std::optional<std::size_t>{0});
+
+    /*
+     * The wide scalar starts in the second interior cell but would require a third one. Presentation
+     * intentionally refuses to draw half of it, so interaction must also report no text at that cell.
+     */
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {2, 0}).has_value());
+}
+
+TEST_CASE("Terminal TextField scalar hit remains conservative for unsupported control state") {
+    Window window;
+    window.arrange({0, 0, 12, 2});
+
+    auto& field = window.emplace<TextField>("abc");
+    field.arrange({0, 0, 6, 1});
+    field.setCursorPosition(0);
+
+    field.setEnabled(false);
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}).has_value());
+    field.setEnabled(true);
+
+    field.setVisible(false);
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}).has_value());
+    field.setVisible(true);
+
+    field.setText(std::string{"e\xCC\x81"}); // unsupported combining sequence in current Cell model
+    CHECK(!TerminalTextFieldHitTest::scalarIndexAt(field, {1, 0}).has_value());
 }
