@@ -11,7 +11,7 @@
 
 namespace sasd::ui {
 
-/** High-level outcome produced by one menu-interaction key transaction. */
+/** High-level outcome produced by one menu-interaction transaction. */
 enum class MenuInteractionAction {
     none,
     state_changed,
@@ -20,10 +20,10 @@ enum class MenuInteractionAction {
 };
 
 /**
- * Result returned by MenuInteractionController::handleKey().
+ * Result returned by MenuInteractionController semantic transactions.
  *
  * activate_command carries a lifetime-safe Command::Reference instead of a borrowed MenuItem* or
- * Command*. The caller can therefore finish presentation/focus work after handleKey() returns and only
+ * Command*. The caller can therefore finish presentation/focus work after the controller returns and only
  * then execute the command if the semantic object is still alive. Other actions leave command empty.
  */
 struct MenuInteractionResult {
@@ -32,14 +32,14 @@ struct MenuInteractionResult {
 };
 
 /**
- * Backend-neutral coordinator for transient menu-bar and popup keyboard state.
+ * Backend-neutral coordinator for transient menu-bar and popup interaction state.
  *
  * The controller composes the small semantic contracts introduced by MenuBarModel, MenuPath,
  * interpretMenuBarKey(), and interpretMenuPopupKey(). It intentionally owns only transient value
  * state: top-level indices, submenu indices, and selection indices. It stores no MenuModel*, MenuItem*,
  * backend handle, focus object, or presentation object across calls.
  *
- * This makes structural mutation recoverable. Every key transaction revalidates the retained state
+ * This makes structural mutation recoverable. Every semantic transaction revalidates the retained state
  * against the supplied MenuBarModel before interpreting input. Invalid submenu routes are truncated to
  * their longest valid prefix; invalid item selections are cleared rather than guessed. If the selected
  * top-level menu itself no longer exists, the whole interaction is closed.
@@ -61,8 +61,10 @@ struct MenuInteractionResult {
  * through navigateMenu(), so separators and unavailable command entries are skipped consistently with
  * later popup navigation rather than through a second ad-hoc scanning rule.
  *
- * The class models keyboard interaction only. Pointer hover/click behavior, mnemonic activation,
- * native menu handles, focus restoration, and popup geometry remain separate later layers.
+ * Pointer geometry remains outside this class. Backends may translate their geometry into the explicit
+ * selectPopupItem() semantic transaction, but they cannot inject coordinates, native handles, or retained
+ * presentation pointers into Core state. Hover policy, click/release gesture interpretation, mnemonic
+ * activation, native menu handles, focus restoration, and concrete popup geometry remain separate layers.
  */
 class MenuInteractionController final {
 public:
@@ -116,6 +118,118 @@ public:
 
     /** Number of currently represented popup levels; zero when no popup is open. */
     [[nodiscard]] std::size_t popupDepth() const noexcept { return popup_selections_.size(); }
+
+    /**
+     * Selects one exact semantic item in an already-open popup level.
+     *
+     * This is the backend-neutral seam for pointer/accessibility layers that already proved a concrete
+     * presentation identity. It deliberately accepts only value indices: terminal cells, pixels, native
+     * menu handles, and presentation snapshots remain outside Core interaction state.
+     *
+     * The retained controller state is normalized against bar before the requested identity is used. A
+     * stale level/index, separator, disabled/expired command, or inactive/closed popup is therefore ignored
+     * rather than guessed. Such a rejected request returns action==none unless normalization itself repaired
+     * state. Callers that own a physical pointer surface may still treat that no-op result as consumed.
+     *
+     * Selecting an item in an ancestor popup closes deeper popup levels unless the selected item is exactly
+     * the submenu item that already owns the next open level. This keeps MenuPath structurally coherent: a
+     * child popup may never remain open underneath a different parent selection. Re-selecting the existing
+     * parent submenu preserves its already-open descendants and is otherwise a no-op.
+     *
+     * This transaction selects only. It never opens a submenu and never activates a command; those remain
+     * separate semantic operations so pointer press/release/hover policy can be staged without overloading
+     * selection with backend-specific gesture meaning.
+     */
+    [[nodiscard]] MenuInteractionResult selectPopupItem(const MenuBarModel& bar,
+                                                        std::size_t level,
+                                                        std::size_t item_index) {
+        if (!isActive() || !popupOpen()) {
+            return {};
+        }
+
+        const bool normalized = normalizeAgainst(bar);
+        if (!isActive() || !popupOpen()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        if (level >= popup_selections_.size()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        const MenuModel& root = bar.menuAt(*menu_bar_selection_);
+        const MenuModel* current = &root;
+
+        /*
+         * Resolve only the currently open path prefix needed to reach the requested level. normalizeAgainst()
+         * should already guarantee these checks for a stable model, but keeping the transaction defensive
+         * makes stale/mutated input fail closed instead of turning an old presentation index into itemAt()
+         * undefined intent or an unrelated semantic selection.
+         */
+        for (std::size_t depth = 0; depth < level; ++depth) {
+            if (depth >= popup_path_->size()) {
+                return {normalized ? MenuInteractionAction::state_changed
+                                   : MenuInteractionAction::none,
+                        {}};
+            }
+
+            const std::size_t parent_index = (*popup_path_)[depth];
+            if (parent_index >= current->itemCount()) {
+                return {normalized ? MenuInteractionAction::state_changed
+                                   : MenuInteractionAction::none,
+                        {}};
+            }
+
+            const MenuItem& parent = current->itemAt(parent_index);
+            const MenuModel* const child = parent.submenu();
+            if (!parent.isEnabled() || parent.kind() != MenuItemKind::submenu || child == nullptr) {
+                return {normalized ? MenuInteractionAction::state_changed
+                                   : MenuInteractionAction::none,
+                        {}};
+            }
+
+            current = child;
+        }
+
+        if (item_index >= current->itemCount()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        const MenuItem& item = current->itemAt(item_index);
+        if (!item.isEnabled()) {
+            /*
+             * isEnabled() is the existing semantic selectability contract: it rejects separators, disabled
+             * or expired Commands, while retaining valid submenu entries. Do not duplicate kind-specific
+             * availability policy in the pointer adapter or in this transaction.
+             */
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        bool changed = normalized || popup_selections_[level] != item_index;
+        popup_selections_[level] = item_index;
+
+        const bool preserves_open_child =
+            level < popup_path_->size() &&
+            (*popup_path_)[level] == item_index &&
+            item.kind() == MenuItemKind::submenu &&
+            item.submenu() != nullptr;
+
+        if (!preserves_open_child && level + 1U < popup_selections_.size()) {
+            /*
+             * MenuPath contains exactly one structural item index per transition from a popup level to the
+             * next child level. Keeping only `level` path elements therefore leaves levels [0, level] open
+             * and removes every descendant that belonged to the old ancestor selection.
+             */
+            popup_path_->resize(level);
+            popup_selections_.resize(level + 1U);
+            changed = true;
+        }
+
+        return {changed ? MenuInteractionAction::state_changed : MenuInteractionAction::none, {}};
+    }
 
     /**
      * Applies one keyboard event to the current interaction state.

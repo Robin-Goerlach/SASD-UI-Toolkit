@@ -24,10 +24,11 @@ namespace sasd::ui::terminal {
  * - state_changed/closed keep the existing MenuInteractionAction vocabulary so hosts can decide whether a
  *   fresh menu frame must be presented without learning a terminal-specific second state machine.
  *
- * This first slice intentionally supports only primary-press opening/switching of top-level menus plus
- * outside-click dismissal. Popup-row presses are consumed but do not yet select, open submenus, or activate
- * commands. While the controller is active, other pointer transitions are also consumed so motion/release
- * events cannot leak through the visible popup overlay into application Widgets underneath it.
+ * Primary presses currently support top-level opening/switching, direct semantic selection of enabled
+ * popup rows, and outside-click dismissal. Selecting a popup row deliberately does not yet open a submenu
+ * or activate a command; those are separate semantic transactions. Separator and disabled rows remain
+ * consumed but unselected. While the controller is active, other pointer transitions are also consumed so
+ * motion/release events cannot leak through the visible popup overlay into application Widgets underneath it.
  */
 class TerminalMenuPointerInteraction final {
 public:
@@ -42,8 +43,10 @@ public:
      * keyboard and pointer entry therefore share the same root-popup semantics.
      *
      * Popup rows have visual precedence over the menu bar because MenuFramePresentationSnapshot paints them
-     * after the bar. When an active popup overlaps the bar in a synthetic or future placement scenario, a
-     * row hit is therefore consumed before title hit testing is considered.
+     * after the bar. An enabled row asks MenuInteractionController to select that exact semantic item at the
+     * hit popup level. The controller revalidates the current menu tree, collapses unrelated deeper popup
+     * state when an ancestor selection changes, and refuses stale/disabled/separator identities. A rejected
+     * row is still consumed here so unavailable menu chrome never becomes a click-through hole.
      *
      * A primary press outside all currently represented menu surfaces closes an active controller and is
      * still consumed. This is the critical no-click-through rule: dismissing a transient menu must not also
@@ -63,7 +66,7 @@ public:
          * Active menus form a transient modal pointer scope. Until richer hover/release semantics are added,
          * every non-primary-press event is consumed without changing semantic state. This prevents a release
          * following a menu-title press, or incidental motion over an open popup, from reaching Widgets below
-         * the overlay merely because this first interaction slice does not interpret that transition yet.
+         * the overlay merely because this interaction slice does not interpret that transition yet.
          */
         if (!primary_press) {
             return active_before
@@ -72,13 +75,23 @@ public:
         }
 
         /*
-         * Popup layers are painted after the menu bar, so they own overlapping cells while the interaction
-         * is active. Popup-item behavior is deliberately deferred, but consuming the press now establishes
-         * the correct modal boundary and prevents accidental title switching or Widget click-through.
+         * Popup layers are painted after the menu bar, so they own overlapping cells while interaction is
+         * active. Geometry identifies only the painted level/row. The backend-neutral controller then owns
+         * the semantic proof that the same identity still names a selectable live item in the current model.
+         *
+         * selectPopupItem() may therefore return action==none for a separator, disabled command, or stale
+         * frame identity. We still return an engaged result: the visible popup surface consumed the physical
+         * press even when no semantic selection transition was legal.
          */
-        if (active_before &&
-            TerminalMenuHitTest::popupItemAt(frame, event.position, ambiguous_width).has_value()) {
-            return MenuInteractionResult{};
+        if (active_before) {
+            if (const auto popup_hit =
+                    TerminalMenuHitTest::popupItemAt(frame, event.position, ambiguous_width);
+                popup_hit.has_value()) {
+                return controller.selectPopupItem(
+                    bar,
+                    popup_hit->level,
+                    popup_hit->item_index);
+            }
         }
 
         if (const auto title =
