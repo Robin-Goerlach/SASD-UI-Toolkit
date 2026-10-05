@@ -64,62 +64,7 @@ public:
         const TextField& field,
         Point point,
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
-        if (!field.isVisible() || !field.isEnabled() || !HitTest::contains(field, point)) {
-            return std::nullopt;
-        }
-
-        const auto viewport = buildViewport(field, ambiguous_width);
-        if (!viewport.has_value()) {
-            return std::nullopt;
-        }
-
-        const std::int64_t raw_cell =
-            static_cast<std::int64_t>(point.x) - viewport->content_x;
-        if (raw_cell < 0 || raw_cell >= viewport->viewport_width) {
-            /*
-             * Left/right chrome and points outside the text interior do not identify a scalar. This is
-             * intentionally stricter than caretIndexAt(), which clamps chrome to a useful insertion
-             * boundary. Word selection must never turn UI chrome into adjacent text ownership.
-             */
-            return std::nullopt;
-        }
-
-        for (std::size_t index = viewport->start_index;
-             index < viewport->scalar_count;
-             ++index) {
-            const ScalarGeometry& scalar = viewport->scalars[index];
-            const std::int64_t relative_start = scalar.column - viewport->start_column;
-            const std::int64_t relative_end =
-                relative_start + static_cast<std::int64_t>(scalar.width);
-
-            if (relative_start >= viewport->viewport_width) {
-                break;
-            }
-
-            if (relative_end > viewport->viewport_width) {
-                /*
-                 * TerminalPresentationSink refuses to paint a partial wide scalar at the right edge.
-                 * Treat the corresponding cells as non-text geometry as well; reporting a scalar here
-                 * would make interaction disagree with what the user can actually see.
-                 */
-                break;
-            }
-
-            if (raw_cell >= relative_start && raw_cell < relative_end) {
-                /*
-                 * A wide scalar owns both its lead and continuation cells. Returning the same semantic
-                 * index for the complete half-open cell span preserves Unicode-scalar identity without
-                 * pretending that a continuation cell is independent text.
-                 */
-                return index;
-            }
-        }
-
-        /*
-         * A remaining interior cell is presentation space (most importantly the reserved caret cell),
-         * not text. Returning nullopt keeps strict scalar-hit semantics distinct from caret clamping.
-         */
-        return std::nullopt;
+        return mapScalarIndex(field, point, ambiguous_width, PointPolicy::require_inside_field);
     }
 
     /**
@@ -136,6 +81,26 @@ public:
         Point point,
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
         return mapCaretIndex(field, point, ambiguous_width, PointPolicy::allow_captured_drag);
+    }
+
+    /**
+     * Returns the visible Unicode scalar targeted by an already captured word-granular drag.
+     *
+     * Capture, not ordinary hit testing, owns this call. point may therefore be horizontally or
+     * vertically outside the TextField. Horizontal positions before the visible text clamp to the first
+     * completely painted scalar; positions after it, including reserved caret space/right chrome and
+     * points beyond the control, clamp to the last completely painted scalar. Vertical position is
+     * ignored for the same reason as caretIndexForDrag().
+     *
+     * The method never invents a scalar when the current viewport contains no completely painted text
+     * scalar or when Unicode geometry is unsupported. A wide scalar that would be clipped at the right
+     * edge still does not become visible text; captured clamping stops at the preceding painted scalar.
+     */
+    [[nodiscard]] static std::optional<std::size_t> scalarIndexForDrag(
+        const TextField& field,
+        Point point,
+        AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
+        return mapScalarIndex(field, point, ambiguous_width, PointPolicy::allow_captured_drag);
     }
 
 private:
@@ -314,6 +279,94 @@ private:
         }
 
         return candidates;
+    }
+
+    /**
+     * Maps strict/captured scalar geometry through one shared viewport walk.
+     *
+     * require_inside_field answers only literal painted-cell identity and therefore leaves chrome,
+     * trailing caret space and clipped-out points as misses. allow_captured_drag starts from the same
+     * painted spans but, because PointerRouter has already established gesture ownership, clamps a miss
+     * horizontally to the first/last fully visible scalar. This keeps word-drag endpoint policy out of
+     * TextField while ensuring both operations agree on which scalars are actually paintable.
+     */
+    [[nodiscard]] static std::optional<std::size_t> mapScalarIndex(
+        const TextField& field,
+        Point point,
+        AmbiguousWidthMode ambiguous_width,
+        PointPolicy point_policy) {
+        if (!field.isVisible() || !field.isEnabled()) {
+            return std::nullopt;
+        }
+
+        if (point_policy == PointPolicy::require_inside_field &&
+            !HitTest::contains(field, point)) {
+            return std::nullopt;
+        }
+
+        const auto viewport = buildViewport(field, ambiguous_width);
+        if (!viewport.has_value()) {
+            return std::nullopt;
+        }
+
+        const std::int64_t raw_cell =
+            static_cast<std::int64_t>(point.x) - viewport->content_x;
+
+        std::optional<std::size_t> first_visible_scalar;
+        std::optional<std::size_t> last_visible_scalar;
+
+        for (std::size_t index = viewport->start_index;
+             index < viewport->scalar_count;
+             ++index) {
+            const ScalarGeometry& scalar = viewport->scalars[index];
+            const std::int64_t relative_start = scalar.column - viewport->start_column;
+            const std::int64_t relative_end =
+                relative_start + static_cast<std::int64_t>(scalar.width);
+
+            if (relative_start >= viewport->viewport_width) {
+                break;
+            }
+
+            if (relative_end > viewport->viewport_width) {
+                /*
+                 * Presentation refuses a partially visible wide scalar. It therefore cannot become a
+                 * literal hit target. Captured clamping below may still choose the preceding completely
+                 * visible scalar, but never the unpainted partial one itself.
+                 */
+                break;
+            }
+
+            if (!first_visible_scalar.has_value()) {
+                first_visible_scalar = index;
+            }
+            last_visible_scalar = index;
+
+            if (raw_cell >= relative_start && raw_cell < relative_end) {
+                /*
+                 * One semantic scalar owns its complete terminal-cell span. This naturally maps both
+                 * the lead and continuation cells of a wide glyph back to one Unicode-scalar index.
+                 */
+                return index;
+            }
+        }
+
+        if (point_policy == PointPolicy::allow_captured_drag &&
+            first_visible_scalar.has_value() &&
+            last_visible_scalar.has_value()) {
+            /*
+             * The visible scalar spans are contiguous from viewport start. A miss before content is a
+             * left clamp; every other miss is trailing/right geometry (caret room, chrome, outside the
+             * field, or an unpainted partial-wide tail) and therefore clamps to the last painted scalar.
+             * Vertical position is intentionally absent from this decision because capture already owns
+             * the single-line gesture.
+             */
+            return raw_cell < 0 ? first_visible_scalar : last_visible_scalar;
+        }
+
+        /*
+         * Strict scalar hits never reinterpret chrome or presentation space as text identity.
+         */
+        return std::nullopt;
     }
 
     [[nodiscard]] static std::optional<std::size_t> mapCaretIndex(

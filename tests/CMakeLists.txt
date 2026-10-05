@@ -81,6 +81,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_text_field_selection_tests.cpp
     terminal_text_field_pointer_selection_tests.cpp
     terminal_text_field_triple_click_tests.cpp
+    terminal_text_field_word_drag_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
     terminal_session_tests.cpp

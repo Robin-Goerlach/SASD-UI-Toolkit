@@ -8,6 +8,8 @@
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
+#include <optional>
+
 namespace sasd::ui::terminal {
 
 /**
@@ -25,44 +27,111 @@ namespace sasd::ui::terminal {
  */
 class TerminalTextFieldPointerSelection final {
 public:
+    /**
+     * Host-owned transient state for semantic gestures that span multiple terminal PointerEvents.
+     *
+     * The state deliberately stores only the scalar-domain origin word. It owns no Widget pointer and
+     * therefore cannot accidentally extend a TextField lifetime. PointerRouter capture remains the
+     * authoritative source for the current gesture owner on every event.
+     */
+    class GestureState final {
+    public:
+        GestureState() = default;
+
+        void reset() noexcept {
+            word_origin_.reset();
+        }
+
+        [[nodiscard]] bool hasWordGesture() const noexcept {
+            return word_origin_.has_value();
+        }
+
+    private:
+        friend class TerminalTextFieldPointerSelection;
+
+        std::optional<text::ScalarRange> word_origin_{};
+    };
+
     TerminalTextFieldPointerSelection() = delete;
 
     /**
-     * Maps one terminal PointerEvent to TextField selection state and routes the event through Core.
+     * Stateless routing preserving atomic multi-click behavior.
      *
-     * For a fresh primary press on a TextField:
-     * - an exact unmodified triple click selects the complete semantic TextField contents;
-     * - an exact unmodified double click selects the basic semantic word/punctuation run under the
-     *   actually painted scalar;
-     * - double click on whitespace or trailing caret space falls back to ordinary caret placement;
-     * - ordinary press collapses the selection at the mapped caret boundary;
-     * - exact Shift+press preserves TextField's existing selection anchor and moves only the active end;
-     * - unsupported/unrepresentable terminal geometry leaves semantic selection unchanged.
-     *
-     * Double- and triple-click semantic selections are atomic in this stateless interaction layer.
-     * After Core has processed the multi-click press, any capture just acquired by that TextField is
-     * released immediately. This prevents the existing character-granular drag/release path from
-     * collapsing or partially extending a complete word/all-text selection before dedicated
-     * word-granular gesture state exists.
-     *
-     * Ordinary character-granular gestures retain capture. Their move and matching primary release use
-     * caretIndexForDrag(), so the stable semantic selection anchor survives motion outside the control
-     * while the active cursor follows the representable terminal viewport.
-     *
-     * Word-granular double-click dragging and auto-scroll remain separate later policies.
+     * Double-click word selection and triple-click select-all are committed on the press and then
+     * release any just-created TextField capture. This preserves the behavior introduced by ADR 0102
+     * and ADR 0103 for hosts that do not keep semantic gesture state between events.
      */
     [[nodiscard]] static PointerRouteResult route(
         Widget& root,
         PointerRouter& pointer_router,
         const PointerEvent& event,
         AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow) {
+        return routeImpl(root, pointer_router, event, ambiguous_width, nullptr);
+    }
+
+    /**
+     * Stateful routing that additionally supports unmodified double-click-and-drag by semantic words.
+     *
+     * The initial double click selects the complete basic word/punctuation run under the painted
+     * terminal scalar and keeps normal TextField capture alive. While that capture remains active,
+     * move/release events map to visible scalar geometry and expand the active selection by complete
+     * semantic runs:
+     *
+     * - dragging left anchors at the original word's end and moves the cursor to target-word start;
+     * - dragging right anchors at the original word's start and moves the cursor to target-word end;
+     * - returning to the origin word restores exactly the original range;
+     * - whitespace leaves the latest word-granular selection unchanged instead of switching to a
+     *   character endpoint midway through the gesture.
+     *
+     * Horizontal motion outside the control is clamped by scalarIndexForDrag() to the first/last scalar
+     * actually painted in the current viewport. Moving the semantic cursor may change that viewport;
+     * later motion is then evaluated against the new viewport, without hidden timer-driven auto-scroll.
+     *
+     * Triple-click select-all remains atomic even in this overload. Ordinary/Shift pointer gestures
+     * retain the established character-granular caret drag behavior.
+     */
+    [[nodiscard]] static PointerRouteResult route(
+        Widget& root,
+        PointerRouter& pointer_router,
+        const PointerEvent& event,
+        AmbiguousWidthMode ambiguous_width,
+        GestureState& gesture_state) {
+        return routeImpl(root, pointer_router, event, ambiguous_width, &gesture_state);
+    }
+
+private:
+    [[nodiscard]] static PointerRouteResult routeImpl(
+        Widget& root,
+        PointerRouter& pointer_router,
+        const PointerEvent& event,
+        AmbiguousWidthMode ambiguous_width,
+        GestureState* gesture_state) {
         TextField* pressed_field = nullptr;
         bool press_mapping_failed = false;
         bool atomic_multi_click_selection = false;
 
+        /*
+         * A host may retire Core capture explicitly between calls (for example when entering a modal
+         * menu). GestureState has no callback dependency on PointerRouter, so the next non-press event
+         * without capture is a safe synchronization point for discarding a stale semantic word origin.
+         */
+        if (gesture_state != nullptr &&
+            !pointer_router.hasCapture() &&
+            event.action != PointerAction::press) {
+            gesture_state->reset();
+        }
+
         if (!pointer_router.hasCapture() &&
             event.action == PointerAction::press &&
             event.button == PointerButton::primary) {
+            if (gesture_state != nullptr) {
+                /*
+                 * Every fresh primary press starts a new semantic gesture. Reset before hit testing so
+                 * unsupported geometry or a different target can never inherit an old word origin.
+                 */
+                gesture_state->reset();
+            }
+
             /*
              * HitTest is used here only to decide whether TextField-specific terminal semantics should
              * be prepared. It does not establish capture. PointerRouter still dispatches the event and
@@ -114,13 +183,20 @@ public:
                                 *scalar)) {
                             pressed_field->setSelection(word->start, word->end);
 
-                            /*
-                             * The complete semantic run is committed on the press. We deliberately
-                             * retire capture after routing because character-granular drag semantics
-                             * must not subsequently erode that range. A later word-drag slice can add
-                             * explicit host-owned gesture state without changing this atomic contract.
-                             */
-                            atomic_multi_click_selection = true;
+                            if (gesture_state != nullptr) {
+                                /*
+                                 * Stateful hosts keep only the scalar-domain origin range. Core capture
+                                 * remains the authoritative Widget identity/lifetime channel, so no raw
+                                 * TextField pointer is retained across backend events.
+                                 */
+                                gesture_state->word_origin_ = *word;
+                            } else {
+                                /*
+                                 * Stateless hosts preserve the existing atomic contract: the completed
+                                 * word selection must not be degraded by later character-granular motion.
+                                 */
+                                atomic_multi_click_selection = true;
+                            }
                         } else if (const auto caret = TerminalTextFieldHitTest::caretIndexAt(
                                        *pressed_field,
                                        event.position,
@@ -191,24 +267,75 @@ public:
                  event.button == PointerButton::primary);
 
             if (extends_selection) {
-                if (const auto caret = TerminalTextFieldHitTest::caretIndexForDrag(
-                        *captured,
-                        event.position,
-                        ambiguous_width)) {
+                const auto word_origin =
+                    gesture_state != nullptr ? gesture_state->word_origin_ : std::nullopt;
+
+                if (word_origin.has_value()) {
                     /*
-                     * Gesture ownership came from PointerRouter capture, so the point may now be far
-                     * outside the TextField. The terminal hit tester clamps only to geometry that the
-                     * current viewport can honestly represent. Applying the mapped active end may in
-                     * turn alter the viewport; the next event is then evaluated against the new state.
+                     * A semantic word gesture targets painted scalars, not insertion boundaries. The
+                     * captured scalar mapper may clamp outside/trailing positions to visible text while
+                     * still refusing unsupported/unpaintable geometry.
+                     */
+                    if (const auto scalar = TerminalTextFieldHitTest::scalarIndexForDrag(
+                            *captured,
+                            event.position,
+                            ambiguous_width)) {
+                        if (const auto target_word = text::basicWordRangeAt(
+                                captured->text(),
+                                *scalar)) {
+                            if (target_word->end <= word_origin->start) {
+                                /*
+                                 * Dragging left keeps the entire origin word selected by anchoring at
+                                 * its right boundary. The moving cursor uses the target word's complete
+                                 * left boundary, naturally including intervening separators.
+                                 */
+                                captured->setSelection(
+                                    word_origin->end,
+                                    target_word->start);
+                            } else if (target_word->start >= word_origin->end) {
+                                /*
+                                 * Symmetric right extension: anchor at the origin word's left boundary
+                                 * and move to the complete right edge of the target semantic run.
+                                 */
+                                captured->setSelection(
+                                    word_origin->start,
+                                    target_word->end);
+                            } else {
+                                /*
+                                 * Returning anywhere into the origin word restores exactly the original
+                                 * double-click range instead of collapsing to a character caret.
+                                 */
+                                captured->setSelection(
+                                    word_origin->start,
+                                    word_origin->end);
+                            }
+                        }
+                        /*
+                         * Whitespace has no basic word range. In word-granular mode motion across it
+                         * deliberately leaves the previous selection unchanged until another semantic
+                         * run is reached, avoiding a silent granularity switch mid-gesture.
+                         */
+                    }
+                } else if (const auto caret = TerminalTextFieldHitTest::caretIndexForDrag(
+                               *captured,
+                               event.position,
+                               ambiguous_width)) {
+                    /*
+                     * Ordinary/Shift drag remains character-granular: preserve the semantic anchor from
+                     * the press/pre-existing selection while only the active cursor follows caret geometry.
                      */
                     captured->setSelection(captured->selectionAnchor(), *caret);
                 }
                 /*
-                 * A failed drag mapping deliberately leaves the previous semantic selection intact.
-                 * Routing still proceeds so a matching release can retire capture and TextField's
-                 * transient pointer-selection flag normally.
+                 * A failed mapping leaves the previous semantic selection intact. Routing still proceeds
+                 * so a matching release can retire Core capture and TextField transient pointer state.
                  */
             }
+        } else if (gesture_state != nullptr && pointer_router.hasCapture()) {
+            /*
+             * Another Widget owns capture, so stored TextField word state cannot belong to this gesture.
+             */
+            gesture_state->reset();
         }
 
         PointerRouteResult result = pointer_router.route(root, event);
@@ -217,13 +344,27 @@ public:
             pointer_router.capturedWidget() == pressed_field &&
             (press_mapping_failed || atomic_multi_click_selection)) {
             /*
-             * Unsupported geometry and atomic double/triple-click semantic selections intentionally
-             * retire the capture created by this same TextField press. releaseCapture() also invokes
-             * TextField's normal noexcept capture-lost cleanup, keeping Core gesture state synchronized
-             * with the semantic selection that has already been committed.
+             * Unsupported geometry and atomic multi-click semantic selections intentionally retire the
+             * capture created by this same TextField press. releaseCapture() also invokes TextField's
+             * normal noexcept capture-lost cleanup, keeping Core gesture state synchronized with the
+             * semantic selection that has already been committed.
              */
             pointer_router.releaseCapture();
             result.capture_active = false;
+        }
+
+        if (gesture_state != nullptr) {
+            const bool matching_primary_release =
+                event.action == PointerAction::release &&
+                event.button == PointerButton::primary;
+
+            if (matching_primary_release || !result.capture_active) {
+                /*
+                 * PointerRouter has either completed the gesture or no longer owns one. Semantic word
+                 * origin must not leak into a future primary press.
+                 */
+                gesture_state->reset();
+            }
         }
 
         return result;
