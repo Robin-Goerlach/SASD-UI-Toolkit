@@ -82,12 +82,15 @@ int main() {
 
         /*
          * Pointer reporting is an explicit host capability rather than a hidden TerminalBackend side
-         * effect. Enabling it here asks TerminalSession to own xterm button-event tracking plus SGR
-         * coordinates for exactly the demo lifetime; RAII restores those modes together with the
-         * native terminal state during shutdown.
+         * effect. The demo intentionally chooses all-motion tracking because its open popup menus support
+         * pointer-motion row selection even when no button is held. TerminalSession still owns the complete
+         * xterm protocol lifetime (DECSET 1003 plus SGR coordinates) and restores those modes together with
+         * native terminal state during shutdown. The toolkit default remains the quieter button-event mode;
+         * this stronger policy is therefore a deliberate demo-host choice rather than a library-wide default.
          */
         TerminalSessionOptions session_options;
         session_options.pointer_input = true;
+        session_options.pointer_tracking = TerminalPointerTrackingMode::all_motion;
         TerminalBackend backend{session_options};
         Application application{backend};
 
