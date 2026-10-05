@@ -78,6 +78,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_menu_pointer_interaction_tests.cpp
     terminal_menu_pointer_motion_tests.cpp
     terminal_menu_hover_interaction_tests.cpp
+    terminal_menu_close_interaction_tests.cpp
     terminal_button_tests.cpp
     terminal_check_box_tests.cpp
     terminal_radio_button_tests.cpp
