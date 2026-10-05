@@ -190,7 +190,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 menu. F1 help. Tab focus. Mouse clicks controls; drag selects text.");
+            "F10 menu. F1 help. Mouse drag selects text; double-click+drag selects words.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -210,6 +210,19 @@ int main() {
          * before delegating gesture ownership back to this router.
          */
         PointerRouter pointer_router;
+
+        /*
+         * Word-granular double-click dragging needs one additional piece of semantic state across the
+         * press/move/release sequence: the complete word selected by the initial double click. Keep that
+         * state in the host beside PointerRouter rather than hiding it in TextField, the backend, or a
+         * static helper. GestureState intentionally stores no Widget pointer; PointerRouter capture remains
+         * the only authority for which Widget currently owns the physical gesture.
+         *
+         * Keeping both objects at the same application lifetime also makes scope transitions explicit.
+         * When the demo enters modal menu interaction below, it releases Core capture and resets this
+         * semantic state together so no old word origin can survive into a later unrelated pointer press.
+         */
+        TerminalTextFieldPointerSelection::GestureState text_selection_gesture;
 
         /*
          * Button activation, menu activation and shortcut activation deliberately share the same Command
@@ -238,7 +251,7 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10 menu; F1 shortcut; arrows navigate menus/radios; mouse clicks controls and drags text selection.");
+                "Help: F10 menu; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
         });
 
         exit_command.setOnExecuted([&] {
@@ -369,10 +382,13 @@ int main() {
                         }
 
                         /*
-                         * Route every application pointer event through the terminal TextField seam. For
-                         * ordinary controls this is behaviorally the normal PointerRouter path. TextFields
-                         * additionally receive cell-to-scalar caret mapping before dispatch, so a press can
-                         * place/collapse the selection and captured motion can extend it outside the field.
+                         * Route every application pointer event through the stateful terminal TextField
+                         * seam. Ordinary controls still delegate to the normal PointerRouter path. For a
+                         * TextField, the host-owned GestureState lets the initial double-click word survive
+                         * across captured motion so later cells extend the selection by complete semantic
+                         * runs instead of degrading to character endpoints. Ordinary click/drag remains
+                         * character-granular and triple-click select-all remains atomic.
+                         *
                          * The presentation width mode is supplied explicitly so painting and hit geometry
                          * cannot silently disagree about East Asian ambiguous-width characters.
                          */
@@ -380,7 +396,8 @@ int main() {
                             window,
                             pointer_router,
                             *pointer,
-                            presentation.ambiguousWidthMode());
+                            presentation.ambiguousWidthMode(),
+                            text_selection_gesture);
                         return;
                     }
 
@@ -400,9 +417,12 @@ int main() {
                                  * Modal menu interaction supersedes an in-progress application pointer
                                  * gesture. Releasing Core capture keeps TextField/Button transient state
                                  * synchronized and preserves any semantic selection reached before F10.
-                                 * Later SGR motion/release reports are ignored while the menu is active.
+                                 * Reset the host-owned word origin at the same scope boundary: pointer
+                                 * reports are ignored while the menu is active, so retaining that semantic
+                                 * origin would make it outlive the physical gesture that justified it.
                                  */
                                 pointer_router.releaseCapture();
+                                text_selection_gesture.reset();
                                 (void)menu_interaction.begin(menu_bar);
                             }
                             menu_presentation_changed = true;
