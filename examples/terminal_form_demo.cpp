@@ -192,7 +192,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 menu. F1 help. Mouse drag selects text; double-click+drag selects words.");
+            "F10 menu. F1 help. Mouse clicks menus; drag selects text; double-click+drag selects words.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -227,6 +227,15 @@ int main() {
         TerminalTextFieldPointerSelection::GestureState text_selection_gesture;
 
         /*
+         * Menu Command activation also spans two backend events: Primary press selects and arms one popup
+         * row, while a matching Primary release asks Core to activate that same semantic Command. Keep the
+         * tiny presentation-value identity in the host just like the TextField gesture state above. The
+         * state owns no MenuModel/MenuItem/Command pointer and is always revalidated against the current
+         * menu model before activation, so structural mutation cannot turn a stale press into a callback.
+         */
+        TerminalMenuPointerInteraction::GestureState menu_pointer_gesture;
+
+        /*
          * Button activation, menu activation and shortcut activation deliberately share the same Command
          * callback. This is the practical reason Command is semantic and backend-neutral: none of the
          * presentation/input surfaces owns a duplicate copy of application behavior.
@@ -253,7 +262,7 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10 menu; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
+                "Help: F10/menu clicks; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
         });
 
         exit_command.setOnExecuted([&] {
@@ -351,6 +360,13 @@ int main() {
                 },
                 [&](const Event& event) {
                     if (const auto* resize = std::get_if<ResizeEvent>(&event)) {
+                        /*
+                         * Menu press identity is tied to one presented popup geometry transaction. A resize
+                         * can reposition/fold popups before the release arrives, so cancel that transient
+                         * identity rather than allowing a later cell hit in the new geometry to complete an
+                         * old click. Semantic menu selection itself remains owned by the controller.
+                         */
+                        menu_pointer_gesture.reset();
                         screen.resize(resize->size);
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
@@ -395,7 +411,8 @@ int main() {
                                 menu_interaction,
                                 *menu_frame,
                                 *pointer,
-                                presentation.ambiguousWidthMode());
+                                presentation.ambiguousWidthMode(),
+                                menu_pointer_gesture);
 
                             if (menu_result.has_value()) {
                                 /*
@@ -406,8 +423,10 @@ int main() {
                                  *
                                  * Entering or leaving an active menu scope also terminates any application
                                  * pointer capture/word-drag residue. The normal PointerRouter release hook
-                                 * remains responsible for clearing Widget transient state; the separate
+                                 * remains responsible for clearing Widget transient state; the separate text
                                  * GestureState contains no Widget pointer and is reset explicitly beside it.
+                                 * Menu GestureState is intentionally not reset here: a popup press must survive
+                                 * across modal motion until the matching release can complete or cancel it.
                                  */
                                 if (menu_was_active || menu_interaction.isActive()) {
                                     pointer_router.releaseCapture();
@@ -419,11 +438,10 @@ int main() {
                                 }
 
                                 /*
-                                 * The current first pointer slice does not activate popup commands yet, but
-                                 * honoring the standard MenuInteractionResult contract here keeps the host's
-                                 * delayed-command lifecycle identical for keyboard and later pointer
-                                 * activation. Any future activation will therefore repaint the closed menu
-                                 * before arbitrary Command client code is executed below.
+                                 * A matching popup Command release returns the same lifetime-safe result as
+                                 * keyboard activation. Store only the Command::Reference here. The controller
+                                 * has already closed transient menu state, and the main loop below will first
+                                 * repaint that closed state before entering arbitrary application callback code.
                                  */
                                 if (menu_result->action ==
                                     MenuInteractionAction::activate_command) {
@@ -477,6 +495,13 @@ int main() {
                         if (key->pressed &&
                             key->modifiers == KeyModifier::none &&
                             key->key == Key::f10) {
+                            /*
+                             * Switching menu scope from the keyboard invalidates any pending pointer click.
+                             * Retire the presentation-value press identity before opening/closing the menu so
+                             * a later physical release cannot complete an interaction started in the old scope.
+                             */
+                            menu_pointer_gesture.reset();
+
                             if (menu_interaction.isActive()) {
                                 menu_interaction.reset();
                             } else {
@@ -497,6 +522,14 @@ int main() {
                         }
 
                         if (menu_interaction.isActive()) {
+                            /*
+                             * Keyboard input and a pending pointer click are competing completion policies
+                             * for the same transient menu state. The moment keyboard policy takes ownership,
+                             * cancel the pointer press identity even if this particular key later produces no
+                             * semantic change. A subsequent release must never complete across input modes.
+                             */
+                            menu_pointer_gesture.reset();
+
                             const MenuInteractionResult menu_result =
                                 menu_interaction.handleKey(menu_bar, *key);
 
@@ -583,10 +616,11 @@ int main() {
 
             if (Command* command = pending_menu_command.get(); command != nullptr) {
                 /*
-                 * handleKey() already closed the controller before returning the lifetime-safe reference.
-                 * Because presentation above observes that closed state first, command callbacks may now
-                 * rebuild menus, alter Widgets, or request application exit without re-entering transient
-                 * popup state. Any Widget changes become part of the next normal synchronization pass.
+                 * The controller activation transaction already closed menu state before returning the
+                 * lifetime-safe reference. Because presentation above observes that closed state first,
+                 * both keyboard and pointer callbacks may now rebuild menus, alter Widgets, or request
+                 * application exit without re-entering transient popup state. Any Widget changes become
+                 * part of the next normal synchronization pass.
                  */
                 pending_menu_command = {};
                 (void)command->execute();
