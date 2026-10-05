@@ -322,7 +322,7 @@ TEST_CASE("Terminal menu pointer stateful activation fails closed when selected 
     /*
      * Application semantics may change between physical press and release. Disabling the selected Command
      * makes the retained selection stale. The release still lands on the same painted row, but the Core
-     * activation transaction normalizes first and treats any repair as a reason to refuse activation in the
+     * completion transactions normalize first and treat any repair as a reason to refuse activation in the
      * same transaction. A second deliberate user gesture would be required against the repaired model.
      */
     save.setEnabled(false);
@@ -346,7 +346,7 @@ TEST_CASE("Terminal menu pointer stateful activation fails closed when selected 
     CHECK(executions == 0);
 }
 
-TEST_CASE("Terminal menu pointer stateful submenu release stays selected without opening the child") {
+TEST_CASE("Terminal menu pointer stateful matching submenu release opens one unselected child popup") {
     Command nested{"Nested"};
     MenuBarModel bar;
     MenuModel& file = bar.appendMenu("File");
@@ -369,6 +369,7 @@ TEST_CASE("Terminal menu pointer stateful submenu release stays selected without
         gesture);
     CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
     CHECK(controller.popupDepth() == 1U);
+    CHECK(gesture.hasPressedPopupItem());
 
     const auto release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {40, 10});
     CHECK(release_frame.has_value());
@@ -381,16 +382,92 @@ TEST_CASE("Terminal menu pointer stateful submenu release stays selected without
         gesture);
 
     /*
-     * Command activation and submenu opening are separate semantic operations. A matching release over a
-     * selected submenu therefore remains consumed but does not synthesize Right/Enter and does not open the
-     * child yet. The next menu-pointer slice can define submenu gesture policy independently.
+     * Press still owns row selection, while matching release now asks Core to complete the selected semantic
+     * item. openPopupSubmenu() proves that row zero is the currently selected live submenu and appends one
+     * child level. The child deliberately starts without a selection, matching keyboard Right/Enter entry and
+     * leaving the next deliberate key/pointer gesture responsible for choosing one of its rows.
      */
     CHECK(release_result.has_value());
-    CHECK(release_result->action == MenuInteractionAction::none);
+    CHECK(release_result->action == MenuInteractionAction::state_changed);
     CHECK(controller.isActive());
     CHECK(controller.popupOpen());
-    CHECK(controller.popupDepth() == 1U);
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+    CHECK(!controller.popupSelection().has_value());
+    CHECK(!gesture.hasPressedPopupItem());
+}
+
+TEST_CASE("Terminal menu pointer stateful submenu clicks open nested levels one deliberate child at a time") {
+    Command run{"Run"};
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    MenuModel& advanced = tools.appendSubmenu("Advanced");
+    advanced.appendCommand(run);
+
+    MenuInteractionController controller;
+    CHECK(controller.begin(bar));
+    (void)controller.handleKey(bar, KeyEvent{Key::enter, true, KeyModifier::none});
+    TerminalMenuPointerInteraction::GestureState gesture;
+
+    const auto root_press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {60, 12});
+    CHECK(root_press_frame.has_value());
+    (void)TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *root_press_frame,
+        primaryPress(popupRowPoint(*root_press_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    const auto root_release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {60, 12});
+    CHECK(root_release_frame.has_value());
+    const auto open_tools = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *root_release_frame,
+        primaryRelease(popupRowPoint(*root_release_frame, 0U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(open_tools.has_value());
+    CHECK(open_tools->action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+
+    /*
+     * Rebuild after opening Tools because submenu placement is presentation policy and can flip/fitted to the
+     * current viewport. The next click therefore targets level one using the newly visible frame rather than
+     * extrapolating geometry from the root popup.
+     */
+    const auto child_press_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {60, 12});
+    CHECK(child_press_frame.has_value());
+    CHECK(child_press_frame->popups.size() == 2U);
+    const auto child_press = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *child_press_frame,
+        primaryPress(popupRowPoint(*child_press_frame, 1U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(child_press.has_value());
+    CHECK(child_press->action == MenuInteractionAction::state_changed);
     CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+
+    const auto child_release_frame = buildMenuPresentationFrame(bar, controller, {0, 0}, {60, 12});
+    CHECK(child_release_frame.has_value());
+    const auto open_advanced = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        *child_release_frame,
+        primaryRelease(popupRowPoint(*child_release_frame, 1U, 0U)),
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(open_advanced.has_value());
+    CHECK(open_advanced->action == MenuInteractionAction::state_changed);
+    CHECK(controller.popupDepth() == 3U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U, 0U}});
+    CHECK(!controller.popupSelection().has_value());
     CHECK(!gesture.hasPressedPopupItem());
 }
 

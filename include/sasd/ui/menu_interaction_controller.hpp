@@ -62,10 +62,10 @@ struct MenuInteractionResult {
  * later popup navigation rather than through a second ad-hoc scanning rule.
  *
  * Pointer geometry remains outside this class. Backends may translate their geometry into the explicit
- * selectPopupItem() and activatePopupItem() semantic transactions, but they cannot inject coordinates,
- * native handles, or retained presentation pointers into Core state. Hover policy, press/release gesture
- * interpretation, mnemonic activation, native menu handles, focus restoration, and concrete popup geometry
- * remain separate layers.
+ * selectPopupItem(), openPopupSubmenu(), and activatePopupItem() semantic transactions, but they cannot
+ * inject coordinates, native handles, or retained presentation pointers into Core state. Hover policy,
+ * press/release gesture interpretation, mnemonic activation, native menu handles, focus restoration, and
+ * concrete popup geometry remain separate layers.
  */
 class MenuInteractionController final {
 public:
@@ -200,6 +200,83 @@ public:
     }
 
     /**
+     * Opens the child popup owned by one exact selected submenu item.
+     *
+     * This transaction is the backend-neutral counterpart to selectPopupItem(): geometry-aware adapters first
+     * establish semantic selection, then an explicit gesture policy may request child opening without passing
+     * cells, pixels, native handles, or presentation objects into Core. The request succeeds only when the
+     * supplied item still exists, remains the selected enabled submenu at that popup level, and exposes a live
+     * child MenuModel.
+     *
+     * Opening is commit-like. Any normalization repair returns state_changed but does not also open a child in
+     * the same transaction; a fresh deliberate input gesture must operate on the repaired value state. This
+     * avoids interpreting a pre-repair level/index pair as a different semantic submenu after model mutation.
+     *
+     * A newly opened child starts with no selected item, matching keyboard Right/Enter submenu entry. If the
+     * exact submenu already owns an open child, the request is a no-op and existing descendants are preserved.
+     * Otherwise any deeper route is truncated before the requested child is appended, maintaining the invariant
+     * that MenuPath and popup_selections_ describe one coherent chain of popup ownership.
+     */
+    [[nodiscard]] MenuInteractionResult openPopupSubmenu(const MenuBarModel& bar,
+                                                         std::size_t level,
+                                                         std::size_t item_index) {
+        if (!isActive() || !popupOpen()) {
+            return {};
+        }
+
+        const bool normalized = normalizeAgainst(bar);
+        if (!isActive() || !popupOpen()) {
+            return {normalized ? MenuInteractionAction::state_changed : MenuInteractionAction::none,
+                    {}};
+        }
+
+        if (normalized) {
+            return {MenuInteractionAction::state_changed, {}};
+        }
+
+        if (level >= popup_selections_.size()) {
+            return {};
+        }
+
+        const MenuModel* const current = popupMenuAtLevel(bar, level);
+        if (current == nullptr || item_index >= current->itemCount()) {
+            return {};
+        }
+
+        if (!popup_selections_[level].has_value() ||
+            *popup_selections_[level] != item_index) {
+            return {};
+        }
+
+        const MenuItem& item = current->itemAt(item_index);
+        if (!item.isEnabled() ||
+            item.kind() != MenuItemKind::submenu ||
+            item.submenu() == nullptr) {
+            return {};
+        }
+
+        if (level < popup_path_->size() && (*popup_path_)[level] == item_index) {
+            /*
+             * The requested child is already structurally open. selectPopupItem() deliberately preserves
+             * this route when the same parent submenu is reselected, so opening it again must not discard a
+             * deeper descendant selection or cause unnecessary presentation churn.
+             */
+            return {};
+        }
+
+        /*
+         * Retain popup levels [0, level], then append exactly one structural transition owned by the selected
+         * submenu. In a valid state there are normally no descendants here because selecting a different
+         * ancestor already closed them, but the truncation makes this public transaction robust on its own.
+         */
+        popup_path_->resize(level);
+        popup_selections_.resize(level + 1U);
+        popup_path_->push_back(item_index);
+        popup_selections_.push_back(std::nullopt);
+        return {MenuInteractionAction::state_changed, {}};
+    }
+
+    /**
      * Activates one exact selected command in an already-open popup level.
      *
      * This transaction is intentionally separate from selectPopupItem(). Pointer adapters can therefore use
@@ -298,7 +375,8 @@ private:
      * each indexed access so a stale route fails with nullptr rather than being reinterpreted.
      *
      * Callers normally invoke this after normalizeAgainst(), but keeping the checks complete makes the
-     * helper robust and lets both selectPopupItem() and activatePopupItem() share one structural proof.
+     * helper robust and lets selectPopupItem(), openPopupSubmenu(), and activatePopupItem() share one
+     * structural proof.
      */
     [[nodiscard]] const MenuModel* popupMenuAtLevel(const MenuBarModel& bar,
                                                     std::size_t level) const noexcept {
@@ -523,14 +601,15 @@ private:
                 break;
             }
 
-            const auto child = enterMenuSubmenu(root, *popup_path_, *interpreted.selection);
-            if (!child.has_value()) {
-                break;
-            }
-
-            *popup_path_ = *child;
-            popup_selections_.push_back(std::nullopt);
-            return {MenuInteractionAction::state_changed, {}};
+            /*
+             * Keyboard and geometry adapters intentionally share the same semantic transaction. The key
+             * interpreter decides only that the current gesture means "open this selected submenu"; the
+             * controller method below owns validation, path construction and child-selection initialization.
+             */
+            return openPopupSubmenu(
+                bar,
+                popup_selections_.size() - 1U,
+                *interpreted.selection);
         }
 
         case MenuPopupKeyAction::close_menu:

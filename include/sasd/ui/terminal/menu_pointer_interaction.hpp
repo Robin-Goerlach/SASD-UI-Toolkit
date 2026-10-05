@@ -25,18 +25,18 @@ namespace sasd::ui::terminal {
  *   rebuild presentation and delay application callbacks without learning a terminal-specific state machine.
  *
  * Stateless handling preserves the established press-only selection behavior. Stateful handling additionally
- * gives command items desktop-style press/release activation: press selects and arms one popup identity,
- * release activates only when it lands on that same row and the backend-neutral controller can still prove
- * that the row is the selected live command. Submenu opening remains a separate later gesture policy.
+ * gives popup items desktop-style press/release completion: press selects and arms one popup identity, and a
+ * matching release asks the backend-neutral controller to open that selected submenu or activate that selected
+ * Command. The adapter never inspects MenuItemKind itself; Core remains the single owner of semantic proof.
  */
 class TerminalMenuPointerInteraction final {
 public:
     /**
-     * Host-owned transient state for one possible popup command click.
+     * Host-owned transient state for one possible popup item click.
      *
      * Only presentation value identity (popup level + row index) is retained. No MenuModel, MenuItem, Command,
      * Widget, terminal device, or frame pointer survives between events. The release transaction resolves and
-     * validates the current semantic model again before any activation can be returned.
+     * validates the current semantic model again before any completion can be returned.
      */
     class GestureState final {
     public:
@@ -62,8 +62,8 @@ public:
      * Stateless pointer handling preserving the existing atomic row-selection behavior.
      *
      * Primary press can open/switch a top-level menu, select an enabled popup row, or dismiss an active menu
-     * from outside. Releases remain consumed while a menu is active but cannot activate Commands because this
-     * overload intentionally retains no press identity between events.
+     * from outside. Releases remain consumed while a menu is active but cannot activate Commands or open child
+     * popups because this overload intentionally retains no press identity between events.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -75,21 +75,23 @@ public:
     }
 
     /**
-     * Stateful pointer handling that additionally activates a selected Command on matching Primary release.
+     * Stateful pointer handling that completes a selected popup item on matching Primary release.
      *
      * A Primary press on a visible popup row first performs the same selectPopupItem() transaction as the
      * stateless overload and records only that painted level/row identity. Motion does not change the armed
-     * identity. A later Primary release must hit the exact same topmost popup row; otherwise activation is
+     * identity. A later Primary release must hit the exact same topmost popup row; otherwise completion is
      * cancelled while the menu remains active.
      *
-     * Even a matching geometric release is only a request. MenuInteractionController::activatePopupItem()
-     * re-normalizes the semantic tree, requires that exact row to remain selected in the deepest open popup,
-     * and accepts only a live enabled Command. On success the controller closes all menu state and returns a
-     * lifetime-safe Command::Reference without executing client code. The host can therefore repaint the
-     * closed menu before executing the command, exactly like keyboard activation.
+     * Even a matching geometric release is only a request. The adapter first asks
+     * MenuInteractionController::openPopupSubmenu() whether the selected live item owns a child popup. A
+     * successful submenu request opens exactly one child level with no initial selection. If no submenu
+     * transition applies, activatePopupItem() independently proves whether the same identity is a selected
+     * live enabled Command. Command success closes all menu state and returns a lifetime-safe
+     * Command::Reference without executing client code, so the host can repaint before callbacks run.
      *
-     * Separator, disabled and submenu rows may still be consumed/selected according to existing press policy,
-     * but release never activates them. Submenu opening is intentionally deferred to a later semantic slice.
+     * Separator and disabled rows remain consumed but cannot complete semantically. An already-open submenu
+     * is a no-op and preserves its descendants. Hover selection and delayed submenu opening remain separate
+     * future policies; this overload adds only explicit click/release opening.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -154,7 +156,7 @@ private:
                     if (gesture_state != nullptr && controller.isActive()) {
                         /*
                          * Store presentation value identity only. Release will re-hit-test the current frame
-                         * and ask Core to validate current selection/item semantics before activation.
+                         * and ask Core to validate current selection/item semantics before completion.
                          */
                         gesture_state->pressed_popup_item_ = *popup_hit;
                     }
@@ -214,15 +216,34 @@ private:
                 const TerminalMenuPopupHit pressed = *gesture_state->pressed_popup_item_;
 
                 /*
-                 * Retire the physical press identity before asking Core for activation. Even a successful
-                 * result may later execute arbitrary application code after the host repaints, so no gesture
-                 * residue should survive past this release transaction.
+                 * Retire the physical press identity before asking Core for completion. A successful Command
+                 * result may later execute arbitrary application code after the host repaints, while a submenu
+                 * result changes presentation geometry. Neither transition may inherit stale press residue.
                  */
                 gesture_state->reset();
 
                 const auto release_hit =
                     TerminalMenuHitTest::popupItemAt(frame, event.position, ambiguous_width);
                 if (release_hit.has_value() && *release_hit == pressed) {
+                    /*
+                     * The terminal adapter intentionally does not inspect MenuItemKind. Ask Core first whether
+                     * this selected identity is an enabled submenu; if so, opening one child is the complete
+                     * semantic result of the click. Any normalization repair is also returned immediately so a
+                     * pre-repair pointer identity cannot fall through and acquire a different meaning.
+                     */
+                    MenuInteractionResult submenu_result = controller.openPopupSubmenu(
+                        bar,
+                        pressed.level,
+                        pressed.item_index);
+                    if (submenu_result.action != MenuInteractionAction::none) {
+                        return submenu_result;
+                    }
+
+                    /*
+                     * If no submenu transition applies, the same exact identity may be a Command. The
+                     * activation transaction performs its own current-model proof, closes menu state on
+                     * success and returns only a lifetime-safe reference for delayed host execution.
+                     */
                     return controller.activatePopupItem(
                         bar,
                         pressed.level,
@@ -230,7 +251,7 @@ private:
                 }
 
                 /*
-                 * Release on another row/outside cancels activation but remains inside the active menu's
+                 * Release on another row/outside cancels completion but remains inside the active menu's
                  * modal pointer scope. Selection established by the press is intentionally preserved.
                  */
                 return MenuInteractionResult{};
@@ -238,7 +259,7 @@ private:
 
             /*
              * Stateless callers and title presses have no armed popup identity. Preserve the existing rule
-             * that releases are consumed while the transient menu is active without inventing activation.
+             * that releases are consumed while the transient menu is active without inventing completion.
              */
             return MenuInteractionResult{};
         }
