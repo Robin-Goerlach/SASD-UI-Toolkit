@@ -24,10 +24,18 @@ namespace sasd::ui::terminal {
  * - state_changed/activate_command/closed reuse the existing MenuInteractionAction vocabulary so hosts can
  *   rebuild presentation and delay application callbacks without learning a terminal-specific state machine.
  *
- * Stateless handling preserves the established press-only selection behavior. Stateful handling additionally
- * gives popup items desktop-style press/release completion: press selects and arms one popup identity, and a
- * matching release asks the backend-neutral controller to open that selected submenu or activate that selected
- * Command. The adapter never inspects MenuItemKind itself; Core remains the single owner of semantic proof.
+ * Pointer motion over a visible popup row is translated into the same backend-neutral selectPopupItem()
+ * transaction used by a Primary press. The adapter therefore owns only terminal geometry; Core still proves
+ * whether the row is currently selectable and whether selecting it invalidates deeper popup descendants.
+ * Motion does not open submenus and does not activate Commands. Whether the terminal produces only
+ * button-held motion (xterm mode 1002) or future passive/all-motion reports is a TerminalSession protocol
+ * policy and intentionally remains outside this semantic adapter.
+ *
+ * Stateful handling additionally gives popup items desktop-style press/release completion: press selects and
+ * arms one popup identity, and a matching release asks the backend-neutral controller to open that selected
+ * submenu or activate that selected Command. Motion may change semantic selection while deliberately leaving
+ * the armed press identity unchanged. A later release can therefore complete only when geometry and current
+ * Core selection still prove the originally armed item; motion never silently retargets a click.
  */
 class TerminalMenuPointerInteraction final {
 public:
@@ -59,11 +67,12 @@ public:
     TerminalMenuPointerInteraction() = delete;
 
     /**
-     * Stateless pointer handling preserving the existing atomic row-selection behavior.
+     * Stateless pointer handling for menu selection and modal consumption.
      *
      * Primary press can open/switch a top-level menu, select an enabled popup row, or dismiss an active menu
-     * from outside. Releases remain consumed while a menu is active but cannot activate Commands or open child
-     * popups because this overload intentionally retains no press identity between events.
+     * from outside. Pointer motion over an active popup can select a row but never opens/activates it. Releases
+     * remain consumed while a menu is active but cannot activate Commands or open child popups because this
+     * overload intentionally retains no press identity between events.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -78,9 +87,10 @@ public:
      * Stateful pointer handling that completes a selected popup item on matching Primary release.
      *
      * A Primary press on a visible popup row first performs the same selectPopupItem() transaction as the
-     * stateless overload and records only that painted level/row identity. Motion does not change the armed
-     * identity. A later Primary release must hit the exact same topmost popup row; otherwise completion is
-     * cancelled while the menu remains active.
+     * stateless overload and records only that painted level/row identity. Motion can update Core's current
+     * row selection, but deliberately does not rewrite the armed identity. A later Primary release must hit
+     * the exact same topmost popup row and Core must still prove that identity as the current selection;
+     * otherwise completion is cancelled while the menu remains active.
      *
      * Even a matching geometric release is only a request. The adapter first asks
      * MenuInteractionController::openPopupSubmenu() whether the selected live item owns a child popup. A
@@ -90,8 +100,8 @@ public:
      * Command::Reference without executing client code, so the host can repaint before callbacks run.
      *
      * Separator and disabled rows remain consumed but cannot complete semantically. An already-open submenu
-     * is a no-op and preserves its descendants. Hover selection and delayed submenu opening remain separate
-     * future policies; this overload adds only explicit click/release opening.
+     * is a no-op and preserves its descendants. Motion-driven selection does not add delayed submenu opening,
+     * menu-bar title switching, or passive terminal tracking; those are separate policies.
      */
     [[nodiscard]] static std::optional<MenuInteractionResult>
     handle(const MenuBarModel& bar,
@@ -264,6 +274,35 @@ private:
             return MenuInteractionResult{};
         }
 
+        if (event.action == PointerAction::move) {
+            if (!active_before) {
+                return std::nullopt;
+            }
+
+            /*
+             * Motion uses the same topmost-popup geometry as press handling, but it is deliberately only a
+             * selection transaction. This keeps terminal-specific coordinates out of Core and lets the
+             * controller enforce semantic availability plus parent/child path coherence. In particular,
+             * moving to a different ancestor row can close descendants that no longer belong to the selected
+             * parent, while moving over the currently owning submenu preserves that valid child route.
+             */
+            if (const auto popup_hit =
+                    TerminalMenuHitTest::popupItemAt(frame, event.position, ambiguous_width);
+                popup_hit.has_value()) {
+                return controller.selectPopupItem(
+                    bar,
+                    popup_hit->level,
+                    popup_hit->item_index);
+            }
+
+            /*
+             * Moving across menu chrome, a title, or outside the popup surface remains modal/consumed while
+             * interaction is active but does not clear the current row selection. Title-hover switching and
+             * delayed submenu policy are intentionally separate decisions rather than side effects here.
+             */
+            return MenuInteractionResult{};
+        }
+
         if (gesture_state != nullptr && event.action == PointerAction::press) {
             /*
              * A non-primary press interrupts the pending primary click transaction even though this slice does
@@ -273,10 +312,10 @@ private:
         }
 
         /*
-         * Active menus form a transient modal pointer scope. Motion and currently unsupported pointer
-         * transitions are consumed without changing semantic state so they cannot leak through popup chrome
-         * into Widgets underneath. Motion deliberately leaves an armed primary identity intact: moving away
-         * and back before releasing on the original row is still a valid click completion.
+         * Active menus form a transient modal pointer scope. Currently unsupported non-motion transitions are
+         * consumed without changing semantic state so they cannot leak through popup chrome into Widgets
+         * underneath. Pointer motion has already been handled above and intentionally leaves any armed Primary
+         * identity intact while updating only Core's current row selection.
          */
         return active_before
                    ? std::optional<MenuInteractionResult>{MenuInteractionResult{}}
