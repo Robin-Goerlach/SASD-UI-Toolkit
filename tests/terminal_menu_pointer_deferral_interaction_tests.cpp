@@ -1,6 +1,8 @@
 #include "test_framework.hpp"
 
+#include <sasd/ui/terminal/menu_close_interaction.hpp>
 #include <sasd/ui/terminal/menu_frame_builder.hpp>
+#include <sasd/ui/terminal/menu_hover_interaction.hpp>
 #include <sasd/ui/terminal/menu_pointer_deferral_interaction.hpp>
 #include <sasd/ui/terminal/menu_pointer_intent.hpp>
 #include <sasd/ui/terminal/menu_pointer_interaction.hpp>
@@ -72,6 +74,7 @@ widenedRightOpeningFrame(const MenuBarModel& bar,
      */
     frame->popups[1].origin.x = static_cast<Coordinate>(
         frame->popups[0].origin.x + parent_size->size.width + 10);
+    frame->popups[1].origin.y = frame->popups[0].origin.y;
     return *frame;
 }
 
@@ -367,4 +370,267 @@ TEST_CASE("Terminal menu pointer deferral rejects negative switch delay configur
     }
 
     CHECK(threw);
+}
+
+TEST_CASE("Terminal menu pointer pipeline cancels a deferred sibling when the child is reached before deadline") {
+    Command child_item{"Child"};
+    Command sibling{"Sibling row with deliberately wide presentation"};
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    makeChildTall(tools, child_item, 8U);
+    file.appendCommand(sibling);
+
+    MenuInteractionController controller;
+    openToolsSubmenu(bar, controller);
+    MenuFramePresentationSnapshot frame = widenedRightOpeningFrame(bar, controller);
+
+    TerminalMenuPointerIntent pointer_intent;
+
+    TerminalMenuPointerDeferralOptions deferral_options;
+    deferral_options.submenu_switch_delay = 100ms;
+    TerminalMenuPointerDeferralInteraction deferral{deferral_options};
+
+    TerminalMenuHoverOptions hover_options;
+    hover_options.submenu_open_delay = 250ms;
+    TerminalMenuHoverInteraction hover{hover_options};
+
+    TerminalMenuCloseOptions close_options;
+    close_options.submenu_close_delay = 150ms;
+    TerminalMenuCloseInteraction close_grace{close_options};
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const TerminalMenuPointerDeferralInteraction::TimePoint t0{};
+
+    /*
+     * Establish the same pre-interaction anchor used by the demo, then run the sample through the normal
+     * immediate adapter and the two post-interaction timing policies. The owning Tools row is already selected,
+     * so Core preserves the open child; hover may remember the row, while close grace remains idle.
+     */
+    const PointerEvent anchor = pointerMove(parentRowNearChildEdge(frame, 0U));
+    const auto anchor_intent = pointer_intent.observe(controller, frame, anchor);
+    CHECK(anchor_intent == TerminalMenuPointerIntentKind::none);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           anchor,
+                           anchor_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0) == TerminalMenuPointerDeferralDecision::process_now);
+
+    const auto anchor_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        frame,
+        anchor,
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(anchor_result.has_value());
+    hover.observe(controller, frame, anchor, AmbiguousWidthMode::narrow, t0);
+    close_grace.observe(controller, frame, anchor, AmbiguousWidthMode::narrow, t0);
+    CHECK(controller.popupDepth() == 2U);
+
+    /*
+     * The diagonal path now crosses the sibling row. Intent qualifies that geometry and deferral owns the
+     * sample, so the host must NOT call TerminalMenuPointerInteraction yet. Just like the demo, clear the
+     * unrelated hover-open and gap-close candidates because neither policy should inherit a deliberately
+     * suppressed sibling sample.
+     */
+    const PointerEvent sibling_move = pointerMove(parentRowNearChildEdge(frame, 1U));
+    const auto sibling_intent = pointer_intent.observe(controller, frame, sibling_move);
+    CHECK(sibling_intent == TerminalMenuPointerIntentKind::toward_open_submenu);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           sibling_move,
+                           sibling_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0 + 10ms) == TerminalMenuPointerDeferralDecision::defer);
+    hover.reset();
+    close_grace.reset();
+
+    CHECK(deferral.hasPendingEvent());
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+
+    /*
+     * Reaching the actual child before 100 ms completes the transfer. PointerIntent retires its anchor and the
+     * deferral policy discards the withheld sibling. The child motion then flows immediately through the same
+     * adapter/timing sequence as any physical event, proving that no replay is required to recover normal input.
+     */
+    const PointerEvent child_move = pointerMove(popupRowPoint(frame, 1U, 0U));
+    const auto child_intent = pointer_intent.observe(controller, frame, child_move);
+    CHECK(child_intent == TerminalMenuPointerIntentKind::none);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           child_move,
+                           child_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0 + 60ms) == TerminalMenuPointerDeferralDecision::process_now);
+    CHECK(!deferral.hasPendingEvent());
+
+    const auto child_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        frame,
+        child_move,
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(child_result.has_value());
+    CHECK(child_result->action == MenuInteractionAction::state_changed);
+    hover.observe(controller, frame, child_move, AmbiguousWidthMode::narrow, t0 + 60ms);
+    close_grace.observe(controller, frame, child_move, AmbiguousWidthMode::narrow, t0 + 60ms);
+
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+    CHECK(!close_grace.hasPendingCandidate());
+
+    /*
+     * Move the host clock beyond every old deadline. The cancelled sibling must never reappear, close grace has
+     * no stale transaction, and hover merely asks Core whether the selected child command is a submenu (it is
+     * not). The open Tools route therefore remains stable after all delayed policies have had a chance to run.
+     */
+    CHECK(!deferral.advance(controller,
+                            frame,
+                            AmbiguousWidthMode::narrow,
+                            t0 + 200ms).has_value());
+    CHECK(close_grace.advance(bar, controller, t0 + 220ms).action ==
+          MenuInteractionAction::none);
+    CHECK(hover.advance(bar, controller, t0 + 400ms).action ==
+          MenuInteractionAction::none);
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
+}
+
+TEST_CASE("Terminal menu pointer pipeline leaves safe-triangle gap motion immediate so close grace owns it") {
+    Command child_item{"Child"};
+    Command sibling{"Sibling row with deliberately wide presentation"};
+
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    MenuModel& tools = file.appendSubmenu("Tools");
+    makeChildTall(tools, child_item, 8U);
+    file.appendCommand(sibling);
+
+    MenuInteractionController controller;
+    openToolsSubmenu(bar, controller);
+    MenuFramePresentationSnapshot frame = widenedRightOpeningFrame(bar, controller);
+
+    TerminalMenuPointerIntent pointer_intent;
+
+    TerminalMenuPointerDeferralOptions deferral_options;
+    deferral_options.submenu_switch_delay = 100ms;
+    TerminalMenuPointerDeferralInteraction deferral{deferral_options};
+
+    TerminalMenuHoverOptions hover_options;
+    hover_options.submenu_open_delay = 250ms;
+    TerminalMenuHoverInteraction hover{hover_options};
+
+    TerminalMenuCloseOptions close_options;
+    close_options.submenu_close_delay = 120ms;
+    TerminalMenuCloseInteraction close_grace{close_options};
+
+    TerminalMenuPointerInteraction::GestureState gesture;
+    const TerminalMenuPointerDeferralInteraction::TimePoint t0{};
+
+    const PointerEvent anchor = pointerMove(parentRowNearChildEdge(frame, 0U));
+    const auto anchor_intent = pointer_intent.observe(controller, frame, anchor);
+    CHECK(anchor_intent == TerminalMenuPointerIntentKind::none);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           anchor,
+                           anchor_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0) == TerminalMenuPointerDeferralDecision::process_now);
+    (void)TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        frame,
+        anchor,
+        AmbiguousWidthMode::narrow,
+        gesture);
+    hover.observe(controller, frame, anchor, AmbiguousWidthMode::narrow, t0);
+    close_grace.observe(controller, frame, anchor, AmbiguousWidthMode::narrow, t0);
+
+    const auto parent_size = measureMenuPopupPresentation(frame.popups.at(0).snapshot);
+    CHECK(parent_size.has_value());
+    const Coordinate parent_right = static_cast<Coordinate>(
+        frame.popups.at(0).origin.x + parent_size->size.width - 1);
+    const Coordinate child_left = frame.popups.at(1).origin.x;
+    CHECK(child_left > parent_right + 1);
+
+    const Point gap_point{
+        static_cast<Coordinate>(parent_right + (child_left - parent_right) / 2),
+        static_cast<Coordinate>(frame.popups.at(0).origin.y + 1),
+    };
+    CHECK(!TerminalMenuHitTest::popupItemAt(
+               frame,
+               gap_point,
+               AmbiguousWidthMode::narrow).has_value());
+
+    /*
+     * The gap still lies inside the geometric safe triangle, so PointerIntent remains positive. Deferral must
+     * nevertheless return process_now because no sibling parent row is threatened. Immediate menu handling then
+     * consumes the modal motion without changing Core, hover timing clears, and close grace becomes the sole
+     * owner of the short parent-to-child gap.
+     */
+    const PointerEvent gap_move = pointerMove(gap_point);
+    const auto gap_intent = pointer_intent.observe(controller, frame, gap_move);
+    CHECK(gap_intent == TerminalMenuPointerIntentKind::toward_open_submenu);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           gap_move,
+                           gap_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0 + 20ms) == TerminalMenuPointerDeferralDecision::process_now);
+    CHECK(!deferral.hasPendingEvent());
+
+    const auto gap_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        frame,
+        gap_move,
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(gap_result.has_value());
+    CHECK(gap_result->action == MenuInteractionAction::none);
+    hover.observe(controller, frame, gap_move, AmbiguousWidthMode::narrow, t0 + 20ms);
+    close_grace.observe(controller, frame, gap_move, AmbiguousWidthMode::narrow, t0 + 20ms);
+    CHECK(!hover.hasPendingCandidate());
+    CHECK(close_grace.hasPendingCandidate());
+    CHECK(controller.popupDepth() == 2U);
+
+    /*
+     * Arriving in the child before the 120 ms close deadline cancels the gap transaction. This verifies the
+     * architectural handoff: safe-triangle deferral protects only sibling replacement, while ordinary gap
+     * transfer remains immediate and is protected by TerminalMenuCloseInteraction instead.
+     */
+    const PointerEvent child_move = pointerMove(popupRowPoint(frame, 1U, 0U));
+    const auto child_intent = pointer_intent.observe(controller, frame, child_move);
+    CHECK(child_intent == TerminalMenuPointerIntentKind::none);
+    CHECK(deferral.observe(controller,
+                           frame,
+                           child_move,
+                           child_intent,
+                           AmbiguousWidthMode::narrow,
+                           t0 + 80ms) == TerminalMenuPointerDeferralDecision::process_now);
+
+    const auto child_result = TerminalMenuPointerInteraction::handle(
+        bar,
+        controller,
+        frame,
+        child_move,
+        AmbiguousWidthMode::narrow,
+        gesture);
+    CHECK(child_result.has_value());
+    hover.observe(controller, frame, child_move, AmbiguousWidthMode::narrow, t0 + 80ms);
+    close_grace.observe(controller, frame, child_move, AmbiguousWidthMode::narrow, t0 + 80ms);
+    CHECK(!close_grace.hasPendingCandidate());
+
+    CHECK(close_grace.advance(bar, controller, t0 + 200ms).action ==
+          MenuInteractionAction::none);
+    CHECK(controller.popupDepth() == 2U);
+    CHECK(controller.popupPath() == std::optional<MenuPath>{MenuPath{0U}});
+    CHECK(controller.popupSelection() == std::optional<std::size_t>{0U});
 }
