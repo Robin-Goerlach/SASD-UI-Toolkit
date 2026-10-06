@@ -61,6 +61,18 @@ public:
     }
 
     /**
+     * Measures the intrinsic presentation size of a non-editable ComboBox displaying utf8_text.
+     *
+     * The compatibility default is plain text measurement, keeping existing/custom contexts source-
+     * compatible while the M4 control foundation lands. Terminal/rendered/native contexts may override
+     * this to include drop indicator, border, padding or peer chrome. ComboBox asks this hook for every
+     * owned item and keeps the component-wise maximum so selection changes do not resize the control.
+     */
+    [[nodiscard]] virtual Size measureComboBox(std::string_view utf8_text) const {
+        return measureText(utf8_text);
+    }
+
+    /**
      * Measures the intrinsic presentation size of a single-line TextField containing utf8_text.
      *
      * The default falls back to plain text measurement. Backends may override this to add control

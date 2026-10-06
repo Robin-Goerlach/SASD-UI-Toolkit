@@ -22,6 +22,7 @@ add_library(sasd_ui_core
     src/box_layout.cpp
     src/button.cpp
     src/check_box.cpp
+    src/combo_box.cpp
     src/radio_button.cpp
     src/radio_group.cpp
     src/radio_group_navigation.cpp
