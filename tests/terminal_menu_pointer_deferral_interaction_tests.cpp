@@ -404,11 +404,14 @@ TEST_CASE("Terminal menu pointer pipeline cancels a deferred sibling when the ch
     const TerminalMenuPointerDeferralInteraction::TimePoint t0{};
 
     /*
-     * Establish the same pre-interaction anchor used by the demo, then run the sample through the normal
-     * immediate adapter and the two post-interaction timing policies. The owning Tools row is already selected,
-     * so Core preserves the open child; hover may remember the row, while close grace remains idle.
+     * The synthetic path deliberately anchors inside the owning row rather than at its final rightmost cell.
+     * Terminal intent works with integer cell coordinates: a sibling hit at the same x coordinate as a
+     * right-edge anchor is vertically below the triangle apex and therefore correctly lies outside the
+     * corridor. Starting from an interior cell gives this test real horizontal progress toward the child while
+     * crossing the sibling, which is the diagonal transfer scenario the safe-triangle policy is meant to cover.
+     * The sample is then run through the normal immediate adapter and both post-interaction timing policies.
      */
-    const PointerEvent anchor = pointerMove(parentRowNearChildEdge(frame, 0U));
+    const PointerEvent anchor = pointerMove(popupRowPoint(frame, 0U, 0U));
     const auto anchor_intent = pointer_intent.observe(controller, frame, anchor);
     CHECK(anchor_intent == TerminalMenuPointerIntentKind::none);
     CHECK(deferral.observe(controller,
