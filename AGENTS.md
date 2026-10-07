@@ -98,6 +98,50 @@ For normal code, test and documentation tasks, Codex may autonomously:
 - merge its own PR **only when the task/user authorization permits autonomous merging and all required
   checks are green**.
 
+### Git and GitHub authorization
+
+For ordinary repository development, Codex is explicitly authorized to perform the following Git and
+GitHub operations without asking the repository owner for confirmation:
+
+- inspect repository state, history, branches, remotes, commits and diffs;
+- inspect GitHub repository, issue, pull-request and CI state;
+- fetch and prune `origin`;
+- fast-forward local `main` from `origin/main`;
+- create and switch to a dedicated task branch;
+- stage only files belonging to the current task;
+- create normal incremental commits;
+- push the current non-`main` task branch to `origin`;
+- set the upstream of the current task branch when needed;
+- create and update a pull request for the current task;
+- inspect and wait for GitHub Actions / CI results;
+- update the task branch to repair failures caused by the current change.
+
+These operations are pre-authorized. Do not ask for confirmation merely because they modify `.git`,
+contact GitHub, create commits, push a task branch, or create/update a pull request.
+
+Before every push:
+
+1. run `git status`;
+2. inspect the staged/current diff;
+3. run the relevant tests;
+4. ensure the current branch is not `main`;
+5. push only the current task branch.
+
+Never autonomously:
+
+- push directly to `main`;
+- use `git push --force`, `git push -f` or `git push --force-with-lease`;
+- use `git reset --hard` or destructive `git clean` variants;
+- discard unrelated local changes;
+- amend or rewrite already-pushed commits;
+- rebase published history;
+- create, move or delete tags;
+- create or delete GitHub releases;
+- change repository settings, secrets, variables or permissions;
+- invoke arbitrary write operations through `gh api`;
+- merge a pull request unless the task explicitly authorizes autonomous merging and all required checks
+  are green.
+
 Always stop and ask instead of guessing when:
 
 - the requested behavior is genuinely ambiguous and alternatives change public semantics;
