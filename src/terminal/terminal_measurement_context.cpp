@@ -27,6 +27,24 @@ Size TerminalMeasurementContext::measureButton(std::string_view utf8_text) const
     return {width, measured.rows};
 }
 
+Size TerminalMeasurementContext::measureComboBox(std::string_view utf8_text) const {
+    const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
+
+    /*
+     * Collapsed ComboBox presentation is "[ choice v ]". The six fixed cells are the two
+     * delimiters, the leading/trailing interior gaps, one gap before the indicator and the ASCII
+     * drop indicator itself. Saturating mirrors the other terminal control-specific measurements.
+     */
+    constexpr Coordinate chrome_width = 6;
+    const Coordinate maximum = std::numeric_limits<Coordinate>::max();
+    const Coordinate width =
+        measured.columns > maximum - chrome_width
+            ? maximum
+            : static_cast<Coordinate>(measured.columns + chrome_width);
+
+    return {width, measured.rows};
+}
+
 Size TerminalMeasurementContext::measureCheckBox(std::string_view utf8_text) const {
     const TextMeasurement measured = TextMetrics::measureUtf8(utf8_text, ambiguous_width_);
 

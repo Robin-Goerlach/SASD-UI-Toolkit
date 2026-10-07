@@ -2,6 +2,7 @@
 
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
@@ -457,6 +458,102 @@ PresentationUpdateResult renderRadioButton(ScreenBuffer& buffer,
     return result;
 }
 
+PresentationUpdateResult renderComboBox(ScreenBuffer& buffer,
+                                        const ComboBox& combo,
+                                        AmbiguousWidthMode ambiguous_width) {
+    const AbsoluteRect rect = absoluteRectOf(combo);
+
+    if (!combo.isVisible() || rect.width <= 0 || rect.height <= 0) {
+        clearRect(buffer, rect);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    const std::optional<std::string_view> selected = combo.selectedText();
+    if (selected.has_value()) {
+        const TextMeasurement measurement = TextMetrics::measureUtf8(*selected, ambiguous_width);
+
+        /*
+         * The semantic control keeps arbitrary UTF-8, but this first terminal presentation is one
+         * cell row and relies on ScreenBuffer's simple-scalar model. Preflight before touching the
+         * old frame so unsupported combining/control/multiline text remains lossless and pending.
+         */
+        if (!measurement.simpleCellRenderable() || measurement.rows != 1) {
+            return PresentationUpdateResult::deferred;
+        }
+    }
+
+    TextStyle style = combo.textStyle();
+    if (!combo.isEnabled()) {
+        style.dim = true;
+    } else if (combo.hasFocus()) {
+        style.inverse = true;
+    }
+
+    /*
+     * Paint the full arranged rectangle with styled blanks first. Selection can become shorter than
+     * the widest measured item, and an expanding layout may allocate extra width; clearing the whole
+     * rectangle prevents stale text while keeping focus/disabled styling visually contiguous.
+     */
+    clearRect(buffer, rect, Cell{U' ', CellRole::normal, style});
+
+    char left = '[';
+    char right = ']';
+    if (!combo.isEnabled()) {
+        left = '(';
+        right = ')';
+    } else if (combo.hasFocus()) {
+        left = '>';
+        right = '<';
+    }
+
+    writeNarrowCell(buffer, rect.x, rect.y, static_cast<char32_t>(left), style);
+    if (rect.width >= 2) {
+        writeNarrowCell(buffer,
+                        rect.x + rect.width - 1,
+                        rect.y,
+                        static_cast<char32_t>(right),
+                        style);
+    }
+
+    /*
+     * The indicator is anchored to the right edge rather than appended after the selected text. This
+     * keeps it stationary when selection changes between short and long items. Very narrow externally
+     * constrained rectangles degrade conservatively: border cells still paint, and the indicator is
+     * emitted only when it cannot collide with both borders.
+     */
+    if (rect.width >= 4) {
+        writeNarrowCell(buffer, rect.x + rect.width - 3, rect.y, U'v', style);
+    }
+
+    constexpr std::int64_t fixed_chrome_width = 6;
+    const std::int64_t text_width =
+        rect.width > fixed_chrome_width ? rect.width - fixed_chrome_width : 0;
+    if (!selected.has_value() || text_width <= 0) {
+        return PresentationUpdateResult::synchronized;
+    }
+
+    std::int64_t total_columns = 0;
+    const std::vector<ScalarLayout> scalars =
+        layoutTextScalars(*selected, ambiguous_width, total_columns);
+    static_cast<void>(total_columns);
+
+    for (const ScalarLayout& scalar : scalars) {
+        if (scalar.column >= text_width || scalar.column + scalar.width > text_width) {
+            /* Never emit half of a wide glyph at the selection viewport boundary. */
+            break;
+        }
+
+        writeScalar(buffer,
+                    rect.x + 2 + scalar.column,
+                    rect.y,
+                    scalar.value,
+                    scalar.width,
+                    style);
+    }
+
+    return PresentationUpdateResult::synchronized;
+}
+
 /**
  * Derives a terminal selection overlay without changing the semantic TextStyle contract.
  *
@@ -637,6 +734,10 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
         }
 
         return rendered.update;
+    }
+
+    if (const auto* combo = dynamic_cast<const ComboBox*>(&widget)) {
+        return renderComboBox(buffer_, *combo, ambiguous_width_);
     }
 
     if (const auto* check_box = dynamic_cast<const CheckBox*>(&widget)) {

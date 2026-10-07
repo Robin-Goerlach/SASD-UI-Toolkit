@@ -43,6 +43,17 @@ public:
     [[nodiscard]] Size measureButton(std::string_view utf8_text) const override;
 
     /**
+     * Measures the collapsed terminal ComboBox as stable ASCII chrome around selected text:
+     *
+     *     [ choice v ]
+     *
+     * Six fixed cells cover delimiters, spacing and the right-aligned drop indicator. The selected
+     * value itself is measured by terminal cell width, and focus/disabled presentation preserves the
+     * same footprint so changing interaction state never causes a layout jump.
+     */
+    [[nodiscard]] Size measureComboBox(std::string_view utf8_text) const override;
+
+    /**
      * Measures terminal CheckBox presentation as a three-cell indicator plus one separating cell:
      *
      *     [x] caption
