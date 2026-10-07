@@ -1,6 +1,7 @@
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
@@ -15,6 +16,7 @@
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/shortcut.hpp>
+#include <sasd/ui/terminal/combo_box_popup_presentation.hpp>
 #include <sasd/ui/terminal/menu_close_interaction.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
 #include <sasd/ui/terminal/menu_frame_builder.hpp>
@@ -33,12 +35,17 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <limits>
+#include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <variant>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -46,6 +53,58 @@ namespace {
 
 using namespace sasd::ui;
 using namespace sasd::ui::terminal;
+
+/**
+ * Returns the terminal content viewport reserved for ordinary Widgets and transient form popups.
+ *
+ * Row zero belongs to the persistent menu bar. Keeping that reservation as an explicit Rect is more
+ * than a layout convenience: ComboBox popup placement must obey the same boundary or an above-opening
+ * popup could be positioned underneath menu chrome and become only partially visible.
+ */
+[[nodiscard]] Rect formContentViewport(Size terminal_size) noexcept {
+    return Rect{
+        0,
+        1,
+        terminal_size.width,
+        std::max<Coordinate>(0, terminal_size.height - 1),
+    };
+}
+
+/**
+ * Resolves one Widget's arranged bounds into the demo's top-level terminal coordinate system.
+ *
+ * The reusable popup presentation API intentionally accepts an already-resolved anchor instead of
+ * walking the visual tree itself. That keeps Widget-tree knowledge in the host/presentation boundary.
+ * This demo helper mirrors the toolkit's renderers by accumulating parent offsets in 64 bits and
+ * failing closed when a pathological tree cannot be represented by the public Coordinate type.
+ */
+[[nodiscard]] std::optional<Rect> absoluteWidgetBounds(const Widget& widget) noexcept {
+    std::int64_t x = static_cast<std::int64_t>(widget.bounds().x);
+    std::int64_t y = static_cast<std::int64_t>(widget.bounds().y);
+
+    for (const Container* parent = widget.parent();
+         parent != nullptr;
+         parent = parent->parent()) {
+        x += static_cast<std::int64_t>(parent->bounds().x);
+        y += static_cast<std::int64_t>(parent->bounds().y);
+    }
+
+    const auto minimum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::min());
+    const auto maximum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max());
+
+    if (x < minimum || x > maximum || y < minimum || y > maximum) {
+        return std::nullopt;
+    }
+
+    return Rect{
+        static_cast<Coordinate>(x),
+        static_cast<Coordinate>(y),
+        widget.bounds().width,
+        widget.bounds().height,
+    };
+}
 
 /**
  * Re-measures and arranges the demo form for the current terminal size.
@@ -64,17 +123,16 @@ void layoutForm(Window& window,
                 Size terminal_size) {
     window.arrange({0, 0, terminal_size.width, terminal_size.height});
 
-    const Coordinate content_height =
-        std::max<Coordinate>(0, terminal_size.height - 1);
-    const Size content_size{terminal_size.width, content_height};
+    const Rect content = formContentViewport(terminal_size);
+    const Size content_size{content.width, content.height};
 
     /*
-     * VBox receives only the space below the menu row. Measurement and arrangement therefore agree on
-     * the same available client rectangle even after a terminal resize. Tiny terminals collapse the
-     * client height to zero instead of producing a negative layout extent.
+     * VBox receives only the space below the menu row. Measurement, arrangement and transient form
+     * popup placement therefore agree on the same content rectangle even after a terminal resize.
+     * Tiny terminals collapse the client height to zero instead of producing a negative extent.
      */
     (void)form.measure(metrics, {{0, 0}, content_size});
-    form.arrange({0, 1, terminal_size.width, content_height});
+    form.arrange(content);
 }
 
 } // namespace
@@ -177,6 +235,21 @@ int main() {
         name.setTextStyle(field_style);
 
         /*
+         * ComboBox is the same backend-neutral semantic control used by future Rendered/native hosts.
+         * The terminal popup is not a child Widget: the ordinary sink paints only the collapsed control
+         * and present_current_frame() later composes transient rows over the captured application frame.
+         */
+        auto& surface_label = form.emplace<Label>("ComboBox demo:");
+        surface_label.setTextStyle(name_label_style);
+
+        auto& surface_mode = form.emplace<ComboBox>(
+            std::vector<std::string>{"Portable", "Terminal", "Rendered"});
+        TextStyle combo_style;
+        combo_style.foreground = Color::bright_cyan;
+        surface_mode.setTextStyle(combo_style);
+        (void)surface_mode.setSelectedIndex(0U);
+
+        /*
          * This is the same Core CheckBox class used by the SDL3 example. Terminal-specific indicator
          * text such as "[x]" is supplied by TerminalPresentationSink and never stored in the Widget.
          */
@@ -209,7 +282,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F10 menu. F1 help. Mouse menus + hover/safe-triangle submenus; drag text; double-click+drag selects words.");
+            "F4/Alt+Down opens ComboBox; arrows preview; Enter commits; Escape cancels. F10 menu; F1 help; mouse menus/text selection.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -323,6 +396,14 @@ int main() {
                     : "Greeting style: calm (.)");
         });
 
+        surface_mode.setOnSelectionChanged([&](std::optional<std::size_t>) {
+            const auto selected = surface_mode.selectedText();
+            status.setText(
+                selected.has_value()
+                    ? "ComboBox selection committed: " + std::string{*selected}
+                    : "ComboBox selection cleared");
+        });
+
         hello_style.setOnSelected([&] {
             status.setText("Greeting word selected: Hello");
         });
@@ -344,9 +425,42 @@ int main() {
          * continuing with a stale visible menu would be more confusing than terminating with diagnostics.
          */
         const auto present_current_frame = [&] {
-            const TerminalPresentationFrame base_frame = presentation.captureFrame();
+            TerminalPresentationFrame composed_base = presentation.captureFrame();
+
+            if (surface_mode.isDropDownOpen()) {
+                const auto anchor = absoluteWidgetBounds(surface_mode);
+                if (!anchor.has_value()) {
+                    throw std::runtime_error(
+                        "terminal demo ComboBox anchor cannot be represented");
+                }
+
+                /*
+                 * The application frame remains immutable input to the overlay stage. Popup placement is
+                 * constrained to the form's content viewport, so the persistent menu-bar row can never be
+                 * consumed by an above-opening ComboBox. The returned frame owns its cells and suppresses
+                 * stale caret metadata while the popup transaction is active.
+                 */
+                const auto popup_frame = composeComboBoxPopupFrame(
+                    composed_base,
+                    surface_mode,
+                    *anchor,
+                    formContentViewport(screen.size()),
+                    presentation.ambiguousWidthMode());
+                if (!popup_frame.has_value()) {
+                    throw std::runtime_error(
+                        "terminal demo ComboBox popup cannot be represented in the current content viewport");
+                }
+
+                composed_base = std::move(*popup_frame);
+            }
+
+            /*
+             * Menu chrome is the final overlay stage. Demo interaction below prevents menu mode and the
+             * ComboBox popup from being active simultaneously, but retaining this order still makes the
+             * persistent menu bar authoritative over row zero.
+             */
             const auto composed = composeMenuInteractionFrame(
-                base_frame,
+                composed_base,
                 menu_bar,
                 menu_interaction,
                 {0, 0},
@@ -486,6 +600,17 @@ int main() {
                         menu_pointer_deferral.reset();
                         menu_hover.reset();
                         menu_close.reset();
+
+                        /*
+                         * ComboBox open state is semantic, but its current popup placement is tied to the
+                         * old viewport. Cancel the transient transaction before changing ScreenBuffer/layout
+                         * rather than allowing a now-unplaceable popup to terminate the demo on the next
+                         * composition pass. Reopening seeds preview from the still-committed selection.
+                         */
+                        if (surface_mode.isDropDownOpen()) {
+                            (void)surface_mode.setDropDownOpen(false);
+                        }
+
                         screen.resize(resize->size);
                         layoutForm(window, form, metrics, resize->size);
                         resized = true;
@@ -493,6 +618,16 @@ int main() {
                     }
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        /*
+                         * Popup row pointer semantics are intentionally a later slice. While the keyboard-
+                         * driven ComboBox popup is open, consume terminal pointer samples at this host
+                         * boundary instead of letting visible overlay rows click through to unrelated
+                         * Widgets underneath. Escape/Enter/F4 remain the supported completion paths.
+                         */
+                        if (surface_mode.isDropDownOpen()) {
+                            return;
+                        }
+
                         const bool menu_was_active = menu_interaction.isActive();
                         const bool primary_press_without_widget_capture =
                             !pointer_router.hasCapture() &&
@@ -627,6 +762,15 @@ int main() {
                             if (menu_interaction.isActive()) {
                                 menu_interaction.reset();
                             } else {
+                                /*
+                                 * Menu mode and the ComboBox popup are separate transient overlay scopes.
+                                 * F10 may arrive while ComboBox owns focus; cancel its uncommitted preview
+                                 * before opening the menu so two modal keyboard surfaces never coexist.
+                                 */
+                                if (surface_mode.isDropDownOpen()) {
+                                    (void)surface_mode.setDropDownOpen(false);
+                                }
+
                                 /*
                                  * Modal menu interaction supersedes an in-progress application pointer
                                  * gesture. Releasing Core capture keeps TextField/Button transient state

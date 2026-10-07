@@ -78,13 +78,14 @@ written as lead/continuation pairs and never half-painted.
 `composeComboBoxPopupFrame()` treats `TerminalPresentationFrame` as immutable input.
 
 - closed ComboBox: return an independent value-preserving copy;
-- open ComboBox: build/validate against exactly the base buffer viewport, copy the frame, suppress caret,
-  then render the owned popup snapshot;
+- open ComboBox: build/validate against an explicit host-supplied viewport (or, through the convenience
+  overload, the complete base buffer), copy the frame, suppress caret, then render the owned popup snapshot;
 - failure: return `std::nullopt` and leave the source frame untouched.
 
 Suppressing caret is explicit overlay policy. A correctly focused ComboBox normally means the underlying
 widget frame already has no TextField caret, but the composition boundary must not leak stale caller
-metadata into an active popup.
+metadata into an active popup. The explicit viewport overload lets a host reserve persistent chrome such
+as a menu-bar row without teaching ComboBox or the generic placement helper about that chrome.
 
 ### Consequences
 
@@ -194,13 +195,16 @@ Unicode-Skalare werden immer als Lead-/Continuation-Paar geschrieben.
 `composeComboBoxPopupFrame()` behandelt `TerminalPresentationFrame` als unveränderliche Eingabe.
 
 - ComboBox geschlossen: unabhängige, wertgleiche Kopie zurückgeben;
-- ComboBox offen: gegen exakt den Base-Buffer-Viewport aufbauen/validieren, Frame kopieren, Caret
-  unterdrücken und den owned Popup-Snapshot zeichnen;
+- ComboBox offen: gegen einen explizit vom Host gelieferten Viewport (oder über den Convenience-Overload
+  gegen den vollständigen Base-Buffer) aufbauen/validieren, Frame kopieren, Caret unterdrücken und den
+  owned Popup-Snapshot zeichnen;
 - Fehler: `std::nullopt` und Source-Frame unverändert lassen.
 
 Caret-Unterdrückung ist explizite Overlay-Policy. Bei korrekt fokussierter ComboBox sollte der darunter
 liegende Widget-Frame ohnehin keinen TextField-Caret enthalten; die Composition-Grenze darf jedoch
-keine veralteten Caller-Metadaten durch ein aktives Popup hindurchreichen.
+keine veralteten Caller-Metadaten durch ein aktives Popup hindurchreichen. Der explizite Viewport-Overload
+erlaubt dem Host, persistentes Chrome wie eine Menüzeile zu reservieren, ohne ComboBox oder generische
+Placement-Logik mit diesem Chrome zu koppeln.
 
 ### Konsequenzen
 

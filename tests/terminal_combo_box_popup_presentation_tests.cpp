@@ -246,3 +246,50 @@ TEST_CASE("Terminal ComboBox popup renderer rejects stale preview and geometry t
     CHECK(!renderComboBoxPopupPresentation(buffer, stale));
     CHECK(buffer.at({2, 2}).code_point == U'!');
 }
+
+TEST_CASE("Terminal ComboBox popup composition honors an explicit host-reserved viewport") {
+    OpenComboFixture fixture;
+    CHECK(fixture.combo.setPreviewIndex(1U));
+
+    TerminalPresentationFrame base{ScreenBuffer{{20, 8}}, Point{18, 7}};
+    base.buffer.clear(Cell{U'.'});
+
+    /*
+     * Row zero is reserved for persistent host chrome. Prefer above deliberately: with the complete
+     * buffer the three-row popup could use y=0..2 above an anchor at y=3, but the content viewport
+     * begins at y=1, so above no longer fits and the shared placement policy must fall back below.
+     */
+    const auto composed = composeComboBoxPopupFrame(
+        base,
+        fixture.combo,
+        {3, 3, 10, 1},
+        {0, 1, 20, 7},
+        AmbiguousWidthMode::narrow,
+        presentation::PopupVerticalSide::above);
+
+    CHECK(composed.has_value());
+    CHECK(!composed->caret.has_value());
+
+    /* Reserved row zero remains byte-for-byte base presentation. */
+    CHECK(composed->buffer.at({3, 0}).code_point == U'.');
+
+    /* The popup begins immediately below the anchor at y=4 after above placement is rejected. */
+    CHECK(composed->buffer.at({4, 4}).code_point == U'O');
+    CHECK(composed->buffer.at({4, 5}).code_point == U'T');
+}
+
+TEST_CASE("Terminal ComboBox popup composition rejects a viewport outside the base frame transactionally") {
+    OpenComboFixture fixture;
+    TerminalPresentationFrame base{ScreenBuffer{{12, 5}}, Point{8, 4}};
+    base.buffer.clear(Cell{U'#'});
+
+    const auto composed = composeComboBoxPopupFrame(
+        base,
+        fixture.combo,
+        {1, 1, 8, 1},
+        {0, 1, 20, 4});
+
+    CHECK(!composed.has_value());
+    CHECK(base.buffer.at({2, 2}).code_point == U'#');
+    CHECK(base.caret == std::optional<Point>{Point{8, 4}});
+}

@@ -373,6 +373,7 @@ composeComboBoxPopupFrame(
     const TerminalPresentationFrame& base,
     const ComboBox& combo,
     Rect absolute_anchor,
+    Rect popup_viewport,
     AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow,
     presentation::PopupVerticalSide preferred_side =
         presentation::PopupVerticalSide::below) {
@@ -380,13 +381,22 @@ composeComboBoxPopupFrame(
         return base;
     }
 
-    const Size viewport_size = base.buffer.size();
-    const Rect viewport{0, 0, viewport_size.width, viewport_size.height};
+    /*
+     * A host may reserve terminal cells for persistent chrome (for example row zero for a menu bar).
+     * Placement must never use those cells merely because they exist in ScreenBuffer. Require the
+     * supplied logical popup viewport to be a complete positive-area subset of the base frame so the
+     * placement policy and the final renderer operate in one consistent coordinate space.
+     */
+    if (!combo_box_popup_detail::rectangleInsideBuffer(
+            base.buffer,
+            popup_viewport)) {
+        return std::nullopt;
+    }
 
     const auto snapshot = buildComboBoxPopupPresentation(
         combo,
         absolute_anchor,
-        viewport,
+        popup_viewport,
         ambiguous_width,
         preferred_side);
     if (!snapshot.has_value()) {
@@ -404,6 +414,31 @@ composeComboBoxPopupFrame(
     }
 
     return result;
+}
+
+/**
+ * Convenience composition overload using the complete ScreenBuffer as the popup viewport.
+ *
+ * Hosts with persistent overlay chrome should prefer the explicit-viewport overload above. Keeping this
+ * overload preserves the simple full-surface contract for applications whose complete terminal frame is
+ * available to transient popups.
+ */
+[[nodiscard]] inline std::optional<TerminalPresentationFrame>
+composeComboBoxPopupFrame(
+    const TerminalPresentationFrame& base,
+    const ComboBox& combo,
+    Rect absolute_anchor,
+    AmbiguousWidthMode ambiguous_width = AmbiguousWidthMode::narrow,
+    presentation::PopupVerticalSide preferred_side =
+        presentation::PopupVerticalSide::below) {
+    const Size viewport_size = base.buffer.size();
+    return composeComboBoxPopupFrame(
+        base,
+        combo,
+        absolute_anchor,
+        Rect{0, 0, viewport_size.width, viewport_size.height},
+        ambiguous_width,
+        preferred_side);
 }
 
 } // namespace sasd::ui::terminal
