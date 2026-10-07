@@ -26,11 +26,12 @@ namespace sasd::ui {
  * rather than reinterpreting an old numeric index against unrelated content. Appending one item is
  * intentionally weaker: existing indices remain valid, so the current selection is preserved.
  *
- * While focused, visible and enabled, unmodified Up/Down/Home/End key events navigate the current
- * committed selection immediately. Navigation is non-wrapping. F4 toggles the drop-down intent;
- * Alt+Down opens it and Alt+Up closes it. Entering the open state requires logical focus, and losing
- * focus closes it synchronously. This state is intentionally only the semantic visibility intent:
- * popup placement, preview selection, commit/cancel and pointer hit testing remain later slices.
+ * While closed, unmodified Up/Down/Home/End continue to navigate committed selection immediately.
+ * While open, the same keys move a separate transient preview without notifying committed-selection
+ * observers. Enter commits that preview and closes; Escape closes and discards it. F4 toggles the
+ * drop-down intent, Alt+Down opens it and Alt+Up closes/cancels it. Entering the open state requires
+ * logical focus, and losing focus closes/cancels it synchronously. Popup placement, pointer row hit
+ * testing and native peers remain presentation/backend concerns for later slices.
  */
 class ComboBox final : public Widget {
 public:
@@ -60,6 +61,20 @@ public:
     /** Returns the selected item's UTF-8 text, or std::nullopt when no selection exists. */
     [[nodiscard]] std::optional<std::string_view> selectedText() const noexcept;
 
+    /**
+     * Returns the transient preview index used only while the drop-down is open.
+     *
+     * Opening seeds preview from committed selection. Navigation and future pointer-row interaction
+     * change preview independently; ordinary SelectionChanged notification occurs only if/when the
+     * preview is committed. Closed ComboBoxes maintain the invariant that preview is std::nullopt.
+     */
+    [[nodiscard]] std::optional<std::size_t> previewIndex() const noexcept {
+        return preview_index_;
+    }
+
+    /** Returns the preview item's UTF-8 text, or std::nullopt when no preview exists. */
+    [[nodiscard]] std::optional<std::string_view> previewText() const noexcept;
+
     /** Returns whether this ComboBox currently requests an open drop-down presentation. */
     [[nodiscard]] bool isDropDownOpen() const noexcept { return drop_down_open_; }
 
@@ -71,14 +86,40 @@ public:
      * focus notification before another control takes keyboard ownership, and ComboBox closes from
      * that notification. Closing is always allowed, including cleanup after focus has already gone.
      *
-     * This method changes no selection and no measurement. It only invalidates presentation and then
-     * invokes the optional callback with fully coherent state. The callback is copied before
-     * invocation and no member is touched afterwards, so application code may release/destroy the
-     * control from the notification.
+     * Opening seeds preview from the current committed selection. Closing without an explicit commit
+     * discards preview, so F4-close, Alt+Up, focus loss and direct setDropDownOpen(false) are all
+     * cancellation paths. These transitions change no committed selection and no measurement; they
+     * invalidate presentation and then invoke the optional callback with fully coherent state. The
+     * callback is copied before invocation and no member is touched afterwards, so application code
+     * may release/destroy the control from the notification.
      *
      * @returns true when the open/closed state changed; false for an idempotent or rejected open.
      */
     bool setDropDownOpen(bool open);
+
+    /**
+     * Replaces the transient preview index while the drop-down is open.
+     *
+     * A non-empty index must name an existing item or std::out_of_range is thrown before state changes.
+     * Closed ComboBoxes reject preview mutation and return false. Preview affects presentation only;
+     * it deliberately does not invoke SelectionChanged because application selection remains committed
+     * until commitPreviewSelection() succeeds.
+     *
+     * @returns true when open preview state changed.
+     */
+    bool setPreviewIndex(std::optional<std::size_t> index);
+
+    /**
+     * Commits the current preview as application selection and closes the drop-down atomically.
+     *
+     * The operation is accepted only while open. State and visual invalidation are completed before
+     * application callbacks run. When committed selection really changes, SelectionChanged is emitted;
+     * DropDownChanged(false) is emitted for the close. Both callbacks are copied before the transition,
+     * and this method performs no member access after callback delivery begins.
+     *
+     * @returns true when an open preview transaction was committed/closed.
+     */
+    bool commitPreviewSelection();
 
     [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
 
@@ -137,19 +178,20 @@ protected:
                                  const MeasureConstraints& constraints) override;
 
     /**
-     * Handles focus-lifetime cleanup, drop-down gestures and committed-selection navigation.
+     * Handles focus-lifetime cleanup, drop-down transactions and keyboard selection navigation.
      *
-     * F4 toggles open state; exact Alt+Down opens and exact Alt+Up closes. Unmodified
-     * Up/Down/Home/End retain the existing non-wrapping committed-selection behavior. Key-down
-     * performs mutations because terminal input cannot promise paired key-up; recognized key-up is
-     * consumed without a second mutation on desktop backends. Focus loss closes transient drop-down
-     * state before another control can own keyboard input.
+     * F4 toggles open state; exact Alt+Down opens and exact Alt+Up cancels/closes. While open,
+     * unmodified Up/Down/Home/End navigate preview, Enter commits/ closes, and Escape cancels/closes.
+     * While closed, the navigation keys retain the existing immediate committed-selection behavior.
+     * Key-down performs mutations because terminal input cannot promise paired key-up; recognized
+     * key-up is consumed without a second mutation on desktop backends. Focus loss is cancellation.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
 
 private:
     std::vector<std::string> items_;
     std::optional<std::size_t> selected_index_;
+    std::optional<std::size_t> preview_index_;
     bool drop_down_open_{false};
     TextStyle text_style_{};
     SelectionChangedHandler on_selection_changed_;

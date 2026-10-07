@@ -31,6 +31,14 @@ std::optional<std::string_view> ComboBox::selectedText() const noexcept {
     return std::string_view{items_[*selected_index_]};
 }
 
+std::optional<std::string_view> ComboBox::previewText() const noexcept {
+    if (!preview_index_.has_value()) {
+        return std::nullopt;
+    }
+
+    return std::string_view{items_[*preview_index_]};
+}
+
 bool ComboBox::setDropDownOpen(bool open) {
     if (drop_down_open_ == open) {
         return false;
@@ -47,10 +55,12 @@ bool ComboBox::setDropDownOpen(bool open) {
     }
 
     drop_down_open_ = open;
+    preview_index_ = open ? selected_index_ : std::nullopt;
 
     /*
-     * Open/closed state changes presentation only. Intrinsic size already reserves stable drop
-     * affordance chrome, so re-measurement would be both unnecessary and a source of layout jitter.
+     * Open/closed and preview state change presentation only. Intrinsic size already reserves stable
+     * drop affordance chrome and is based on the widest owned item, so re-measurement would be both
+     * unnecessary and a source of layout jitter.
      */
     invalidateVisual();
 
@@ -58,6 +68,63 @@ bool ComboBox::setDropDownOpen(bool open) {
     if (handler) {
         /* No member access after application code; the callback may release/destroy this ComboBox. */
         handler(open);
+    }
+
+    return true;
+}
+
+bool ComboBox::setPreviewIndex(std::optional<std::size_t> index) {
+    if (index.has_value() && *index >= items_.size()) {
+        throw std::out_of_range("ComboBox preview index is outside the item collection");
+    }
+
+    if (!drop_down_open_ || preview_index_ == index) {
+        return false;
+    }
+
+    preview_index_ = index;
+
+    /*
+     * A future popup presentation needs to repaint its highlighted row, but application selection is
+     * deliberately untouched. Keeping preview visual-only also preserves the measurement cache.
+     */
+    invalidateVisual();
+    return true;
+}
+
+bool ComboBox::commitPreviewSelection() {
+    if (!drop_down_open_) {
+        return false;
+    }
+
+    const std::optional<std::size_t> committed = preview_index_;
+    const bool selection_changed = selected_index_ != committed;
+
+    /*
+     * Copy every callback that may be needed before mutating semantic state. std::function copying may
+     * allocate/throw; doing it up front means such a failure leaves the open transaction untouched.
+     * Once delivery starts below, no member access is performed. This matches the toolkit's existing
+     * callback-lifetime rule and lets application code release/destroy the ComboBox synchronously.
+     */
+    DropDownChangedHandler drop_down_handler = on_drop_down_changed_;
+    SelectionChangedHandler selection_handler =
+        selection_changed ? on_selection_changed_ : SelectionChangedHandler{};
+
+    selected_index_ = committed;
+    preview_index_.reset();
+    drop_down_open_ = false;
+    invalidateVisual();
+
+    /*
+     * Selection is the semantic result of accepting the transaction, so publish it first. The close
+     * notification follows from the same already-coherent final state. Both handlers are local
+     * snapshots; do not inspect this object after the first callback begins.
+     */
+    if (selection_handler) {
+        selection_handler(committed);
+    }
+    if (drop_down_handler) {
+        drop_down_handler(false);
     }
 
     return true;
@@ -102,6 +169,7 @@ bool ComboBox::setItems(std::vector<std::string> items) {
      */
     items_ = std::move(items);
     selected_index_.reset();
+    preview_index_.reset();
 
     invalidateMeasure();
     invalidateVisual();
@@ -131,6 +199,13 @@ bool ComboBox::setSelectedIndex(std::optional<std::size_t> index) {
     }
 
     selected_index_ = index;
+    if (drop_down_open_) {
+        /*
+         * A real programmatic commit supersedes any stale transient choice. Keeping preview aligned
+         * prevents a later Enter from silently restoring a user preview that predates application state.
+         */
+        preview_index_ = index;
+    }
 
     /*
      * Selection changes only which already-measured item is displayed. Because intrinsic size uses the
@@ -169,9 +244,12 @@ EventResult ComboBox::onEvent(const Event& event) {
     if (const auto* focus = std::get_if<FocusEvent>(&event)) {
         if (!focus->gained && drop_down_open_) {
             /*
-             * FocusManager clears hasFocus() before delivering this notification. setDropDownOpen(false)
-             * deliberately permits exactly that cleanup order. Return immediately afterwards because
-             * the drop-down callback may synchronously release or destroy this control.
+             * FocusManager clears hasFocus() before delivering this notification. Closing is therefore
+             * intentionally legal after focus has gone. It is a cancellation path: committed selection
+             * survives while the transient preview is discarded.
+             *
+             * Return immediately afterwards because the drop-down callback may synchronously release or
+             * destroy this control.
              */
             (void)setDropDownOpen(false);
         }
@@ -217,6 +295,23 @@ EventResult ComboBox::onEvent(const Event& event) {
         return EventResult::ignored;
     }
 
+    if (drop_down_open_ && (key->key == Key::enter || key->key == Key::escape)) {
+        /*
+         * Enter/Escape belong to the active drop-down transaction only. Consume desktop key-up but
+         * perform the one semantic transition on key-down so terminal and desktop backends agree.
+         */
+        if (!key->pressed) {
+            return EventResult::handled;
+        }
+
+        if (key->key == Key::enter) {
+            (void)commitPreviewSelection();
+        } else {
+            (void)setDropDownOpen(false);
+        }
+        return EventResult::handled;
+    }
+
     const bool navigation_key =
         key->key == Key::up || key->key == Key::down ||
         key->key == Key::home || key->key == Key::end;
@@ -226,12 +321,15 @@ EventResult ComboBox::onEvent(const Event& event) {
 
     /*
      * Desktop backends may report key-up, while terminal input generally cannot. Consume the complete
-     * logical navigation gesture but mutate selection only on key-down so both environments agree.
+     * logical navigation gesture but mutate only on key-down so both environments agree. Empty lists
+     * still consume navigation while focused because the selector owns these keys in both states.
      */
     if (!key->pressed || items_.empty()) {
         return EventResult::handled;
     }
 
+    const std::optional<std::size_t> current =
+        drop_down_open_ ? preview_index_ : selected_index_;
     std::size_t next = 0U;
     const std::size_t last = items_.size() - 1U;
 
@@ -243,27 +341,34 @@ EventResult ComboBox::onEvent(const Event& event) {
         next = last;
         break;
     case Key::down:
-        if (!selected_index_.has_value()) {
+        if (!current.has_value()) {
             next = 0U;
         } else {
-            next = std::min(*selected_index_ + 1U, last);
+            next = std::min(*current + 1U, last);
         }
         break;
     case Key::up:
-        if (!selected_index_.has_value()) {
+        if (!current.has_value()) {
             next = last;
         } else {
-            next = *selected_index_ == 0U ? 0U : *selected_index_ - 1U;
+            next = *current == 0U ? 0U : *current - 1U;
         }
         break;
     default:
-        /* navigation_key proved this switch is exhaustive for the current committed-selection contract. */
+        /* navigation_key proved this switch exhaustive for the current navigation contract. */
         return EventResult::ignored;
     }
 
+    if (drop_down_open_) {
+        /* Preview navigation cannot invoke application selection callbacks. */
+        (void)setPreviewIndex(next);
+        return EventResult::handled;
+    }
+
     /*
-     * setSelectedIndex() owns notification/lifetime safety. Do not inspect members after the call:
-     * an application callback is allowed to release or destroy this ComboBox synchronously.
+     * Closed navigation keeps the established immediate-commit behavior. setSelectedIndex() owns
+     * notification/lifetime safety; do not inspect members after the call because application code may
+     * release or destroy this ComboBox synchronously.
      */
     (void)setSelectedIndex(next);
     return EventResult::handled;

@@ -55,6 +55,8 @@ TEST_CASE("ComboBox owns items, starts unselected and is focusable") {
     CHECK(combo.itemAt(1U) == "Two");
     CHECK(!combo.selectedIndex().has_value());
     CHECK(!combo.selectedText().has_value());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(!combo.previewText().has_value());
     CHECK(!combo.isDropDownOpen());
 }
 
@@ -342,4 +344,185 @@ TEST_CASE("ComboBox drop-down callback may release the control from its owner") 
     CHECK(combo.setDropDownOpen(true));
     CHECK(released != nullptr);
     CHECK(released->owner() == nullptr);
+}
+
+TEST_CASE("Open ComboBox navigation changes preview without committing selection") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    FocusManager focus;
+    std::size_t selection_notifications = 0U;
+    combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+
+    CHECK(combo.setSelectedIndex(1U));
+    selection_notifications = 0U;
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{1U});
+    CHECK(combo.previewText() == std::optional<std::string_view>{"One"});
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::down, true, KeyModifier::none}).handled());
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{2U});
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(selection_notifications == 0U);
+
+    /* Preview navigation clamps at the edge instead of wrapping. */
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::down, true, KeyModifier::none}).handled());
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{2U});
+    CHECK(selection_notifications == 0U);
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::home, true, KeyModifier::none}).handled());
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{0U});
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(selection_notifications == 0U);
+}
+
+TEST_CASE("ComboBox Enter commits preview and closes one coherent transaction") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    FocusManager focus;
+    std::vector<std::string> notifications;
+
+    CHECK(combo.setSelectedIndex(0U));
+    combo.setOnSelectionChanged([&](std::optional<std::size_t> index) {
+        CHECK(!combo.isDropDownOpen());
+        CHECK(!combo.previewIndex().has_value());
+        CHECK(index == std::optional<std::size_t>{2U});
+        CHECK(combo.selectedIndex() == index);
+        notifications.push_back("selection");
+    });
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(2U));
+
+    /*
+     * Install the close observer after opening so this test isolates the accepting transition rather
+     * than mixing its assertions with the earlier open notification.
+     */
+    combo.setOnDropDownChanged([&](bool open) {
+        CHECK(!open);
+        CHECK(!combo.isDropDownOpen());
+        CHECK(!combo.previewIndex().has_value());
+        CHECK(combo.selectedIndex() == std::optional<std::size_t>{2U});
+        notifications.push_back("closed");
+    });
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::enter, true, KeyModifier::none}).handled());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{2U});
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(notifications == std::vector<std::string>({"selection", "closed"}));
+
+    /* Matching desktop key-up no longer belongs to an open transaction and remains routable. */
+    CHECK(!EventDispatcher::dispatch(
+        combo, KeyEvent{Key::enter, false, KeyModifier::none}).handled());
+}
+
+TEST_CASE("ComboBox Escape cancels preview and preserves committed selection") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    FocusManager focus;
+    std::size_t selection_notifications = 0U;
+    std::vector<bool> drop_down_notifications;
+
+    CHECK(combo.setSelectedIndex(0U));
+    combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+    combo.setOnDropDownChanged(
+        [&](bool open) { drop_down_notifications.push_back(open); });
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(2U));
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::escape, true, KeyModifier::none}).handled());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{0U});
+    CHECK(selection_notifications == 0U);
+    CHECK(drop_down_notifications == std::vector<bool>({true, false}));
+}
+
+TEST_CASE("ComboBox F4 close and focus loss both discard uncommitted preview") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    ComboBox other{{"Other"}};
+    FocusManager focus;
+
+    CHECK(combo.setSelectedIndex(1U));
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(2U));
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::f4, true, KeyModifier::none}).handled());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(0U));
+    CHECK(focus.requestFocus(other));
+    CHECK(!combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+}
+
+TEST_CASE("ComboBox preview API validates row identity and is visual-only") {
+    ComboBox combo{{"Zero", "One"}};
+    ComboBoxMeasurementContext context;
+    FocusManager focus;
+
+    (void)combo.measure(context);
+    CHECK(combo.isMeasureValid());
+    CHECK(!combo.setPreviewIndex(0U)); // closed transactions reject transient preview mutation.
+
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    combo.acknowledgeVisualUpdate();
+
+    CHECK(combo.setPreviewIndex(1U));
+    CHECK(combo.previewText() == std::optional<std::string_view>{"One"});
+    CHECK(combo.isMeasureValid());
+    CHECK(combo.isVisualUpdatePending());
+    CHECK(!combo.selectedIndex().has_value());
+
+    bool threw = false;
+    try {
+        (void)combo.setPreviewIndex(2U);
+    } catch (const std::out_of_range&) {
+        threw = true;
+    }
+    CHECK(threw);
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{1U});
+}
+
+TEST_CASE("Programmatic committed selection supersedes stale open preview") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    FocusManager focus;
+
+    CHECK(combo.setSelectedIndex(0U));
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(2U));
+
+    CHECK(combo.setSelectedIndex(1U));
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{1U});
+}
+
+TEST_CASE("Replacing ComboBox items clears transient preview identity while open") {
+    ComboBox combo{{"Old zero", "Old one"}};
+    FocusManager focus;
+
+    CHECK(combo.setSelectedIndex(0U));
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.setPreviewIndex(1U));
+
+    CHECK(combo.setItems({"Replacement"}));
+    CHECK(combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(!combo.selectedIndex().has_value());
 }
