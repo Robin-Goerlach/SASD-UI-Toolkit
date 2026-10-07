@@ -1,4 +1,4 @@
-# CMake / build output
+## CMake / build output
 /build/
 /build-smoke/
 /build-smoke-posix/
@@ -11,7 +11,7 @@ CMakeFiles/
 CTestTestfile.cmake
 Testing/
 
-# Compilers / IDEs
+## Compilers / IDEs
 *.obj
 *.o
 *.a
@@ -24,7 +24,16 @@ Testing/
 .vscode/
 .idea/
 
-# OS/editor noise
+## iSystem files/directories
 .DS_Store
 Thumbs.db
+
+## OS/editor noise
 *~
+
+## additional build directories
+/build-codex/
+/out/
+
+## Local working notes and agent reports; intentionally not published to GitHub.
+/local-docs/
