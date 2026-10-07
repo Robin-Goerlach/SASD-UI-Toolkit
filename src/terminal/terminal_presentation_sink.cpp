@@ -522,7 +522,12 @@ PresentationUpdateResult renderComboBox(ScreenBuffer& buffer,
      * emitted only when it cannot collide with both borders.
      */
     if (rect.width >= 4) {
-        writeNarrowCell(buffer, rect.x + rect.width - 3, rect.y, U'v', style);
+        /*
+         * The marker reflects semantic open intent without owning popup state. Both ASCII glyphs are
+         * one terminal cell, so flipping the affordance cannot invalidate the measured footprint.
+         */
+        const char32_t indicator = combo.isDropDownOpen() ? U'^' : U'v';
+        writeNarrowCell(buffer, rect.x + rect.width - 3, rect.y, indicator, style);
     }
 
     constexpr std::int64_t fixed_chrome_width = 6;

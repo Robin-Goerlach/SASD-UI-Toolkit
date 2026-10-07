@@ -31,6 +31,38 @@ std::optional<std::string_view> ComboBox::selectedText() const noexcept {
     return std::string_view{items_[*selected_index_]};
 }
 
+bool ComboBox::setDropDownOpen(bool open) {
+    if (drop_down_open_ == open) {
+        return false;
+    }
+
+    /*
+     * Open drop-down state is transient interaction state, not a durable application property. Tie it
+     * to logical focus so focus transfer/disable/hide has one deterministic cleanup path. Closing must
+     * remain legal after focus has already been cleared because FocusEvent{false} is delivered only
+     * after FocusManager publishes the new unfocused state.
+     */
+    if (open && (!hasFocus() || !isEnabled() || !isVisible())) {
+        return false;
+    }
+
+    drop_down_open_ = open;
+
+    /*
+     * Open/closed state changes presentation only. Intrinsic size already reserves stable drop
+     * affordance chrome, so re-measurement would be both unnecessary and a source of layout jitter.
+     */
+    invalidateVisual();
+
+    DropDownChangedHandler handler = on_drop_down_changed_;
+    if (handler) {
+        /* No member access after application code; the callback may release/destroy this ComboBox. */
+        handler(open);
+    }
+
+    return true;
+}
+
 void ComboBox::setTextStyle(TextStyle style) {
     if (text_style_ == style) {
         return;
@@ -134,8 +166,54 @@ Size ComboBox::onMeasure(const MeasurementContext& context,
 }
 
 EventResult ComboBox::onEvent(const Event& event) {
+    if (const auto* focus = std::get_if<FocusEvent>(&event)) {
+        if (!focus->gained && drop_down_open_) {
+            /*
+             * FocusManager clears hasFocus() before delivering this notification. setDropDownOpen(false)
+             * deliberately permits exactly that cleanup order. Return immediately afterwards because
+             * the drop-down callback may synchronously release or destroy this control.
+             */
+            (void)setDropDownOpen(false);
+        }
+        return EventResult::ignored;
+    }
+
     const auto* key = std::get_if<KeyEvent>(&event);
-    if (key == nullptr || key->modifiers != KeyModifier::none) {
+    if (key == nullptr) {
+        return EventResult::ignored;
+    }
+
+    if (!hasFocus() || !isEnabled() || !isVisible()) {
+        return EventResult::ignored;
+    }
+
+    const bool toggle_drop_down =
+        key->key == Key::f4 && key->modifiers == KeyModifier::none;
+    const bool open_drop_down =
+        key->key == Key::down && key->modifiers == KeyModifier::alt;
+    const bool close_drop_down =
+        key->key == Key::up && key->modifiers == KeyModifier::alt;
+
+    if (toggle_drop_down || open_drop_down || close_drop_down) {
+        /*
+         * Desktop backends can report release; terminals normally cannot. Own the full recognized
+         * gesture but mutate only on press so the same semantic input produces one state transition.
+         */
+        if (!key->pressed) {
+            return EventResult::handled;
+        }
+
+        if (toggle_drop_down) {
+            const bool next_open = !drop_down_open_;
+            (void)setDropDownOpen(next_open);
+            return EventResult::handled;
+        }
+
+        (void)setDropDownOpen(open_drop_down);
+        return EventResult::handled;
+    }
+
+    if (key->modifiers != KeyModifier::none) {
         return EventResult::ignored;
     }
 
@@ -143,10 +221,6 @@ EventResult ComboBox::onEvent(const Event& event) {
         key->key == Key::up || key->key == Key::down ||
         key->key == Key::home || key->key == Key::end;
     if (!navigation_key) {
-        return EventResult::ignored;
-    }
-
-    if (!hasFocus() || !isEnabled() || !isVisible()) {
         return EventResult::ignored;
     }
 
@@ -183,7 +257,7 @@ EventResult ComboBox::onEvent(const Event& event) {
         }
         break;
     default:
-        /* navigation_key proved this switch is exhaustive for the current first contract. */
+        /* navigation_key proved this switch is exhaustive for the current committed-selection contract. */
         return EventResult::ignored;
     }
 

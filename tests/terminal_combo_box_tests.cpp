@@ -136,3 +136,33 @@ TEST_CASE("Terminal ComboBox defers unsupported selected text before changing th
     CHECK(buffer.at({5, 1}).code_point == U'd');
     CHECK(buffer.at({14, 1}).code_point == U'v');
 }
+
+TEST_CASE("Terminal ComboBox flips the stable indicator while drop-down intent is open") {
+    ScreenBuffer buffer{{24, 3}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 24, 3});
+    auto& combo = window.emplace<ComboBox>(std::vector<std::string>{"Choice"});
+    CHECK(combo.setSelectedIndex(0U));
+    const Coordinate width = combo.measure(metrics).width;
+    combo.arrange({1, 1, width, 1});
+    CHECK(focus.requestFocus(combo));
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    const Coordinate indicator_x = static_cast<Coordinate>(1 + width - 3);
+    CHECK(buffer.at({indicator_x, 1}).code_point == U'v');
+
+    combo.acknowledgeVisualUpdate();
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.isMeasureValid());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(buffer.at({indicator_x, 1}).code_point == U'^');
+
+    combo.acknowledgeVisualUpdate();
+    CHECK(combo.setDropDownOpen(false));
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(buffer.at({indicator_x, 1}).code_point == U'v');
+}

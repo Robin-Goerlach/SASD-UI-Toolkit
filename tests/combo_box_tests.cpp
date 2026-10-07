@@ -55,6 +55,7 @@ TEST_CASE("ComboBox owns items, starts unselected and is focusable") {
     CHECK(combo.itemAt(1U) == "Two");
     CHECK(!combo.selectedIndex().has_value());
     CHECK(!combo.selectedText().has_value());
+    CHECK(!combo.isDropDownOpen());
 }
 
 TEST_CASE("ComboBox selection is optional, validated and notifies only on real changes") {
@@ -236,6 +237,109 @@ TEST_CASE("ComboBox selection callback may release the control from its owner") 
     });
 
     CHECK(combo.setSelectedIndex(0U));
+    CHECK(released != nullptr);
+    CHECK(released->owner() == nullptr);
+}
+
+TEST_CASE("ComboBox drop-down state requires focus and owns F4 or Alt arrow gestures") {
+    ComboBox combo{{"Zero", "One"}};
+    std::vector<bool> notifications;
+    combo.setOnDropDownChanged([&](bool open) { notifications.push_back(open); });
+
+    /* A transient drop-down may not outlive or precede logical keyboard ownership. */
+    CHECK(!combo.setDropDownOpen(true));
+    CHECK(!combo.isDropDownOpen());
+
+    FocusManager focus;
+    CHECK(focus.requestFocus(combo));
+    combo.acknowledgeVisualUpdate();
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::f4, true, KeyModifier::none}).handled());
+    CHECK(combo.isDropDownOpen());
+    CHECK(combo.isVisualUpdatePending());
+    CHECK(notifications == std::vector<bool>{true});
+
+    /* Desktop key-up belongs to the same gesture but must not toggle a second time. */
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::f4, false, KeyModifier::none}).handled());
+    CHECK(combo.isDropDownOpen());
+    CHECK(notifications.size() == 1U);
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::up, true, KeyModifier::alt}).handled());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(notifications == std::vector<bool>({true, false}));
+
+    CHECK(EventDispatcher::dispatch(
+              combo, KeyEvent{Key::down, true, KeyModifier::alt}).handled());
+    CHECK(combo.isDropDownOpen());
+    CHECK(notifications == std::vector<bool>({true, false, true}));
+
+    /* Extra modifiers remain available to shortcuts/parent routing instead of being half-recognized. */
+    CHECK(!EventDispatcher::dispatch(
+        combo,
+        KeyEvent{Key::down, true, KeyModifier::alt | KeyModifier::shift}).handled());
+    CHECK(combo.isDropDownOpen());
+}
+
+TEST_CASE("ComboBox drop-down closes synchronously on focus loss without changing selection") {
+    ComboBox combo{{"Zero", "One"}};
+    ComboBox other{{"Other"}};
+    FocusManager focus;
+    std::vector<bool> notifications;
+
+    combo.setOnDropDownChanged([&](bool open) { notifications.push_back(open); });
+    CHECK(combo.setSelectedIndex(1U));
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+
+    /*
+     * FocusManager clears ComboBox focus before delivering FocusEvent{false}. The control must still
+     * be able to retire transient drop-down state from that notification, while committed selection
+     * remains an independent durable value.
+     */
+    CHECK(focus.requestFocus(other));
+    CHECK(!combo.hasFocus());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(notifications == std::vector<bool>({true, false}));
+}
+
+TEST_CASE("ComboBox open state invalidates presentation but preserves measurement cache") {
+    ComboBox combo{{"Short", "Longer"}};
+    ComboBoxMeasurementContext context;
+    FocusManager focus;
+
+    (void)combo.measure(context);
+    CHECK(combo.isMeasureValid());
+    combo.acknowledgeVisualUpdate();
+    CHECK(focus.requestFocus(combo));
+    combo.acknowledgeVisualUpdate();
+
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.isMeasureValid());
+    CHECK(combo.isVisualUpdatePending());
+
+    combo.acknowledgeVisualUpdate();
+    CHECK(combo.setDropDownOpen(false));
+    CHECK(combo.isMeasureValid());
+    CHECK(combo.isVisualUpdatePending());
+}
+
+TEST_CASE("ComboBox drop-down callback may release the control from its owner") {
+    auto owner = std::make_unique<Container>();
+    auto& combo = owner->emplace<ComboBox>(std::vector<std::string>{"One"});
+    FocusManager focus;
+    CHECK(focus.requestFocus(combo));
+
+    std::unique_ptr<Component> released;
+    combo.setOnDropDownChanged([&](bool open) {
+        CHECK(open);
+        released = owner->release(combo);
+    });
+
+    CHECK(combo.setDropDownOpen(true));
     CHECK(released != nullptr);
     CHECK(released->owner() == nullptr);
 }

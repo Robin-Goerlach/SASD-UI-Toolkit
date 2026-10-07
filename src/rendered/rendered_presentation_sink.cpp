@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <typeinfo>
 #include <vector>
 
@@ -199,9 +200,15 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         return PresentationUpdateResult::deferred;
     }
 
-    const Size indicator_text = metrics->measureText("v");
+    const std::string_view indicator_marker =
+        combo.isDropDownOpen() ? std::string_view{"^"} : std::string_view{"v"};
+    const Size indicator_text = metrics->measureText(indicator_marker);
+    const Size opposite_indicator_text =
+        metrics->measureText(combo.isDropDownOpen() ? std::string_view{"v"} : std::string_view{"^"});
     const Coordinate requested_indicator_width =
-        std::max(std::max(Coordinate{1}, metrics->lineHeight()), indicator_text.width);
+        std::max(
+            std::max(Coordinate{1}, metrics->lineHeight()),
+            std::max(indicator_text.width, opposite_indicator_text.width));
     const Coordinate indicator_width =
         std::min(requested_indicator_width, content->width);
     const Coordinate gap =
@@ -293,7 +300,7 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
     if (!indicator_clip.isEmpty()) {
         display_list.drawText(
             {*arrow_x, *arrow_y},
-            "v",
+            indicator_marker,
             style,
             indicator_clip);
     }

@@ -192,3 +192,38 @@ TEST_CASE("Rendered ComboBox without metrics defers transactionally") {
     CHECK(std::get<DrawTextCommand>(display.commands()[0]).text == "previous");
     CHECK(combo.isVisualUpdatePending());
 }
+
+TEST_CASE("Rendered ComboBox flips indicator inside unchanged right-side geometry when open") {
+    DisplayList display;
+    ComboBoxRenderedMetrics metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 160, 60});
+    auto& combo = window.emplace<ComboBox>(std::vector<std::string>{"Choice"});
+    CHECK(combo.setSelectedIndex(0U));
+    combo.arrange({10, 10, 80, 20});
+    CHECK(focus.requestFocus(combo));
+
+    const Size measured = combo.measure(metrics);
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    const auto& closed_indicator =
+        std::get<DrawTextCommand>(display.commands().back());
+    CHECK(closed_indicator.text == "v");
+    const auto stable_clip = closed_indicator.clip_bounds;
+    const Point stable_origin = closed_indicator.origin;
+
+    display.clear();
+    combo.acknowledgeVisualUpdate();
+    CHECK(combo.setDropDownOpen(true));
+    CHECK(combo.isMeasureValid());
+    CHECK(combo.measure(metrics) == measured);
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto& open_indicator =
+        std::get<DrawTextCommand>(display.commands().back());
+    CHECK(open_indicator.text == "^");
+    CHECK(open_indicator.clip_bounds == stable_clip);
+    CHECK(open_indicator.origin == stable_origin);
+}

@@ -16,11 +16,10 @@ namespace sasd::ui {
 /**
  * Backend-neutral non-editable single-selection control.
  *
- * The first M4 ComboBox slice deliberately establishes only semantic item/selection state plus
- * keyboard navigation. The control owns a small UTF-8 item vector and an optional selected index;
- * popup placement, open/closed drop-down interaction, pointer item hit testing, native peers and
- * model/view-backed large data sets remain later slices. Keeping those concerns out of this class
- * prevents the initial public API from freezing backend geometry or prematurely introducing the M5
+ * The M4 ComboBox contract owns semantic item/selection state plus a small backend-neutral drop-down
+ * visibility state. The control deliberately does not own popup geometry, popup rows, pointer capture,
+ * native peers or a model/view-backed large data source. Keeping those concerns outside this class
+ * prevents backend coordinates from leaking into Core and avoids prematurely introducing the M5
  * ListModel abstraction solely to satisfy one form control.
  *
  * Selection is index-based and optional. Replacing the complete item collection clears selection
@@ -28,15 +27,16 @@ namespace sasd::ui {
  * intentionally weaker: existing indices remain valid, so the current selection is preserved.
  *
  * While focused, visible and enabled, unmodified Up/Down/Home/End key events navigate the current
- * collection immediately. Navigation is non-wrapping. If no item is selected, Down/Home choose the
- * first item and Up/End choose the last item. Pointer/drop-down interaction is intentionally not
- * assigned a provisional behavior in this foundation slice; later presentation-specific popup work
- * can build on the same selection contract without undoing a temporary click-to-cycle policy.
+ * committed selection immediately. Navigation is non-wrapping. F4 toggles the drop-down intent;
+ * Alt+Down opens it and Alt+Up closes it. Entering the open state requires logical focus, and losing
+ * focus closes it synchronously. This state is intentionally only the semantic visibility intent:
+ * popup placement, preview selection, commit/cancel and pointer hit testing remain later slices.
  */
 class ComboBox final : public Widget {
 public:
     using SelectionChangedHandler =
         std::function<void(std::optional<std::size_t>)>;
+    using DropDownChangedHandler = std::function<void(bool)>;
 
     ComboBox();
     explicit ComboBox(std::vector<std::string> items);
@@ -59,6 +59,26 @@ public:
 
     /** Returns the selected item's UTF-8 text, or std::nullopt when no selection exists. */
     [[nodiscard]] std::optional<std::string_view> selectedText() const noexcept;
+
+    /** Returns whether this ComboBox currently requests an open drop-down presentation. */
+    [[nodiscard]] bool isDropDownOpen() const noexcept { return drop_down_open_; }
+
+    /**
+     * Changes the backend-neutral drop-down visibility intent.
+     *
+     * Opening is accepted only while the ComboBox owns logical focus and is visible/enabled. That
+     * invariant gives transient popup state a deterministic lifetime: FocusManager delivers a lost-
+     * focus notification before another control takes keyboard ownership, and ComboBox closes from
+     * that notification. Closing is always allowed, including cleanup after focus has already gone.
+     *
+     * This method changes no selection and no measurement. It only invalidates presentation and then
+     * invokes the optional callback with fully coherent state. The callback is copied before
+     * invocation and no member is touched afterwards, so application code may release/destroy the
+     * control from the notification.
+     *
+     * @returns true when the open/closed state changed; false for an idempotent or rejected open.
+     */
+    bool setDropDownOpen(bool open);
 
     [[nodiscard]] const TextStyle& textStyle() const noexcept { return text_style_; }
 
@@ -108,25 +128,32 @@ public:
         on_selection_changed_ = std::move(handler);
     }
 
+    void setOnDropDownChanged(DropDownChangedHandler handler) {
+        on_drop_down_changed_ = std::move(handler);
+    }
+
 protected:
     [[nodiscard]] Size onMeasure(const MeasurementContext& context,
                                  const MeasureConstraints& constraints) override;
 
     /**
-     * Handles unmodified Up/Down/Home/End while this ComboBox owns logical focus.
+     * Handles focus-lifetime cleanup, drop-down gestures and committed-selection navigation.
      *
-     * Key-down performs selection immediately because terminal input cannot promise paired key-up.
-     * Matching key-up events are consumed without a second change on desktop backends that do report
-     * them. Empty collections still consume these four navigation keys while focused: they belong to
-     * the focused selector even though no legal target currently exists.
+     * F4 toggles open state; exact Alt+Down opens and exact Alt+Up closes. Unmodified
+     * Up/Down/Home/End retain the existing non-wrapping committed-selection behavior. Key-down
+     * performs mutations because terminal input cannot promise paired key-up; recognized key-up is
+     * consumed without a second mutation on desktop backends. Focus loss closes transient drop-down
+     * state before another control can own keyboard input.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
 
 private:
     std::vector<std::string> items_;
     std::optional<std::size_t> selected_index_;
+    bool drop_down_open_{false};
     TextStyle text_style_{};
     SelectionChangedHandler on_selection_changed_;
+    DropDownChangedHandler on_drop_down_changed_;
 };
 
 } // namespace sasd::ui

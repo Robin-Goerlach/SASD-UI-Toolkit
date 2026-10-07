@@ -103,12 +103,17 @@ public:
      */
     [[nodiscard]] Size measureComboBox(std::string_view utf8_text) const override {
         const Size text = measureText(utf8_text);
-        const Size indicator_text = measureText("v");
+        const Size closed_indicator = measureText("v");
+        const Size open_indicator = measureText("^");
         const Coordinate line_height = positiveLineHeight();
+        const Coordinate indicator_height =
+            std::max(closed_indicator.height, open_indicator.height);
         const Coordinate content_height =
-            std::max(std::max(text.height, indicator_text.height), line_height);
+            std::max(std::max(text.height, indicator_height), line_height);
         const Coordinate indicator_width =
-            std::max(indicator_text.width, line_height);
+            std::max(
+                std::max(closed_indicator.width, open_indicator.width),
+                line_height);
         const RenderedThemeMetrics theme = themeMetrics().normalized();
         const Coordinate gap =
             std::max(Coordinate{1}, theme.control_border_thickness);
