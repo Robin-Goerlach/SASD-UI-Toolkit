@@ -1,6 +1,7 @@
 add_executable(sasd_ui_tests
     test_main.cpp
     geometry_tests.cpp
+    presentation_anchored_popup_layout_tests.cpp
     component_tests.cpp
     box_layout_tests.cpp
     button_tests.cpp
