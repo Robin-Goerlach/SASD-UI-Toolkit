@@ -71,6 +71,7 @@ target_link_libraries(sasd_ui_terminal PUBLIC SASD::UI)
 # M3 starts with a deterministic rendered command layer that has no SDL3 dependency. A future
 # SDL3 adapter consumes this target instead of exposing SDL handles/types through the Core API.
 add_library(sasd_ui_rendered
+    src/rendered/combo_box_popup_presentation.cpp
     src/rendered/display_list.cpp
     src/rendered/display_list_executor.cpp
     src/rendered/rendered_geometry.cpp
