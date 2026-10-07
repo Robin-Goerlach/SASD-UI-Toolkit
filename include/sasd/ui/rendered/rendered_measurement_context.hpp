@@ -93,6 +93,38 @@ public:
     }
 
     /**
+     * Measures the collapsed rendered ComboBox using the same font/theme source as presentation.
+     *
+     * The selected text area is followed by one logical gap and a stable indicator lane. The lane is
+     * at least one line-height wide so the drop affordance remains visible even for an empty item. The
+     * complete content is then wrapped in the normal control border. ComboBox itself asks this hook for
+     * every owned item and keeps the component-wise maximum, so changing selection never changes the
+     * intrinsic size.
+     */
+    [[nodiscard]] Size measureComboBox(std::string_view utf8_text) const override {
+        const Size text = measureText(utf8_text);
+        const Size indicator_text = measureText("v");
+        const Coordinate line_height = positiveLineHeight();
+        const Coordinate content_height =
+            std::max(std::max(text.height, indicator_text.height), line_height);
+        const Coordinate indicator_width =
+            std::max(indicator_text.width, line_height);
+        const RenderedThemeMetrics theme = themeMetrics().normalized();
+        const Coordinate gap =
+            std::max(Coordinate{1}, theme.control_border_thickness);
+
+        Coordinate width = saturatingAdd(text.width, gap);
+        width = saturatingAdd(width, indicator_width);
+        width = saturatingAdd(width, theme.control_border_thickness);
+        width = saturatingAdd(width, theme.control_border_thickness);
+
+        Coordinate height = saturatingAdd(content_height, theme.control_border_thickness);
+        height = saturatingAdd(height, theme.control_border_thickness);
+
+        return {width, height};
+    }
+
+    /**
      * Measures rendered TextField chrome plus one logical unit of end-caret room.
      *
      * The extra caret unit is reserved even while the field is unfocused. This mirrors the terminal

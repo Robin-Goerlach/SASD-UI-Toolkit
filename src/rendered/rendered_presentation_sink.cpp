@@ -5,6 +5,7 @@
 
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
@@ -163,6 +164,138 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
          * measurement. Theme geometry changes chrome without changing Button's semantic state.
          */
         display_list.drawText(text_origin, button.text(), style, *content);
+    }
+
+    return PresentationUpdateResult::synchronized;
+}
+
+[[nodiscard]] PresentationUpdateResult renderComboBox(
+    DisplayList& display_list,
+    const ComboBox& combo,
+    const RenderedMeasurementContext* metrics,
+    Color background_color) {
+    const auto absolute = detail::absoluteRectOf(combo);
+    if (!absolute.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    if (!combo.isVisible() || absolute->isEmpty()) {
+        eraseWidget(display_list, *absolute, background_color);
+        return PresentationUpdateResult::synchronized;
+    }
+
+    /*
+     * The collapsed ComboBox needs the same metric provider that measured it: line height determines
+     * the stable indicator lane, while measureText("v") lets the presentation center the drop marker
+     * without assuming a monospace desktop font. A metrics-free sink therefore stays fail-closed.
+     */
+    if (metrics == nullptr) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const RenderedThemeMetrics theme = metrics->themeMetrics().normalized();
+    const auto content = detail::inset(*absolute, theme.control_border_thickness);
+    if (!content.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const Size indicator_text = metrics->measureText("v");
+    const Coordinate requested_indicator_width =
+        std::max(std::max(Coordinate{1}, metrics->lineHeight()), indicator_text.width);
+    const Coordinate indicator_width =
+        std::min(requested_indicator_width, content->width);
+    const Coordinate gap =
+        std::max(Coordinate{1}, theme.control_border_thickness);
+
+    /*
+     * Preflight every widened coordinate before appending commands. DisplayList has no rollback API;
+     * if an extreme parent offset cannot be represented, the previous good frame must remain intact
+     * and the ComboBox must stay pending.
+     */
+    const std::int64_t content_right_wide =
+        static_cast<std::int64_t>(content->x) +
+        static_cast<std::int64_t>(content->width);
+    const std::int64_t indicator_x_wide =
+        content_right_wide - static_cast<std::int64_t>(indicator_width);
+    const auto indicator_x = detail::narrowCoordinate(indicator_x_wide);
+    if (!indicator_x.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const std::int64_t text_right_wide =
+        std::max<std::int64_t>(
+            static_cast<std::int64_t>(content->x),
+            indicator_x_wide - static_cast<std::int64_t>(gap));
+    const std::int64_t text_width_wide =
+        text_right_wide - static_cast<std::int64_t>(content->x);
+    if (text_width_wide < 0 ||
+        text_width_wide > static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max())) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const Rect text_clip{
+        content->x,
+        content->y,
+        static_cast<Coordinate>(text_width_wide),
+        content->height};
+    const Rect indicator_clip{
+        *indicator_x,
+        content->y,
+        indicator_width,
+        content->height};
+
+    Coordinate arrow_x_offset = 0;
+    if (indicator_text.width > 0 && indicator_text.width < indicator_clip.width) {
+        arrow_x_offset =
+            static_cast<Coordinate>((indicator_clip.width - indicator_text.width) / 2);
+    }
+
+    Coordinate arrow_y_offset = 0;
+    if (indicator_text.height > 0 && indicator_text.height < indicator_clip.height) {
+        arrow_y_offset =
+            static_cast<Coordinate>((indicator_clip.height - indicator_text.height) / 2);
+    }
+
+    const auto arrow_x = detail::narrowCoordinate(
+        static_cast<std::int64_t>(indicator_clip.x) +
+        static_cast<std::int64_t>(arrow_x_offset));
+    const auto arrow_y = detail::narrowCoordinate(
+        static_cast<std::int64_t>(indicator_clip.y) +
+        static_cast<std::int64_t>(arrow_y_offset));
+    if (!arrow_x.has_value() || !arrow_y.has_value()) {
+        return PresentationUpdateResult::deferred;
+    }
+
+    const TextStyle style = controlTextStyle(combo, combo.textStyle());
+
+    /*
+     * Everything that can fail is resolved above. Repaint the whole arranged rectangle first so a
+     * short newly selected item cannot leave pixels from a previously longer selection. The outer
+     * border and right-anchored indicator lane remain stable across selection changes.
+     */
+    eraseWidget(display_list, *absolute, background_color);
+    if (theme.control_border_thickness > 0) {
+        display_list.strokeRect(
+            *absolute,
+            style.foreground,
+            theme.control_border_thickness);
+    }
+
+    const std::optional<std::string_view> selected = combo.selectedText();
+    if (selected.has_value() && !selected->empty() && !text_clip.isEmpty()) {
+        display_list.drawText(
+            {text_clip.x, text_clip.y},
+            *selected,
+            style,
+            text_clip);
+    }
+
+    if (!indicator_clip.isEmpty()) {
+        display_list.drawText(
+            {*arrow_x, *arrow_y},
+            "v",
+            style,
+            indicator_clip);
     }
 
     return PresentationUpdateResult::synchronized;
@@ -586,6 +719,14 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
         return renderTextField(
             display_list_,
             *field,
+            measurement_context_,
+            background_color_);
+    }
+
+    if (const auto* combo = dynamic_cast<const ComboBox*>(&widget)) {
+        return renderComboBox(
+            display_list_,
+            *combo,
             measurement_context_,
             background_color_);
     }

@@ -14,10 +14,11 @@ namespace sasd::ui::rendered {
  * window/renderer/font objects.
  *
  * Window, Label and Button can be synchronized without a font service because their arranged
- * geometry is already known. Visible TextField presentation additionally needs scalar-boundary
- * advances and line height for its horizontal viewport and insertion caret. Callers that want
- * TextField rendering therefore construct the sink with a RenderedMeasurementContext. The legacy
- * constructor without metrics intentionally keeps visible TextFields deferred rather than drawing an
+ * geometry is already known. ComboBox, CheckBox, RadioButton and TextField presentation additionally
+ * depend on rendered font/theme metrics for stable control geometry; TextField also needs scalar-
+ * boundary advances for its horizontal viewport and insertion caret. Callers that render these
+ * controls therefore construct the sink with a RenderedMeasurementContext. The legacy constructor
+ * without metrics intentionally keeps such visible controls deferred rather than drawing an
  * incomplete approximation.
  */
 class RenderedPresentationSink final : public PresentationSink {
