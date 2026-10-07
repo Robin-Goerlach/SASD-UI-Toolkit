@@ -5,6 +5,7 @@
 #include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/measurement_context.hpp>
+#include <sasd/ui/pointer_router.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -525,4 +526,143 @@ TEST_CASE("Replacing ComboBox items clears transient preview identity while open
     CHECK(combo.isDropDownOpen());
     CHECK(!combo.previewIndex().has_value());
     CHECK(!combo.selectedIndex().has_value());
+}
+
+TEST_CASE("Focused ComboBox collapsed Primary release toggles drop-down without changing selection") {
+    ComboBox combo{{"Zero", "One", "Two"}};
+    FocusManager focus;
+    std::vector<bool> drop_down_notifications;
+    std::size_t selection_notifications = 0U;
+
+    combo.arrange({10, 10, 30, 2});
+    CHECK(combo.setSelectedIndex(1U));
+    combo.setOnDropDownChanged(
+        [&](bool open) { drop_down_notifications.push_back(open); });
+    combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+    CHECK(focus.requestFocus(combo));
+
+    const PointerEvent press{
+        {15, 10},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const PointerEvent release{
+        {15, 10},
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+
+    CHECK(EventDispatcher::dispatch(combo, press).handled());
+    CHECK(combo.isPressed());
+    CHECK(!combo.isDropDownOpen());
+
+    CHECK(EventDispatcher::dispatch(combo, release).handled());
+    CHECK(!combo.isPressed());
+    CHECK(combo.isDropDownOpen());
+    CHECK(combo.previewIndex() == std::optional<std::size_t>{1U});
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(selection_notifications == 0U);
+    CHECK(drop_down_notifications == std::vector<bool>{true});
+
+    /*
+     * Core semantics are a real toggle when a host routes the collapsed surface while already open.
+     * Terminal popup overlay policy normally intercepts this press as outside-popup dismissal first,
+     * but other hosts may choose to route the anchor directly.
+     */
+    CHECK(EventDispatcher::dispatch(combo, press).handled());
+    CHECK(EventDispatcher::dispatch(combo, release).handled());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+    CHECK(combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(selection_notifications == 0U);
+    CHECK(drop_down_notifications == std::vector<bool>({true, false}));
+}
+
+TEST_CASE("ComboBox collapsed pointer release outside cancels armed gesture without opening") {
+    ComboBox combo{{"Zero", "One"}};
+    FocusManager focus;
+
+    combo.arrange({10, 10, 30, 2});
+    CHECK(focus.requestFocus(combo));
+
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {15, 10},
+                  PointerAction::press,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+    CHECK(combo.isPressed());
+
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {80, 40},
+                  PointerAction::release,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+
+    CHECK(!combo.isPressed());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(!combo.previewIndex().has_value());
+}
+
+TEST_CASE("ComboBox collapsed pointer press requires host focus policy before routing") {
+    ComboBox combo{{"One"}};
+    combo.arrange({10, 10, 30, 2});
+
+    /*
+     * PointerRouter deliberately does not own FocusManager. An unfocused ComboBox cannot legally open
+     * its focus-scoped drop-down, so Core leaves the fresh press unclaimed rather than capturing a
+     * gesture whose completion would be rejected.
+     */
+    CHECK(!EventDispatcher::dispatch(
+        combo,
+        PointerEvent{
+            {15, 10},
+            PointerAction::press,
+            PointerButton::primary,
+            1,
+            KeyModifier::none}).handled());
+    CHECK(!combo.isPressed());
+    CHECK(!combo.isDropDownOpen());
+}
+
+TEST_CASE("ComboBox PointerRouter capture loss clears collapsed pressed feedback") {
+    Container root;
+    root.arrange({0, 0, 100, 60});
+    auto& combo = root.emplace<ComboBox>(
+        std::vector<std::string>{"One", "Two"});
+    combo.arrange({10, 10, 30, 2});
+
+    FocusManager focus;
+    CHECK(focus.requestFocus(combo));
+
+    PointerRouter router;
+    const auto press = router.route(
+        root,
+        PointerEvent{
+            {15, 10},
+            PointerAction::press,
+            PointerButton::primary,
+            1,
+            KeyModifier::none});
+
+    CHECK(press.handled);
+    CHECK(router.hasCapture());
+    CHECK(router.capturedWidget() == &combo);
+    CHECK(combo.isPressed());
+
+    router.releaseCapture();
+
+    CHECK(!router.hasCapture());
+    CHECK(!combo.isPressed());
+    CHECK(!combo.isDropDownOpen());
 }

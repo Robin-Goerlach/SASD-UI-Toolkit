@@ -13,8 +13,9 @@ namespace sasd::ui::detail {
  * control is a Button, CheckBox, RadioButton, or a future control, and it never invokes application
  * callbacks. The concrete control remains responsible for deciding what a completed gesture means.
  *
- * The helper lives under src/ and is therefore not part of the installed/public API. Three controls
- * now provide enough evidence for shared mechanics, but not enough evidence to justify freezing a
+ * The helper lives under src/ and is therefore not part of the installed/public API. Button,
+ * CheckBox, RadioButton and now ComboBox provide enough evidence for shared mechanics, but not enough
+ * evidence to justify freezing a
  * new public/protected control base class before 1.0.
  */
 struct PrimaryPointerGestureUpdate {
@@ -63,7 +64,7 @@ struct PrimaryPointerGestureUpdate {
  *
  * armed and inside are intentionally supplied by reference instead of hidden in a public base class.
  * They remain private state of each concrete control, preserving today's class layout/API boundary
- * while centralizing the behavior that has now proven identical across three controls.
+ * while centralizing the behavior that has now proven identical across the current simple controls.
  */
 [[nodiscard]] inline PrimaryPointerGestureUpdate updatePrimaryPointerGesture(
     const Widget& widget,

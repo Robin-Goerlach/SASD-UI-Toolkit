@@ -29,9 +29,11 @@ namespace sasd::ui {
  * While closed, unmodified Up/Down/Home/End continue to navigate committed selection immediately.
  * While open, the same keys move a separate transient preview without notifying committed-selection
  * observers. Enter commits that preview and closes; Escape closes and discards it. F4 toggles the
- * drop-down intent, Alt+Down opens it and Alt+Up closes/cancels it. Entering the open state requires
- * logical focus, and losing focus closes/cancels it synchronously. Popup placement, pointer row hit
- * testing and native peers remain presentation/backend concerns for later slices.
+ * drop-down intent, Alt+Down opens it and Alt+Up closes/cancels it. A focused collapsed ComboBox also
+ * owns the same backend-neutral armed Primary-pointer gesture as other simple controls: press arms,
+ * captured motion updates pressed feedback, and a matching release inside toggles the drop-down.
+ * Entering the open state requires logical focus, and losing focus closes/cancels it synchronously.
+ * Popup placement, popup-row hit testing and native peers remain presentation/backend concerns.
  */
 class ComboBox final : public Widget {
 public:
@@ -77,6 +79,17 @@ public:
 
     /** Returns whether this ComboBox currently requests an open drop-down presentation. */
     [[nodiscard]] bool isDropDownOpen() const noexcept { return drop_down_open_; }
+
+    /**
+     * Returns transient Primary-pointer pressed state for collapsed-control presentation.
+     *
+     * This is independent from committed/preview selection and drop-down visibility. It is true only
+     * while an armed Primary gesture remains geometrically inside a visible/enabled ComboBox. The
+     * PointerRouter owns capture; ComboBox owns only the semantic gesture bits.
+     */
+    [[nodiscard]] bool isPressed() const noexcept {
+        return pointer_armed_ && pointer_inside_ && isVisible() && isEnabled();
+    }
 
     /**
      * Changes the backend-neutral drop-down visibility intent.
@@ -178,7 +191,13 @@ protected:
                                  const MeasureConstraints& constraints) override;
 
     /**
-     * Handles focus-lifetime cleanup, drop-down transactions and keyboard selection navigation.
+     * Handles focus lifetime, collapsed Primary-pointer activation, drop-down transactions and keyboard
+     * selection navigation.
+     *
+     * A new Primary pointer gesture is accepted only while logical focus already belongs to this
+     * ComboBox. Hosts remain responsible for their focus-on-pointer-press policy and normally assign
+     * focus before PointerRouter dispatch, as the Terminal and SDL demos do. Matching release inside
+     * toggles the drop-down; release outside merely retires the gesture.
      *
      * F4 toggles open state; exact Alt+Down opens and exact Alt+Up cancels/closes. While open,
      * unmodified Up/Down/Home/End navigate preview, Enter commits/ closes, and Escape cancels/closes.
@@ -187,6 +206,7 @@ protected:
      * key-up is consumed without a second mutation on desktop backends. Focus loss is cancellation.
      */
     [[nodiscard]] EventResult onEvent(const Event& event) override;
+    void onPointerCaptureLost() noexcept override;
 
 private:
     std::vector<std::string> items_;
@@ -194,6 +214,14 @@ private:
     std::optional<std::size_t> preview_index_;
     bool drop_down_open_{false};
     TextStyle text_style_{};
+
+    /*
+     * Collapsed-control Primary gesture mechanics. Armed means this ComboBox owns the physical click
+     * transaction; inside tracks whether the captured pointer is still within clipped visual bounds.
+     * Presentation observes only isPressed(). Popup-row gestures remain separate overlay state.
+     */
+    bool pointer_armed_{false};
+    bool pointer_inside_{false};
     SelectionChangedHandler on_selection_changed_;
     DropDownChangedHandler on_drop_down_changed_;
 };

@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/combo_box.hpp>
+#include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
@@ -226,4 +227,69 @@ TEST_CASE("Rendered ComboBox flips indicator inside unchanged right-side geometr
     CHECK(open_indicator.text == "^");
     CHECK(open_indicator.clip_bounds == stable_clip);
     CHECK(open_indicator.origin == stable_origin);
+}
+
+TEST_CASE("Rendered ComboBox collapsed pointer press is visual-only until release opens drop-down") {
+    DisplayList display;
+    ComboBoxRenderedMetrics metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 160, 60});
+    auto& combo = window.emplace<ComboBox>(
+        std::vector<std::string>{"Portable", "Terminal"});
+    CHECK(combo.setSelectedIndex(0U));
+    combo.arrange({10, 10, 100, 20});
+    CHECK(focus.requestFocus(combo));
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    display.clear();
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {20, 15},
+                  PointerAction::press,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+    CHECK(combo.isPressed());
+    CHECK(!combo.isDropDownOpen());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto pressed_commands = display.commands();
+    const auto& pressed_text =
+        std::get<DrawTextCommand>(pressed_commands[2]);
+    const auto& pressed_indicator =
+        std::get<DrawTextCommand>(pressed_commands[3]);
+
+    /*
+     * Focus made the normal collapsed style inverse. Press toggles that overlay rather than forcing
+     * inverse=true again, so the pointer-down state remains visible without changing any geometry.
+     */
+    CHECK(!pressed_text.style.inverse);
+    CHECK(!pressed_indicator.style.inverse);
+    CHECK(pressed_indicator.text == "v");
+
+    display.clear();
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {20, 15},
+                  PointerAction::release,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+    CHECK(!combo.isPressed());
+    CHECK(combo.isDropDownOpen());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+
+    const auto open_commands = display.commands();
+    const auto& open_text =
+        std::get<DrawTextCommand>(open_commands[2]);
+    const auto& open_indicator =
+        std::get<DrawTextCommand>(open_commands[3]);
+    CHECK(open_text.style.inverse);
+    CHECK(open_indicator.style.inverse);
+    CHECK(open_indicator.text == "^");
 }

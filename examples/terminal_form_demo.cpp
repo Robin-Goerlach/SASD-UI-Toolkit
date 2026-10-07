@@ -283,7 +283,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F4/Alt+Down opens ComboBox; hover previews; click/Enter commits; outside click/Escape cancels. F10 menu; F1 help.");
+            "Click/F4/Alt+Down opens ComboBox; hover previews; click/Enter commits; outside click/Escape cancels. F10 menu; F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);

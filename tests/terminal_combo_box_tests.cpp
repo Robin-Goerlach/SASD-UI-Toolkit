@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/combo_box.hpp>
+#include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/terminal/terminal_measurement_context.hpp>
@@ -165,4 +166,56 @@ TEST_CASE("Terminal ComboBox flips the stable indicator while drop-down intent i
     CHECK(combo.setDropDownOpen(false));
     CHECK(PresentationCoordinator::synchronize(window, sink).complete());
     CHECK(buffer.at({indicator_x, 1}).code_point == U'v');
+}
+
+TEST_CASE("Terminal ComboBox collapsed pointer press has stable visual feedback and opens on release") {
+    ScreenBuffer buffer{{32, 4}};
+    TerminalMeasurementContext metrics;
+    TerminalPresentationSink sink{buffer};
+    FocusManager focus;
+
+    Window window;
+    window.arrange({0, 0, 32, 4});
+    auto& combo = window.emplace<ComboBox>(
+        std::vector<std::string>{"Portable", "Terminal"});
+    CHECK(combo.setSelectedIndex(0U));
+    const Coordinate width = combo.measure(metrics).width;
+    combo.arrange({2, 1, width, 1});
+    CHECK(focus.requestFocus(combo));
+
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    const Coordinate right_x =
+        static_cast<Coordinate>(2 + width - 1);
+    const Coordinate indicator_x =
+        static_cast<Coordinate>(2 + width - 3);
+
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {3, 1},
+                  PointerAction::press,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+    CHECK(combo.isPressed());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(buffer.at({2, 1}).code_point == U'*');
+    CHECK(buffer.at({right_x, 1}).code_point == U'*');
+    CHECK(buffer.at({indicator_x, 1}).code_point == U'v');
+
+    CHECK(EventDispatcher::dispatch(
+              combo,
+              PointerEvent{
+                  {3, 1},
+                  PointerAction::release,
+                  PointerButton::primary,
+                  1,
+                  KeyModifier::none}).handled());
+    CHECK(!combo.isPressed());
+    CHECK(combo.isDropDownOpen());
+    CHECK(PresentationCoordinator::synchronize(window, sink).complete());
+    CHECK(buffer.at({2, 1}).code_point == U'>');
+    CHECK(buffer.at({right_x, 1}).code_point == U'<');
+    CHECK(buffer.at({indicator_x, 1}).code_point == U'^');
+    CHECK(combo.isMeasureValid());
 }

@@ -273,7 +273,21 @@ void eraseWidget(DisplayList& display_list, Rect bounds, Color background_color)
         return PresentationUpdateResult::deferred;
     }
 
-    const TextStyle style = controlTextStyle(combo, combo.textStyle());
+    TextStyle style = controlTextStyle(combo, combo.textStyle());
+
+    /*
+     * Hover and press are visual overlays only. Hover underlines the collapsed content; press toggles
+     * inverse relative to the already-resolved focus/user style so a focused ComboBox still gets a
+     * visible pressed transition. Neither overlay changes measurement or the stable indicator lane.
+     */
+    if (combo.isEnabled() &&
+        combo.isPointerOver() &&
+        !combo.isPressed()) {
+        style.underline = true;
+    }
+    if (combo.isEnabled() && combo.isPressed()) {
+        style.inverse = !style.inverse;
+    }
 
     /*
      * Everything that can fail is resolved above. Repaint the whole arranged rectangle first so a

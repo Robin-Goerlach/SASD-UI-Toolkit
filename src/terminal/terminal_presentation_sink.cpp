@@ -490,6 +490,17 @@ PresentationUpdateResult renderComboBox(ScreenBuffer& buffer,
     }
 
     /*
+     * Pointer hover/press are presentation overlays on the collapsed surface. Hover underlines without
+     * changing geometry. Pressed feedback is carried by stable-width delimiters below; focus inverse is
+     * intentionally retained so a focused pointer gesture remains visually tied to keyboard ownership.
+     */
+    if (combo.isEnabled() &&
+        combo.isPointerOver() &&
+        !combo.isPressed()) {
+        style.underline = true;
+    }
+
+    /*
      * Paint the full arranged rectangle with styled blanks first. Selection can become shorter than
      * the widest measured item, and an expanding layout may allocate extra width; clearing the whole
      * rectangle prevents stale text while keeping focus/disabled styling visually contiguous.
@@ -501,6 +512,13 @@ PresentationUpdateResult renderComboBox(ScreenBuffer& buffer,
     if (!combo.isEnabled()) {
         left = '(';
         right = ')';
+    } else if (combo.isPressed()) {
+        /*
+         * Pressed takes delimiter precedence over focus while preserving the same two boundary cells.
+         * No pointer transition therefore changes measured width or popup anchor geometry.
+         */
+        left = '*';
+        right = '*';
     } else if (combo.hasFocus()) {
         left = '>';
         right = '<';

@@ -1,5 +1,6 @@
 #include <sasd/ui/combo_box.hpp>
 
+#include "primary_pointer_gesture.hpp"
 #include <sasd/ui/measurement_context.hpp>
 
 #include <algorithm>
@@ -240,6 +241,19 @@ Size ComboBox::onMeasure(const MeasurementContext& context,
     return result;
 }
 
+void ComboBox::onPointerCaptureLost() noexcept {
+    if (detail::cancelPrimaryPointerGesture(
+            *this,
+            pointer_armed_,
+            pointer_inside_)) {
+        /*
+         * Capture loss changes only collapsed interaction feedback. It must never commit preview,
+         * change selection, or infer a drop-down close/open transition.
+         */
+        invalidateVisual();
+    }
+}
+
 EventResult ComboBox::onEvent(const Event& event) {
     if (const auto* focus = std::get_if<FocusEvent>(&event)) {
         if (!focus->gained && drop_down_open_) {
@@ -254,6 +268,43 @@ EventResult ComboBox::onEvent(const Event& event) {
             (void)setDropDownOpen(false);
         }
         return EventResult::ignored;
+    }
+
+    if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+        /*
+         * ComboBox open state is focus-scoped. Unlike Button/CheckBox activation, a fresh collapsed
+         * pointer gesture therefore requires focus to have been assigned by host policy *before*
+         * routing. Do not claim an unfocused press that cannot legally open the drop-down.
+         *
+         * Once armed, however, move/release must still flow through the helper even if focus changes
+         * unexpectedly so local gesture state can retire deterministically.
+         */
+        if (pointer->action == PointerAction::press && !hasFocus()) {
+            return EventResult::ignored;
+        }
+
+        const detail::PrimaryPointerGestureUpdate update =
+            detail::updatePrimaryPointerGesture(
+                *this,
+                *pointer,
+                pointer_armed_,
+                pointer_inside_);
+
+        if (update.pressed_state_changed) {
+            invalidateVisual();
+        }
+
+        if (update.completed_inside) {
+            /*
+             * Compute the next semantic state before entering setDropDownOpen(): its synchronous
+             * callback may release/destroy this ComboBox. Gesture state is already retired by the
+             * shared helper, so no cleanup remains after the callback boundary.
+             */
+            const bool next_open = !drop_down_open_;
+            (void)setDropDownOpen(next_open);
+        }
+
+        return update.result;
     }
 
     const auto* key = std::get_if<KeyEvent>(&event);
