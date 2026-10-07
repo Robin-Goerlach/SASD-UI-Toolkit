@@ -1,0 +1,210 @@
+# SASD UI Toolkit Codex command policy.
+#
+# The rules below intentionally allow routine repository work while keeping
+# destructive history rewrites, releases and administrative GitHub operations
+# behind an approval boundary or blocked entirely.
+
+# ---------------------------------------------------------------------------
+# Safe Git inspection
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "show", "rev-parse", "ls-files", "grep"]],
+    decision = "allow",
+    justification = "Read-only repository inspection.",
+)
+
+prefix_rule(
+    pattern = ["git", "remote", "-v"],
+    decision = "allow",
+    justification = "Read-only remote inspection.",
+)
+
+prefix_rule(
+    pattern = ["git", "branch", ["--show-current", "--list"]],
+    decision = "allow",
+    justification = "Read-only branch inspection.",
+)
+
+# ---------------------------------------------------------------------------
+# Controlled Git synchronization and local development
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["git", "fetch", "--prune", "origin"],
+    decision = "allow",
+    justification = "Synchronize remote-tracking references from origin.",
+)
+
+prefix_rule(
+    pattern = ["git", "pull", "--ff-only"],
+    decision = "allow",
+    justification = "Fast-forward-only synchronization avoids implicit merge commits.",
+)
+
+prefix_rule(
+    pattern = ["git", "switch", "main"],
+    decision = "allow",
+    justification = "Switch to the repository main branch before synchronization.",
+)
+
+prefix_rule(
+    pattern = ["git", "switch", "-c"],
+    decision = "allow",
+    justification = "Create a dedicated local task branch.",
+)
+
+prefix_rule(
+    pattern = ["git", "add"],
+    decision = "allow",
+    justification = "Stage files belonging to the current task.",
+)
+
+prefix_rule(
+    pattern = ["git", "commit"],
+    decision = "allow",
+    justification = "Create a normal local task commit.",
+)
+
+# ---------------------------------------------------------------------------
+# Controlled push
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["git", "push", "origin", "HEAD"],
+    decision = "allow",
+    justification = "Push only the currently checked-out task branch to origin.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--set-upstream", "origin", "HEAD"],
+    decision = "allow",
+    justification = "Publish the current task branch and establish its upstream.",
+)
+
+# ---------------------------------------------------------------------------
+# Safe GitHub CLI inspection and reversible PR operations
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["gh", "auth", "status"],
+    decision = "allow",
+    justification = "Inspect GitHub authentication status.",
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", "view"],
+    decision = "allow",
+    justification = "Read repository metadata.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["list", "view", "checks", "diff", "status"]],
+    decision = "allow",
+    justification = "Read pull-request and CI state.",
+)
+
+prefix_rule(
+    pattern = ["gh", "run", ["list", "view", "watch"]],
+    decision = "allow",
+    justification = "Read or wait for GitHub Actions state.",
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["list", "view"]],
+    decision = "allow",
+    justification = "Read GitHub issues.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "edit"]],
+    decision = "allow",
+    justification = "Create or update the pull request for the current task.",
+)
+
+# ---------------------------------------------------------------------------
+# Explicitly dangerous Git operations
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Hard reset can destroy uncommitted work.",
+)
+
+prefix_rule(
+    pattern = ["git", "clean", ["-f", "-fd", "-fdx", "-df", "-dfx", "-xf", "-xfd"]],
+    decision = "forbidden",
+    justification = "Destructive clean operations can delete untracked work.",
+)
+
+prefix_rule(
+    pattern = ["git", "branch", "-D"],
+    decision = "forbidden",
+    justification = "Forced branch deletion is not required for normal development.",
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "--amend"],
+    decision = "forbidden",
+    justification = "Amending can rewrite already-published history.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Force-pushing is prohibited by repository policy.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "origin", "main"],
+    decision = "forbidden",
+    justification = "Codex must publish task branches and integrate through pull requests.",
+)
+
+# Catch force flags appended to the normal allowed push forms.
+prefix_rule(
+    pattern = ["git", "push", "origin", "HEAD", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Force-pushing is prohibited even for the current task branch.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--set-upstream", "origin", "HEAD", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Force-pushing is prohibited even while setting upstream.",
+)
+
+# ---------------------------------------------------------------------------
+# High-impact GitHub operations
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "prompt",
+    justification = "Merging requires task-specific authorization and green required checks.",
+)
+
+prefix_rule(
+    pattern = ["gh", "release"],
+    decision = "prompt",
+    justification = "Release operations require explicit repository-owner authorization.",
+)
+
+prefix_rule(
+    pattern = ["gh", "secret"],
+    decision = "prompt",
+    justification = "Repository secrets are outside normal coding-task scope.",
+)
+
+prefix_rule(
+    pattern = ["gh", "api"],
+    decision = "prompt",
+    justification = "Generic GitHub API access can perform arbitrary mutations; prefer a specific gh command.",
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", ["delete", "archive", "rename"]],
+    decision = "forbidden",
+    justification = "Repository administration must never be performed by an autonomous coding task.",
+)
