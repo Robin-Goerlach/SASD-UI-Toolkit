@@ -1,7 +1,9 @@
 # ADR 0129 – Rendered ComboBox popup presentation snapshot and DisplayList overlay
 
 **Status:** Accepted  
-**Date:** 2026-10-07
+**Date:** 2026-10-07  
+**Follow-up:** ADR 0130 integrates this generic overlay into the real SDL3 form demo while keeping
+popup pointer rows quarantined until rendered hit testing exists.
 
 ## English
 

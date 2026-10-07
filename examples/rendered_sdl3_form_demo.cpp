@@ -3,6 +3,8 @@
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/combo_box.hpp>
+#include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/hit_test.hpp>
@@ -12,6 +14,7 @@
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
+#include <sasd/ui/rendered/combo_box_popup_presentation.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
@@ -20,13 +23,17 @@
 #include <sasd/ui/window.hpp>
 
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <limits>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
 #include <variant>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -54,6 +61,47 @@ void layoutForm(Window& window,
 }
 
 /**
+ * Resolves one Widget's parent-relative arranged bounds into the SDL demo's root logical coordinate
+ * system.
+ *
+ * Rendered ComboBox popup presentation intentionally accepts an already-resolved anchor. It should not
+ * know about Widget parenting, VBox layout or top-level-window ownership. Keeping this tree walk in the
+ * host preserves that architecture boundary and mirrors the same rule already used by the Terminal
+ * demo.
+ *
+ * Parent offsets are accumulated in 64-bit arithmetic and narrowed only after the complete origin has
+ * been proven representable. Pathological nested geometry therefore fails closed instead of wrapping a
+ * signed Coordinate into an unrelated on-screen popup location.
+ */
+[[nodiscard]] std::optional<Rect> absoluteWidgetBounds(const Widget& widget) noexcept {
+    std::int64_t x = static_cast<std::int64_t>(widget.bounds().x);
+    std::int64_t y = static_cast<std::int64_t>(widget.bounds().y);
+
+    for (const Container* parent = widget.parent();
+         parent != nullptr;
+         parent = parent->parent()) {
+        x += static_cast<std::int64_t>(parent->bounds().x);
+        y += static_cast<std::int64_t>(parent->bounds().y);
+    }
+
+    const auto minimum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::min());
+    const auto maximum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max());
+
+    if (x < minimum || x > maximum || y < minimum || y > maximum) {
+        return std::nullopt;
+    }
+
+    return Rect{
+        static_cast<Coordinate>(x),
+        static_cast<Coordinate>(y),
+        widget.bounds().width,
+        widget.bounds().height,
+    };
+}
+
+/**
  * Mirrors logical widget focus into SDL's text-input/IME activation boundary.
  *
  * SDL3 intentionally leaves text input disabled until requested. Keeping this policy in the desktop
@@ -69,15 +117,20 @@ void synchronizeTextInput(Sdl3WindowBackend& backend, const FocusManager& focus)
 }
 
 /**
- * Builds and presents a complete rendered frame.
+ * Builds and presents one complete rendered frame, including transient ComboBox popup presentation.
  *
  * RenderedPresentationSink supports incremental synchronization, but an SDL window back buffer is not
  * treated as persistent state after SDL_RenderPresent(). PresentationCoordinator::replay() therefore
- * reconstructs the complete current visual tree without pretending that the semantic Widgets became
- * dirty merely because the native presentation surface needs a new frame. This is intentionally
- * correctness-first until M3 grows an explicit retained backing-store/dirty-region policy.
+ * reconstructs the complete current visual tree without pretending that semantic Widgets became dirty
+ * merely because the native presentation surface needs a new frame.
+ *
+ * The popup is intentionally composed *after* the ordinary Widget replay. It is not inserted into the
+ * Widget tree and it never asks SDL to own a second native control. The generic Rendered layer receives
+ * the immutable base DisplayList plus the ComboBox's absolute logical anchor and produces a value-owned
+ * overlay command stream. SDL remains only the final RenderDevice/metric adapter.
  */
 void presentFullFrame(Window& window,
+                      ComboBox& surface_mode,
                       DisplayList& display_list,
                       RenderedPresentationSink& presentation,
                       Sdl3WindowBackend& backend) {
@@ -89,7 +142,37 @@ void presentFullFrame(Window& window,
             "SDL3 demo contains presentation state the current rendered model cannot represent"};
     }
 
-    (void)backend.presentFrame(display_list);
+    if (!surface_mode.isDropDownOpen()) {
+        (void)backend.presentFrame(display_list);
+        return;
+    }
+
+    const auto anchor = absoluteWidgetBounds(surface_mode);
+    if (!anchor.has_value()) {
+        throw std::runtime_error{
+            "SDL3 demo ComboBox anchor cannot be represented"};
+    }
+
+    /*
+     * The Window is arranged at root origin (0,0), so its current bounds are also the complete logical
+     * popup viewport. The generic composer handles proportional-font metrics, below/above fallback and
+     * immutable base-list composition; this host contributes only tree-to-root geometry and background
+     * policy.
+     */
+    const auto composed = composeComboBoxPopupDisplayList(
+        display_list,
+        surface_mode,
+        *anchor,
+        window.bounds(),
+        backend,
+        Color::black);
+
+    if (!composed.has_value()) {
+        throw std::runtime_error{
+            "SDL3 demo ComboBox popup cannot be represented in the current logical viewport"};
+    }
+
+    (void)backend.presentFrame(*composed);
 }
 
 [[nodiscard]] std::string fontPathFromArguments(int argc, char** argv) {
@@ -201,6 +284,22 @@ int main(int argc, char** argv) {
         name.setTextStyle(field_style);
 
         /*
+         * This is the same backend-neutral ComboBox used by the Terminal demo. The collapsed control is
+         * a normal VBox child; only its open item surface becomes a transient Rendered DisplayList
+         * overlay. SDL therefore supplies font metrics/pixels without becoming the owner of ComboBox
+         * selection, preview or open/closed state.
+         */
+        auto& surface_label = form.emplace<Label>("ComboBox demo:");
+        surface_label.setTextStyle(name_label_style);
+
+        auto& surface_mode = form.emplace<ComboBox>(
+            std::vector<std::string>{"Portable", "Terminal", "Rendered"});
+        TextStyle combo_style;
+        combo_style.foreground = Color::bright_cyan;
+        surface_mode.setTextStyle(combo_style);
+        (void)surface_mode.setSelectedIndex(0U);
+
+        /*
          * Keep the first M4 form control in the same semantic tree as the M2/M3 widgets. The example
          * does not construct an SDL-specific checkbox: Core owns checked state and interaction while
          * RenderedPresentationSink decides how that state becomes pixels.
@@ -241,7 +340,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "Drag selects characters; double-click drag selects words in Name. F1 help.");
+            "ComboBox: click/F4 opens; arrows preview; Enter commits; Escape cancels. Popup mouse rows are intentionally deferred. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -290,6 +389,19 @@ int main(int argc, char** argv) {
                     : "Greeting style: calm (.)");
         });
 
+        surface_mode.setOnSelectionChanged([&](std::optional<std::size_t>) {
+            /*
+             * Preview navigation remains transient while the popup is open. The visible status changes
+             * only after Core publishes a committed selection, making preview-versus-commit behavior
+             * observable in the real SDL window without introducing adapter-specific application state.
+             */
+            const auto selected = surface_mode.selectedText();
+            status.setText(
+                selected.has_value()
+                    ? "ComboBox selection committed: " + std::string{*selected}
+                    : "ComboBox selection cleared");
+        });
+
         hello_style.setOnSelected([&] {
             /*
              * RadioGroup has already retired the previous selection before this callback runs. The
@@ -309,7 +421,12 @@ int main(int argc, char** argv) {
         layoutForm(window, form, backend, backend.windowSize());
         (void)focus.requestFocus(name);
         synchronizeTextInput(backend, focus);
-        presentFullFrame(window, display_list, presentation, backend);
+        presentFullFrame(
+            window,
+            surface_mode,
+            display_list,
+            presentation,
+            backend);
 
         while (!application.exitRequested()) {
             (void)application.processRoutedEvents(
@@ -345,6 +462,23 @@ int main(int argc, char** argv) {
                     }
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        if (surface_mode.isDropDownOpen()) {
+                            /*
+                             * ADR 0129 provides rendered popup presentation but not row hit-testing yet.
+                             * Once the overlay is visible, ordinary Widget hit testing is no longer a
+                             * truthful representation of the topmost surface: a popup row may geometrically
+                             * cover a Button/TextField that still exists underneath in the Widget tree.
+                             *
+                             * Until the rendered popup input slice exists, consume every pointer sample at
+                             * this host boundary. Retire any old ordinary-root capture/hover relationship
+                             * as well so a gesture that started before keyboard-open cannot remain armed
+                             * behind the modal overlay. Keyboard navigation/Enter/Escape remain fully live.
+                             */
+                            pointer_router.leaveRoot();
+                            text_selection_gesture.reset();
+                            return;
+                        }
+
                         /*
                          * Desktop focus-on-primary-press remains host policy. The rendered TextField
                          * selection helper deliberately does not own FocusManager because focus scope,
@@ -378,6 +512,16 @@ int main(int argc, char** argv) {
                     }
 
                     if (const auto* resize = std::get_if<ResizeEvent>(&event)) {
+                        /*
+                         * Rendered popup bounds belong to the old logical viewport. Cancel the transient
+                         * open/preview transaction before re-layout rather than carrying a placement that
+                         * may no longer fit either side after a live window resize. Committed selection is
+                         * preserved by Core and reopening seeds preview from it again.
+                         */
+                        if (surface_mode.isDropDownOpen()) {
+                            (void)surface_mode.setDropDownOpen(false);
+                        }
+
                         layoutForm(window, form, backend, resize->size);
 
                         /*
@@ -399,6 +543,7 @@ int main(int argc, char** argv) {
                         if (!resize->size.isEmpty()) {
                             presentFullFrame(
                                 window,
+                                surface_mode,
                                 display_list,
                                 presentation,
                                 backend);
@@ -431,7 +576,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; ComboBox click/F4 opens, arrows preview, Enter commits, Escape cancels; popup mouse rows are not active yet; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 
@@ -467,7 +612,12 @@ int main(int argc, char** argv) {
                  * presentation path. Resize itself is handled eagerly above to reduce live-resize
                  * stale-frame artifacts.
                  */
-                presentFullFrame(window, display_list, presentation, backend);
+                presentFullFrame(
+                    window,
+                    surface_mode,
+                    display_list,
+                    presentation,
+                    backend);
             }
 
             /*
