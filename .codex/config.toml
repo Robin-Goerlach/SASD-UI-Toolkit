@@ -1,0 +1,10 @@
+# Codex project defaults for SASD UI Toolkit.
+#
+# Keep normal development inside the repository workspace. Commands that need
+# to cross sandbox boundaries are governed by .codex/rules/default.rules.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+# Required for git fetch/push and gh repository/CI inspection.
+network_access = true
