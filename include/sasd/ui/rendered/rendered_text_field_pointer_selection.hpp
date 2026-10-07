@@ -5,7 +5,6 @@
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/rendered/rendered_text_field_hit_test.hpp>
 #include <sasd/ui/text/selection_boundaries.hpp>
-#include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/widget.hpp>
 
@@ -154,13 +153,13 @@ private:
 
                 if (exact_unmodified_triple_click) {
                     /*
-                     * TextField is intrinsically single-line. Whole-content selection is therefore the
-                     * natural counterpart of line-selection semantics and needs no rendered geometry
-                     * once HitTest has identified the TextField target.
+                     * TextField is intrinsically single-line. Its whole-content selection therefore is
+                     * the natural single-line counterpart of desktop editors' triple-click line
+                     * selection. Delegate the actual scalar range to Core's selectAll() operation so
+                     * future menu/command integrations and this rendered gesture share one semantic
+                     * definition of "complete TextField content".
                      */
-                    pressed_field->setSelection(
-                        0,
-                        utf8::scalarCount(pressed_field->text()));
+                    pressed_field->selectAll();
                     atomic_multi_click_selection = true;
                 } else if (exact_unmodified_double_click) {
                     /*

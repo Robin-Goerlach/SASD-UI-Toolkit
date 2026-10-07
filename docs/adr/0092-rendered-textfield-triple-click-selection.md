@@ -1,7 +1,9 @@
 # ADR 0092 – Rendered TextField triple-click selects complete single-line content
 
 **Status:** Accepted  
-**Date:** 2026-10-04
+**Date:** 2026-10-04  
+**Follow-up:** The later `feature/textfield-select-all` slice proved an independent Core/menu-command
+use case and added public `TextField::selectAll()`. Triple-click now delegates to that semantic operation.
 
 ## English
 
@@ -39,11 +41,15 @@ The new behavior requires an exact no-modifier triple click.
 
 Ctrl/Alt/Meta/Shift combinations are deliberately not assigned select-all semantics by this ADR. They continue through the previously defined ordinary/Shift pointer policies. This leaves room for later platform-specific conventions without silently freezing them into the generic contract.
 
-### Why this is not a public TextField `selectAll()` API yet
+### Historical note: why this ADR did not add a public `TextField::selectAll()` API
 
-The semantic result can already be expressed with the stable public `setSelection()` contract. Adding another public Core method is unnecessary for this interaction slice and would broaden the API without proving an independent need from command/menu integration.
+At the time this ADR was accepted, the semantic result could already be expressed with the stable public
+`setSelection()` contract, and this isolated interaction slice had not yet proven an independent need
+for another Core method.
 
-If later command work needs a first-class Select All operation, that can be added deliberately with its own enablement and command semantics.
+The later `feature/textfield-select-all` work supplied that independent menu/command-facing use case.
+The public `TextField::selectAll()` operation now owns the complete-content scalar range and rendered
+triple-click delegates to it. Shortcut/command enablement policy remains outside TextField.
 
 ### Consequences
 
@@ -61,7 +67,7 @@ This ADR does not define:
 - double-click-and-drag word-granular extension;
 - triple-click-and-drag line-granular extension;
 - multiline controls;
-- a public Select All command/API;
+- a public Select All command/shortcut policy beyond the semantic `TextField::selectAll()` operation;
 - grapheme-aware or UAX #29 word breaking;
 - platform-specific modified multi-click conventions.
 
@@ -103,11 +109,16 @@ Das neue Verhalten gilt nur für einen exakten Triple Click ohne Modifier.
 
 Ctrl/Alt/Meta/Shift-Kombinationen erhalten durch diese ADR bewusst keine Select-All-Bedeutung. Sie folgen weiterhin den bereits definierten normalen bzw. Shift-Pointer-Regeln. Dadurch bleibt Raum für spätere plattformspezifische Konventionen.
 
-### Warum noch keine öffentliche `TextField::selectAll()`-API
+### Historische Notiz: Warum diese ADR noch keine öffentliche `TextField::selectAll()`-API ergänzte
 
-Das semantische Ergebnis lässt sich bereits vollständig über den stabilen öffentlichen `setSelection()`-Vertrag ausdrücken. Eine zusätzliche öffentliche Core-Methode würde die API in diesem Interaktions-Slice verbreitern, ohne dass dafür schon ein unabhängiger Bedarf nachgewiesen ist.
+Zum Zeitpunkt dieser ADR ließ sich das semantische Ergebnis bereits vollständig über den stabilen
+öffentlichen `setSelection()`-Vertrag ausdrücken; für diesen isolierten Interaktions-Slice war ein
+unabhängiger Bedarf für eine weitere Core-Methode noch nicht nachgewiesen.
 
-Wenn spätere Command-/Menüarbeit einen erstklassigen Select-All-Befehl benötigt, kann dieser bewusst mit eigener Enablement- und Command-Semantik ergänzt werden.
+Die spätere Arbeit in `feature/textfield-select-all` lieferte diesen unabhängigen Menü-/Command-
+Anwendungsfall. Die öffentliche Operation `TextField::selectAll()` besitzt nun die vollständige
+Content-Selection im Scalar-Raum, und der Rendered-Triple-Click delegiert an sie. Shortcut-/Command-
+Enablement bleibt weiterhin außerhalb des TextField.
 
 ### Folgen
 
@@ -125,6 +136,6 @@ Diese ADR definiert noch nicht:
 - Double-Click-and-Drag mit Wortgranularität;
 - Triple-Click-and-Drag mit Zeilengranularität;
 - mehrzeilige Controls;
-- eine öffentliche Select-All-Command/API;
+- eine öffentliche Select-All-Command-/Shortcut-Policy über die semantische `TextField::selectAll()`-Operation hinaus;
 - Grapheme-aware bzw. UAX-29-Wortgrenzen;
 - plattformspezifische modifizierte Multi-Click-Konventionen.

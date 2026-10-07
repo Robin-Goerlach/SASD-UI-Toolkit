@@ -37,6 +37,7 @@ they improve the architecture before compatibility commitments become expensive.
 - SDL3 pointer coordinate conversion and private deterministic semantic translation seam; the SDL3 backend now advertises pointer input capability.
 - Shared private Rendered TextField viewport geometry plus `RenderedTextFieldHitTest` for metric-correct pointer click-to-caret mapping without leaking font/pixel state into Core.
 - SDL3 integration coverage from native mouse-button representation through semantic cursor placement to the final rendered TextField caret command.
+- Semantic `TextField::selectAll()` operation shared by future menu/command Select All integration and rendered triple-click complete-content selection.
 
 ## [0.1.0] - 2026-09-28
 

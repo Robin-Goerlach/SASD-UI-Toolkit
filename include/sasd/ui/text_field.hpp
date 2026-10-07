@@ -94,6 +94,17 @@ public:
     /** Collapses the current selection at cursorPosition() without changing text. */
     void clearSelection();
 
+    /**
+     * Selects the complete single-line TextField content using the public scalar selection model.
+     *
+     * This is a semantic editing operation, not a keyboard shortcut policy. Backends, menus and future
+     * commands can call it for Ctrl+A, menu "Select All" or triple-click behavior without duplicating
+     * Unicode-scalar counting rules outside Core. The anchor is placed at scalar zero and the active
+     * cursor at the current scalar end, matching the common forward selection used by desktop editors.
+     * Empty fields remain a no-op because scalar zero is already both anchor and cursor.
+     */
+    void selectAll();
+
     /** Returns an owned UTF-8 copy of the selected range, or an empty string when collapsed. */
     [[nodiscard]] std::string selectedText() const;
 
