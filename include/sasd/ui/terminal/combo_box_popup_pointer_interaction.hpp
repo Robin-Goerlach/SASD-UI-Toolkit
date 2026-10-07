@@ -15,6 +15,7 @@ enum class TerminalComboBoxPopupPointerAction {
     none,
     preview_changed,
     committed,
+    dismissed,
 };
 
 /**
@@ -24,9 +25,10 @@ enum class TerminalComboBoxPopupPointerAction {
  * action == none. row_index reports the painted row under the pointer when one exists.
  *
  * committed means a stateful Primary press/release transaction accepted the currently previewed row,
- * transferred it to committed ComboBox selection and closed the drop-down. The helper never executes a
- * second application callback of its own; it delegates semantic publication to ComboBox's existing
- * commitPreviewSelection() contract.
+ * transferred it to committed ComboBox selection and closed the drop-down. dismissed means a Primary
+ * press outside all popup rows cancelled the open transient transaction without changing committed
+ * selection. The helper never executes a second application callback of its own; semantic publication/
+ * closing remains delegated to ComboBox's existing Core methods.
  */
 struct TerminalComboBoxPopupPointerResult {
     TerminalComboBoxPopupPointerAction action{
@@ -50,9 +52,10 @@ struct TerminalComboBoxPopupPointerResult {
  * The stateful overload stores only a numeric painted-row identity between events; it retains no
  * ComboBox, Widget, item string, frame or terminal-device pointer.
  *
- * Outside-click dismissal and PointerRouter capture are intentionally still absent. A press outside the
- * popup cancels any armed row but leaves the ComboBox open, and all open-popup pointer events remain
- * consumed so they cannot click through to Widgets underneath.
+ * Primary outside-press dismissal is part of this adapter because it needs no retained geometry beyond
+ * the current validated snapshot: the press cancels the transient ComboBox transaction immediately and
+ * is consumed, so it cannot click through to a Widget underneath. PointerRouter capture remains a separate
+ * later policy; release mismatch and surface continuity are still governed by GestureState/host resets.
  */
 class TerminalComboBoxPopupPointerInteraction final {
 public:
@@ -91,9 +94,10 @@ public:
     /**
      * Stateless hover-only handling.
      *
-     * Motion over a painted row changes preview; press/release/outside motion are consumed without
-     * completion semantics. This preserves the ADR 0125 contract for callers that do not supply
-     * cross-event gesture state.
+     * Motion over a painted row changes preview. Primary press outside the popup dismisses/cancels the
+     * open ComboBox immediately because that behavior needs no cross-event identity. Press on a row and
+     * releases remain consumed without click-completion semantics. This keeps stateless callers free from
+     * retained gesture state while still giving them safe outside-dismiss behavior.
      */
     [[nodiscard]] static std::optional<TerminalComboBoxPopupPointerResult>
     handle(ComboBox& combo,
@@ -111,10 +115,11 @@ public:
     /**
      * Stateful Primary click handling.
      *
-     * Primary press on a row first previews that row and arms its presentation identity. Pointer motion
-     * may continue to update preview without changing the armed identity. A later Primary release commits
-     * only when it geometrically hits the exact row that was armed by the press. Any other release retires
-     * the gesture without changing committed selection.
+     * Primary press on a row first previews that row and arms its presentation identity. Primary press
+     * outside all popup rows resets any armed identity and dismisses the ComboBox as a cancellation path.
+     * Pointer motion may continue to update preview without changing the armed identity. A later Primary
+     * release commits only when it geometrically hits the exact row that was armed by the press. Any other
+     * release retires the gesture without changing committed selection.
      *
      * GestureState is reset *before* commitPreviewSelection() is called. The Core commit may synchronously
      * invoke application callbacks that release/destroy the ComboBox; after that call begins this helper
@@ -177,24 +182,46 @@ private:
         }
 
         if (event.action == PointerAction::press) {
-            if (gesture_state == nullptr) {
-                /*
-                 * Stateless callers deliberately get no click semantics. The popup still consumes the
-                 * physical press so a visible overlay row cannot activate a Widget underneath it.
-                 */
+            /*
+             * Every fresh press invalidates an older possible click identity before interpreting the new
+             * sample. This is required even for stateless-host parity: if a stateful host supplied us a
+             * GestureState, an outside or non-primary press must never inherit an older armed row.
+             */
+            if (gesture_state != nullptr) {
+                gesture_state->reset();
+            }
+
+            if (event.button != PointerButton::primary) {
                 return TerminalComboBoxPopupPointerResult{
                     TerminalComboBoxPopupPointerAction::none,
                     row,
                 };
             }
 
-            /*
-             * Every physical press begins a new possible click transaction. Reset first so a press on
-             * empty/outside geometry or with another button can never inherit an older Primary row.
-             */
-            gesture_state->reset();
+            if (!row.has_value()) {
+                /*
+                 * Primary outside press is an immediate cancellation/dismissal path. The physical press is
+                 * consumed by this popup scope and is intentionally NOT replayed to the Widget underneath;
+                 * doing so would turn dismissal into click-through activation.
+                 *
+                 * setDropDownOpen(false) may synchronously invoke an application callback that releases or
+                 * destroys the ComboBox. Gesture identity is already reset above, and after this call begins
+                 * no ComboBox member is accessed.
+                 */
+                const bool dismissed = combo.setDropDownOpen(false);
+                return TerminalComboBoxPopupPointerResult{
+                    dismissed
+                        ? TerminalComboBoxPopupPointerAction::dismissed
+                        : TerminalComboBoxPopupPointerAction::none,
+                    std::nullopt,
+                };
+            }
 
-            if (event.button != PointerButton::primary || !row.has_value()) {
+            if (gesture_state == nullptr) {
+                /*
+                 * Stateless callers deliberately get no row click completion. A press on a visible row is
+                 * still consumed so it cannot activate a Widget underneath the overlay.
+                 */
                 return TerminalComboBoxPopupPointerResult{
                     TerminalComboBoxPopupPointerAction::none,
                     row,

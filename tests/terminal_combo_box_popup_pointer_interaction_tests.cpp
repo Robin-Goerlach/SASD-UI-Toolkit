@@ -1,10 +1,12 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/combo_box.hpp>
+#include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/terminal/combo_box_popup_pointer_interaction.hpp>
 #include <sasd/ui/terminal/combo_box_popup_presentation.hpp>
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -469,4 +471,183 @@ TEST_CASE("Terminal ComboBox popup stale state resets an armed press fail closed
     CHECK(!gesture.hasPressedRow());
     CHECK(fixture.combo.isDropDownOpen());
     CHECK(!fixture.combo.selectedIndex().has_value());
+}
+
+TEST_CASE("Terminal ComboBox popup Primary outside press dismisses and cancels preview") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+    std::size_t selection_notifications = 0U;
+    std::vector<bool> drop_down_notifications;
+
+    fixture.combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+    fixture.combo.setOnDropDownChanged(
+        [&](bool open) { drop_down_notifications.push_back(open); });
+
+    CHECK(fixture.combo.setPreviewIndex(2U));
+    const auto current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    const PointerEvent outside_press{
+        {25, 10},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        outside_press,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::dismissed);
+    CHECK(!result->row_index.has_value());
+    CHECK(!gesture.hasPressedRow());
+    CHECK(!fixture.combo.isDropDownOpen());
+    CHECK(!fixture.combo.previewIndex().has_value());
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{0U});
+    CHECK(selection_notifications == 0U);
+    CHECK(drop_down_notifications == std::vector<bool>{false});
+}
+
+TEST_CASE("Terminal ComboBox popup stateless Primary outside press also dismisses safely") {
+    PointerComboFixture fixture;
+
+    const PointerEvent outside_press{
+        {25, 10},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        outside_press);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::dismissed);
+    CHECK(!fixture.combo.isDropDownOpen());
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{0U});
+}
+
+TEST_CASE("Terminal ComboBox popup non-Primary outside press is consumed without dismissal") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+
+    const PointerEvent secondary_press{
+        {25, 10},
+        PointerAction::press,
+        PointerButton::secondary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        secondary_press,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::none);
+    CHECK(!result->row_index.has_value());
+    CHECK(fixture.combo.isDropDownOpen());
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{0U});
+}
+
+TEST_CASE("Terminal ComboBox popup outside release after armed press cancels click but does not dismiss") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+
+    const PointerEvent press{
+        {5, 4},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+    CHECK(gesture.hasPressedRow());
+
+    const auto current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    const PointerEvent outside_release{
+        {25, 10},
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        outside_release,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::none);
+    CHECK(!gesture.hasPressedRow());
+    CHECK(fixture.combo.isDropDownOpen());
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{0U});
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{1U});
+}
+
+TEST_CASE("Terminal ComboBox popup outside dismissal callback may release the control from its owner") {
+    auto owner = std::make_unique<Container>();
+    auto& combo =
+        owner->emplace<ComboBox>(std::vector<std::string>{"Zero", "One"});
+    FocusManager focus;
+    CHECK(combo.setSelectedIndex(0U));
+    CHECK(focus.requestFocus(combo));
+    CHECK(combo.setDropDownOpen(true));
+
+    const auto snapshot = buildComboBoxPopupPresentation(
+        combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(snapshot.has_value());
+
+    std::unique_ptr<Component> released;
+    combo.setOnDropDownChanged([&](bool open) {
+        CHECK(!open);
+        released = owner->release(combo);
+    });
+
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+    const PointerEvent outside_press{
+        {25, 10},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        combo,
+        *snapshot,
+        outside_press,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::dismissed);
+    CHECK(!gesture.hasPressedRow());
+    CHECK(released != nullptr);
+    CHECK(released->owner() == nullptr);
 }

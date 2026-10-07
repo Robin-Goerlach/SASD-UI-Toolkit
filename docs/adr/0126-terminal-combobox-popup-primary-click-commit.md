@@ -1,7 +1,9 @@
 # ADR 0126 – Terminal ComboBox popup Primary click commit transaction
 
 **Status:** Accepted  
-**Date:** 2026-10-07
+**Date:** 2026-10-07  
+**Follow-up:** ADR 0127 adds Primary outside-press dismissal while preserving the press/release row
+commit transaction defined here.
 
 ## English
 

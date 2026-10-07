@@ -283,7 +283,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F4/Alt+Down opens ComboBox; arrows/mouse hover preview; click or Enter commits; Escape cancels. F10 menu; F1 help.");
+            "F4/Alt+Down opens ComboBox; hover previews; click/Enter commits; outside click/Escape cancels. F10 menu; F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -675,9 +675,9 @@ int main() {
                              *
                              * Hover updates transient preview. Primary press/release additionally uses the
                              * host-owned GestureState: press arms one painted row and matching release commits
-                             * only that same revalidated row. Outside presses/releases remain consumed but do
-                             * not dismiss yet, so click-through is impossible while dismissal/capture stay a
-                             * later policy.
+                             * only that same revalidated row. A Primary press outside every popup row now
+                             * dismisses/cancels immediately and is consumed, so it cannot activate a Widget
+                             * underneath. Pointer capture remains a separate later policy.
                              */
                             const auto popup_snapshot = buildComboBoxPopupPresentation(
                                 surface_mode,
