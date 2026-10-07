@@ -152,7 +152,13 @@ TEST_CASE("Rendered ComboBox popup renderer emits opaque chrome rows and preview
 
 TEST_CASE("Rendered ComboBox popup preview toggles an already inverse base style") {
     OpenRenderedComboFixture fixture;
-    CHECK(fixture.combo.setPreviewIndex(0U));
+
+    /*
+     * Opening the fixture seeds preview from committed selection zero by ADR 0121. Re-applying the same
+     * preview index is correctly an idempotent no-op returning false, so assert the seeded transaction
+     * state directly instead of accidentally treating no change as setup failure.
+     */
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{0U});
 
     TextStyle style;
     style.inverse = true;
