@@ -283,7 +283,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F4/Alt+Down opens ComboBox; arrows or mouse hover preview; Enter commits; Escape cancels. F10 menu; F1 help.");
+            "F4/Alt+Down opens ComboBox; arrows/mouse hover preview; click or Enter commits; Escape cancels. F10 menu; F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -316,6 +316,15 @@ int main() {
          * semantic state together so no old word origin can survive into a later unrelated pointer press.
          */
         TerminalTextFieldPointerSelection::GestureState text_selection_gesture;
+
+        /*
+         * ComboBox popup click completion is also a two-event transaction. The host retains only the
+         * pressed terminal row index; the interaction helper revalidates a freshly built owned popup
+         * snapshot and current Core state before any release may commit. Keyboard takeover, resize and
+         * pointer-surface leave reset this tiny identity explicitly so it cannot survive scope changes.
+         */
+        TerminalComboBoxPopupPointerInteraction::GestureState
+            combo_popup_pointer_gesture;
 
         /*
          * Menu Command activation also spans two backend events: Primary press selects and arms one popup
@@ -547,6 +556,7 @@ int main() {
                     if (menu_was_active || menu_interaction.isActive()) {
                         pointer_router.releaseCapture();
                         text_selection_gesture.reset();
+                        combo_popup_pointer_gesture.reset();
                     }
 
                     if (menu_result->action != MenuInteractionAction::none) {
@@ -570,6 +580,14 @@ int main() {
                 [&](const Event& event) -> Widget* {
                     if (std::holds_alternative<KeyEvent>(event) ||
                         std::holds_alternative<TextInputEvent>(event)) {
+                        /*
+                         * Keyboard/text input is a competing completion path for an armed ComboBox pointer
+                         * click. Retire that physical identity before routing the event; otherwise an F4
+                         * close/reopen or arrow-key preview change could let a later mouse release complete
+                         * a transaction that began in an older popup scope.
+                         */
+                        combo_popup_pointer_gesture.reset();
+
                         /*
                          * While menu interaction is active, keyboard ownership belongs to the menu layer.
                          * Returning no Widget prevents a focused TextField or Button from consuming an arrow,
@@ -601,6 +619,7 @@ int main() {
                         menu_pointer_deferral.reset();
                         menu_hover.reset();
                         menu_close.reset();
+                        combo_popup_pointer_gesture.reset();
 
                         /*
                          * ComboBox open state is semantic, but its current popup placement is tied to the
@@ -618,7 +637,28 @@ int main() {
                         return;
                     }
 
+                    if (const auto* surface =
+                            std::get_if<PointerSurfaceEvent>(&event);
+                        surface != nullptr &&
+                        surface->action == PointerSurfaceAction::left) {
+                        /*
+                         * Once native/terminal delivery leaves the top-level surface, a later release has
+                         * no trustworthy continuity with a row pressed before the leave. Retire the armed
+                         * value identity; the open ComboBox itself remains unchanged.
+                         */
+                        combo_popup_pointer_gesture.reset();
+                        return;
+                    }
+
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        if (!surface_mode.isDropDownOpen()) {
+                            /*
+                             * A keyboard/callback may have closed the popup since the last pointer sample.
+                             * Clear any residue before normal Widget routing can observe a later release.
+                             */
+                            combo_popup_pointer_gesture.reset();
+                        }
+
                         if (surface_mode.isDropDownOpen()) {
                             const auto anchor = absoluteWidgetBounds(surface_mode);
                             if (!anchor.has_value()) {
@@ -633,9 +673,11 @@ int main() {
                              * visible rows. The interaction helper revalidates semantic item/preview identity
                              * before applying any numeric row index.
                              *
-                             * This slice adds passive hover preview only. Press/release and outside motion are
-                             * still consumed by the popup scope so they cannot click through to Widgets below;
-                             * click commit/outside-dismissal will add explicit gesture semantics separately.
+                             * Hover updates transient preview. Primary press/release additionally uses the
+                             * host-owned GestureState: press arms one painted row and matching release commits
+                             * only that same revalidated row. Outside presses/releases remain consumed but do
+                             * not dismiss yet, so click-through is impossible while dismissal/capture stay a
+                             * later policy.
                              */
                             const auto popup_snapshot = buildComboBoxPopupPresentation(
                                 surface_mode,
@@ -652,7 +694,8 @@ int main() {
                                     surface_mode,
                                     *popup_snapshot,
                                     *pointer,
-                                    presentation.ambiguousWidthMode());
+                                    presentation.ambiguousWidthMode(),
+                                    combo_popup_pointer_gesture);
                             if (!popup_result.has_value()) {
                                 throw std::runtime_error(
                                     "terminal demo ComboBox pointer frame became semantically stale");

@@ -185,3 +185,288 @@ TEST_CASE("Terminal ComboBox popup pointer interaction leaves inactive ComboBox 
 
     CHECK(!result.has_value());
 }
+
+TEST_CASE("Terminal ComboBox popup stateful Primary press previews and arms one row") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+    std::size_t selection_notifications = 0U;
+    fixture.combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+
+    const PointerEvent press{
+        {5, 4}, // row one
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::preview_changed);
+    CHECK(result->row_index == std::optional<std::size_t>{1U});
+    CHECK(gesture.hasPressedRow());
+    CHECK(gesture.pressedRow() == std::optional<std::size_t>{1U});
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{1U});
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{0U});
+    CHECK(fixture.combo.isDropDownOpen());
+    CHECK(selection_notifications == 0U);
+}
+
+TEST_CASE("Terminal ComboBox popup matching stateful release commits clicked row and closes") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+    std::size_t selection_notifications = 0U;
+    fixture.combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t> index) {
+            ++selection_notifications;
+            CHECK(index == std::optional<std::size_t>{1U});
+            CHECK(!fixture.combo.isDropDownOpen());
+            CHECK(!fixture.combo.previewIndex().has_value());
+        });
+
+    const PointerEvent press{
+        {5, 4},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+
+    /*
+     * Press changed preview, so release must be interpreted against a freshly built presentation
+     * snapshot rather than the pre-press snapshot.
+     */
+    const auto current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    const PointerEvent release{
+        {5, 4},
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        release,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::committed);
+    CHECK(result->row_index == std::optional<std::size_t>{1U});
+    CHECK(!gesture.hasPressedRow());
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(!fixture.combo.previewIndex().has_value());
+    CHECK(!fixture.combo.isDropDownOpen());
+    CHECK(selection_notifications == 1U);
+}
+
+TEST_CASE("Terminal ComboBox popup release on a different row cancels armed click without commit") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+    std::size_t selection_notifications = 0U;
+    fixture.combo.setOnSelectionChanged(
+        [&](std::optional<std::size_t>) { ++selection_notifications; });
+
+    const PointerEvent press{
+        {5, 4}, // arm row one
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+
+    const auto current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    const PointerEvent release{
+        {5, 5}, // release over row two, not the armed row one
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        release,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::none);
+    CHECK(result->row_index == std::optional<std::size_t>{2U});
+    CHECK(!gesture.hasPressedRow());
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{0U});
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{1U});
+    CHECK(fixture.combo.isDropDownOpen());
+    CHECK(selection_notifications == 0U);
+}
+
+TEST_CASE("Terminal ComboBox popup motion changes preview without changing armed press identity") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+
+    const PointerEvent press{
+        {5, 4}, // row one
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+    CHECK(gesture.pressedRow() == std::optional<std::size_t>{1U});
+
+    const auto after_press = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(after_press.has_value());
+
+    const auto move_result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *after_press,
+        motion({5, 5}), // hover row two while row one remains armed
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(move_result.has_value());
+    CHECK(move_result->action == TerminalComboBoxPopupPointerAction::preview_changed);
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{2U});
+    CHECK(gesture.pressedRow() == std::optional<std::size_t>{1U});
+}
+
+TEST_CASE("Terminal ComboBox popup matching release realigns preview to armed row before commit") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+
+    const PointerEvent press{
+        {5, 4}, // row one
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+
+    auto current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        motion({5, 5}), // preview row two
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{2U});
+
+    current = buildComboBoxPopupPresentation(
+        fixture.combo,
+        {3, 2, 10, 1},
+        {0, 0, 30, 12});
+    CHECK(current.has_value());
+
+    const PointerEvent release_back_on_press_row{
+        {5, 4},
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        *current,
+        release_back_on_press_row,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(result.has_value());
+    CHECK(result->action == TerminalComboBoxPopupPointerAction::committed);
+    CHECK(fixture.combo.selectedIndex() == std::optional<std::size_t>{1U});
+    CHECK(!fixture.combo.isDropDownOpen());
+}
+
+TEST_CASE("Terminal ComboBox popup stale state resets an armed press fail closed") {
+    PointerComboFixture fixture;
+    TerminalComboBoxPopupPointerInteraction::GestureState gesture;
+
+    const PointerEvent press{
+        {5, 4},
+        PointerAction::press,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    CHECK(TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        press,
+        AmbiguousWidthMode::narrow,
+        gesture).has_value());
+    CHECK(gesture.hasPressedRow());
+
+    /*
+     * Structural replacement clears preview identity while leaving the semantic open intent. The old
+     * snapshot and armed numeric row must both become unusable rather than mapping onto replacement data.
+     */
+    CHECK(fixture.combo.setItems({"New zero", "New one", "New two"}));
+
+    const PointerEvent release{
+        {5, 4},
+        PointerAction::release,
+        PointerButton::primary,
+        1,
+        KeyModifier::none,
+    };
+    const auto result = TerminalComboBoxPopupPointerInteraction::handle(
+        fixture.combo,
+        fixture.snapshot,
+        release,
+        AmbiguousWidthMode::narrow,
+        gesture);
+
+    CHECK(!result.has_value());
+    CHECK(!gesture.hasPressedRow());
+    CHECK(fixture.combo.isDropDownOpen());
+    CHECK(!fixture.combo.selectedIndex().has_value());
+}
