@@ -111,7 +111,13 @@ TEST_CASE("Terminal ComboBox popup renderer paints preview style and wide glyph 
 
 TEST_CASE("Terminal ComboBox popup preview toggles inverse when user base style is already inverse") {
     OpenComboFixture fixture;
-    CHECK(fixture.combo.setPreviewIndex(0U));
+
+    /*
+     * OpenComboFixture commits item zero before opening. ADR 0121 requires opening to seed preview from
+     * the committed selection, so preview zero is already the coherent initial transaction state here.
+     * setPreviewIndex(0) would correctly be an idempotent no-op (return false), not a failed setup.
+     */
+    CHECK(fixture.combo.previewIndex() == std::optional<std::size_t>{0U});
 
     TextStyle style;
     style.inverse = true;
