@@ -14,6 +14,7 @@
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
+#include <sasd/ui/rendered/combo_box_popup_pointer_interaction.hpp>
 #include <sasd/ui/rendered/combo_box_popup_presentation.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
@@ -340,7 +341,7 @@ int main(int argc, char** argv) {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "ComboBox: click/F4 opens; arrows preview; Enter commits; Escape cancels. Popup mouse rows are intentionally deferred. F1 help.");
+            "ComboBox: click/F4 opens; pointer/arrows preview; click/Enter commits; outside click/Escape cancels. F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -360,6 +361,14 @@ int main(int argc, char** argv) {
          * double-click-and-drag while PointerRouter remains the sole authority for gesture lifetime.
          */
         RenderedTextFieldPointerSelection::GestureState text_selection_gesture;
+
+        /*
+         * Rendered popup click completion is a host-owned two-event transaction. It stores only the
+         * painted row index armed by Primary press; every event still validates that identity against
+         * a freshly built owned popup snapshot before it can affect Core selection.
+         */
+        RenderedComboBoxPopupPointerInteraction::GestureState
+            combo_popup_gesture;
 
         greet.setOnActivated([&] {
             std::string value{name.text()};
@@ -457,6 +466,7 @@ int main(int argc, char** argv) {
                         if (surface->action == PointerSurfaceAction::left) {
                             pointer_router.leaveRoot();
                             text_selection_gesture.reset();
+                            combo_popup_gesture.reset();
                         }
                         return;
                     }
@@ -464,20 +474,47 @@ int main(int argc, char** argv) {
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
                         if (surface_mode.isDropDownOpen()) {
                             /*
-                             * ADR 0129 provides rendered popup presentation but not row hit-testing yet.
-                             * Once the overlay is visible, ordinary Widget hit testing is no longer a
-                             * truthful representation of the topmost surface: a popup row may geometrically
-                             * cover a Button/TextField that still exists underneath in the Widget tree.
-                             *
-                             * Until the rendered popup input slice exists, consume every pointer sample at
-                             * this host boundary. Retire any old ordinary-root capture/hover relationship
-                             * as well so a gesture that started before keyboard-open cannot remain armed
-                             * behind the modal overlay. Keyboard navigation/Enter/Escape remain fully live.
+                             * The popup is an overlay rather than a Widget-tree child, so its exact final
+                             * presentation snapshot must receive input before ordinary hit testing. This
+                             * prevents a painted row or outside-dismiss press from clicking through to a
+                             * covered Button/TextField. Any old root gesture is retired at the modal seam.
                              */
                             pointer_router.leaveRoot();
                             text_selection_gesture.reset();
+
+                            const auto anchor = absoluteWidgetBounds(surface_mode);
+                            if (!anchor.has_value()) {
+                                combo_popup_gesture.reset();
+                                throw std::runtime_error{
+                                    "SDL3 demo ComboBox pointer anchor cannot be represented"};
+                            }
+
+                            const auto snapshot = buildComboBoxPopupPresentation(
+                                surface_mode,
+                                *anchor,
+                                window.bounds(),
+                                backend);
+                            if (!snapshot.has_value()) {
+                                combo_popup_gesture.reset();
+                                throw std::runtime_error{
+                                    "SDL3 demo ComboBox pointer snapshot cannot be represented"};
+                            }
+
+                            const auto popup_result =
+                                RenderedComboBoxPopupPointerInteraction::handle(
+                                    surface_mode,
+                                    *snapshot,
+                                    *pointer,
+                                    combo_popup_gesture);
+                            if (!popup_result.has_value()) {
+                                throw std::runtime_error{
+                                    "SDL3 demo ComboBox pointer snapshot became semantically stale"};
+                            }
                             return;
                         }
+
+                        /* Closed state cannot inherit a row press from an older popup scope. */
+                        combo_popup_gesture.reset();
 
                         /*
                          * Desktop focus-on-primary-press remains host policy. The rendered TextField
@@ -519,6 +556,7 @@ int main(int argc, char** argv) {
                          * preserved by Core and reopening seeds preview from it again.
                          */
                         if (surface_mode.isDropDownOpen()) {
+                            combo_popup_gesture.reset();
                             (void)surface_mode.setDropDownOpen(false);
                         }
 
@@ -551,6 +589,9 @@ int main(int argc, char** argv) {
                         return;
                     }
 
+                    /* Keyboard/focus handling is a competing completion path for popup pointer state. */
+                    combo_popup_gesture.reset();
+
                     /*
                      * Radio-group arrow navigation is deliberately separate from generic Tab
                      * traversal. This host opts the current focus scope into the policy explicitly,
@@ -576,7 +617,7 @@ int main(int argc, char** argv) {
                         key->modifiers == KeyModifier::none) {
                         if (key->key == Key::f1) {
                             status.setText(
-                                "Help: Tab moves focus; ComboBox click/F4 opens, arrows preview, Enter commits, Escape cancels; popup mouse rows are not active yet; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
+                                "Help: Tab moves focus; ComboBox click/F4 opens, pointer rows or arrows preview, click/Enter commits, outside click/Escape cancels; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
                             return;
                         }
 
