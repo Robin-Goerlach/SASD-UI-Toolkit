@@ -16,6 +16,7 @@
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/radio_group_navigation.hpp>
 #include <sasd/ui/shortcut.hpp>
+#include <sasd/ui/terminal/combo_box_popup_pointer_interaction.hpp>
 #include <sasd/ui/terminal/combo_box_popup_presentation.hpp>
 #include <sasd/ui/terminal/menu_close_interaction.hpp>
 #include <sasd/ui/terminal/menu_composition.hpp>
@@ -282,7 +283,7 @@ int main() {
         greet.setTextStyle(greet_style);
 
         auto& status = form.emplace<Label>(
-            "F4/Alt+Down opens ComboBox; arrows preview; Enter commits; Escape cancels. F10 menu; F1 help; mouse menus/text selection.");
+            "F4/Alt+Down opens ComboBox; arrows or mouse hover preview; Enter commits; Escape cancels. F10 menu; F1 help.");
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
@@ -618,13 +619,45 @@ int main() {
                     }
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
-                        /*
-                         * Popup row pointer semantics are intentionally a later slice. While the keyboard-
-                         * driven ComboBox popup is open, consume terminal pointer samples at this host
-                         * boundary instead of letting visible overlay rows click through to unrelated
-                         * Widgets underneath. Escape/Enter/F4 remain the supported completion paths.
-                         */
                         if (surface_mode.isDropDownOpen()) {
+                            const auto anchor = absoluteWidgetBounds(surface_mode);
+                            if (!anchor.has_value()) {
+                                throw std::runtime_error(
+                                    "terminal demo ComboBox pointer anchor cannot be represented");
+                            }
+
+                            /*
+                             * Pointer geometry is interpreted against a freshly built owned snapshot using
+                             * exactly the same anchor, content viewport and ambiguous-width policy as frame
+                             * composition. This prevents input from reconstructing a second approximation of
+                             * visible rows. The interaction helper revalidates semantic item/preview identity
+                             * before applying any numeric row index.
+                             *
+                             * This slice adds passive hover preview only. Press/release and outside motion are
+                             * still consumed by the popup scope so they cannot click through to Widgets below;
+                             * click commit/outside-dismissal will add explicit gesture semantics separately.
+                             */
+                            const auto popup_snapshot = buildComboBoxPopupPresentation(
+                                surface_mode,
+                                *anchor,
+                                formContentViewport(screen.size()),
+                                presentation.ambiguousWidthMode());
+                            if (!popup_snapshot.has_value()) {
+                                throw std::runtime_error(
+                                    "terminal demo ComboBox pointer frame cannot be represented");
+                            }
+
+                            const auto popup_result =
+                                TerminalComboBoxPopupPointerInteraction::handle(
+                                    surface_mode,
+                                    *popup_snapshot,
+                                    *pointer,
+                                    presentation.ambiguousWidthMode());
+                            if (!popup_result.has_value()) {
+                                throw std::runtime_error(
+                                    "terminal demo ComboBox pointer frame became semantically stale");
+                            }
+
                             return;
                         }
 

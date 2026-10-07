@@ -50,10 +50,11 @@ The demo keeps menu mode and ComboBox popup mode mutually exclusive:
 - terminal resize cancels an open ComboBox transaction because its placement belonged to the old
   viewport; committed selection is preserved and reopening reseeds preview from it.
 
-Pointer interaction for popup rows is still deferred. Until that slice exists, the host consumes pointer
-samples while the ComboBox popup is open. This is intentionally conservative: visible overlay rows must
-never click through to unrelated Widgets. Enter, Escape, F4 and arrow navigation remain the supported
-popup interaction paths.
+The first popup pointer slice now supports passive row hover: the host rebuilds the same owned popup
+snapshot used by presentation, hit-tests its final row rectangles and updates only `previewIndex()` on
+motion. Press/release completion and outside dismissal remain deferred; those samples are still consumed
+by the popup scope so visible overlay rows cannot click through to unrelated Widgets. Enter, Escape and
+F4 remain the completion/cancellation paths.
 
 The demo adds a small "ComboBox demo" control with Portable/Terminal/Rendered items. Its
 `SelectionChanged` callback updates the existing status label only after semantic commit, making the
@@ -67,18 +68,17 @@ Positive:
 - popup placement respects persistent menu chrome;
 - closing the popup naturally restores the captured application frame by recomposition;
 - the demo exercises Core focus/navigation and Terminal overlay presentation together;
-- pointer click-through is prevented before pointer-row semantics exist.
+- pointer hover preview uses the same final row geometry as painting while click-through remains prevented.
 
 Trade-offs:
 
-- popup pointer input is temporarily consumed rather than interpreted;
+- popup press/release input is temporarily consumed rather than committed/dismissed;
 - resize cancels an open preview instead of trying to preserve presentation placement;
 - absolute anchor resolution is still host-local until a broader reusable visual-geometry seam is
   justified by more consumers.
 
 ### Deliberately deferred
 
-- popup row hit testing and pointer-driven preview;
 - primary-click commit and outside-click dismissal;
 - pointer capture policy;
 - scrolling/maximum visible rows;
@@ -134,10 +134,12 @@ Das Demo hält Menümodus und ComboBox-Popup-Modus gegenseitig exklusiv:
 - ein Terminal-Resize verwirft eine offene ComboBox-Transaktion, weil ihre Platzierung zum alten
   Viewport gehörte; committed Selection bleibt erhalten und erneutes Öffnen initialisiert Preview daraus.
 
-Pointer-Interaktion für Popup-Rows bleibt vertagt. Bis zu diesem Slice konsumiert der Host Pointer-Samples,
-solange das ComboBox-Popup offen ist. Das ist bewusst konservativ: sichtbare Overlay-Rows dürfen niemals
-zu fremden Widgets darunter durchklicken. Enter, Escape, F4 und Pfeilnavigation bleiben die unterstützten
-Popup-Interaktionswege.
+Der erste Popup-Pointer-Slice unterstützt jetzt passives Row-Hover: Der Host baut denselben owned
+Popup-Snapshot wie die Presentation auf, führt Hit-Testing gegen dessen finale Row-Rechtecke durch und
+ändert bei Motion ausschließlich `previewIndex()`. Press-/Release-Completion und Outside-Dismissal
+bleiben vertagt; diese Samples werden weiterhin vom Popup-Scope konsumiert, sodass sichtbare
+Overlay-Rows nicht zu fremden Widgets durchklicken. Enter, Escape und F4 bleiben die Completion-/
+Cancel-Wege.
 
 Das Demo erhält eine kleine "ComboBox demo" mit den Items Portable/Terminal/Rendered. Ihr
 `SelectionChanged`-Callback aktualisiert das vorhandene Status-Label erst nach semantischem Commit und
@@ -152,18 +154,18 @@ Positiv:
 - Popup-Placement respektiert persistentes Menü-Chrome;
 - Schließen stellt den erfassten Application-Frame natürlich durch Neukomposition wieder her;
 - das Demo testet Core-Focus/-Navigation und Terminal-Overlay-Presentation gemeinsam;
-- Pointer-Click-through wird verhindert, bevor Pointer-Row-Semantik existiert.
+- Pointer-Hover-Preview verwendet dieselbe finale Row-Geometrie wie das Painting, während Click-through
+  weiterhin verhindert wird.
 
 Abwägungen:
 
-- Popup-Pointer-Input wird vorläufig konsumiert statt interpretiert;
+- Popup-Press-/Release-Input wird vorläufig konsumiert statt committed/dismissed;
 - Resize verwirft eine offene Preview, statt die Presentation-Platzierung zu erhalten;
 - absolute Anchor-Auflösung bleibt host-lokal, bis mehrere Verbraucher eine allgemeinere
   Visual-Geometry-Naht rechtfertigen.
 
 ### Bewusst vertagt
 
-- Popup-Row-Hit-Testing und pointer-gesteuerte Preview;
 - Primary-Click-Commit und Outside-Click-Dismissal;
 - Pointer-Capture-Policy;
 - Scrolling/maximale sichtbare Rows;

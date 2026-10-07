@@ -87,6 +87,8 @@ add_executable(sasd_ui_terminal_tests
     terminal_check_box_tests.cpp
     terminal_combo_box_tests.cpp
     terminal_combo_box_popup_presentation_tests.cpp
+    terminal_combo_box_popup_hit_test_tests.cpp
+    terminal_combo_box_popup_pointer_interaction_tests.cpp
     terminal_radio_button_tests.cpp
     terminal_text_field_tests.cpp
     terminal_text_field_selection_tests.cpp
