@@ -3,6 +3,9 @@
 **Status:** Accepted  
 **Date:** 2026-10-07
 
+**Follow-up:** ADR 0131 replaces the temporary pointer quarantine with snapshot-exact Rendered popup
+hit testing and interaction.
+
 ## English
 
 ### Context

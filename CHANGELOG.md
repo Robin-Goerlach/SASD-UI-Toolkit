@@ -38,6 +38,8 @@ they improve the architecture before compatibility commitments become expensive.
 - Shared private Rendered TextField viewport geometry plus `RenderedTextFieldHitTest` for metric-correct pointer click-to-caret mapping without leaking font/pixel state into Core.
 - SDL3 integration coverage from native mouse-button representation through semantic cursor placement to the final rendered TextField caret command.
 - Semantic `TextField::selectAll()` operation shared by future menu/command Select All integration and rendered triple-click complete-content selection.
+- Snapshot-exact Rendered ComboBox popup hit testing and modal pointer interaction with hover preview,
+  Primary click commit, outside-press dismissal, stale-state rejection and SDL3 demo integration.
 
 ## [0.1.0] - 2026-09-28
 
@@ -76,4 +78,3 @@ they improve the architecture before compatibility commitments become expensive.
 - Bracketed paste and extended terminal keyboard protocols.
 - RGB/true-color and background/theme cascade.
 - Rendered desktop backend and native desktop peers.
-
