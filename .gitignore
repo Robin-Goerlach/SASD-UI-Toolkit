@@ -28,3 +28,10 @@ Testing/
 .DS_Store
 Thumbs.db
 *~
+
+
+/build-codex/
+/out/
+
+# Local working notes and agent reports; intentionally not published to GitHub.
+/local-docs/
