@@ -93,6 +93,20 @@ void appendScalarText(std::vector<Event>& events, char32_t scalar) {
     }
 }
 
+[[nodiscard]] std::optional<Key> controlLetterForByte(unsigned char byte) noexcept {
+    /*
+     * Raw terminals encode Ctrl+A..Ctrl+Z as C0 bytes 1..26. A few bytes already have established
+     * meanings here (Backspace, Tab, LF and CR), so they remain on their existing semantic paths.
+     * The other values are unambiguous control-letter shortcuts and must never become text input.
+     */
+    if (byte < 1U || byte > 26U || byte == 8U || byte == 9U || byte == 10U || byte == 13U) {
+        return std::nullopt;
+    }
+
+    return static_cast<Key>(static_cast<unsigned>(Key::a) +
+                            static_cast<unsigned>(byte - 1U));
+}
+
 [[nodiscard]] std::optional<unsigned> parseUnsigned(std::string_view text) noexcept {
     if (text.empty()) {
         return std::nullopt;
@@ -624,6 +638,12 @@ std::vector<Event> AnsiInputDecoder::decode(bool flush) {
 
         if (byte == static_cast<unsigned char>('\t')) {
             events.emplace_back(KeyEvent{Key::tab, true, KeyModifier::none});
+            ++offset;
+            continue;
+        }
+
+        if (const auto control_letter = controlLetterForByte(byte)) {
+            events.emplace_back(KeyEvent{*control_letter, true, KeyModifier::control});
             ++offset;
             continue;
         }

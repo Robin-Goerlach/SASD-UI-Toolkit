@@ -3,6 +3,7 @@
 #include "rendered/sdl3/sdl3_render_context.hpp"
 #include "rendered/sdl3/sdl3_pointer_event_translation.hpp"
 
+#include <sasd/ui/clipboard.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
 
 #include <SDL3/SDL.h>
@@ -27,6 +28,42 @@ namespace {
         std::string{operation} + " failed: " +
         (SDL_GetError() != nullptr ? SDL_GetError() : "unknown SDL error")};
 }
+
+/**
+ * SDL owns the native clipboard boundary; this adapter owns no platform handle or borrowed text.
+ * SDL_GetClipboardText() returns an allocated UTF-8 copy, which is immediately copied into the Core
+ * value contract and released before the call returns. The service is kept behind the SDL3 adapter so
+ * Core never needs to include SDL headers.
+ */
+class Sdl3TextClipboard final : public Clipboard {
+public:
+    [[nodiscard]] std::optional<std::string> readText() const override {
+        if (!SDL_HasClipboardText()) {
+            return std::nullopt;
+        }
+
+        char* native_text = SDL_GetClipboardText();
+        if (native_text == nullptr) {
+            throwSdlError("SDL_GetClipboardText");
+        }
+
+        std::string result{native_text};
+        SDL_free(native_text);
+        return result;
+    }
+
+    void writeText(std::string text) override {
+        if (!SDL_SetClipboardText(text.c_str())) {
+            throwSdlError("SDL_SetClipboardText");
+        }
+    }
+
+    void clear() override {
+        if (!SDL_ClearClipboardData()) {
+            throwSdlError("SDL_ClearClipboardData");
+        }
+    }
+};
 
 [[nodiscard]] int checkedPositiveInt(Coordinate value, const char* what) {
     if (value <= 0 ||
@@ -67,6 +104,13 @@ namespace {
 }
 
 [[nodiscard]] std::optional<Key> translateKey(SDL_Keycode key) noexcept {
+    if (key >= SDLK_A && key <= SDLK_Z) {
+        /* SDL keycodes provide logical key identity; SDL text input remains the sole committed-text
+         * stream. Normalize only this closed A-Z set and do not invent a keyboard-layout engine. */
+        return static_cast<Key>(static_cast<unsigned>(Key::a) +
+                                static_cast<unsigned>(key - SDLK_A));
+    }
+
     switch (key) {
     case SDLK_RETURN:
     case SDLK_KP_ENTER:
@@ -97,12 +141,7 @@ namespace {
     case SDLK_F11:       return Key::f11;
     case SDLK_F12:       return Key::f12;
     default:
-        /*
-         * The semantic Key enum intentionally does not contain printable alphabetic/numeric keys yet.
-         * Those arrive through SDL_TEXT_INPUT when text entry is enabled. Do not manufacture
-         * Key::unknown events for every unrelated SDL key because that would add noisy duplicate
-         * input to widget routing.
-         */
+        // Unsupported keys remain absent rather than becoming noisy Key::unknown events.
         return std::nullopt;
     }
 }
@@ -246,6 +285,7 @@ struct Sdl3WindowBackend::Impl {
 
             auto local_context =
                 std::make_unique<detail::Sdl3RenderContext>(*local_renderer, *local_font);
+            auto local_clipboard = std::make_unique<Sdl3TextClipboard>();
 
             /*
              * Commit ownership last. From this point shutdown() is the single release path and uses
@@ -257,6 +297,7 @@ struct Sdl3WindowBackend::Impl {
             renderer = local_renderer.release();
             font = local_font.release();
             render_context = std::move(local_context);
+            clipboard = std::move(local_clipboard);
             logical_size = local_size;
             window_id = local_window_id;
             presentation_requested = true;
@@ -289,6 +330,7 @@ struct Sdl3WindowBackend::Impl {
         }
 
         render_context.reset();
+        clipboard.reset();
 
         if (font != nullptr) {
             TTF_CloseFont(font);
@@ -495,6 +537,7 @@ struct Sdl3WindowBackend::Impl {
     SDL_Renderer* renderer{nullptr};
     TTF_Font* font{nullptr};
     std::unique_ptr<detail::Sdl3RenderContext> render_context;
+    std::unique_ptr<Clipboard> clipboard;
 
     bool video_initialized{false};
     bool ttf_initialized{false};
@@ -514,8 +557,24 @@ Sdl3WindowBackend::~Sdl3WindowBackend() {
     shutdown();
 }
 
+Clipboard* Sdl3WindowBackend::clipboard() noexcept {
+    return impl_->initialized() ? impl_->clipboard.get() : nullptr;
+}
+
+const Clipboard* Sdl3WindowBackend::clipboard() const noexcept {
+    return impl_->initialized() ? impl_->clipboard.get() : nullptr;
+}
+
 void Sdl3WindowBackend::initialize() {
     impl_->initialize();
+}
+
+BackendCapabilities Sdl3WindowBackend::capabilities() const noexcept {
+    /* Capabilities describe services that are usable during the current backend lifetime. */
+    BackendCapabilities result;
+    result.pointer_input = true;
+    result.clipboard = impl_->initialized();
+    return result;
 }
 
 void Sdl3WindowBackend::shutdown() noexcept {

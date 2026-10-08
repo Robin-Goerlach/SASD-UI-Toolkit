@@ -97,6 +97,18 @@ Die erste M4-Layoutfamilie ist nun implementiert und stabilisiert. `GridLayout` 
 
 Die aktuellen Layout-Verträge sind bewusst klein. `GridLayout` besitzt noch keine Spans, gewichteten Tracks, Cell-Alignment, Margins/Padding oder Extra-Space-Verteilung. `FormLayout` besitzt noch keine Row-Metadaten, unabhängigen Row-Objekte oder zusätzliche Alignment-Policy jenseits des gemeinsamen Zwei-Spalten-Vertrags. `StackLayout` besitzt keinen Active-Page-State, Z-Index, Offsets, Margins oder Window-Manager-Semantik; aktuell wird geschichteter Inhalt über Visibility ausgewählt. Diese Funktionen bleiben spätere Erweiterungen und sollen erst dann öffentliche API werden, wenn reale Nutzer sie rechtfertigen.
 
+Die M4-Editing-Basis ist nun ein kohärenter vertikaler Schnitt und nicht mehr nur eine Sammlung
+isolierter Primitive. Der Core besitzt exakte logische lateinische Buchstabenidentitäten,
+deterministisches `ShortcutMap`-Matching und zweiphasige Auflösung. SDL3 und der Terminal-Decoder
+normalisieren Ctrl+A/C/X/V, ohne Shortcut-Absicht aus `TextInputEvent` zu erraten. Der
+backendneutrale UTF-8-`Clipboard`-Dienst wird von selection-basierten TextField-Copy/Cut/Paste-
+Operationen genutzt; das SDL3-Fensterbackend besitzt für seine initialisierte Lebensdauer einen echten
+Text-Clipboard-Dienst, während das Terminal die Clipboard-Capability weiterhin wahrheitsgemäß nicht
+meldet. SDL3- und Terminal-Demo verwenden Select All; die SDL3-Demo verbindet alle vier Editing-
+Commands über dieselbe explizite Host-Policy. Dies ist kein allgemeines Action-, Binding- oder
+Keyboard-Layout-Framework: reichhaltiger Action-State, Lokalisierung, Ziffern/Satzzeichen,
+IME-/Dead-Key-Identität und Clipboard-Formate bleiben bis zu konkreten Consumern zurückgestellt.
+
 Geplant:
 
 - [x] `GridLayout`
@@ -105,11 +117,13 @@ Geplant:
 - [x] `CheckBox`
 - [x] `RadioButton`
 - [x] `ComboBox`
-- [ ] Commands/Actions
-- [ ] Menüs als semantisches Modell
-- [ ] Shortcuts
-- [ ] Clipboard-Basis
+- [x] Command-Basis, Command-State-Observation und explizites Control-Binding
+- [x] Editing-Commands (Select All/Copy/Cut/Paste), aus TextField-Operationen zusammengesetzt
+- [x] Menüs als semantisches Modell
+- [x] deterministische Shortcuts einschließlich logischer Ctrl+A/C/X/V-Buchstabenidentität
+- [x] UTF-8-Clipboard-Basis und erster realer SDL3-Dienst
 - [ ] Binding-/Validation-Grundlagen dort, wo reale Anwendungsfälle sie rechtfertigen
+- [ ] vollständiges Action-System, Keyboard-Layout-/IME-Modell und reichere Clipboard-Formate
 
 ## M5 – Model/View und datenreiche Widgets / v0.4.x
 

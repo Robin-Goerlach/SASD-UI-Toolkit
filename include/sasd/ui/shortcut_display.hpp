@@ -10,7 +10,7 @@ namespace sasd::ui {
 /**
  * Returns the deterministic, backend-neutral display token for one semantic Key.
  *
- * The initial shortcut model intentionally contains only navigation/control/function keys, so this
+ * The shortcut model contains navigation/control/function keys and logical Latin letters, so this
  * formatter uses compact ASCII labels that are safe in both terminal and rendered presentations.
  * Returning an empty view for Key::unknown is deliberate: unknown represents failed/unsupported input
  * normalization and must not be presented as if it were a usable shortcut gesture.
@@ -50,6 +50,32 @@ namespace sasd::ui {
         return "PageUp";
     case Key::page_down:
         return "PageDown";
+    case Key::a: return "A";
+    case Key::b: return "B";
+    case Key::c: return "C";
+    case Key::d: return "D";
+    case Key::e: return "E";
+    case Key::f: return "F";
+    case Key::g: return "G";
+    case Key::h: return "H";
+    case Key::i: return "I";
+    case Key::j: return "J";
+    case Key::k: return "K";
+    case Key::l: return "L";
+    case Key::m: return "M";
+    case Key::n: return "N";
+    case Key::o: return "O";
+    case Key::p: return "P";
+    case Key::q: return "Q";
+    case Key::r: return "R";
+    case Key::s: return "S";
+    case Key::t: return "T";
+    case Key::u: return "U";
+    case Key::v: return "V";
+    case Key::w: return "W";
+    case Key::x: return "X";
+    case Key::y: return "Y";
+    case Key::z: return "Z";
     case Key::f1:
         return "F1";
     case Key::f2:

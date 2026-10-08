@@ -172,6 +172,7 @@ int main() {
         Command greet_command{"Greet"};
         Command exit_command{"Exit"};
         Command help_command{"Help"};
+        Command select_all_command{"Select All"};
 
         /*
          * The Help menu advertises F1 as presentation metadata, while ShortcutMap below owns the actual
@@ -208,6 +209,7 @@ int main() {
          */
         ShortcutMap shortcuts;
         shortcuts.bind(help_shortcut, help_command);
+        shortcuts.bind({Key::a, KeyModifier::control}, select_all_command);
 
         /*
          * RadioGroup is semantic and non-visual. It is deliberately not inferred from VBox siblings.
@@ -392,8 +394,10 @@ int main() {
 
         help_command.setOnExecuted([&] {
             status.setText(
-                "Help: F10/menu clicks; hover More > to open it; diagonal transfer uses safe-triangle grace; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
+                "Help: Ctrl+A selects all; terminal clipboard unavailable; F10/menu clicks; hover More > to open it; diagonal transfer uses safe-triangle grace; F1 shortcut; mouse drag selects chars; double-click+drag extends by words; triple-click selects all.");
         });
+
+        select_all_command.setOnExecuted([&] { name.selectAll(); });
 
         exit_command.setOnExecuted([&] {
             application.requestExit();
