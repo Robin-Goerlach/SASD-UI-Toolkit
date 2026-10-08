@@ -97,6 +97,17 @@ The first M4 layout family is now implemented and stabilized. `GridLayout` provi
 
 The current layout contracts are intentionally small. `GridLayout` does not yet provide spans, weighted tracks, per-cell alignment, margins/padding or extra-space distribution. `FormLayout` does not yet provide per-row metadata, independent row objects or alignment policy beyond the shared two-column contract. `StackLayout` does not provide active-page state, z-index, offsets, margins or window-manager semantics; visibility is currently the mechanism for selecting layered content. Those features remain later extensions and should only be added when real consumers justify the additional public API.
 
+The M4 editing foundation is now a coherent vertical slice rather than only isolated primitives. Core
+provides exact logical Latin-letter `Key` identities, deterministic `ShortcutMap` matching and
+two-phase resolution, while SDL3 and the Terminal decoder normalize Ctrl+A/C/X/V without deriving
+shortcut intent from `TextInputEvent`. The backend-neutral UTF-8 `Clipboard` service is consumed by
+TextField selection-aware Copy/Cut/Paste operations; the SDL3 window backend owns a real text clipboard
+service for its initialized lifetime, while Terminal truthfully keeps clipboard capability disabled.
+The SDL3 and Terminal demos use Select All and the SDL3 demo wires all four editing commands through
+the same explicit host policy. This does not constitute a general Action, Binding or keyboard-layout
+framework: richer action state, localization, digits/punctuation, IME/dead-key identity and clipboard
+formats remain deferred until concrete consumers justify them.
+
 Planned:
 
 - [x] `GridLayout`
@@ -105,11 +116,13 @@ Planned:
 - [x] `CheckBox`
 - [x] `RadioButton`
 - [x] `ComboBox`
-- [ ] commands/actions
-- [ ] semantic menu model
-- [ ] shortcuts
-- [ ] clipboard foundation
+- [x] command foundation, command-state observation and explicit control binding
+- [x] editing Commands (Select All/Copy/Cut/Paste) composed from TextField operations
+- [x] semantic menu model
+- [x] deterministic shortcuts, including logical-letter Ctrl+A/C/X/V identity
+- [x] UTF-8 text clipboard foundation and first real SDL3 service
 - [ ] binding/validation foundations where supported by real use cases
+- [ ] complete Action system, keyboard-layout/IME model and richer clipboard formats
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 

@@ -17,6 +17,50 @@ TEST_CASE("Shortcut matches only exact key presses") {
     CHECK(!help.matches(KeyEvent{Key::f2, true, KeyModifier::none}));
 }
 
+TEST_CASE("Logical letter shortcuts preserve explicit modifiers and press identity") {
+    const Shortcut select_all{Key::a, KeyModifier::control};
+    const Shortcut shifted_copy{
+        Key::c, KeyModifier::control | KeyModifier::shift};
+
+    CHECK(select_all.matches(KeyEvent{Key::a, true, KeyModifier::control}));
+    CHECK(!select_all.matches(KeyEvent{Key::a, false, KeyModifier::control}));
+    CHECK(!select_all.matches(
+        KeyEvent{Key::a, true, KeyModifier::control | KeyModifier::shift}));
+    CHECK(shifted_copy.matches(
+        KeyEvent{Key::c, true, KeyModifier::control | KeyModifier::shift}));
+}
+
+TEST_CASE("ShortcutMap resolves and dispatches conventional editing letters") {
+    Command select_all{"Select All"};
+    Command copy{"Copy"};
+    Command cut{"Cut"};
+    Command paste{"Paste"};
+    ShortcutMap shortcuts;
+    int selected = 0;
+    int copied = 0;
+    int cut_count = 0;
+    int pasted = 0;
+
+    select_all.setOnExecuted([&selected] { ++selected; });
+    copy.setOnExecuted([&copied] { ++copied; });
+    cut.setOnExecuted([&cut_count] { ++cut_count; });
+    paste.setOnExecuted([&pasted] { ++pasted; });
+    shortcuts.bind({Key::a, KeyModifier::control}, select_all);
+    shortcuts.bind({Key::c, KeyModifier::control}, copy);
+    shortcuts.bind({Key::x, KeyModifier::control}, cut);
+    shortcuts.bind({Key::v, KeyModifier::control}, paste);
+
+    CHECK(shortcuts.resolve(KeyEvent{Key::a, true, KeyModifier::control}).get() ==
+          &select_all);
+    CHECK(shortcuts.dispatch(KeyEvent{Key::c, true, KeyModifier::control}));
+    CHECK(shortcuts.dispatch(KeyEvent{Key::x, true, KeyModifier::control}));
+    CHECK(shortcuts.dispatch(KeyEvent{Key::v, true, KeyModifier::control}));
+    CHECK(selected == 0);
+    CHECK(copied == 1);
+    CHECK(cut_count == 1);
+    CHECK(pasted == 1);
+}
+
 TEST_CASE("ShortcutMap resolves bindings without entering application callbacks") {
     Command command{"Deferred"};
     ShortcutMap shortcuts;
@@ -204,6 +248,14 @@ TEST_CASE("Shortcut display text formats every current function-key identity") {
     CHECK(shortcutDisplayText({Key::f5, KeyModifier::none}) == "F5");
     CHECK(shortcutDisplayText({Key::f10, KeyModifier::none}) == "F10");
     CHECK(shortcutDisplayText({Key::f12, KeyModifier::none}) == "F12");
+}
+
+TEST_CASE("Shortcut display text formats logical letters deterministically") {
+    CHECK(shortcutDisplayText({Key::a, KeyModifier::control}) == "Ctrl+A");
+    CHECK(shortcutDisplayText({Key::c, KeyModifier::control | KeyModifier::shift}) ==
+          "Ctrl+Shift+C");
+    CHECK(shortcutDisplayText({Key::x, KeyModifier::meta}) == "Meta+X");
+    CHECK(shortcutDisplayText({Key::v, KeyModifier::control}) == "Ctrl+V");
 }
 
 TEST_CASE("Shortcut display text uses deterministic modifier order") {

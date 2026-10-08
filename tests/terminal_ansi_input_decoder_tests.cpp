@@ -76,6 +76,35 @@ TEST_CASE("AnsiInputDecoder translates Enter Tab and Backspace controls") {
     CHECK(keyAt(events, 2).key == Key::backspace);
 }
 
+TEST_CASE("AnsiInputDecoder translates unambiguous Ctrl-letter C0 bytes to key intent") {
+    AnsiInputDecoder decoder;
+    const auto events = decoder.feed("\x01\x03\x18\x16");
+
+    CHECK(events.size() == 4);
+    CHECK(keyAt(events, 0).key == Key::a);
+    CHECK(keyAt(events, 1).key == Key::c);
+    CHECK(keyAt(events, 2).key == Key::x);
+    CHECK(keyAt(events, 3).key == Key::v);
+    for (const Event& event : events) {
+        CHECK(std::get<KeyEvent>(event).pressed);
+        CHECK(std::get<KeyEvent>(event).modifiers == KeyModifier::control);
+    }
+}
+
+TEST_CASE("AnsiInputDecoder preserves reserved C0 control semantics") {
+    AnsiInputDecoder decoder;
+    const auto events = decoder.feed("\x08\t\n\r");
+
+    CHECK(events.size() == 4);
+    CHECK(keyAt(events, 0).key == Key::backspace);
+    CHECK(keyAt(events, 1).key == Key::tab);
+    CHECK(keyAt(events, 2).key == Key::enter);
+    CHECK(keyAt(events, 3).key == Key::enter);
+    for (const Event& event : events) {
+        CHECK(std::get<KeyEvent>(event).modifiers == KeyModifier::none);
+    }
+}
+
 TEST_CASE("AnsiInputDecoder collapses CRLF into one Enter") {
     AnsiInputDecoder decoder;
 

@@ -42,7 +42,7 @@ Geometrieänderungen und Child-Removal verwenden inzwischen einen konservativen 
 
 `TerminalDevice`/`TerminalSession` bilden nun die reale Device-/Session-Grenze. POSIX verwendet TTY-Erkennung, `termios`, `TIOCGWINSZ` und retry-sicheres `write`; Windows speichert/wiederherstellt Console Modes und Codepages, aktiviert Virtual Terminal Processing und schreibt über `WriteFile`. Alternate Screen und Raw Input werden RAII-sicher mit transaktionalem Rollback verwaltet. Hosted-CI testet die Session-Semantik deterministisch über `MockTerminalDevice`, während die nativen Adapter auf ihren jeweiligen Plattformen kompiliert werden.
 
-`TerminalDevice::readAvailable()` liefert nun nichtblockierend verfügbare Inputbytes. `AnsiInputDecoder` verarbeitet gesplittete UTF-8-/CSI-/SS3-Sequenzen inkrementell und übersetzt Enter, Tab, Backspace, Space, Pfeile, Home/End, Delete, PageUp/PageDown, Shift+Tab sowie F1–F12 einschließlich ausgewählter xterm-Modifier in die bestehenden semantischen Events. Ein einzelnes ESC bleibt bis zum expliziten Eventloop-Flush gepuffert.
+`TerminalDevice::readAvailable()` liefert nun nichtblockierend verfügbare Inputbytes. `AnsiInputDecoder` verarbeitet gesplittete UTF-8-/CSI-/SS3-Sequenzen inkrementell und übersetzt Enter, Tab, Backspace, Space, Pfeile, Home/End, Delete, PageUp/PageDown, Shift+Tab, logische Ctrl-Buchstaben aus eindeutigen C0-Bytes sowie F1–F12 einschließlich ausgewählter xterm-Modifier in die bestehenden semantischen Events. Ein einzelnes ESC bleibt bis zum expliziten Eventloop-Flush gepuffert. Das Terminal meldet weiterhin keine Clipboard-Capability; Select All bleibt als semantisches Command nutzbar, ohne OSC52 oder ein System-Clipboard vorzutäuschen.
 
 `TerminalEventPump` verbindet Größenabfrage, nichtblockierenden Input und Incomplete-Sequence-Timeout deterministisch zu semantischen Events. Größenänderungen werden als vorhandenes `ResizeEvent` erzeugt; der Startzustand erzeugt kein künstliches Resize. `TerminalBackend : Backend` integriert Session und EventPump in den normalen `Application`-Lifecycle. Die neue ausführbare `sasd_ui_terminal_demo` nutzt diesen Pfad mit TextField, Buttons, Tab-/Shift+Tab-Fokus, Resize und realer ANSI-Ausgabe. CI kompiliert die Demo auf Linux, macOS und Windows; ein manueller interaktiver Smoke-Test bleibt für das M2-Exit-Kriterium erforderlich.
 
@@ -64,6 +64,11 @@ generischer Rendered-API heraus.
 
 `PresentationCoordinator::replay()` rekonstruiert eine Presentation-Surface aus einem cleanen
 semantischen Widgetbaum, ohne geschützte Widget-Invalidierung offenzulegen.
+
+SDL3-Keyevents normalisieren logische A–Z-Keycodes auf die backendneutrale `Key`-Identität, während
+SDL-Texteingabe weiterhin als getrennte `TextInputEvent`-Sequenz läuft. Das initialisierte
+Fensterbackend besitzt den konkreten UTF-8-SDL-Clipboard-Dienst und gibt ihn nur als nichtbesitzende
+`Backend::clipboard()`-Referenz heraus; nach Shutdown wird die Capability wieder false.
 
 Die dedizierte CI baut SDL3-Adapter und Desktop-Demo, verwendet ein reales verstecktes SDL-Fenster
 über den Offscreen-Videotreiber und prüft den End-to-End-Pfad Semantic Widget ->

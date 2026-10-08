@@ -40,6 +40,10 @@ they improve the architecture before compatibility commitments become expensive.
 - Semantic `TextField::selectAll()` operation shared by future menu/command Select All integration and rendered triple-click complete-content selection.
 - Snapshot-exact Rendered ComboBox popup hit testing and modal pointer interaction with hover preview,
   Primary click commit, outside-press dismissal, stale-state rejection and SDL3 demo integration.
+- Backend-neutral logical Latin-letter `Key` identities and deterministic `Ctrl+A/C/X/V` ShortcutMap
+  bindings, with SDL3 logical-key and Terminal C0-byte translation kept separate from TextInputEvent.
+- SDL3-owned UTF-8 text Clipboard service with capability/lifetime discovery, plus explicit TextField
+  Select All/Copy/Cut/Paste command composition in the rendered demo and Select All in the Terminal demo.
 
 ## [0.1.0] - 2026-09-28
 

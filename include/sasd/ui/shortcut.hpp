@@ -14,9 +14,9 @@ namespace sasd::ui {
  *
  * Shortcut intentionally reuses KeyEvent identity instead of text input. A shortcut describes a key
  * gesture, not committed Unicode text; TextInputEvent remains reserved for editable textual content.
- * The initial Key enum currently exposes navigation/control/function keys only, so this first shortcut
- * layer is immediately useful for F-key driven terminal administration while printable shortcuts such
- * as Ctrl+S remain a later input-model extension rather than being guessed from text input.
+ * Key exposes navigation/control/function keys plus a deliberately small logical Latin-letter set.
+ * That set supports familiar application gestures such as Ctrl+C while ordinary committed Unicode,
+ * dead-key and IME text continues to travel exclusively through TextInputEvent.
  */
 struct Shortcut {
     Key key{Key::unknown};
@@ -45,7 +45,7 @@ struct Shortcut {
  *
  * The first contract has one binding per exact Shortcut. Rebinding the same gesture replaces the
  * previous command deterministically. Scope precedence, chord sequences, platform conventions,
- * textual key identities and conflict diagnostics remain later policies.
+ * richer textual key identities and conflict diagnostics remain later policies.
  */
 class ShortcutMap final {
 public:

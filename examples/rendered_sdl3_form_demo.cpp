@@ -3,6 +3,8 @@
 #include <sasd/ui/application.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/clipboard.hpp>
+#include <sasd/ui/command.hpp>
 #include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/focus_manager.hpp>
@@ -19,6 +21,7 @@
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
+#include <sasd/ui/shortcut.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -250,6 +253,16 @@ int main(int argc, char** argv) {
         Sdl3WindowBackend backend{std::move(backend_config)};
         Application application{backend};
 
+        /* Commands are semantic stack objects; the Window below owns only visual Widgets. */
+        Command greet_command{"Greet"};
+        Command help_command{"Help"};
+        Command exit_command{"Exit"};
+        Command select_all_command{"Select All"};
+        Command copy_command{"Copy"};
+        Command cut_command{"Cut"};
+        Command paste_command{"Paste"};
+        ShortcutMap shortcuts;
+
         DisplayList display_list;
         RenderedPresentationSink presentation{
             display_list,
@@ -351,6 +364,15 @@ int main(int argc, char** argv) {
         exit_style.foreground = Color::bright_red;
         exit.setTextStyle(exit_style);
 
+        greet.bindCommand(greet_command);
+        exit.bindCommand(exit_command);
+        shortcuts.bind({Key::f1, KeyModifier::none}, help_command);
+        shortcuts.bind({Key::f10, KeyModifier::none}, exit_command);
+        shortcuts.bind({Key::a, KeyModifier::control}, select_all_command);
+        shortcuts.bind({Key::c, KeyModifier::control}, copy_command);
+        shortcuts.bind({Key::x, KeyModifier::control}, cut_command);
+        shortcuts.bind({Key::v, KeyModifier::control}, paste_command);
+
         FocusManager focus;
         PointerRouter pointer_router;
 
@@ -370,7 +392,18 @@ int main(int argc, char** argv) {
         RenderedComboBoxPopupPointerInteraction::GestureState
             combo_popup_gesture;
 
-        greet.setOnActivated([&] {
+        /* Explicit host synchronization is sufficient here; no general binding framework is needed. */
+        const auto synchronizeEditCommands = [&] {
+            const bool target_active = focus.focusedWidget() == &name &&
+                                       name.isVisible() && name.isEnabled();
+            select_all_command.setEnabled(target_active);
+            const bool clipboard_available = backend.clipboard() != nullptr;
+            copy_command.setEnabled(target_active && clipboard_available && name.hasSelection());
+            cut_command.setEnabled(target_active && clipboard_available && name.hasSelection());
+            paste_command.setEnabled(target_active && clipboard_available);
+        };
+
+        greet_command.setOnExecuted([&] {
             std::string value{name.text()};
             if (value.empty()) {
                 value = "world";
@@ -423,13 +456,36 @@ int main(int argc, char** argv) {
             status.setText("Greeting word selected: Hi");
         });
 
-        exit.setOnActivated([&] {
+        help_command.setOnExecuted([&] {
+            status.setText(
+                "Help: Ctrl+A selects Name; Ctrl+C/X/V copy, cut or paste; F1 help; F10 exits.");
+        });
+
+        exit_command.setOnExecuted([&] {
             application.requestExit();
+        });
+
+        select_all_command.setOnExecuted([&] { name.selectAll(); });
+        copy_command.setOnExecuted([&] {
+            if (Clipboard* clipboard = backend.clipboard(); clipboard != nullptr) {
+                (void)name.copySelectionToClipboard(*clipboard);
+            }
+        });
+        cut_command.setOnExecuted([&] {
+            if (Clipboard* clipboard = backend.clipboard(); clipboard != nullptr) {
+                (void)name.cutSelectionToClipboard(*clipboard);
+            }
+        });
+        paste_command.setOnExecuted([&] {
+            if (Clipboard* clipboard = backend.clipboard(); clipboard != nullptr) {
+                (void)name.pasteFromClipboard(*clipboard);
+            }
         });
 
         layoutForm(window, form, backend, backend.windowSize());
         (void)focus.requestFocus(name);
         synchronizeTextInput(backend, focus);
+        synchronizeEditCommands();
         presentFullFrame(
             window,
             surface_mode,
@@ -592,6 +648,12 @@ int main(int argc, char** argv) {
                     /* Keyboard/focus handling is a competing completion path for popup pointer state. */
                     combo_popup_gesture.reset();
 
+                    if (const auto* key = std::get_if<KeyEvent>(&event);
+                        key != nullptr && key->pressed && shortcuts.dispatch(*key)) {
+                        synchronizeEditCommands();
+                        return;
+                    }
+
                     /*
                      * Radio-group arrow navigation is deliberately separate from generic Tab
                      * traversal. This host opts the current focus scope into the policy explicitly,
@@ -614,17 +676,12 @@ int main(int argc, char** argv) {
                     if (const auto* key = std::get_if<KeyEvent>(&event);
                         key != nullptr &&
                         key->pressed &&
-                        key->modifiers == KeyModifier::none) {
-                        if (key->key == Key::f1) {
-                            status.setText(
-                                "Help: Tab moves focus; ComboBox click/F4 opens, pointer rows or arrows preview, click/Enter commits, outside click/Escape cancels; drag selects characters; double-click drag selects words in Name; Space toggles/selects; Arrow keys move within RadioGroup; Enter/Space activates Buttons.");
-                            return;
-                        }
-
-                        if (key->key == Key::f10 || key->key == Key::escape) {
-                            application.requestExit();
-                        }
+                        key->modifiers == KeyModifier::none &&
+                        key->key == Key::escape) {
+                        application.requestExit();
                     }
+
+                    synchronizeEditCommands();
                 });
 
             if (application.exitRequested()) {
@@ -636,6 +693,7 @@ int main(int argc, char** argv) {
              * activation after the whole event batch so SDL IME state mirrors the final logical focus.
              */
             synchronizeTextInput(backend, focus);
+            synchronizeEditCommands();
 
             if (!form.isMeasureValid()) {
                 layoutForm(window, form, backend, backend.windowSize());

@@ -78,20 +78,13 @@ public:
         return "rendered-sdl3-window";
     }
 
-    [[nodiscard]] BackendCapabilities capabilities() const noexcept override {
-        /*
-         * Capabilities describe semantic facilities exposed by this SASD adapter, not everything SDL
-         * can do natively. Pointer input becomes true now that Mouse motion/button transitions are
-         * normalized to PointerEvent. IME remains false until composition semantics exist in Core.
-         */
-        BackendCapabilities result;
-        result.pointer_input = true;
-        return result;
-    }
+    [[nodiscard]] BackendCapabilities capabilities() const noexcept override;
 
     void initialize() override;
     void shutdown() noexcept override;
     [[nodiscard]] std::optional<Event> pollEvent() override;
+    [[nodiscard]] Clipboard* clipboard() noexcept override;
+    [[nodiscard]] const Clipboard* clipboard() const noexcept override;
 
     [[nodiscard]] bool isInitialized() const noexcept;
 

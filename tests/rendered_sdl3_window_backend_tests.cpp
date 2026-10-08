@@ -4,6 +4,7 @@
 #include "rendered/sdl3/sdl3_window_backend.hpp"
 
 #include <sasd/ui/application.hpp>
+#include <sasd/ui/clipboard.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
 #include <sasd/ui/focus_manager.hpp>
@@ -165,6 +166,28 @@ TEST_CASE("SDL3 window backend initializes transactionally and presents a comple
 
     // shutdown() is intentionally idempotent for Application/destructor safety.
     backend.shutdown();
+}
+
+TEST_CASE("SDL3 window backend owns a UTF-8 clipboard service for its lifetime") {
+    Sdl3WindowBackend backend{testConfig()};
+    CHECK(!backend.capabilities().clipboard);
+    CHECK(backend.clipboard() == nullptr);
+
+    backend.initialize();
+    CHECK(backend.capabilities().clipboard);
+    Clipboard* clipboard = backend.clipboard();
+    CHECK(clipboard != nullptr);
+
+    clipboard->writeText("clipboard Ω");
+    const auto text = clipboard->readText();
+    CHECK(text.has_value());
+    CHECK(*text == "clipboard Ω");
+    clipboard->clear();
+    CHECK(!clipboard->readText().has_value());
+
+    backend.shutdown();
+    CHECK(!backend.capabilities().clipboard);
+    CHECK(backend.clipboard() == nullptr);
 }
 
 TEST_CASE("SDL3 text command restores the renderer clip state it temporarily replaces") {
@@ -830,6 +853,29 @@ TEST_CASE("SDL3 window backend separates committed UTF-8 text from physical key 
 
     backend.setTextInputEnabled(false);
     CHECK(!backend.textInputEnabled());
+}
+
+TEST_CASE("SDL3 window backend translates logical letter keys without duplicating text input") {
+    Sdl3WindowBackend backend{testConfig()};
+    backend.initialize();
+    drainEvents(backend);
+    backend.setTextInputEnabled(true);
+
+    SDL_Event key{};
+    key.type = SDL_EVENT_KEY_DOWN;
+    key.key.type = SDL_EVENT_KEY_DOWN;
+    key.key.windowID = 0;
+    key.key.key = SDLK_C;
+    key.key.mod = SDL_KMOD_CTRL;
+    pushEvent(key);
+
+    const auto translated_key = backend.pollEvent();
+    CHECK(translated_key.has_value());
+    CHECK(std::holds_alternative<KeyEvent>(*translated_key));
+    CHECK(std::get<KeyEvent>(*translated_key).key == Key::c);
+    CHECK(std::get<KeyEvent>(*translated_key).modifiers == KeyModifier::control);
+
+    /* The neighboring text-input test proves that committed UTF-8 still travels separately. */
 }
 
 TEST_CASE("SDL3 window backend turns native resize into logical resize and repaint request") {

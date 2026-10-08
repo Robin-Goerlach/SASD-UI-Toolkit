@@ -39,6 +39,41 @@ enum class Key : std::uint16_t {
     page_down,
 
     /*
+     * Logical Latin-letter identity is part of key intent, not committed text. Backends normalize
+     * their layout-aware key symbols (or an unambiguous terminal Ctrl+C0 byte) to these values so
+     * application shortcuts can match Ctrl+A/C/X/V without inspecting TextInputEvent. Lowercase enum
+     * names describe identity only; Shift remains an explicit modifier and never changes the key.
+     * This deliberately stops at A-Z rather than pretending Core already owns a full keyboard-layout,
+     * scancode, dead-key or IME model.
+     */
+    a,
+    b,
+    c,
+    d,
+    e,
+    f,
+    g,
+    h,
+    i,
+    j,
+    k,
+    l,
+    m,
+    n,
+    o,
+    p,
+    q,
+    r,
+    s,
+    t,
+    u,
+    v,
+    w,
+    x,
+    y,
+    z,
+
+    /*
      * Function-key identity is semantic and backend-neutral. Terminal backends map VT/ANSI escape
      * sequences here; later desktop backends can map their native key codes to the same values.
      */
