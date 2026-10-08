@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -105,6 +106,9 @@ public:
     [[nodiscard]] virtual std::size_t rowCount() const noexcept = 0;
     [[nodiscard]] virtual std::string_view textAt(std::size_t row) const = 0;
 
+    /** Monotonic semantic revision used to reject stale presentation snapshots. */
+    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
+
     [[nodiscard]] Reference reference();
     [[nodiscard]] Subscription observe(ChangedHandler handler);
 
@@ -128,6 +132,7 @@ private:
     static void notifyObservers(std::shared_ptr<ObserverState> state, const ListModelChange& change);
 
     std::shared_ptr<ObserverState> observers_;
+    std::uint64_t revision_{0};
 };
 
 /**

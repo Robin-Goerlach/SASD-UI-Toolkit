@@ -89,6 +89,7 @@ void ListModel::notifyObservers(std::shared_ptr<ObserverState> state,
 void ListModel::notifyChanged(ListModelChange change) {
     // Derived mutation must finish before this function is called. No ListModel member is touched
     // after notification begins because an observer is allowed to release/destroy its model owner.
+    ++revision_;
     notifyObservers(observers_, change);
 }
 

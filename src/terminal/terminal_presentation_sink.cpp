@@ -8,6 +8,7 @@
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text_field.hpp>
@@ -757,6 +758,20 @@ PresentationUpdateResult TerminalPresentationSink::synchronize(const Widget& wid
         }
 
         return rendered.update;
+    }
+
+    if (const auto* list_view = dynamic_cast<const ListView*>(&widget)) {
+        const auto presentation = TerminalListViewPresentation::snapshot(*list_view,
+                                                                          {static_cast<Coordinate>(absoluteRectOf(*list_view).x),
+                                                                           static_cast<Coordinate>(absoluteRectOf(*list_view).y),
+                                                                           list_view->bounds().width,
+                                                                           list_view->bounds().height});
+        if (!presentation.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+        return TerminalListViewPresentation::render(buffer_, *presentation, ambiguous_width_)
+                   ? PresentationUpdateResult::synchronized
+                   : PresentationUpdateResult::deferred;
     }
 
     if (const auto* combo = dynamic_cast<const ComboBox*>(&widget)) {

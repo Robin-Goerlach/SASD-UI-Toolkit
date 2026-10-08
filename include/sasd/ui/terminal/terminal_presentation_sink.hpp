@@ -2,6 +2,7 @@
 
 #include <sasd/ui/presentation/presentation_sink.hpp>
 #include <sasd/ui/terminal/presentation_frame.hpp>
+#include <sasd/ui/terminal/list_view_presentation.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/terminal/text_metrics.hpp>
 

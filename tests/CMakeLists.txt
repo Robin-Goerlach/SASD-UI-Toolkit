@@ -100,6 +100,7 @@ add_executable(sasd_ui_terminal_tests
     terminal_text_field_word_drag_tests.cpp
     terminal_text_metrics_tests.cpp
     terminal_presentation_sink_tests.cpp
+    terminal_list_view_presentation_tests.cpp
     terminal_session_tests.cpp
 )
 
@@ -133,6 +134,7 @@ add_test(NAME sasd_ui_terminal_tests COMMAND sasd_ui_terminal_tests)
 add_executable(sasd_ui_rendered_tests
     test_main.cpp
     rendered_display_list_tests.cpp
+    rendered_list_view_presentation_tests.cpp
     rendered_display_list_executor_tests.cpp
     rendered_menu_bar_presentation_tests.cpp
     rendered_menu_frame_presentation_tests.cpp

@@ -71,6 +71,10 @@ public:
     ~ListSelectionModel();
 
     [[nodiscard]] ListModel* model() const noexcept { return model_.get(); }
+    [[nodiscard]] std::uint64_t modelRevision() const noexcept {
+        const auto* current_model = model_.get();
+        return current_model != nullptr ? current_model->revision() : 0;
+    }
     [[nodiscard]] Reference reference();
     [[nodiscard]] Subscription observe(ChangedHandler handler);
 
