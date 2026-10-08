@@ -152,6 +152,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0133](0133-rendered-menu-popup-snapshot.md) | Rendered menu popup snapshots | Accepted |
 | [0134](0134-rendered-menu-frame-and-sdl3-overlay-policy.md) | Rendered menu frame and SDL3 overlay interaction policy | Accepted |
 | [0135](0135-list-model-observation-and-lifetime.md) | ListModel observation and lifetime contract | Accepted |
+| [0136](0136-list-selection-normalization.md) | Initial single-selection normalization for ListView | Accepted |
 
 ## ADR policy
 
