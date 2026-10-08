@@ -11,6 +11,8 @@
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/menu_interaction_controller.hpp>
+#include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/pointer_router.hpp>
 #include <sasd/ui/presentation/presentation_coordinator.hpp>
 #include <sasd/ui/radio_button.hpp>
@@ -19,6 +21,8 @@
 #include <sasd/ui/rendered/combo_box_popup_pointer_interaction.hpp>
 #include <sasd/ui/rendered/combo_box_popup_presentation.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
+#include <sasd/ui/rendered/menu_frame_presentation.hpp>
+#include <sasd/ui/rendered/menu_pointer_interaction.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
 #include <sasd/ui/shortcut.hpp>
@@ -57,11 +61,24 @@ using namespace sasd::ui::rendered::sdl3;
 void layoutForm(Window& window,
                 VBox& form,
                 const RenderedMeasurementContext& metrics,
-                Size window_size) {
+                Size window_size,
+                Coordinate menu_bar_height) {
     window.arrange({0, 0, window_size.width, window_size.height});
 
-    (void)form.measure(metrics, {{0, 0}, window_size});
-    form.arrange({0, 0, window_size.width, window_size.height});
+    const Coordinate content_height =
+        window_size.height > menu_bar_height
+            ? static_cast<Coordinate>(window_size.height - menu_bar_height)
+            : 0;
+    const Rect content{0, menu_bar_height, window_size.width, content_height};
+
+    /*
+     * The persistent menu bar owns the first logical row of the window. The form is deliberately
+     * arranged below that final presentation rectangle rather than teaching Core's Window/VBox
+     * layout about menus. This keeps menu geometry a Rendered concern and prevents the ordinary
+     * widget tree from painting underneath a persistent overlay.
+     */
+    (void)form.measure(metrics, {{0, 0}, content.size()});
+    form.arrange(content);
 }
 
 /**
@@ -137,7 +154,9 @@ void presentFullFrame(Window& window,
                       ComboBox& surface_mode,
                       DisplayList& display_list,
                       RenderedPresentationSink& presentation,
-                      Sdl3WindowBackend& backend) {
+                      Sdl3WindowBackend& backend,
+                      const MenuBarModel& menu_bar,
+                      const MenuInteractionController& menu_interaction) {
     display_list.clear();
 
     const auto pass = PresentationCoordinator::replay(window, presentation);
@@ -146,9 +165,45 @@ void presentFullFrame(Window& window,
             "SDL3 demo contains presentation state the current rendered model cannot represent"};
     }
 
-    if (!surface_mode.isDropDownOpen()) {
+    const auto menu_frame = buildMenuFramePresentation(
+        menu_bar,
+        menu_interaction,
+        {0, 0},
+        window.bounds(),
+        backend);
+    if (!menu_frame.has_value()) {
+        throw std::runtime_error{
+            "SDL3 demo menu frame cannot be represented in the current logical viewport"};
+    }
+
+    if (menu_interaction.isActive() && surface_mode.isDropDownOpen()) {
+        throw std::runtime_error{
+            "SDL3 demo has competing menu and ComboBox overlay scopes"};
+    }
+
+    if (menu_interaction.isActive() || menu_interaction.popupOpen()) {
+        if (!renderMenuFramePresentation(display_list, *menu_frame, Color::black)) {
+            throw std::runtime_error{"SDL3 demo menu frame rendering failed"};
+        }
         (void)backend.presentFrame(display_list);
         return;
+    }
+
+    if (!surface_mode.isDropDownOpen()) {
+        if (!renderMenuFramePresentation(display_list, *menu_frame, Color::black)) {
+            throw std::runtime_error{"SDL3 demo menu bar rendering failed"};
+        }
+        (void)backend.presentFrame(display_list);
+        return;
+    }
+
+    /*
+     * ComboBox and menu interaction are mutually exclusive, but the persistent bar remains part of
+     * the base for a ComboBox popup. Compose it before the popup so the popup path never has to know
+     * how menu titles are painted and the menu bar cannot disappear merely because a ComboBox opened.
+     */
+    if (!renderMenuFramePresentation(display_list, *menu_frame, Color::black)) {
+        throw std::runtime_error{"SDL3 demo menu bar rendering failed"};
     }
 
     const auto anchor = absoluteWidgetBounds(surface_mode);
@@ -261,6 +316,30 @@ int main(int argc, char** argv) {
         Command copy_command{"Copy"};
         Command cut_command{"Cut"};
         Command paste_command{"Paste"};
+
+        /*
+         * Menu models borrow Command identity but do not own Commands. Commands therefore outlive the
+         * menu tree and the Widget bindings below. The menu bar is semantic Core state; only its later
+         * Rendered snapshot will contain copied labels and final rectangles.
+         */
+        MenuBarModel menu_bar;
+        MenuModel& actions_menu = menu_bar.appendMenu("Actions");
+        actions_menu.appendCommand(greet_command);
+        actions_menu.appendCommand(exit_command);
+
+        MenuModel& edit_menu = menu_bar.appendMenu("Edit");
+        edit_menu.appendCommand(
+            select_all_command,
+            Shortcut{Key::a, KeyModifier::control});
+        edit_menu.appendCommand(copy_command, Shortcut{Key::c, KeyModifier::control});
+        edit_menu.appendCommand(cut_command, Shortcut{Key::x, KeyModifier::control});
+        edit_menu.appendCommand(paste_command, Shortcut{Key::v, KeyModifier::control});
+
+        MenuModel& help_menu = menu_bar.appendMenu("Help");
+        help_menu.appendCommand(help_command, Shortcut{Key::f1, KeyModifier::none});
+
+        MenuInteractionController menu_interaction;
+        RenderedMenuPointerInteraction::GestureState menu_pointer_gesture;
         ShortcutMap shortcuts;
 
         DisplayList display_list;
@@ -367,7 +446,6 @@ int main(int argc, char** argv) {
         greet.bindCommand(greet_command);
         exit.bindCommand(exit_command);
         shortcuts.bind({Key::f1, KeyModifier::none}, help_command);
-        shortcuts.bind({Key::f10, KeyModifier::none}, exit_command);
         shortcuts.bind({Key::a, KeyModifier::control}, select_all_command);
         shortcuts.bind({Key::c, KeyModifier::control}, copy_command);
         shortcuts.bind({Key::x, KeyModifier::control}, cut_command);
@@ -482,7 +560,21 @@ int main(int argc, char** argv) {
             }
         });
 
-        layoutForm(window, form, backend, backend.windowSize());
+        const auto initial_menu_frame = buildMenuFramePresentation(
+            menu_bar,
+            menu_interaction,
+            {0, 0},
+            {0, 0, backend.windowSize().width, backend.windowSize().height},
+            backend);
+        if (!initial_menu_frame.has_value()) {
+            throw std::runtime_error{"SDL3 demo initial menu frame cannot be represented"};
+        }
+        layoutForm(
+            window,
+            form,
+            backend,
+            backend.windowSize(),
+            initial_menu_frame->menu_bar.row_height);
         (void)focus.requestFocus(name);
         synchronizeTextInput(backend, focus);
         synchronizeEditCommands();
@@ -491,9 +583,14 @@ int main(int argc, char** argv) {
             surface_mode,
             display_list,
             presentation,
-            backend);
+            backend,
+            menu_bar,
+            menu_interaction);
+
+        Command::Reference pending_menu_command;
 
         while (!application.exitRequested()) {
+            bool menu_presentation_changed = false;
             (void)application.processRoutedEvents(
                 [&](const Event& event) -> Widget* {
                     if (std::holds_alternative<KeyEvent>(event) ||
@@ -523,11 +620,68 @@ int main(int argc, char** argv) {
                             pointer_router.leaveRoot();
                             text_selection_gesture.reset();
                             combo_popup_gesture.reset();
+                            RenderedMenuPointerInteraction::handleSurfaceEvent(
+                                *surface,
+                                menu_pointer_gesture);
                         }
                         return;
                     }
 
                     if (const auto* pointer = std::get_if<PointerEvent>(&event)) {
+                        /*
+                         * The menu overlay has first refusal for every pointer sample. It is rebuilt
+                         * from the current semantic state immediately before hit testing, so this
+                         * adapter never guesses old popup placement or retains a frame pointer across
+                         * events. An engaged result is modal even when the semantic action is a no-op.
+                         */
+                        const auto menu_frame = buildMenuFramePresentation(
+                            menu_bar,
+                            menu_interaction,
+                            {0, 0},
+                            window.bounds(),
+                            backend);
+                        if (menu_frame.has_value()) {
+                            const auto menu_result =
+                                RenderedMenuPointerInteraction::handle(
+                                    menu_bar,
+                                    menu_interaction,
+                                    *menu_frame,
+                                    *pointer,
+                                    menu_pointer_gesture);
+                            if (menu_result.has_value()) {
+                                if (menu_interaction.isActive() &&
+                                    surface_mode.isDropDownOpen()) {
+                                    /*
+                                     * Opening a menu claims the only transient overlay scope. Cancel
+                                     * ComboBox preview before the menu frame is presented; otherwise
+                                     * two independent surfaces could both believe they own pointer
+                                     * dismissal and release gestures.
+                                     */
+                                    (void)surface_mode.setDropDownOpen(false);
+                                }
+                                pointer_router.leaveRoot();
+                                text_selection_gesture.reset();
+                                combo_popup_gesture.reset();
+                                if (menu_result->action != MenuInteractionAction::none) {
+                                    menu_presentation_changed = true;
+                                }
+                                if (menu_result->action ==
+                                    MenuInteractionAction::activate_command) {
+                                    pending_menu_command = menu_result->command;
+                                }
+                                return;
+                            }
+                        } else if (menu_interaction.isActive()) {
+                            /* A stale/unrepresentable frame fails closed at the modal boundary. */
+                            menu_interaction.reset();
+                            menu_pointer_gesture.reset();
+                            menu_presentation_changed = true;
+                            pointer_router.leaveRoot();
+                            text_selection_gesture.reset();
+                            combo_popup_gesture.reset();
+                            return;
+                        }
+
                         if (surface_mode.isDropDownOpen()) {
                             /*
                              * The popup is an overlay rather than a Widget-tree child, so its exact final
@@ -616,7 +770,37 @@ int main(int argc, char** argv) {
                             (void)surface_mode.setDropDownOpen(false);
                         }
 
-                        layoutForm(window, form, backend, resize->size);
+                        auto resized_menu_frame = buildMenuFramePresentation(
+                            menu_bar,
+                            menu_interaction,
+                            {0, 0},
+                            {0, 0, resize->size.width, resize->size.height},
+                            backend);
+                        if (!resized_menu_frame.has_value()) {
+                            /*
+                             * A new viewport must never reuse final rectangles from the old one. Closing
+                             * the transient menu is the conservative resize policy; the next F10/title
+                             * interaction builds a fresh frame against the new logical viewport.
+                             */
+                            menu_interaction.reset();
+                            menu_pointer_gesture.reset();
+                            resized_menu_frame = buildMenuFramePresentation(
+                                menu_bar,
+                                menu_interaction,
+                                {0, 0},
+                                {0, 0, resize->size.width, resize->size.height},
+                                backend);
+                        }
+                        if (!resized_menu_frame.has_value()) {
+                            throw std::runtime_error{
+                                "SDL3 demo resized menu frame cannot be represented"};
+                        }
+                        layoutForm(
+                            window,
+                            form,
+                            backend,
+                            resize->size,
+                            resized_menu_frame->menu_bar.row_height);
 
                         /*
                          * Present resize results immediately instead of waiting until
@@ -640,7 +824,9 @@ int main(int argc, char** argv) {
                                 surface_mode,
                                 display_list,
                                 presentation,
-                                backend);
+                                backend,
+                                menu_bar,
+                                menu_interaction);
                         }
                         return;
                     }
@@ -648,10 +834,52 @@ int main(int argc, char** argv) {
                     /* Keyboard/focus handling is a competing completion path for popup pointer state. */
                     combo_popup_gesture.reset();
 
-                    if (const auto* key = std::get_if<KeyEvent>(&event);
-                        key != nullptr && key->pressed && shortcuts.dispatch(*key)) {
-                        synchronizeEditCommands();
-                        return;
+                    if (const auto* key = std::get_if<KeyEvent>(&event); key != nullptr) {
+                        /*
+                         * F10 is host policy for entering/leaving menu mode. It is handled before
+                         * ShortcutMap so it cannot accidentally execute an unrelated application
+                         * command. Opening the menu cancels an uncommitted ComboBox preview and any
+                         * captured widget gesture at this transient-overlay boundary.
+                         */
+                        if (key->pressed &&
+                            key->modifiers == KeyModifier::none &&
+                            key->key == Key::f10) {
+                            menu_pointer_gesture.reset();
+                            pointer_router.leaveRoot();
+                            text_selection_gesture.reset();
+                            combo_popup_gesture.reset();
+
+                            if (menu_interaction.isActive()) {
+                                menu_interaction.reset();
+                            } else {
+                                if (surface_mode.isDropDownOpen()) {
+                                    (void)surface_mode.setDropDownOpen(false);
+                                }
+                                (void)menu_interaction.begin(menu_bar);
+                            }
+                            menu_presentation_changed = true;
+                            return;
+                        }
+
+                        if (menu_interaction.isActive()) {
+                            const MenuInteractionResult menu_result =
+                                menu_interaction.handleKey(menu_bar, *key);
+                            if (menu_result.action != MenuInteractionAction::none) {
+                                menu_presentation_changed = true;
+                            }
+                            if (menu_result.action ==
+                                MenuInteractionAction::activate_command) {
+                                pending_menu_command = menu_result.command;
+                            }
+
+                            /* Menu mode owns even unhandled keys to prevent click/key-through. */
+                            return;
+                        }
+
+                        if (key->pressed && shortcuts.dispatch(*key)) {
+                            synchronizeEditCommands();
+                            return;
+                        }
                     }
 
                     /*
@@ -696,7 +924,22 @@ int main(int argc, char** argv) {
             synchronizeEditCommands();
 
             if (!form.isMeasureValid()) {
-                layoutForm(window, form, backend, backend.windowSize());
+                const auto current_menu_frame = buildMenuFramePresentation(
+                    menu_bar,
+                    menu_interaction,
+                    {0, 0},
+                    {0, 0, backend.windowSize().width, backend.windowSize().height},
+                    backend);
+                if (!current_menu_frame.has_value()) {
+                    throw std::runtime_error{
+                        "SDL3 demo current menu frame cannot be represented"};
+                }
+                layoutForm(
+                    window,
+                    form,
+                    backend,
+                    backend.windowSize(),
+                    current_menu_frame->menu_bar.row_height);
             }
 
             /*
@@ -705,7 +948,9 @@ int main(int argc, char** argv) {
              * presentationRequested() bit.
              */
             if (!backend.windowSize().isEmpty() &&
-                (window.isVisualUpdatePending() || backend.presentationRequested())) {
+                (window.isVisualUpdatePending() ||
+                 backend.presentationRequested() ||
+                 menu_presentation_changed)) {
                 /*
                  * Non-resize invalidation and expose/scale requests still use the normal end-of-batch
                  * presentation path. Resize itself is handled eagerly above to reduce live-resize
@@ -716,7 +961,20 @@ int main(int argc, char** argv) {
                     surface_mode,
                     display_list,
                     presentation,
-                    backend);
+                    backend,
+                    menu_bar,
+                    menu_interaction);
+            }
+
+            /*
+             * MenuInteractionController returns a non-owning Command::Reference and closes its
+             * transient state before returning it. Present the closed/stabilized frame first, then
+             * execute application code. The callback may mutate commands, menus or the host's widget
+             * state; no menu member is accessed through the activation boundary itself.
+             */
+            if (Command* command = pending_menu_command.get(); command != nullptr) {
+                pending_menu_command = {};
+                (void)command->execute();
             }
 
             /*
