@@ -44,6 +44,9 @@ they improve the architecture before compatibility commitments become expensive.
   bindings, with SDL3 logical-key and Terminal C0-byte translation kept separate from TextInputEvent.
 - SDL3-owned UTF-8 text Clipboard service with capability/lifetime discovery, plus explicit TextField
   Select All/Copy/Cut/Paste command composition in the rendered demo and Select All in the Terminal demo.
+- First Rendered menu-popup presentation slice: owned backend-neutral snapshots, one-time logical row
+  placement, transactional DisplayList rendering and hit testing against the exact painted snapshot.
+  Menu-bar composition, nested popup transactions and SDL3 demo integration remain deferred follow-ups.
 
 ## [0.1.0] - 2026-09-28
 
