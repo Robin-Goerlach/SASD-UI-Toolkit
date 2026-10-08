@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace sasd::ui::rendered {
@@ -14,6 +15,16 @@ namespace sasd::ui::rendered {
 struct RenderedMenuPopupRow {
     MenuItemPresentationSnapshot item{};
     Rect bounds{};
+    /** Measured label extent copied at snapshot-build time; rendering never measures again. */
+    Size label_size{};
+    /** The centrally formatted shortcut label, owned by this row. */
+    std::string shortcut_text{};
+    /** Measured shortcut extent copied at snapshot-build time. */
+    Size shortcut_size{};
+    /** Final lane rectangles. Empty rectangles mean that the lane is not visible for this row. */
+    Rect label_bounds{};
+    Rect shortcut_bounds{};
+    Rect submenu_indicator_bounds{};
 };
 
 /**
@@ -22,11 +33,15 @@ struct RenderedMenuPopupRow {
  */
 struct RenderedMenuPopupPresentationSnapshot {
     Rect bounds{};
+    Rect content_bounds{};
     std::vector<RenderedMenuPopupRow> rows{};
     std::optional<std::size_t> selection{};
     Coordinate padding{0};
     Coordinate row_height{0};
     Coordinate border_thickness{0};
+    Coordinate label_lane_width{0};
+    Coordinate shortcut_lane_width{0};
+    Coordinate submenu_indicator_lane_width{0};
 };
 
 [[nodiscard]] std::optional<RenderedMenuPopupPresentationSnapshot>
