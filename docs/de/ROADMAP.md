@@ -91,9 +91,13 @@ Geplant:
 
 ## M4 – Layout, Commands und Form Controls / v0.3.x
 
-Der erste Rendered-Menü-Slice bietet nun einen backend-neutralen Popup-Snapshot, DisplayList-Renderer
-und einen snapshot-exakten Hit-Test. Menüleisten-Komposition, verschachtelte Popup-Transaktionen und
-SDL3-Demo-Integration bleiben separate Folgeslices.
+Die Rendered-Menü-Präsentation ist nun ein vollständiger backendneutraler Frame-Slice: persistente
+Menüleiste, Root- und verschachtelte Popup-Ebenen, einmaliges Placement gegen den Viewport,
+transaktionale DisplayList-Komposition und snapshot-exaktes Hit-Testing sind implementiert. Die
+Rendered-Pointerinteraktion delegiert den semantischen Zustand an den `MenuInteractionController`; die
+SDL3-Form-Demo verwendet denselben Frame-/Interaktionspfad mit Actions-, Edit- und Help-Menüs. Der
+SDL3-Host reserviert die finale Menüzeile für den Formularinhalt, gibt dem Menü-Overlay Vorrang vor
+ComboBox/Widgets und hält Command-Ausführung zweiphasig.
 
 **Status: begonnen am 30.09.2026.** Die noch ausstehende sichtbare macOS-/Cocoa-Validierung von M3 bleibt als externe Plattformprüfung offen und blockiert die backendneutrale M4-Weiterentwicklung nicht. Die semantische Zwei-Zustands-`CheckBox` sowie der `RadioButton`-/`RadioGroup`-Slice sind in Core, Terminal und Rendered Presentation implementiert und in die Beispielanwendungen integriert; eigene SDL3-Integrationspfade prüfen ihr Verhalten vom nativen Pointer-Event bis zur Frame-Presentation. Die in Button, CheckBox und RadioButton nachgewiesene identische Primary-Pointer-Press/Capture/Release-Mechanik wurde in einen privaten Core-Helper ausgelagert, ohne eine öffentliche Control-Basisklasse einzuführen. `RadioGroupNavigation` stellt explizite zyklische Links/Hoch- bzw. Rechts/Runter-Navigation in stabiler Gruppenreihenfolge bereit, überspringt effektiv unerreichbare Mitglieder und überschreitet keinen Top-Level-Visual-Root. Der initiale `ComboBox`-Vertikalschnitt ist nun über Core, Terminal und Rendered Presentation vollständig: Open-State-Preview-/Commit-/Cancel-Semantik, festes Snapshot-Popup-Placement, Keyboard-Bedienung, Öffnen per collapsed Pointer sowie snapshot-exakte Popup-Hover-/Click-/Outside-Dismiss-Interaktion sind integriert, ohne Popup-Geometrie in den Core zu verschieben.
 
