@@ -132,6 +132,7 @@ add_executable(sasd_ui_rendered_tests
     test_main.cpp
     rendered_display_list_tests.cpp
     rendered_display_list_executor_tests.cpp
+    rendered_menu_presentation_tests.cpp
     rendered_presentation_sink_tests.cpp
     rendered_m4_layout_tests.cpp
     rendered_check_box_tests.cpp
