@@ -151,6 +151,10 @@ The table below is generated from every numbered ADR file currently present in t
 | [0132](0132-logical-latin-letter-key-identity.md) | Logical Latin-letter key identity / Logische Tastaturidentität für lateinische Buchstaben | Accepted |
 | [0133](0133-rendered-menu-popup-snapshot.md) | Rendered menu popup snapshots | Accepted |
 | [0134](0134-rendered-menu-frame-and-sdl3-overlay-policy.md) | Rendered menu frame and SDL3 overlay interaction policy | Accepted |
+| [0135](0135-list-model-observation-and-lifetime.md) | ListModel observation and lifetime contract | Accepted |
+| [0136](0136-list-selection-normalization.md) | Initial single-selection normalization for ListView | Accepted |
+| [0137](0137-terminal-list-view-snapshot-and-hit-testing.md) | Terminal ListView snapshots and exact row hit testing | Accepted |
+| [0138](0138-sdl3-list-view-demo-consumer.md) | SDL3 demo ListView consumer | Accepted |
 
 ## ADR policy
 

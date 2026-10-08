@@ -11,6 +11,7 @@
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text/utf8.hpp>
@@ -742,6 +743,23 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
             *field,
             measurement_context_,
             background_color_);
+    }
+
+    if (const auto* list_view = dynamic_cast<const ListView*>(&widget)) {
+        const auto absolute = detail::absoluteRectOf(*list_view);
+        if (!absolute.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+        if (!list_view->isVisible()) {
+            eraseWidget(display_list_, *absolute, background_color_);
+            return PresentationUpdateResult::synchronized;
+        }
+        const auto presentation = RenderedListViewPresentation::snapshot(*list_view, *absolute);
+        if (!presentation.has_value() ||
+            !RenderedListViewPresentation::render(display_list_, *presentation, background_color_)) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
     }
 
     if (const auto* combo = dynamic_cast<const ComboBox*>(&widget)) {

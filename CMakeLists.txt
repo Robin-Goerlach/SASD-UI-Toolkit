@@ -35,6 +35,9 @@ add_library(sasd_ui_core
     src/grid_layout.cpp
     src/hit_test.cpp
     src/label.cpp
+    src/list_model.cpp
+    src/list_selection_model.cpp
+    src/list_view.cpp
     src/text_field.cpp
     src/utf8.cpp
     src/pointer_router.cpp
@@ -55,6 +58,7 @@ add_library(sasd_ui_terminal
     src/terminal/terminal_session.cpp
     src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp
+    src/terminal/list_view_presentation.cpp
     src/terminal/text_metrics.cpp
 )
 # Native device implementations are intentionally selected inside the backend target so public
@@ -74,6 +78,7 @@ add_library(sasd_ui_rendered
     src/rendered/combo_box_popup_presentation.cpp
     src/rendered/display_list.cpp
     src/rendered/display_list_executor.cpp
+    src/rendered/list_view_presentation.cpp
     src/rendered/menu_bar_presentation.cpp
     src/rendered/menu_frame_presentation.cpp
     src/rendered/menu_presentation.cpp

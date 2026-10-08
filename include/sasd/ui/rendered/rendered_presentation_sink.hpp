@@ -2,6 +2,7 @@
 
 #include <sasd/ui/presentation/presentation_sink.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
+#include <sasd/ui/rendered/list_view_presentation.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 
 namespace sasd::ui::rendered {
