@@ -1,6 +1,6 @@
 # ADR 0135 – ListModel observation and lifetime contract
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-10-08
 
 ## English

@@ -1,6 +1,6 @@
 # ADR 0138 – SDL3 demo ListView consumer
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-10-08
 
 ## English

@@ -1,6 +1,6 @@
 # ADR 0137 – Terminal ListView snapshots and exact row hit testing
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-10-08
 
 ## English

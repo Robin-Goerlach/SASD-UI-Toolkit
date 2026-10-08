@@ -1,6 +1,6 @@
 # ADR 0136 – Initial single-selection normalization for ListView
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-10-08
 
 ## English
