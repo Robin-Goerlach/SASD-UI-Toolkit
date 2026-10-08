@@ -14,7 +14,6 @@ namespace sasd::ui::rendered {
 struct RenderedMenuPopupRow {
     MenuItemPresentationSnapshot item{};
     Rect bounds{};
-    friend bool operator==(const RenderedMenuPopupRow&, const RenderedMenuPopupRow&) = default;
 };
 
 /**
