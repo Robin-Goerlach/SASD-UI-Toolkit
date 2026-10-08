@@ -27,7 +27,7 @@ TEST_CASE("Terminal ListView presentation materializes visible UTF-8 rows") {
     ScreenBuffer buffer({20, 6});
     CHECK(TerminalListViewPresentation::render(buffer, *presentation));
     CHECK(buffer.at({1, 2}).code_point == U'f');
-    CHECK(buffer.at({1, 3}).code_point == U'日');
+    CHECK(buffer.at({1, 3}).code_point == U'\u65e5');
     CHECK(buffer.at({1, 3}).role == CellRole::wide_lead);
     CHECK(buffer.at({2, 3}).role == CellRole::wide_continuation);
     CHECK(buffer.at({1, 3}).style.inverse);
