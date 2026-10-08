@@ -133,17 +133,21 @@ Planned:
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 
-Planned:
+Status: in progress. The first List vertical slice is implemented: a small backend-neutral
+`ListModel` contract with lifetime-safe observation, concrete `StringListModel` test/demo storage,
+single-row `ListSelectionModel`, virtualized Core `ListView`, owned Terminal and Rendered visible-row
+snapshots with exact hit testing, and an SDL3 demo consumer. Core and backend tests prove that a model
+with one million rows is queried only for the visible range. Table and Tree remain later slices.
 
-- `ListModel`
-- `TableModel`
-- `TreeModel`
-- `ListView`
-- `TableView`
-- `TreeView`
-- selection models
-- delegate/cell-renderer concept
-- virtualization for large data sets
+- [x] `ListModel`
+- [ ] `TableModel`
+- [ ] `TreeModel`
+- [x] `ListView`
+- [ ] `TableView`
+- [ ] `TreeView`
+- [x] initial single-row selection model
+- [ ] delegate/cell-renderer concept
+- [x] visible-range virtualization for large data sets
 
 This milestone is particularly important for scientific, statistical and engineering applications.
 

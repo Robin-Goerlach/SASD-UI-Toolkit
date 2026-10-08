@@ -11,6 +11,9 @@
 #include <sasd/ui/focus_traversal.hpp>
 #include <sasd/ui/hit_test.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/list_model.hpp>
+#include <sasd/ui/list_selection_model.hpp>
+#include <sasd/ui/list_view.hpp>
 #include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/pointer_router.hpp>
@@ -23,6 +26,7 @@
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/menu_frame_presentation.hpp>
 #include <sasd/ui/rendered/menu_pointer_interaction.hpp>
+#include <sasd/ui/rendered/list_view_presentation.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
 #include <sasd/ui/shortcut.hpp>
@@ -317,6 +321,12 @@ int main(int argc, char** argv) {
         Command cut_command{"Cut"};
         Command paste_command{"Paste"};
 
+        // The list model is application data, not a Widget child. Its lifetime is deliberately
+        // independent from the visual ListView and its rows are never represented by child Widgets.
+        StringListModel recent_items({"Portable", "Terminal", "Rendered", "Headless test data"});
+        ListSelectionModel recent_selection;
+        recent_selection.setModel(&recent_items);
+
         /*
          * Menu models borrow Command identity but do not own Commands. Commands therefore outlive the
          * menu tree and the Widget bindings below. The menu bar is semantic Core state; only its later
@@ -437,6 +447,14 @@ int main(int argc, char** argv) {
         TextStyle status_style;
         status_style.foreground = Color::yellow;
         status.setTextStyle(status_style);
+
+        auto& list_label = form.emplace<Label>("Virtualized ListView:");
+        list_label.setTextStyle(name_label_style);
+        auto& recent_view = form.emplace<ListView>();
+        recent_view.setModel(&recent_items);
+        recent_view.setSelectionModel(&recent_selection);
+        recent_view.setViewport(0, 4);
+        recent_view.setSizeConstraints({{0, 4}, {40, 4}, {std::numeric_limits<Coordinate>::max(), 4}});
 
         auto& exit = form.emplace<Button>("Exit");
         TextStyle exit_style;
@@ -559,6 +577,15 @@ int main(int argc, char** argv) {
                 (void)name.pasteFromClipboard(*clipboard);
             }
         });
+
+        auto recent_selection_subscription = recent_selection.observe([&](const ListSelectionChange& change) {
+            if (!change.current.has_value()) {
+                status.setText("ListView selection cleared");
+                return;
+            }
+            status.setText("ListView selected row " + std::to_string(*change.current));
+        });
+        (void)recent_selection_subscription;
 
         const auto initial_menu_frame = buildMenuFramePresentation(
             menu_bar,
@@ -737,6 +764,27 @@ int main(int argc, char** argv) {
 
                             if (hit != nullptr && hit->canReceiveFocus()) {
                                 (void)focus.requestFocus(*hit);
+                            }
+
+                            if (hit == &recent_view) {
+                                const auto bounds = absoluteWidgetBounds(recent_view);
+                                if (!bounds.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo ListView bounds cannot be represented"};
+                                }
+                                const auto snapshot =
+                                    RenderedListViewPresentation::snapshot(recent_view, *bounds);
+                                if (!snapshot.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo ListView pointer snapshot is stale or unrepresentable"};
+                                }
+                                // Selection uses the exact row identity from the owned frame-side
+                                // snapshot. Returning here prevents PointerRouter from inventing a
+                                // second ListView interaction state machine.
+                                (void)RenderedListViewPresentation::selectAt(
+                                    *snapshot, pointer->position, recent_selection);
+                                pointer_router.leaveRoot();
+                                return;
                             }
                         }
 
