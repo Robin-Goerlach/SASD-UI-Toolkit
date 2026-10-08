@@ -35,6 +35,7 @@ add_library(sasd_ui_core
     src/grid_layout.cpp
     src/hit_test.cpp
     src/label.cpp
+    src/list_model.cpp
     src/text_field.cpp
     src/utf8.cpp
     src/pointer_router.cpp
