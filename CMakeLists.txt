@@ -75,6 +75,7 @@ add_library(sasd_ui_rendered
     src/rendered/display_list.cpp
     src/rendered/display_list_executor.cpp
     src/rendered/menu_bar_presentation.cpp
+    src/rendered/menu_frame_presentation.cpp
     src/rendered/menu_presentation.cpp
     src/rendered/rendered_geometry.cpp
     src/rendered/rendered_presentation_sink.cpp
