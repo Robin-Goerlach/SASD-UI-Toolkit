@@ -91,9 +91,12 @@ Planned:
 
 ## M4 – Layout, commands and form controls / v0.3.x
 
-The first Rendered menu presentation slice now provides a backend-neutral popup snapshot, DisplayList
-renderer and exact snapshot hit test. Menu-bar composition, nested popup transactions and SDL3 demo
-integration remain separate follow-up slices.
+The Rendered menu presentation is now a complete backend-neutral frame slice: the persistent menu bar,
+root and nested popup layers, one-time viewport placement, transactional DisplayList composition and
+snapshot-exact hit testing are implemented. Rendered pointer interaction delegates semantic state to
+`MenuInteractionController`, and the SDL3 form demo consumes the same frame/interaction path with
+Actions, Edit and Help menus. The SDL3 host reserves the final menu-bar row for form content, gives the
+menu overlay priority over ComboBox/widgets, and keeps Command execution two-phase.
 
 **Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The semantic two-state `CheckBox` and the `RadioButton`/`RadioGroup` slice are implemented across Core, Terminal and Rendered presentation and are integrated into the sample applications; dedicated SDL3 integration paths exercise their native-pointer-to-frame behavior. The identical primary-pointer press/capture/release mechanics proven across Button, CheckBox and RadioButton have been factored into a private Core helper without introducing a public control base class. `RadioGroupNavigation` provides explicit cyclic Left/Up and Right/Down navigation in stable group order, skips effectively unreachable members, and never crosses a top-level visual root. The initial `ComboBox` vertical slice is now complete across Core, Terminal and Rendered presentation: open-state preview/commit/cancel semantics, fixed snapshot popup placement, keyboard operation, collapsed pointer opening and snapshot-exact popup hover/click/outside-dismiss interaction are integrated without putting popup geometry into Core.
 

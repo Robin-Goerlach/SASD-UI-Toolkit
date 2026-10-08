@@ -46,7 +46,12 @@ they improve the architecture before compatibility commitments become expensive.
   Select All/Copy/Cut/Paste command composition in the rendered demo and Select All in the Terminal demo.
 - First Rendered menu-popup presentation slice: owned backend-neutral snapshots, one-time logical row
   placement, transactional DisplayList rendering and hit testing against the exact painted snapshot.
-  Menu-bar composition, nested popup transactions and SDL3 demo integration remain deferred follow-ups.
+- Complete Rendered menu frame with persistent menu-bar presentation, nested popup placement with
+  right-side/left-side fallback, transactional composition and exact-frame hit testing.
+- Rendered menu pointer interaction through `MenuInteractionController`, including modal outside
+  dismissal, press/release identity matching and two-phase Command activation.
+- SDL3 form demo integration with Actions/Edit/Help menus, persistent menu-bar content reservation,
+  F10 keyboard menu mode, overlay precedence over ComboBox/widgets and resize-safe frame rebuilding.
 
 ## [0.1.0] - 2026-09-28
 
