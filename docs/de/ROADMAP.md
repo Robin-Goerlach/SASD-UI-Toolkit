@@ -140,10 +140,10 @@ implementiert: kleine backendneutrale
 `ListModel`-Vertrag mit lebenszeitsicherer Observation, konkreter `StringListModel`-Test-/Demo-
 Speicherung, `ListSelectionModel` für eine Zeile, virtualisierte Core-`ListView`, besitzende sichtbare
 Zeilen-Snapshots mit exakt gemeinsamem Hit-Test für Terminal und Rendered sowie ein SDL3-Demo-Consumer.
-Dazu kommt ein rechteckiger textueller `TableModel` mit lebenszeitsicherer Observation. Core- und
-lebenszeitsichere Observation sowie eine TableView, die nur das sichtbare Zeilen-/Spalten-Rechteck
-materialisiert. Backend-Presentation für TableView, tablespezifische Selection und Tree bleiben spätere
-Slices.
+Dazu kommen ein rechteckiger textueller `TableModel` mit lebenszeitsicherer Observation sowie eine
+TableView, die nur das sichtbare Zeilen-/Spalten-Rechteck materialisiert. Terminal-Presentation für
+TableView, tablespezifische Selection und Tree bleiben spätere Slices. Der erste SDL-unabhängige
+Rendered-TableView-Snapshot ist nun implementiert.
 
 - [x] `ListModel`
 - [x] `TableModel`

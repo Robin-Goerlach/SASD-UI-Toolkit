@@ -73,6 +73,8 @@ they improve the architecture before compatibility commitments become expensive.
 - Initial virtualized Core `TableView` slice: owned visible header/cell values, rectangular viewport
   normalization and large-model query-boundary tests. Table-specific selection, backend presentation,
   delegates and editors remain separate follow-up slices.
+- Initial SDL-independent Rendered `TableView` presentation snapshot with one-time visible-lane
+  measurement, owned final rectangles, transactional DisplayList composition and exact cell hit tests.
 
 ## [0.1.0] - 2026-09-28
 

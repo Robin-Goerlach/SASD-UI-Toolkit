@@ -157,6 +157,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0138](0138-sdl3-list-view-demo-consumer.md) | SDL3 demo ListView consumer | Accepted |
 | [0139](0139-table-model-rectangular-text-contract.md) | Rectangular textual TableModel contract | Accepted |
 | [0140](0140-table-view-core-virtualization.md) | TableView core virtualization and owned visible values | Accepted |
+| [0141](0141-rendered-table-view-owned-presentation.md) | Owned Rendered TableView presentation snapshot | Accepted |
 
 ## ADR policy
 
