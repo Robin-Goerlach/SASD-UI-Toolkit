@@ -13,6 +13,7 @@ add_executable(sasd_ui_tests
     menu_navigation_tests.cpp
     list_model_tests.cpp
     list_view_tests.cpp
+    table_model_tests.cpp
     check_box_tests.cpp
     combo_box_tests.cpp
     radio_button_tests.cpp
