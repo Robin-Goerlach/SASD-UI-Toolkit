@@ -181,7 +181,15 @@ bool RenderedTableViewPresentation::render(
                             snapshot.row_bounds[row].y,
                             snapshot.column_bounds[column].width,
                             snapshot.row_bounds[row].height};
-            candidate.drawText({cell.x, cell.y}, snapshot.rows[row].cells[column], TextStyle{}, cell);
+            TextStyle style{};
+            if (snapshot.rows[row].selected_column.has_value() &&
+                *snapshot.rows[row].selected_column == snapshot.column_indices[column]) {
+                // Selection is represented through the existing inverse-text convention. The
+                // complete cell clip remains stable, so selection is visible even when the text is
+                // shorter than the lane and no new palette or geometry policy is introduced.
+                style.inverse = true;
+            }
+            candidate.drawText({cell.x, cell.y}, snapshot.rows[row].cells[column], style, cell);
         }
     }
     display_list = std::move(candidate);
@@ -207,6 +215,23 @@ RenderedTableViewPresentation::hitAt(const RenderedTableViewPresentationSnapshot
         }
     }
     return std::nullopt;
+}
+
+bool RenderedTableViewPresentation::selectAt(
+    const RenderedTableViewPresentationSnapshot& snapshot,
+    Point point,
+    TableSelectionModel& selection_model) {
+    const auto* model = selection_model.model();
+    if (model == nullptr || model->revision() != snapshot.model_revision) {
+        return false;
+    }
+    const auto hit = hitAt(snapshot, point);
+    if (!hit.has_value()) {
+        return false;
+    }
+    // select() may synchronously invoke application code that destroys the selection owner. Do not
+    // touch selection_model again after this call; returning its immediate value is the last use.
+    return selection_model.select(hit->row, hit->column);
 }
 
 } // namespace sasd::ui::rendered

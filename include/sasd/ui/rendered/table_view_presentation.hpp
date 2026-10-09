@@ -3,6 +3,7 @@
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -47,6 +48,11 @@ public:
 
     [[nodiscard]] static std::optional<RenderedTableViewHit>
     hitAt(const RenderedTableViewPresentationSnapshot& snapshot, Point point) noexcept;
+
+    /** Applies an exact snapshot hit only while the observed TableModel revision still matches. */
+    [[nodiscard]] static bool selectAt(const RenderedTableViewPresentationSnapshot& snapshot,
+                                       Point point,
+                                       TableSelectionModel& selection_model);
 };
 
 } // namespace sasd::ui::rendered
