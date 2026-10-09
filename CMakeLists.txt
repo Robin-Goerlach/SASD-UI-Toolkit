@@ -62,6 +62,7 @@ add_library(sasd_ui_terminal
     src/terminal/terminal_measurement_context.cpp
     src/terminal/terminal_presentation_sink.cpp
     src/terminal/list_view_presentation.cpp
+    src/terminal/table_view_presentation.cpp
     src/terminal/text_metrics.cpp
 )
 # Native device implementations are intentionally selected inside the backend target so public

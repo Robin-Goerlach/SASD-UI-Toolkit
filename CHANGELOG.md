@@ -79,6 +79,8 @@ they improve the architecture before compatibility commitments become expensive.
   bounded cell navigation and conservative row mutation normalization.
 - Rendered `TableView` selection styling and revision-checked exact-snapshot selection application;
   stale presentation frames fail closed before changing semantic selection.
+- Owned Terminal `TableView` presentation snapshot with UTF-8/TextMetrics cell lanes, transactional
+  ScreenBuffer rendering, semantic scrolled-column hit identities and stale-revision rejection.
 
 ## [0.1.0] - 2026-09-28
 
