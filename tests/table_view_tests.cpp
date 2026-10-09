@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/focus_manager.hpp>
 
 #include <string>
 #include <string_view>
@@ -98,4 +99,43 @@ TEST_CASE("TableView does not manufacture selection state") {
     view.setViewport(0, 2, 0, 1);
 
     CHECK(view.visibleRows().front().row == 0);
+}
+
+TEST_CASE("TableView connects two-dimensional selection and keeps it visible") {
+    StringTableModel model({"A", "B", "C", "D"},
+                           {{"a", "b", "c", "d"}, {"e", "f", "g", "h"},
+                            {"i", "j", "k", "l"}});
+    TableSelectionModel selection;
+    selection.setModel(&model);
+    TableView view;
+    view.setModel(&model);
+    view.setSelectionModel(&selection);
+    view.setViewport(0, 2, 0, 2);
+    view.arrange({0, 0, 20, 2});
+    FocusManager focus;
+    CHECK(focus.requestFocus(view));
+
+    CHECK(view.handleEvent(KeyEvent{Key::right, true, KeyModifier::none}) == EventResult::handled);
+    CHECK(selection.selectedCell() == std::optional<TableCell>{TableCell{0, 0}});
+    CHECK(view.handleEvent(KeyEvent{Key::right, true, KeyModifier::none}) == EventResult::handled);
+    CHECK(selection.selectedCell() == std::optional<TableCell>{TableCell{0, 1}});
+    CHECK(view.handleEvent(KeyEvent{Key::right, true, KeyModifier::none}) == EventResult::handled);
+    CHECK(selection.selectedCell() == std::optional<TableCell>{TableCell{0, 2}});
+    CHECK(view.firstVisibleColumn() == 1);
+    CHECK(view.handleEvent(KeyEvent{Key::down, true, KeyModifier::none}) == EventResult::handled);
+    CHECK(selection.selectedCell() == std::optional<TableCell>{TableCell{1, 2}});
+    CHECK(view.visibleRows()[1].selected_column == std::optional<std::size_t>{2});
+}
+
+TEST_CASE("TableView does not apply selection from another model") {
+    StringTableModel first({"A"}, {{"a"}});
+    StringTableModel second({"A"}, {{"b"}});
+    TableSelectionModel selection;
+    selection.setModel(&first);
+    CHECK(selection.select(0, 0));
+    TableView view;
+    view.setModel(&second);
+    view.setSelectionModel(&selection);
+    view.setViewport(0, 1, 0, 1);
+    CHECK(!view.visibleRows().front().selected_column.has_value());
 }
