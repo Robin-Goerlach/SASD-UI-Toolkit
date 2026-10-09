@@ -135,19 +135,21 @@ Geplant:
 
 ## M5 – Model/View und datenreiche Widgets / v0.4.x
 
-Status: in Arbeit. Die ersten List- und TableModel-Vertical-Slices sind implementiert: kleine backendneutrale
+Status: in Arbeit. Die ersten List-, TableModel- und virtualisierten TableView-Core-Slices sind
+implementiert: kleine backendneutrale
 `ListModel`-Vertrag mit lebenszeitsicherer Observation, konkreter `StringListModel`-Test-/Demo-
 Speicherung, `ListSelectionModel` für eine Zeile, virtualisierte Core-`ListView`, besitzende sichtbare
 Zeilen-Snapshots mit exakt gemeinsamem Hit-Test für Terminal und Rendered sowie ein SDL3-Demo-Consumer.
 Dazu kommt ein rechteckiger textueller `TableModel` mit lebenszeitsicherer Observation. Core- und
-Backend-Tests beweisen, dass ein Modell mit einer Million Zeilen nur den sichtbaren Bereich abfragt.
-`TableView` und Tree bleiben spätere Slices.
+lebenszeitsichere Observation sowie eine TableView, die nur das sichtbare Zeilen-/Spalten-Rechteck
+materialisiert. Backend-Presentation für TableView, tablespezifische Selection und Tree bleiben spätere
+Slices.
 
 - [x] `ListModel`
 - [x] `TableModel`
 - [ ] `TreeModel`
 - [x] `ListView`
-- [ ] `TableView`
+- [x] `TableView`-Core-Virtualisierung
 - [ ] `TreeView`
 - [x] initiales Single-Row-Selection-Modell
 - [ ] Delegate-/Cell-Renderer-Konzept
