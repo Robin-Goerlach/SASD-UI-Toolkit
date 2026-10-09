@@ -75,6 +75,8 @@ they improve the architecture before compatibility commitments become expensive.
   delegates and editors remain separate follow-up slices.
 - Initial SDL-independent Rendered `TableView` presentation snapshot with one-time visible-lane
   measurement, owned final rectangles, transactional DisplayList composition and exact cell hit tests.
+- Dedicated two-dimensional `TableSelectionModel` with lifetime-safe TableModel observation,
+  bounded cell navigation and conservative row mutation normalization.
 
 ## [0.1.0] - 2026-09-28
 
