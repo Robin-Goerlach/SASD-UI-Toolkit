@@ -38,6 +38,7 @@ add_library(sasd_ui_core
     src/list_model.cpp
     src/list_selection_model.cpp
     src/list_view.cpp
+    src/table_model.cpp
     src/text_field.cpp
     src/utf8.cpp
     src/pointer_router.cpp

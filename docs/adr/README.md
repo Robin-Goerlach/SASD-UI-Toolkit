@@ -155,6 +155,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0136](0136-list-selection-normalization.md) | Initial single-selection normalization for ListView | Accepted |
 | [0137](0137-terminal-list-view-snapshot-and-hit-testing.md) | Terminal ListView snapshots and exact row hit testing | Accepted |
 | [0138](0138-sdl3-list-view-demo-consumer.md) | SDL3 demo ListView consumer | Accepted |
+| [0139](0139-table-model-rectangular-text-contract.md) | Rectangular textual TableModel contract | Accepted |
 
 ## ADR policy
 

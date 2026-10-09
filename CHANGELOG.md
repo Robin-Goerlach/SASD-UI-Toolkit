@@ -67,6 +67,9 @@ they improve the architecture before compatibility commitments become expensive.
 - SDL3 rendered demo integration for `ListView`, including shared model usage, keyboard/pointer
   selection and viewport behavior; TableModel/TableView, TreeModel/TreeView and delegate/cell
   renderer abstractions remain deferred until the List contract has further concrete consumers.
+- Initial M5 `TableModel` slice: a rectangular textual Core contract, lifetime-safe observation,
+  concrete `StringTableModel` storage and mutation/lifetime tests. `TableView`, Tree and delegate/
+  cell-renderer abstractions remain separate follow-up slices.
 
 ## [0.1.0] - 2026-09-28
 
