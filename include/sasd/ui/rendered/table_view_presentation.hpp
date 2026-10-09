@@ -16,6 +16,8 @@ struct RenderedTableViewPresentationSnapshot final {
     Rect bounds{};
     Rect header_bounds{};
     std::vector<Rect> column_bounds;
+    /** Semantic TableModel column for each final column lane, never a local viewport offset. */
+    std::vector<std::size_t> column_indices;
     std::vector<Rect> row_bounds;
     std::vector<std::string> headers;
     std::vector<TableViewRow> rows;

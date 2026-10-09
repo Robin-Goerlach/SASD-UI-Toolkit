@@ -3,6 +3,7 @@
 #include <sasd/ui/rendered/table_view_presentation.hpp>
 
 #include <string_view>
+#include <vector>
 
 using namespace sasd::ui;
 using namespace sasd::ui::rendered;
@@ -52,4 +53,59 @@ TEST_CASE("Rendered TableView rejects malformed snapshots transactionally") {
     snapshot->column_bounds[0].width = 0;
     CHECK(!RenderedTableViewPresentation::render(list, *snapshot));
     CHECK(list.size() == 1);
+}
+
+TEST_CASE("Rendered TableView hit testing preserves scrolled model column identity") {
+    StringTableModel model({"A", "B", "C", "D", "E", "F", "G", "H"},
+                           {{"0", "1", "2", "3", "4", "5", "6", "7"}});
+    TableView view;
+    view.setModel(&model);
+    view.setViewport(0, 1, 7, 1);
+    Metrics metrics;
+
+    const auto snapshot = RenderedTableViewPresentation::snapshot(view, {0, 0, 4, 2}, metrics);
+    CHECK(snapshot.has_value());
+    CHECK(snapshot->column_indices == std::vector<std::size_t>{7});
+    CHECK(RenderedTableViewPresentation::hitAt(*snapshot, {0, 1}) ==
+          std::optional<RenderedTableViewHit>{RenderedTableViewHit{0, 7}});
+}
+
+TEST_CASE("Rendered TableView rejects malformed header and row bounds transactionally") {
+    Metrics metrics;
+    StringTableModel model({"A", "B"}, {{"x", "y"}});
+    TableView view;
+    view.setModel(&model);
+    view.setViewport(0, 1, 0, 2);
+    const auto original = RenderedTableViewPresentation::snapshot(view, {0, 0, 10, 3}, metrics);
+    CHECK(original.has_value());
+
+    for (const auto malformed : {0, 1}) {
+        auto snapshot = *original;
+        if (malformed == 0) {
+            snapshot.header_bounds.x = -1;
+        } else {
+            snapshot.row_bounds[0].y = snapshot.header_bounds.y;
+        }
+        DisplayList list;
+        list.drawText({3, 4}, "base");
+        CHECK(!RenderedTableViewPresentation::render(list, snapshot));
+        CHECK(list.size() == 1);
+    }
+}
+
+TEST_CASE("Rendered TableView uses half-open final cell boundaries") {
+    StringTableModel model({"A", "B"}, {{"x", "y"}});
+    TableView view;
+    view.setModel(&model);
+    view.setViewport(0, 1, 0, 2);
+    Metrics metrics;
+    const auto snapshot = RenderedTableViewPresentation::snapshot(view, {0, 0, 5, 3}, metrics);
+    CHECK(snapshot.has_value());
+
+    CHECK(RenderedTableViewPresentation::hitAt(*snapshot, {1, 1}) ==
+          std::optional<RenderedTableViewHit>{RenderedTableViewHit{0, 0}});
+    CHECK(RenderedTableViewPresentation::hitAt(*snapshot, {2, 1}) ==
+          std::optional<RenderedTableViewHit>{RenderedTableViewHit{0, 1}});
+    CHECK(!RenderedTableViewPresentation::hitAt(*snapshot, {4, 1}).has_value());
+    CHECK(!RenderedTableViewPresentation::hitAt(*snapshot, {1, 2}).has_value());
 }
