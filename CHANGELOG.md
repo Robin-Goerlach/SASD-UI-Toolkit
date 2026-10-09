@@ -70,6 +70,9 @@ they improve the architecture before compatibility commitments become expensive.
 - Initial M5 `TableModel` slice: a rectangular textual Core contract, lifetime-safe observation,
   concrete `StringTableModel` storage and mutation/lifetime tests. `TableView`, Tree and delegate/
   cell-renderer abstractions remain separate follow-up slices.
+- Initial virtualized Core `TableView` slice: owned visible header/cell values, rectangular viewport
+  normalization and large-model query-boundary tests. Table-specific selection, backend presentation,
+  delegates and editors remain separate follow-up slices.
 
 ## [0.1.0] - 2026-09-28
 

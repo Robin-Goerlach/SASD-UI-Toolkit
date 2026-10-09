@@ -133,18 +133,19 @@ Planned:
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 
-Status: in progress. The first List and TableModel vertical slices are implemented: small backend-neutral
+Status: in progress. The first List, TableModel and virtualized TableView core slices are implemented:
+small backend-neutral
 `ListModel` contract with lifetime-safe observation, concrete `StringListModel` test/demo storage,
 single-row `ListSelectionModel`, virtualized Core `ListView`, owned Terminal and Rendered visible-row
 snapshots with exact hit testing, an SDL3 demo consumer, and a rectangular textual `TableModel` with
-lifetime-safe observation. Core and backend tests prove that a model with one million rows is queried
-only for the visible range. `TableView` and Tree remain later slices.
+lifetime-safe observation, and a TableView that materializes only its visible row/column rectangle.
+Backend TableView presentation, table-specific selection, and Tree remain later slices.
 
 - [x] `ListModel`
 - [x] `TableModel`
 - [ ] `TreeModel`
 - [x] `ListView`
-- [ ] `TableView`
+- [x] `TableView` core virtualization
 - [ ] `TreeView`
 - [x] initial single-row selection model
 - [ ] delegate/cell-renderer concept

@@ -156,6 +156,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0137](0137-terminal-list-view-snapshot-and-hit-testing.md) | Terminal ListView snapshots and exact row hit testing | Accepted |
 | [0138](0138-sdl3-list-view-demo-consumer.md) | SDL3 demo ListView consumer | Accepted |
 | [0139](0139-table-model-rectangular-text-contract.md) | Rectangular textual TableModel contract | Accepted |
+| [0140](0140-table-view-core-virtualization.md) | TableView core virtualization and owned visible values | Accepted |
 
 ## ADR policy
 
