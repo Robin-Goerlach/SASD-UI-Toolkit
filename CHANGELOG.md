@@ -52,6 +52,21 @@ they improve the architecture before compatibility commitments become expensive.
   dismissal, press/release identity matching and two-phase Command activation.
 - SDL3 form demo integration with Actions/Edit/Help menus, persistent menu-bar content reservation,
   F10 keyboard menu mode, overlay precedence over ComboBox/widgets and resize-safe frame rebuilding.
+- M4 form and layout slices across Core, Terminal and Rendered presentation: `GridLayout`, `FormLayout`,
+  `StackLayout`, `CheckBox`, `RadioButton`/`RadioGroup` and the initial `ComboBox` interaction contract.
+- Cross-backend editing commands for TextField selection, including logical Ctrl+A/C/X/V shortcut
+  identity and an optional UTF-8 clipboard service; richer Action, binding, validation, IME and
+  clipboard-format systems remain intentionally deferred until a concrete consumer requires them.
+- M5 List vertical slice: lifetime-safe backend-neutral `ListModel` observation, concrete
+  `StringListModel` storage, single-row `ListSelectionModel`, virtualized Core `ListView`, and
+  mutation/selection normalization tests covering destructive observers, model replacement and
+  model destruction.
+- Owned visible-row snapshots for Terminal and Rendered `ListView` presentation with snapshot-exact
+  hit testing, stale-state rejection, UTF-8/wide-cell coverage and large-model tests proving that
+  presentation queries only the visible range instead of walking the complete model.
+- SDL3 rendered demo integration for `ListView`, including shared model usage, keyboard/pointer
+  selection and viewport behavior; TableModel/TableView, TreeModel/TreeView and delegate/cell
+  renderer abstractions remain deferred until the List contract has further concrete consumers.
 
 ## [0.1.0] - 2026-09-28
 
