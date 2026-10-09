@@ -14,6 +14,9 @@
 #include <sasd/ui/list_model.hpp>
 #include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
+#include <sasd/ui/table_model.hpp>
+#include <sasd/ui/table_selection_model.hpp>
+#include <sasd/ui/table_view.hpp>
 #include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/pointer_router.hpp>
@@ -27,6 +30,7 @@
 #include <sasd/ui/rendered/menu_frame_presentation.hpp>
 #include <sasd/ui/rendered/menu_pointer_interaction.hpp>
 #include <sasd/ui/rendered/list_view_presentation.hpp>
+#include <sasd/ui/rendered/table_view_presentation.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
 #include <sasd/ui/shortcut.hpp>
@@ -328,6 +332,22 @@ int main(int argc, char** argv) {
         recent_selection.setModel(&recent_items);
 
         /*
+         * Table data remains application-owned semantic state. TableView observes it without owning
+         * it, while the dedicated two-dimensional selection object keeps the selected cell separate
+         * from keyboard focus. The demo deliberately uses a small StringTableModel, but the rendered
+         * presentation consumes only the TableModel contract and therefore does not depend on this
+         * storage type.
+         */
+        StringTableModel recent_table(
+            {"Command", "Backend", "State"},
+            {{"Greet", "Core", "ready"},
+             {"Copy", "Rendered", "available"},
+             {"Paste", "SDL3", "optional"},
+             {"Help", "Terminal", "portable"}});
+        TableSelectionModel table_selection;
+        table_selection.setModel(&recent_table);
+
+        /*
          * Menu models borrow Command identity but do not own Commands. Commands therefore outlive the
          * menu tree and the Widget bindings below. The menu bar is semantic Core state; only its later
          * Rendered snapshot will contain copied labels and final rectangles.
@@ -455,6 +475,23 @@ int main(int argc, char** argv) {
         recent_view.setSelectionModel(&recent_selection);
         recent_view.setViewport(0, 4);
         recent_view.setSizeConstraints({{0, 4}, {40, 4}, {std::numeric_limits<Coordinate>::max(), 4}});
+
+        auto& table_label = form.emplace<Label>("Virtualized TableView:");
+        table_label.setTextStyle(name_label_style);
+        auto& table_view = form.emplace<TableView>();
+        table_view.setModel(&recent_table);
+        table_view.setSelectionModel(&table_selection);
+        table_view.setViewport(0, 4, 0, 3);
+        const Coordinate table_line_height = backend.lineHeight() > 0
+                                                 ? backend.lineHeight()
+                                                 : Coordinate{1};
+        const Coordinate table_height =
+            table_line_height > std::numeric_limits<Coordinate>::max() / 5
+                ? std::numeric_limits<Coordinate>::max()
+                : static_cast<Coordinate>(table_line_height * 5);
+        table_view.setSizeConstraints(
+            {{0, table_height}, {60, table_height},
+             {std::numeric_limits<Coordinate>::max(), table_height}});
 
         auto& exit = form.emplace<Button>("Exit");
         TextStyle exit_style;
@@ -586,6 +623,17 @@ int main(int argc, char** argv) {
             status.setText("ListView selected row " + std::to_string(*change.current));
         });
         (void)recent_selection_subscription;
+
+        auto table_selection_subscription = table_selection.observe([&](const TableSelectionChange& change) {
+            if (!change.current.has_value()) {
+                status.setText("TableView selection cleared");
+                return;
+            }
+            status.setText(
+                "TableView selected row " + std::to_string(change.current->row) +
+                ", column " + std::to_string(change.current->column));
+        });
+        (void)table_selection_subscription;
 
         const auto initial_menu_frame = buildMenuFramePresentation(
             menu_bar,
@@ -783,6 +831,34 @@ int main(int argc, char** argv) {
                                 // second ListView interaction state machine.
                                 (void)RenderedListViewPresentation::selectAt(
                                     *snapshot, pointer->position, recent_selection);
+                                pointer_router.leaveRoot();
+                                return;
+                            }
+
+                            if (hit == &table_view) {
+                                const auto bounds = absoluteWidgetBounds(table_view);
+                                if (!bounds.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo TableView bounds cannot be represented"};
+                                }
+                                const auto snapshot = RenderedTableViewPresentation::snapshot(
+                                    table_view,
+                                    *bounds,
+                                    backend);
+                                if (!snapshot.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo TableView pointer snapshot is stale or unrepresentable"};
+                                }
+                                /*
+                                 * The pointer path uses the same final snapshot contract as
+                                 * rendering. A successful hit updates only the semantic selection;
+                                 * TableView's observer then invalidates its own presentation. No
+                                 * second pointer-selection state machine is kept in this host.
+                                 */
+                                (void)RenderedTableViewPresentation::selectAt(
+                                    *snapshot,
+                                    pointer->position,
+                                    table_selection);
                                 pointer_router.leaveRoot();
                                 return;
                             }
