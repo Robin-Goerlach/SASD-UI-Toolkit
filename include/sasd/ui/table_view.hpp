@@ -1,9 +1,11 @@
 #pragma once
 
 #include <sasd/ui/table_model.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/widget.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,6 +15,8 @@ namespace sasd::ui {
 struct TableViewRow final {
     std::size_t row{0};
     std::vector<std::string> cells;
+    /** Semantic model column selected in this row, or no visible selection. */
+    std::optional<std::size_t> selected_column;
 };
 
 /**
@@ -22,8 +26,8 @@ struct TableViewRow final {
  * configured visible rectangle. The returned headers and cells are owned values: a backend may keep
  * them in a presentation frame after the model changes without retaining string_view or model
  * pointers. No Widget is created per row or cell, which is the scalability boundary established by
- * ADR 0008. Table selection is deliberately deferred until a dedicated two-dimensional contract is
- * justified; ListSelectionModel is not silently reused for a different model type.
+ * ADR 0008. Table selection uses a dedicated two-dimensional TableSelectionModel; focus and
+ * selection remain independent policies.
  */
 class TableView final : public Widget {
 public:
@@ -32,6 +36,12 @@ public:
 
     void setModel(TableModel* model);
     [[nodiscard]] TableModel* model() const noexcept { return model_.get(); }
+
+    /** Observes a non-owning table-specific selection model; focus remains a separate policy. */
+    void setSelectionModel(TableSelectionModel* selection_model);
+    [[nodiscard]] TableSelectionModel* selectionModel() const noexcept {
+        return selection_model_.get();
+    }
 
     /** Sets the visible row and column rectangle in model coordinates. */
     void setViewport(std::size_t first_row,
@@ -48,12 +58,20 @@ public:
     [[nodiscard]] std::vector<std::string> visibleHeaders() const;
     [[nodiscard]] std::vector<TableViewRow> visibleRows() const;
 
+protected:
+    [[nodiscard]] EventResult onEvent(const Event& event) override;
+
 private:
     void modelChanged(const TableModelChange& change);
+    void selectionChanged(const TableSelectionChange& change);
     void normalizeViewport() noexcept;
+    void keepSelectionVisible();
+    [[nodiscard]] bool moveSelection(Key key);
 
     TableModel::Reference model_;
     TableModel::Subscription model_subscription_;
+    TableSelectionModel::Reference selection_model_;
+    TableSelectionModel::Subscription selection_subscription_;
     std::size_t first_visible_row_{0};
     std::size_t visible_row_count_{0};
     std::size_t first_visible_column_{0};

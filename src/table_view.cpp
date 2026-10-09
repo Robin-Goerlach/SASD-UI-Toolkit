@@ -1,6 +1,7 @@
 #include <sasd/ui/table_view.hpp>
 
 #include <algorithm>
+#include <variant>
 
 namespace sasd::ui {
 
@@ -23,7 +24,25 @@ void TableView::setModel(TableModel* model) {
         });
     }
     normalizeViewport();
+    keepSelectionVisible();
     invalidateMeasure();
+    invalidateVisual();
+}
+
+void TableView::setSelectionModel(TableSelectionModel* selection_model) {
+    if (selection_model_.get() == selection_model) {
+        return;
+    }
+
+    selection_subscription_.reset();
+    selection_model_ = selection_model != nullptr ? selection_model->reference()
+                                                   : TableSelectionModel::Reference{};
+    if (selection_model != nullptr) {
+        selection_subscription_ = selection_model->observe([this](const TableSelectionChange& change) {
+            selectionChanged(change);
+        });
+    }
+    keepSelectionVisible();
     invalidateVisual();
 }
 
@@ -87,6 +106,12 @@ std::vector<TableViewRow> TableView::visibleRows() const {
     const auto first_column = std::min(first_visible_column_, column_count);
     const auto rows_to_copy = std::min(visible_row_count_, row_count - first_row);
     const auto columns_to_copy = std::min(visible_column_count_, column_count - first_column);
+    // Selection is only meaningful when it observes this exact model. This identity check keeps a
+    // stale or accidentally shared selection object from painting an unrelated table's cell.
+    const auto* selection = selection_model_.get();
+    const auto selected = selection != nullptr && selection->model() == model
+                              ? selection->selectedCell()
+                              : std::nullopt;
     result.reserve(rows_to_copy);
     for (std::size_t row_offset = 0; row_offset < rows_to_copy; ++row_offset) {
         const auto row = first_row + row_offset;
@@ -99,14 +124,92 @@ std::vector<TableViewRow> TableView::visibleRows() const {
             // keeps the owned snapshot independent from model storage and later invalidation.
             snapshot_row.cells.emplace_back(model->textAt(row, column));
         }
+        if (selected.has_value() && selected->row == row &&
+            selected->column >= first_column &&
+            selected->column - first_column < columns_to_copy) {
+            snapshot_row.selected_column = selected->column;
+        }
         result.push_back(std::move(snapshot_row));
     }
     return result;
 }
 
+bool TableView::moveSelection(Key key) {
+    auto* selection = selection_model_.get();
+    if (selection == nullptr || selection->model() != model_.get()) {
+        return false;
+    }
+
+    bool changed = false;
+    switch (key) {
+    case Key::up:
+        changed = selection->selectUp();
+        break;
+    case Key::down:
+        changed = selection->selectDown();
+        break;
+    case Key::left:
+        changed = selection->selectLeft();
+        break;
+    case Key::right:
+        changed = selection->selectRight();
+        break;
+    default:
+        return false;
+    }
+    if (changed) {
+        keepSelectionVisible();
+    }
+    return changed;
+}
+
+EventResult TableView::onEvent(const Event& event) {
+    const auto* key_event = std::get_if<KeyEvent>(&event);
+    if (key_event == nullptr || !key_event->pressed ||
+        key_event->modifiers != KeyModifier::none || !hasFocus() || !isVisible() ||
+        !isEnabled()) {
+        return EventResult::ignored;
+    }
+    return moveSelection(key_event->key) ? EventResult::handled : EventResult::ignored;
+}
+
+void TableView::keepSelectionVisible() {
+    const auto* selection = selection_model_.get();
+    const auto selected = selection != nullptr && selection->model() == model_.get()
+                              ? selection->selectedCell()
+                              : std::nullopt;
+    if (!selected.has_value()) {
+        return;
+    }
+
+    // Keep-visible changes only the semantic viewport. Rendered/Terminal builders later calculate
+    // fresh final rectangles from this viewport; no backend geometry is retained in Core.
+    if (visible_row_count_ != 0) {
+        if (selected->row < first_visible_row_) {
+            first_visible_row_ = selected->row;
+        } else if (selected->row - first_visible_row_ >= visible_row_count_) {
+            first_visible_row_ = selected->row - visible_row_count_ + 1;
+        }
+    }
+    if (visible_column_count_ != 0) {
+        if (selected->column < first_visible_column_) {
+            first_visible_column_ = selected->column;
+        } else if (selected->column - first_visible_column_ >= visible_column_count_) {
+            first_visible_column_ = selected->column - visible_column_count_ + 1;
+        }
+    }
+    normalizeViewport();
+}
+
 void TableView::modelChanged(const TableModelChange&) {
     normalizeViewport();
+    keepSelectionVisible();
     invalidateMeasure();
+    invalidateVisual();
+}
+
+void TableView::selectionChanged(const TableSelectionChange&) {
+    keepSelectionVisible();
     invalidateVisual();
 }
 
