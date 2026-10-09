@@ -109,3 +109,38 @@ TEST_CASE("Rendered TableView uses half-open final cell boundaries") {
     CHECK(!RenderedTableViewPresentation::hitAt(*snapshot, {4, 1}).has_value());
     CHECK(!RenderedTableViewPresentation::hitAt(*snapshot, {1, 2}).has_value());
 }
+
+TEST_CASE("Rendered TableView presents the selected semantic cell") {
+    StringTableModel model({"A", "B"}, {{"x", "y"}, {"z", "w"}});
+    TableView view;
+    view.setModel(&model);
+    view.setViewport(0, 2, 0, 2);
+    TableSelectionModel selection;
+    selection.setModel(&model);
+    CHECK(selection.select(1, 1));
+    view.setSelectionModel(&selection);
+    Metrics metrics;
+    const auto snapshot = RenderedTableViewPresentation::snapshot(view, {0, 0, 8, 4}, metrics);
+    CHECK(snapshot.has_value());
+
+    DisplayList list;
+    CHECK(RenderedTableViewPresentation::render(list, *snapshot));
+    const auto& selected = std::get<DrawTextCommand>(list.commands()[6]);
+    CHECK(selected.style.inverse);
+    CHECK(selected.clip_bounds == Rect{2, 2, 2, 1});
+}
+
+TEST_CASE("Rendered TableView rejects stale snapshot selection before applying it") {
+    StringTableModel model({"A"}, {{"x"}});
+    TableView view;
+    view.setModel(&model);
+    view.setViewport(0, 1, 0, 1);
+    Metrics metrics;
+    const auto snapshot = RenderedTableViewPresentation::snapshot(view, {0, 0, 4, 2}, metrics);
+    CHECK(snapshot.has_value());
+    TableSelectionModel selection;
+    selection.setModel(&model);
+    model.setCell(0, 0, "changed");
+    CHECK(!RenderedTableViewPresentation::selectAt(*snapshot, {0, 1}, selection));
+    CHECK(!selection.selectedCell().has_value());
+}

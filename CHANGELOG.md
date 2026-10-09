@@ -77,6 +77,8 @@ they improve the architecture before compatibility commitments become expensive.
   measurement, owned final rectangles, transactional DisplayList composition and exact cell hit tests.
 - Dedicated two-dimensional `TableSelectionModel` with lifetime-safe TableModel observation,
   bounded cell navigation and conservative row mutation normalization.
+- Rendered `TableView` selection styling and revision-checked exact-snapshot selection application;
+  stale presentation frames fail closed before changing semantic selection.
 
 ## [0.1.0] - 2026-09-28
 
