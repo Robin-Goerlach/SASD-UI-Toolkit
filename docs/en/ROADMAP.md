@@ -140,8 +140,11 @@ single-row `ListSelectionModel`, virtualized Core `ListView`, owned Terminal and
 snapshots with exact hit testing, an SDL3 demo consumer, and a rectangular textual `TableModel` with
 lifetime-safe observation, and a TableView that materializes only its visible row/column rectangle.
 The first dedicated two-dimensional TableSelectionModel, TableView keyboard/viewport integration,
-Rendered selection styling and the owned Terminal TableView presentation with stale-revision rejection
-are now implemented. Tree remains a later slice. The SDL-independent Rendered TableView snapshot is implemented.
+Rendered selection styling, the owned Terminal TableView presentation with stale-revision rejection,
+and generic RenderedPresentationSink integration are now implemented. The SDL3 form demo consumes the
+same TableModel/TableSelectionModel/TableView path for keyboard and exact-snapshot pointer selection
+without per-cell Widgets. Tree remains a later slice. The SDL-independent Rendered TableView snapshot
+remains the geometry source for every backend.
 
 - [x] `ListModel`
 - [x] `TableModel`

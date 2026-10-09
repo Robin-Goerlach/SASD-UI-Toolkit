@@ -142,9 +142,12 @@ Speicherung, `ListSelectionModel` für eine Zeile, virtualisierte Core-`ListView
 Zeilen-Snapshots mit exakt gemeinsamem Hit-Test für Terminal und Rendered sowie ein SDL3-Demo-Consumer.
 Dazu kommen ein rechteckiger textueller `TableModel` mit lebenszeitsicherer Observation sowie eine
 TableView, die nur das sichtbare Zeilen-/Spalten-Rechteck materialisiert. Das erste dedizierte
-zweidimensionale `TableSelectionModel`, TableView-Tastatur-/Viewport-Integration, Rendered-Selection
-und die besitzende Terminal-TableView-Presentation mit stale-revision-Prüfung sind nun implementiert.
-Tree bleibt ein späterer Slice. Der SDL-unabhängige Rendered-TableView-Snapshot ist implementiert.
+zweidimensionale `TableSelectionModel`, TableView-Tastatur-/Viewport-Integration, Rendered-Selection,
+die besitzende Terminal-TableView-Presentation mit stale-revision-Prüfung und die Integration in den
+generischen RenderedPresentationSink sind nun implementiert. Die SDL3-Form-Demo verwendet denselben
+TableModel-/TableSelectionModel-/TableView-Pfad für Tastatur und exakte Snapshot-Pointer-Selection
+ohne Widgets pro Zelle. Tree bleibt ein späterer Slice. Der SDL-unabhängige Rendered-TableView-
+Snapshot bleibt die Geometriequelle für jedes Backend.
 
 - [x] `ListModel`
 - [x] `TableModel`

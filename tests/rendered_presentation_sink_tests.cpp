@@ -10,6 +10,9 @@
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/text/utf8.hpp>
 #include <sasd/ui/text_field.hpp>
+#include <sasd/ui/table_model.hpp>
+#include <sasd/ui/table_selection_model.hpp>
+#include <sasd/ui/table_view.hpp>
 #include <sasd/ui/window.hpp>
 
 #include <algorithm>
@@ -166,6 +169,42 @@ TEST_CASE("RenderedPresentationSink keeps ordinary Label repaint incremental") {
     CHECK(std::get<FillRectCommand>(display.commands()[0]).bounds ==
           Rect{20, 10, 120, 20});
     CHECK(std::get<DrawTextCommand>(display.commands()[1]).text == "new");
+}
+
+TEST_CASE("RenderedPresentationSink consumes TableView through its owned rendered snapshot") {
+    DisplayList display;
+    TestRenderedMeasurementContext metrics;
+    RenderedPresentationSink sink{display, metrics, Color::black};
+
+    StringTableModel model({"Name", "State"}, {{"Greet", "ready"}});
+    TableSelectionModel selection;
+    selection.setModel(&model);
+    CHECK(selection.select(0, 1));
+
+    Window window;
+    window.arrange({0, 0, 240, 80});
+    auto& table = window.emplace<TableView>();
+    table.setModel(&model);
+    table.setSelectionModel(&selection);
+    table.setViewport(0, 1, 0, 2);
+    table.arrange({10, 20, 180, 30});
+
+    const auto pass = PresentationCoordinator::synchronize(window, sink);
+    CHECK(pass.complete());
+
+    bool saw_header = false;
+    bool saw_selected_cell = false;
+    for (const auto& command : display.commands()) {
+        const auto* text = std::get_if<DrawTextCommand>(&command);
+        if (text == nullptr) {
+            continue;
+        }
+        saw_header = saw_header || text->text == "Name";
+        saw_selected_cell = saw_selected_cell ||
+                            (text->text == "ready" && text->style.inverse);
+    }
+    CHECK(saw_header);
+    CHECK(saw_selected_cell);
 }
 
 TEST_CASE("RenderedPresentationSink rebuilds complete surface after geometry damage") {

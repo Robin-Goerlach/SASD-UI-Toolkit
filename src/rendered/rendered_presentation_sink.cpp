@@ -12,6 +12,8 @@
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/list_view.hpp>
+#include <sasd/ui/table_view.hpp>
+#include <sasd/ui/rendered/table_view_presentation.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text/utf8.hpp>
@@ -757,6 +759,40 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
         const auto presentation = RenderedListViewPresentation::snapshot(*list_view, *absolute);
         if (!presentation.has_value() ||
             !RenderedListViewPresentation::render(display_list_, *presentation, background_color_)) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
+    }
+
+    if (const auto* table_view = dynamic_cast<const TableView*>(&widget)) {
+        const auto absolute = detail::absoluteRectOf(*table_view);
+        if (!absolute.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+        if (!table_view->isVisible()) {
+            eraseWidget(display_list_, *absolute, background_color_);
+            return PresentationUpdateResult::synchronized;
+        }
+
+        /*
+         * TableView is virtualized in Core, but its final cell lanes belong to Rendered. The
+         * snapshot copies only the visible semantic range and resolves all geometry once against
+         * the current measurement context. Rendering the exact owned value keeps this sink free of
+         * model pointers and prevents a later model mutation from changing a frame halfway through
+         * replay.
+         */
+        if (measurement_context_ == nullptr) {
+            return PresentationUpdateResult::deferred;
+        }
+        const auto table_snapshot = RenderedTableViewPresentation::snapshot(
+            *table_view,
+            *absolute,
+            *measurement_context_);
+        if (!table_snapshot.has_value() ||
+            !RenderedTableViewPresentation::render(
+                display_list_,
+                *table_snapshot,
+                background_color_)) {
             return PresentationUpdateResult::deferred;
         }
         return PresentationUpdateResult::synchronized;

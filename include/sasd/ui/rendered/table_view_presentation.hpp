@@ -44,7 +44,8 @@ public:
 
     /** Renders the exact owned snapshot; it never queries TableModel or recomputes geometry. */
     [[nodiscard]] static bool render(DisplayList& display_list,
-                                     const RenderedTableViewPresentationSnapshot& snapshot);
+                                     const RenderedTableViewPresentationSnapshot& snapshot,
+                                     Color background_color = Color::default_color);
 
     [[nodiscard]] static std::optional<RenderedTableViewHit>
     hitAt(const RenderedTableViewPresentationSnapshot& snapshot, Point point) noexcept;

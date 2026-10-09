@@ -158,7 +158,8 @@ RenderedTableViewPresentation::snapshot(const TableView& view,
 
 bool RenderedTableViewPresentation::render(
     DisplayList& display_list,
-    const RenderedTableViewPresentationSnapshot& snapshot) {
+    const RenderedTableViewPresentationSnapshot& snapshot,
+    Color background_color) {
     if (!validSnapshot(snapshot)) {
         return false;
     }
@@ -166,7 +167,7 @@ bool RenderedTableViewPresentation::render(
     // Render into a copy first. DisplayList has no rollback primitive, so a malformed public value
     // snapshot must not partially mutate the caller's already valid base frame.
     DisplayList candidate = display_list;
-    candidate.fillRect(snapshot.bounds);
+    candidate.fillRect(snapshot.bounds, background_color);
     for (std::size_t column = 0; column < snapshot.headers.size(); ++column) {
         const Rect header_cell{snapshot.column_bounds[column].x,
                                snapshot.header_bounds.y,

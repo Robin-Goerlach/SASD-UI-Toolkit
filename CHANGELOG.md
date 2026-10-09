@@ -81,6 +81,9 @@ they improve the architecture before compatibility commitments become expensive.
   stale presentation frames fail closed before changing semantic selection.
 - Owned Terminal `TableView` presentation snapshot with UTF-8/TextMetrics cell lanes, transactional
   ScreenBuffer rendering, semantic scrolled-column hit identities and stale-revision rejection.
+- Rendered `TableView` sink integration and an SDL3 form-demo consumer using the shared semantic
+  `TableModel`/`TableSelectionModel` path for keyboard and exact-snapshot pointer selection without
+  per-cell Widgets.
 
 ## [0.1.0] - 2026-09-28
 
