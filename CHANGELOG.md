@@ -91,6 +91,8 @@ they improve the architecture before compatibility commitments become expensive.
   presentation and SDL3 integration remain follow-up slices.
 - Owned Terminal `TreeView` presentation with final row/disclosure geometry, portable ASCII markers,
   transactional `ScreenBuffer` rendering, exact row/indicator hit testing and stale-revision rejection.
+- Owned SDL-independent Rendered `TreeView` presentation with final row/disclosure geometry,
+  transactional `DisplayList` rendering, exact row/indicator hit testing and stale-revision rejection.
 
 ## [0.1.0] - 2026-09-28
 

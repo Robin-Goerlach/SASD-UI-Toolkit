@@ -163,6 +163,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0144](0144-rendered-table-view-sink-and-sdl3-consumer.md) | Rendered TableView sink integration and SDL3 consumer | Accepted |
 | [0145](0145-tree-node-path-and-core-view-contract.md) | Positional TreeNodePath identity and virtualized Core TreeView | Accepted |
 | [0146](0146-terminal-tree-view-owned-snapshot.md) | Owned Terminal TreeView snapshot and exact hit testing | Accepted |
+| [0147](0147-rendered-tree-view-owned-snapshot.md) | Owned Rendered TreeView snapshot and exact hit testing | Accepted |
 
 ## ADR policy
 
