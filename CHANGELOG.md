@@ -89,6 +89,8 @@ they improve the architecture before compatibility commitments become expensive.
   positional `TreeNodePath` identity, reset/content-change observation, iterative visible depth-first
   traversal, expansion/collapse normalization and large-tree query-count coverage. Terminal/Rendered
   presentation and SDL3 integration remain follow-up slices.
+- Owned Terminal `TreeView` presentation with final row/disclosure geometry, portable ASCII markers,
+  transactional `ScreenBuffer` rendering, exact row/indicator hit testing and stale-revision rejection.
 
 ## [0.1.0] - 2026-09-28
 
