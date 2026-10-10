@@ -65,14 +65,15 @@ they improve the architecture before compatibility commitments become expensive.
   hit testing, stale-state rejection, UTF-8/wide-cell coverage and large-model tests proving that
   presentation queries only the visible range instead of walking the complete model.
 - SDL3 rendered demo integration for `ListView`, including shared model usage, keyboard/pointer
-  selection and viewport behavior; TableModel/TableView, TreeModel/TreeView and delegate/cell
-  renderer abstractions remain deferred until the List contract has further concrete consumers.
+  selection and viewport behavior. The later TableModel/TableView slices are recorded below;
+  TreeModel/TreeView and delegate/cell renderer abstractions remain deferred.
 - Initial M5 `TableModel` slice: a rectangular textual Core contract, lifetime-safe observation,
-  concrete `StringTableModel` storage and mutation/lifetime tests. `TableView`, Tree and delegate/
-  cell-renderer abstractions remain separate follow-up slices.
+  concrete `StringTableModel` storage and mutation/lifetime tests; TableView presentation and
+  selection were added as separate follow-up slices. Tree and delegate/cell-renderer abstractions
+  remain separate deferred work.
 - Initial virtualized Core `TableView` slice: owned visible header/cell values, rectangular viewport
-  normalization and large-model query-boundary tests. Table-specific selection, backend presentation,
-  delegates and editors remain separate follow-up slices.
+  normalization and large-model query-boundary tests. Table-specific selection and backend
+  presentation were added as separate follow-up slices; delegates and editors remain deferred.
 - Initial SDL-independent Rendered `TableView` presentation snapshot with one-time visible-lane
   measurement, owned final rectangles, transactional DisplayList composition and exact cell hit tests.
 - Dedicated two-dimensional `TableSelectionModel` with lifetime-safe TableModel observation,
