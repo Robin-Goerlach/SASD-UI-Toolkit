@@ -181,8 +181,8 @@ prefix_rule(
 
 prefix_rule(
     pattern = ["gh", "pr", "merge"],
-    decision = "prompt",
-    justification = "Merging requires task-specific authorization and green required checks.",
+    decision = "allow",
+    justification = "Autonomously merge only Codex's own task PRs when they are based on the expected main, the complete diff has been reviewed, relevant local tests pass, every required check for the exact PR head is green, no review issues remain, and no unrelated changes are included. This does not authorize releases, secrets, generic API mutations, repository administration, direct main pushes or force-pushes.",
 )
 
 prefix_rule(
