@@ -41,6 +41,9 @@ add_library(sasd_ui_core
     src/table_model.cpp
     src/table_selection_model.cpp
     src/table_view.cpp
+    src/tree_model.cpp
+    src/tree_selection_model.cpp
+    src/tree_view.cpp
     src/text_field.cpp
     src/utf8.cpp
     src/pointer_router.cpp

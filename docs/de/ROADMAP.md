@@ -147,14 +147,18 @@ die besitzende Terminal-TableView-Presentation mit stale-revision-Prüfung und d
 generischen RenderedPresentationSink sind nun implementiert. Die SDL3-Form-Demo verwendet denselben
 TableModel-/TableSelectionModel-/TableView-Pfad für Tastatur und exakte Snapshot-Pointer-Selection
 ohne Widgets pro Zelle. Tree bleibt ein späterer Slice. Der SDL-unabhängige Rendered-TableView-
-Snapshot bleibt die Geometriequelle für jedes Backend.
+ohne Widgets pro Zelle. Der backendneutrale TreeModel-/TreeSelectionModel-/TreeView-Core-Slice
+etabliert nun positionsbasierte Pfade, Reset-Invalidierung, Expansion-Normalisierung und sichtbare
+Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Terminal- und Rendered-Presentation
+folgen in eigenen Slices. Der SDL-unabhängige Rendered-TableView-Snapshot bleibt die Geometriequelle
+für jedes Backend.
 
 - [x] `ListModel`
 - [x] `TableModel`
-- [ ] `TreeModel`
+- [x] `TreeModel`
 - [x] `ListView`
 - [x] `TableView`-Core-Virtualisierung
-- [ ] `TreeView`
+- [x] `TreeView`-Core-Vertrag
 - [x] initiales Single-Row-Selection-Modell
 - [x] initiales Single-Cell-`TableSelectionModel`
 - [ ] Delegate-/Cell-Renderer-Konzept

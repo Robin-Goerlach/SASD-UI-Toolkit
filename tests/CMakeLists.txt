@@ -16,6 +16,9 @@ add_executable(sasd_ui_tests
     table_model_tests.cpp
     table_selection_model_tests.cpp
     table_view_tests.cpp
+    tree_model_tests.cpp
+    tree_selection_model_tests.cpp
+    tree_view_tests.cpp
     check_box_tests.cpp
     combo_box_tests.cpp
     radio_button_tests.cpp

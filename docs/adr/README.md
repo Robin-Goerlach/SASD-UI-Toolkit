@@ -161,6 +161,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0142](0142-table-selection-model.md) | Dedicated two-dimensional TableSelectionModel | Accepted |
 | [0143](0143-terminal-table-view-presentation.md) | Owned Terminal TableView presentation | Accepted |
 | [0144](0144-rendered-table-view-sink-and-sdl3-consumer.md) | Rendered TableView sink integration and SDL3 consumer | Accepted |
+| [0145](0145-tree-node-path-and-core-view-contract.md) | Positional TreeNodePath identity and virtualized Core TreeView | Accepted |
 
 ## ADR policy
 
