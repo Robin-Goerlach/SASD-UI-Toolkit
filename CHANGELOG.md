@@ -85,6 +85,10 @@ they improve the architecture before compatibility commitments become expensive.
 - Rendered `TableView` sink integration and an SDL3 form-demo consumer using the shared semantic
   `TableModel`/`TableSelectionModel` path for keyboard and exact-snapshot pointer selection without
   per-cell Widgets.
+- Initial backend-neutral `TreeModel`, `TreeSelectionModel` and virtualized `TreeView` core slice:
+  positional `TreeNodePath` identity, reset/content-change observation, iterative visible depth-first
+  traversal, expansion/collapse normalization and large-tree query-count coverage. Terminal/Rendered
+  presentation and SDL3 integration remain follow-up slices.
 
 ## [0.1.0] - 2026-09-28
 

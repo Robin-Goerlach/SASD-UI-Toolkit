@@ -143,15 +143,18 @@ The first dedicated two-dimensional TableSelectionModel, TableView keyboard/view
 Rendered selection styling, the owned Terminal TableView presentation with stale-revision rejection,
 and generic RenderedPresentationSink integration are now implemented. The SDL3 form demo consumes the
 same TableModel/TableSelectionModel/TableView path for keyboard and exact-snapshot pointer selection
-without per-cell Widgets. Tree remains a later slice. The SDL-independent Rendered TableView snapshot
-remains the geometry source for every backend.
+without per-cell Widgets. The backend-neutral TreeModel, TreeSelectionModel and virtualized TreeView
+core slice now establishes positional paths, reset invalidation, expansion normalization and visible
+depth-first traversal without flattening the complete tree. Terminal and Rendered presentation remain
+follow-up slices. The SDL-independent Rendered TableView snapshot remains the geometry source for
+every backend.
 
 - [x] `ListModel`
 - [x] `TableModel`
-- [ ] `TreeModel`
+- [x] `TreeModel`
 - [x] `ListView`
 - [x] `TableView` core virtualization
-- [ ] `TreeView`
+- [x] `TreeView` core contract
 - [x] initial single-row selection model
 - [x] initial single-cell `TableSelectionModel`
 - [ ] delegate/cell-renderer concept
