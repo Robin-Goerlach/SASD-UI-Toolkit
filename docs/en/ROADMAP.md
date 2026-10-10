@@ -145,9 +145,10 @@ and generic RenderedPresentationSink integration are now implemented. The SDL3 f
 same TableModel/TableSelectionModel/TableView path for keyboard and exact-snapshot pointer selection
 without per-cell Widgets. The backend-neutral TreeModel, TreeSelectionModel and virtualized TreeView
 core slice now establishes positional paths, reset invalidation, expansion normalization and visible
-depth-first traversal without flattening the complete tree. Terminal and Rendered presentation remain
-follow-up slices. The SDL-independent Rendered TableView snapshot remains the geometry source for
-every backend.
+depth-first traversal without flattening the complete tree. The owned Terminal TreeView snapshot now
+adds final row/indicator geometry, exact hit testing and stale-revision rejection. Rendered
+presentation and SDL3 integration remain follow-up slices. The SDL-independent Rendered TableView
+snapshot remains the geometry source for every backend.
 
 - [x] `ListModel`
 - [x] `TableModel`

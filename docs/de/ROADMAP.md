@@ -149,9 +149,10 @@ TableModel-/TableSelectionModel-/TableView-Pfad für Tastatur und exakte Snapsho
 ohne Widgets pro Zelle. Tree bleibt ein späterer Slice. Der SDL-unabhängige Rendered-TableView-
 ohne Widgets pro Zelle. Der backendneutrale TreeModel-/TreeSelectionModel-/TreeView-Core-Slice
 etabliert nun positionsbasierte Pfade, Reset-Invalidierung, Expansion-Normalisierung und sichtbare
-Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Terminal- und Rendered-Presentation
-folgen in eigenen Slices. Der SDL-unabhängige Rendered-TableView-Snapshot bleibt die Geometriequelle
-für jedes Backend.
+Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Das besitzende Terminal-TreeView-
+Snapshot ergänzt nun finale Zeilen-/Indikator-Geometrie, exaktes Hit-Testing und stale-revision-
+Prüfung. Rendered-Presentation und SDL3-Integration folgen in eigenen Slices. Der SDL-unabhängige
+Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 
 - [x] `ListModel`
 - [x] `TableModel`
