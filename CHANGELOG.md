@@ -93,6 +93,8 @@ they improve the architecture before compatibility commitments become expensive.
   transactional `ScreenBuffer` rendering, exact row/indicator hit testing and stale-revision rejection.
 - Owned SDL-independent Rendered `TreeView` presentation with final row/disclosure geometry,
   transactional `DisplayList` rendering, exact row/indicator hit testing and stale-revision rejection.
+- `RenderedPresentationSink` now consumes the TreeView snapshot through the same public rendered
+  synchronization path as ListView and TableView.
 
 ## [0.1.0] - 2026-09-28
 

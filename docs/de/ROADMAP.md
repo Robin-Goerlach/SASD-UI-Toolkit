@@ -153,7 +153,8 @@ Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Das besitzend
 Snapshot ergänzt nun finale Zeilen-/Indikator-Geometrie, exaktes Hit-Testing und stale-revision-
 Prüfung. Das SDL-unabhängige, besitzende Rendered-TreeView-Snapshot ergänzt nun finale Zeilen- und
 Disclosure-Geometrie, transaktionales DisplayList-Rendering und exaktes Hit-Testing; die SDL3-
-Integration folgt in einem eigenen Slice. Der SDL-unabhängige
+Integration folgt in einem eigenen Slice. Der generische RenderedPresentationSink verwendet nun das
+TreeView-Snapshot; der SDL3-Consumer folgt weiterhin in einem eigenen Slice. Der SDL-unabhängige
 Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 
 - [x] `ListModel`
@@ -163,6 +164,7 @@ Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 - [x] `TableView`-Core-Virtualisierung
 - [x] `TreeView`-Core-Vertrag
 - [x] besitzende Terminal- und Rendered-`TreeView`-Presentation-Snapshots
+- [x] generischer RenderedPresentationSink-Consumer für TreeView
 - [x] initiales Single-Row-Selection-Modell
 - [x] initiales Single-Cell-`TableSelectionModel`
 - [ ] Delegate-/Cell-Renderer-Konzept

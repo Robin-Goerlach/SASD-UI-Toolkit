@@ -13,6 +13,9 @@
 #include <sasd/ui/table_model.hpp>
 #include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/tree_model.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
+#include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/window.hpp>
 
 #include <algorithm>
@@ -205,6 +208,48 @@ TEST_CASE("RenderedPresentationSink consumes TableView through its owned rendere
     }
     CHECK(saw_header);
     CHECK(saw_selected_cell);
+}
+
+TEST_CASE("RenderedPresentationSink consumes TreeView through its owned rendered snapshot") {
+    DisplayList display;
+    RenderedPresentationSink sink{display, Color::black};
+
+    StringTreeModel model({"Projects"});
+    const TreeNodePath root{{0}};
+    const TreeNodePath child{{0, 0}};
+    model.append(root, "SASD UI Toolkit");
+
+    TreeSelectionModel selection;
+    selection.setModel(&model);
+
+    Window window;
+    window.arrange({0, 0, 240, 80});
+    auto& tree = window.emplace<TreeView>();
+    tree.setModel(&model);
+    tree.setSelectionModel(&selection);
+    CHECK(selection.select(child));
+    CHECK(tree.expand(root));
+    tree.setViewport(std::nullopt, 2);
+    CHECK(tree.visibleRows().size() == 2);
+    CHECK(tree.visibleRows()[1].selected);
+    tree.arrange({10, 20, 180, 30});
+
+    const auto pass = PresentationCoordinator::synchronize(window, sink);
+    CHECK(pass.complete());
+
+    bool saw_root = false;
+    bool saw_selected_child = false;
+    for (const auto& command : display.commands()) {
+        const auto* text = std::get_if<DrawTextCommand>(&command);
+        if (text == nullptr) {
+            continue;
+        }
+        saw_root = saw_root || text->text == "[-]";
+        saw_selected_child = saw_selected_child ||
+                             (text->text == "SASD UI Toolkit" && text->style.inverse);
+    }
+    CHECK(saw_root);
+    CHECK(saw_selected_child);
 }
 
 TEST_CASE("RenderedPresentationSink rebuilds complete surface after geometry damage") {

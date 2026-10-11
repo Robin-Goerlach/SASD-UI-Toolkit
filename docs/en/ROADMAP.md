@@ -148,7 +148,8 @@ core slice now establishes positional paths, reset invalidation, expansion norma
 depth-first traversal without flattening the complete tree. The owned Terminal TreeView snapshot now
 adds final row/indicator geometry, exact hit testing and stale-revision rejection. The owned
 SDL-independent Rendered TreeView snapshot now adds final row/disclosure geometry, transactional
-DisplayList rendering and exact hit testing; SDL3 integration remains a follow-up slice. The SDL-independent Rendered TableView
+DisplayList rendering and exact hit testing. The generic RenderedPresentationSink now consumes the
+TreeView snapshot; SDL3 integration remains a follow-up slice. The SDL-independent Rendered TableView
 snapshot remains the geometry source for every backend.
 
 - [x] `ListModel`
@@ -158,6 +159,7 @@ snapshot remains the geometry source for every backend.
 - [x] `TableView` core virtualization
 - [x] `TreeView` core contract
 - [x] owned Terminal and Rendered `TreeView` presentation snapshots
+- [x] generic RenderedPresentationSink TreeView consumer
 - [x] initial single-row selection model
 - [x] initial single-cell `TableSelectionModel`
 - [ ] delegate/cell-renderer concept
