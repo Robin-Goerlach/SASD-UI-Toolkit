@@ -95,6 +95,8 @@ they improve the architecture before compatibility commitments become expensive.
   transactional `DisplayList` rendering, exact row/indicator hit testing and stale-revision rejection.
 - `RenderedPresentationSink` now consumes the TreeView snapshot through the same public rendered
   synchronization path as ListView and TableView.
+- SDL3 form demo TreeView consumer with application-owned model/selection, keyboard navigation and
+  exact-snapshot pointer row selection/disclosure toggling.
 
 ## [0.1.0] - 2026-09-28
 

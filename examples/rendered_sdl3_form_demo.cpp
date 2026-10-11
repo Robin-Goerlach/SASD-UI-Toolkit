@@ -17,6 +17,9 @@
 #include <sasd/ui/table_model.hpp>
 #include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/tree_model.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
+#include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/menu_interaction_controller.hpp>
 #include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/pointer_router.hpp>
@@ -31,6 +34,7 @@
 #include <sasd/ui/rendered/menu_pointer_interaction.hpp>
 #include <sasd/ui/rendered/list_view_presentation.hpp>
 #include <sasd/ui/rendered/table_view_presentation.hpp>
+#include <sasd/ui/rendered/tree_view_presentation.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/rendered/rendered_text_field_pointer_selection.hpp>
 #include <sasd/ui/shortcut.hpp>
@@ -348,6 +352,25 @@ int main(int argc, char** argv) {
         table_selection.setModel(&recent_table);
 
         /*
+         * Tree data is application-owned semantic state, just like the list and table data above.
+         * The positional paths are valid only for this model revision; TreeView owns expansion and
+         * the dedicated selection object owns the selected path. No SDL object and no per-node Widget
+         * is created for this small demo tree.
+         */
+        StringTreeModel project_tree({"Projects", "Documents"});
+        const TreeNodePath projects{{0}};
+        const TreeNodePath documents{{1}};
+        const auto toolkit = project_tree.append(projects, "SASD UI Toolkit");
+        (void)project_tree.append(toolkit, "Core");
+        (void)project_tree.append(toolkit, "Terminal");
+        (void)project_tree.append(toolkit, "Rendered");
+        (void)project_tree.append(projects, "SASD Gatehold");
+        (void)project_tree.append(documents, "Notes");
+        (void)project_tree.append(documents, "Reports");
+        TreeSelectionModel project_selection;
+        project_selection.setModel(&project_tree);
+
+        /*
          * Menu models borrow Command identity but do not own Commands. Commands therefore outlive the
          * menu tree and the Widget bindings below. The menu bar is semantic Core state; only its later
          * Rendered snapshot will contain copied labels and final rectangles.
@@ -493,6 +516,15 @@ int main(int argc, char** argv) {
             {{0, table_height}, {60, table_height},
              {std::numeric_limits<Coordinate>::max(), table_height}});
 
+        auto& tree_label = form.emplace<Label>("Virtualized TreeView:");
+        tree_label.setTextStyle(name_label_style);
+        auto& tree_view = form.emplace<TreeView>();
+        tree_view.setModel(&project_tree);
+        tree_view.setSelectionModel(&project_selection);
+        tree_view.setViewport(std::nullopt, 5);
+        tree_view.setSizeConstraints(
+            {{0, 5}, {60, 5}, {std::numeric_limits<Coordinate>::max(), 5}});
+
         auto& exit = form.emplace<Button>("Exit");
         TextStyle exit_style;
         exit_style.foreground = Color::bright_red;
@@ -634,6 +666,16 @@ int main(int argc, char** argv) {
                 ", column " + std::to_string(change.current->column));
         });
         (void)table_selection_subscription;
+
+        auto tree_selection_subscription = project_selection.observe([&](const TreeSelectionChange& change) {
+            if (!change.current.has_value()) {
+                status.setText("TreeView selection cleared");
+                return;
+            }
+            status.setText("TreeView selected depth " +
+                           std::to_string(change.current->depth()));
+        });
+        (void)tree_selection_subscription;
 
         const auto initial_menu_frame = buildMenuFramePresentation(
             menu_bar,
@@ -859,6 +901,39 @@ int main(int argc, char** argv) {
                                     *snapshot,
                                     pointer->position,
                                     table_selection);
+                                pointer_router.leaveRoot();
+                                return;
+                            }
+
+                            if (hit == &tree_view) {
+                                const auto bounds = absoluteWidgetBounds(tree_view);
+                                if (!bounds.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo TreeView bounds cannot be represented"};
+                                }
+                                const auto snapshot =
+                                    RenderedTreeViewPresentation::snapshot(tree_view, *bounds);
+                                if (!snapshot.has_value()) {
+                                    throw std::runtime_error{
+                                        "SDL3 demo TreeView pointer snapshot is stale or unrepresentable"};
+                                }
+                                const auto tree_hit =
+                                    RenderedTreeViewPresentation::hitAt(*snapshot, pointer->position);
+                                if (tree_hit.has_value()) {
+                                    /*
+                                     * Disclosure and row input use the exact painted snapshot. The
+                                     * semantic TreeView/TreeSelectionModel remain the only state
+                                     * machines; this host stores no node pointer or reconstructed
+                                     * row index between events.
+                                     */
+                                    if (tree_hit->kind == RenderedTreeViewHitKind::indicator) {
+                                        (void)RenderedTreeViewPresentation::toggleAt(
+                                            *snapshot, pointer->position, tree_view);
+                                    } else {
+                                        (void)RenderedTreeViewPresentation::selectAt(
+                                            *snapshot, pointer->position, project_selection);
+                                    }
+                                }
                                 pointer_router.leaveRoot();
                                 return;
                             }
