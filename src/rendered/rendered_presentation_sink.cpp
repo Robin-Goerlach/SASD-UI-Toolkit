@@ -13,7 +13,9 @@
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/rendered/table_view_presentation.hpp>
+#include <sasd/ui/rendered/tree_view_presentation.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/text/utf8.hpp>
@@ -793,6 +795,31 @@ PresentationUpdateResult RenderedPresentationSink::synchronize(const Widget& wid
                 display_list_,
                 *table_snapshot,
                 background_color_)) {
+            return PresentationUpdateResult::deferred;
+        }
+        return PresentationUpdateResult::synchronized;
+    }
+
+    if (const auto* tree_view = dynamic_cast<const TreeView*>(&widget)) {
+        const auto absolute = detail::absoluteRectOf(*tree_view);
+        if (!absolute.has_value()) {
+            return PresentationUpdateResult::deferred;
+        }
+        if (!tree_view->isVisible()) {
+            eraseWidget(display_list_, *absolute, background_color_);
+            return PresentationUpdateResult::synchronized;
+        }
+
+        /*
+         * TreeView already owns the semantic visible-range traversal. The Rendered sink only
+         * supplies the arranged logical bounds; the presentation builder copies visible values and
+         * resolves final disclosure geometry once. It retains neither this Widget nor the model,
+         * so a later repaint cannot observe a half-mutated tree through borrowed state.
+         */
+        const auto tree_snapshot = RenderedTreeViewPresentation::snapshot(*tree_view, *absolute);
+        if (!tree_snapshot.has_value() ||
+            !RenderedTreeViewPresentation::render(
+                display_list_, *tree_snapshot, background_color_)) {
             return PresentationUpdateResult::deferred;
         }
         return PresentationUpdateResult::synchronized;
