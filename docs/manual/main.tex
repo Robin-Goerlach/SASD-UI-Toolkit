@@ -4,7 +4,7 @@
 \providecommand{\SASDLanguage}{de}
 \usepackage{style/sasdmanual}
 \input{i18n/\SASDLanguage.tex}
-\ifstrequal{\SASDLanguage}{de}{\selectlanguage{ngerman}}{\selectlanguage{english}}
+\ifdefstring{\SASDLanguage}{de}{\selectlanguage{ngerman}}{\selectlanguage{english}}
 \hypersetup{pdftitle={SASD UI Toolkit -- \ManualBookTitle},
  pdfauthor={SASD GmbH},pdfsubject={SASD UI Toolkit Anwenderhandbuch}}
 \begin{document}
