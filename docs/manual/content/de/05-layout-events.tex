@@ -3,21 +3,21 @@
 \ChapterSummary{Sie lernen die Zweiphasen-Messung kennen,
 waehlen geeignete Layout-Container und verstehen, wie Tastatur-,
 Text- und Pointer-Ereignisse zum richtigen Widget gelangen.
-Das Kapitel vermittelt die Grundlage fuer reaktionsfaehige,
+Das Kapitel vermittelt die Grundlage für reaktionsfaehige,
 gut testbare Oberflaechen.}
 
 \section{Warum Layout in zwei Phasen erfolgt}
 Ein Widget weiss vor der Darstellung nicht zwingend, wie viel
-Platz seine Beschriftung benoetigt: Ein Terminal misst in
+Platz seine Beschriftung benötigt: Ein Terminal misst in
 Zeichen-Zellen, eine gerenderte Oberflaeche in Schriftmetriken.
 Darum verwendet das Toolkit \term{measure} und \term{arrange}.
 
 \term{measure} fragt mit Minimal- und Maximalbedingungen
-nach der gewuenschten Groesse. Die \term{MeasurementContext}
+nach der gewuenschten Größe. Die \term{MeasurementContext}
 liefert passende backendbezogene Messregeln, ohne dass
 ein Core-Widget das Backend kennen muss.
 \term{arrange} legt danach die endgueltige Position
-und Groesse innerhalb des zugewiesenen Rechtecks fest.
+und Größe innerhalb des zugewiesenen Rechtecks fest.
 
 \begin{lstlisting}[language=SASDCpp]
 TerminalMeasurementContext metrics;
@@ -39,18 +39,18 @@ Container & Praktische Verwendung\\\midrule
 Aktionsstapel; \texttt{setSpacing}.\\
 \term{HBox} & Horizontale Befehlsleisten und kleine
 zusammengehoerige Bedienelemente.\\
-\term{GridLayout} & Regelmaessige Spalten/Raster mit
+\term{GridLayout} & Regelmäßige Spalten/Raster mit
 konfigurierbaren Zeilen- und Spaltenabstaenden.\\
 \term{FormLayout} & Label-Feld-Paare; mit
 \texttt{emplaceRow<WidgetTyp>(...)}.\\
 \term{StackLayout} & Mehrere Widgets belegen denselben
-lokalen Inhaltsbereich, etwa fuer Overlays.\\
+lokalen Inhaltsbereich, etwa für Overlays.\\
 \bottomrule
 \end{tabularx}
 Das sind zurzeit konkrete Container, kein
 CSS-/HTML-Layoutsystem. \term{VBox} und \term{HBox}
 fuehren keine magische automatische Flexbox-Logik ein,
-die beliebige UI-Faelle bereits abdeckt.
+die beliebige UI-Fälle bereits abdeckt.
 
 \begin{lstlisting}[language=SASDCpp,caption={FormLayout fuer beschriftete Felder}]
 auto& fields = window.emplace<FormLayout>();
@@ -58,56 +58,56 @@ fields.setColumnSpacing(2);
 auto nameRow = fields.emplaceRow<TextField>("Benutzer:");
 nameRow.field.setText("admin");
 \end{lstlisting}
-Fuer Ueberlagerungen benutzen Sie \term{StackLayout}
+Für Überlagerungen benutzen Sie \term{StackLayout}
 nur dann, wenn das erwartete Sichtbarkeits- und
 Fokusverhalten ausdruecklich geregelt ist.
 Ein Stack bedeutet noch keinen kompletten
 modale-Dialoge-Manager.
 
 \section{Fokus ist logischer Zustand}
-\term{FocusManager} verwaltet genau den gueltigen
+\term{FocusManager} verwaltet genau den gültigen
 logischen Empfaenger der Tastatureingabe.
 \term{FocusTraversal} bestimmt eine reproduzierbare
 Reihenfolge durch den sichtbaren Widget-Baum.
-\textbf{Tab} und \textbf{Shift+Tab} koennen so Fokus
+\textbf{Tab} und \textbf{Shift+Tab} können so Fokus
 wechseln, ohne dass jeder Button die gesamte
 Oberflaeche kennen muss.
 
-Die Wirksamkeit des Fokus haengt von
+Die Wirksamkeit des Fokus hängt von
 \texttt{isFocusable()}, \texttt{isVisible()} und
 \texttt{isEnabled()} ab. Wenn ein zuvor fokussiertes
 Element unbrauchbar wird, darf kein veralteter
 Fokuszeiger unkontrolliert weiterverwendet werden.
-Fuer grosse Formulare empfiehlt es sich, zuerst
+Für grosse Formulare empfiehlt es sich, zuerst
 die Tab-Reihenfolge festzulegen und danach
 Shortcuts und Popups einzubauen.
 
 \section{KeyEvent ist kein eingegebener Text}
 Ein Druck auf die Taste A ist ein
 \term{KeyEvent}; die vom Betriebssystem bzw.
-Terminal bestaetigte Texteingabe ist ein
+Terminal bestätigte Texteingabe ist ein
 \term{TextInputEvent}. Beide sind nicht
 gleichzusetzen. Tastaturbelegung, AltGr,
-Modifikatoren oder Eingabemethoden koennen
+Modifikatoren oder Eingabemethoden können
 ein andersartiges Zeichen erzeugen als ein
-physischer Tastencode vermuten laesst.
+physischer Tastencode vermuten lässt.
 
 Die \term{EventQueue} sammelt Ereignisse,
 \term{Application::processEvents()} verarbeitet sie.
 \term{EventDispatcher} kann Ereignisse mit
 \emph{handled/ignored}-Semantik vom Ziel
-zu uebergeordneten Elementen weiterreichen.
+zu übergeordneten Elementen weiterreichen.
 Der konkrete Host entscheidet, wie das Ziel
 ermittelt, wann Fokus umgeschaltet und
-wie die naechste Darstellung angestossen wird.
+wie die nächste Darstellung angestossen wird.
 
 \section{Maus und Pointer: Capture hat einen Besitzer}
 \term{PointerRouter} fuehrt geometrisches Hit-Testing,
 Hover und explizites Pointer-Capture zusammen.
 Beim Ziehen darf nicht ploetzlich ein anderes
-Widget die laufende Geste uebernehmen, nur weil
-die Maus das urspruengliche Rechteck verlaesst.
-Ein Button besitzt semantische Armed-/Pressed-Zustaende;
+Widget die laufende Geste übernehmen, nur weil
+die Maus das urspruengliche Rechteck verlässt.
+Ein Button besitzt semantische Armed-/Pressed-Zustände;
 der Router verwaltet, welches Widget die physische
 Geste beansprucht. Verliert ein Widget seine
 Capture-Berechtigung, muss es seine Geste sauber
@@ -121,7 +121,7 @@ muss deshalb erhalten bleiben.
 
 \section{Invalidierung und Darstellung}
 Eine Textaenderung kann anderes \term{Layout} erfordern,
-eine reine Farb- oder Pressed-Aenderung meist nur
+eine reine Farb- oder Pressed-Änderung meist nur
 eine neue \term{Darstellung}.
 Das Toolkit unterscheidet Mess-Invalidierung und
 visuelle Invalidierung. Der \term{PresentationCoordinator}
@@ -134,11 +134,11 @@ konservatives Refresh-Verhalten.
 \Important{Callbacks sind keine Einladung zu blockierendem
 I/O im Eventloop. Netzwerkabfragen oder lang laufende
 Administrationsoperationen sollten die Interaktion
-nicht unnoetig anhalten. Thread- und Worker-Integration
+nicht unnötig anhalten. Thread- und Worker-Integration
 ist allerdings kein bereits fertiger universeller
 Async-Runtime-Vertrag des Toolkits.}
 
 \PracticalTip{Testen Sie eine Form zuerst bei grossem,
 dann bei sehr kleinem Terminalfenster. Beobachten Sie
 Fokus, abgeschnittenen Inhalt, die Reaktion auf Resize
-und ob deaktivierte Widgets korrekt uebersprungen werden.}
+und ob deaktivierte Widgets korrekt übersprungen werden.}
