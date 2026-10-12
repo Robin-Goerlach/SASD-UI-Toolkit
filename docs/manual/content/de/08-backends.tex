@@ -4,15 +4,15 @@
 Ausgabebackends. Sie lernen die praktischen Unterschiede
 zwischen Terminalzellen, Grafikpixeln und nativen Widgets
 kennen sowie die Sicherheits- und Testfragen, die gerade
-fuer Administrationssoftware entscheidend sind.}
+für Administrationssoftware entscheidend sind.}
 
 \section{Terminal als vollwertiges Ziel}
 Die Terminalfamilie ist nicht lediglich ein
-schlechter Ersatz fuer eine Desktop-GUI.
-Sie bietet Bedienung ueber SSH, geringe
+schlechter Ersatz für eine Desktop-GUI.
+Sie bietet Bedienung über SSH, geringe
 grafische Abhaengigkeiten, klare Tastaturwege
-und Moeglichkeiten fuer Systeme ohne
-Desktop-Umgebung. Genau das ist fuer
+und Möglichkeiten für Systeme ohne
+Desktop-Umgebung. Genau das ist für
 Remoteadministration und Wartung
 interessant.
 
@@ -33,7 +33,7 @@ plattformabhaengige Konsoleneingabe.
 Tasten-, Text-, Resize- und gegebenenfalls
 Pointer-Ereignisse zu.
 \item Fokus, Eventrouting, Command oder Widget
-aendern den semantischen Zustand.
+ändern den semantischen Zustand.
 \item Messung und Praesentation erzeugen
 einen Bildschirmzustand im \term{ScreenBuffer}.
 \item Der \term{AnsiFrameEncoder} wandelt
@@ -43,7 +43,7 @@ das Device sendet sie an das Terminal.
 Die Trennung ist absichtlich:
 Ein Widget darf aus beliebigem Anwendungstext
 nicht direkt rohe Terminal-Control-Sequenzen
-an das Geraet senden. Sicherheitskritischer
+an das Gerät senden. Sicherheitskritischer
 Text muss Dateninhalt bleiben.
 
 \section{Zeichenzellen sind keine Bytes}
@@ -61,12 +61,12 @@ Eine Anwendung sollte niemals mit
 Terminalbreite berechnen.
 
 \section{RAII-Sitzung und Wiederherstellung}
-Waehrend einer Terminalanwendung koennen
+Während einer Terminalanwendung können
 Raw-Modus, alternativer Bildschirm,
 VT-Modi und gegebenenfalls xterm-
 Pointer-Reporting aktiviert werden.
 Die \term{TerminalSession} kapselt
-Erwerb und Freigabe dieser Geraeteressourcen.
+Erwerb und Freigabe dieser Geräteressourcen.
 Das reduziert die Gefahr, nach regularem
 Programmende eine unbrauchbare Konsole
 zurueckzulassen.
@@ -77,20 +77,20 @@ Systemabsturz oder einem nicht abfangbaren
 Signal, kann keine C++-Destruktion garantiert
 werden. Testen Sie deshalb auch den
 Wiederherstellungspfad Ihres konkreten Hosts,
-und verwenden Sie sichere Fallbacks fuer
+und verwenden Sie sichere Fallbacks für
 Notfallsituationen.}
 
 \section{Pointer-Protokolle und Tastatur-Fallback}
-Moderne Terminals koennen Mauspositionen,
-Klicks, Bewegung und Scrollsignale ueber
+Moderne Terminals können Mauspositionen,
+Klicks, Bewegung und Scrollsignale über
 xterm-kompatible Protokolle liefern.
 Die Terminal-Demo kann
 \term{TerminalPointerTrackingMode}
 bewusst setzen. Alte VT-artige Terminals
-muessen das jedoch nicht unterstuetzen.
-Kernaktionen sollen deshalb ueber
+müssen das jedoch nicht unterstützen.
+Kernaktionen sollen deshalb über
 Fokus, Enter/Space, Escape oder
-erreichbare Commands moeglich bleiben.
+erreichbare Commands möglich bleiben.
 Die reine Existenz eines PointerHandlers
 ist keine portable Bediengarantie.
 
@@ -102,7 +102,7 @@ zu wiederholen. Die
 \term{RenderedMeasurementContext}
 liefert dazu Schriftmetriken.
 \term{RenderedPresentationSink}
-uebersetzt semantische Widget-Zustaende
+übersetzt semantische Widget-Zustände
 in Zeichenvorgaenge. Diese API ist
 nicht gleich SDL3 und kann ohne
 graphische Sitzung getestet werden.
@@ -112,12 +112,12 @@ realisiert eine konkrete Fenster- oder
 Headless-Grafikumgebung mit SDL3/SDL\_ttf.
 Er ist experimentell, opt-in und
 noch kein garantiert installierbarer
-externer Adapter fuer beliebige Projekte.
+externer Adapter für beliebige Projekte.
 Ein Anwendungsautor sollte einen
 Backendwechsel nicht als
 ungetesteten Umschalter behandeln.
 
-\section{Native Peers sind spaeter vorgesehen}
+\section{Native Peers sind später vorgesehen}
 Eine native Win32-, GTK- oder AppKit-
 Implementierung waere eine weitere
 Darstellung derselben Widgets,
@@ -129,21 +129,21 @@ Methoden, HiDPI, Fensterlebensdauer
 und native Menues sind eigene
 Entwicklungsaufgaben.
 
-\section{Testmatrix fuer portable Programme}
+\section{Testmatrix für portable Programme}
 \begin{tabularx}{\linewidth}{@{}p{35mm}X@{}}
 \toprule
-Testbereich & Zu pruefendes Verhalten\\\midrule
+Testbereich & Zu prüfendes Verhalten\\\midrule
 Terminal klein/gross & Umbruch, Clipping,
 Fokus, Popup-Position, Resize.\\
 UTF-8 & Mehrbyte-Zeichen, breite
-Zellen, Auswahl, Cursor, Loeschen.\\
+Zellen, Auswahl, Cursor, Löschen.\\
 Tastatur & Tab, Shift+Tab, Escape,
 Funktionstasten, Modifikatoren.\\
 Pointer & Capture, Fenster verlassen,
 Popup-Ziel, Doppelklick und Ziehen.\\
 Lebensdauer & Widget entfernt, Model
 reset, Subscription getrennt, Callback-
-Zerstoerung.\\
+Zerstörung.\\
 Backend & Headless-Core-Tests,
 Terminal-PTY/ConPTY, bei Bedarf SDL3.\\
 \bottomrule
@@ -153,8 +153,8 @@ Smoke-Test-Protokolle unter
 \filepath{docs/de/} und \filepath{docs/en/}
 sind dafuer Referenzen.
 
-\PracticalTip{Fuer ein Administrationsprogramm
-ist ein vollstaendiger, tastaturbedienbarer
+\PracticalTip{Für ein Administrationsprogramm
+ist ein vollständiger, tastaturbedienbarer
 Terminalpfad oft wertvoller als eine
 visuell beeindruckende, aber noch
 unvollstaendige SDL3-Version.}
