@@ -98,6 +98,10 @@ they improve the architecture before compatibility commitments become expensive.
   synchronization path as ListView and TableView.
 - SDL3 form demo TreeView consumer with application-owned model/selection, keyboard navigation and
   exact-snapshot pointer row selection/disclosure toggling.
+- Initial M6 native-host boundary and separately linkable `SASD::UI::Native::Win32` target: one RAII-
+  owned Win32 top-level window translates resize/close, keyboard, committed text and pointer messages
+  into the existing Core event pipeline. Native child-control semantics, IME and accessibility remain
+  deferred; Linux/macOS/Core/Terminal/Rendered builds do not include Windows SDK code.
 - M5 Model/View review completed: List, Table and Tree contracts are intentionally kept explicit;
   their proven common boundary is lifetime-safe observation plus owned, revision-checked presentation
   snapshots. Delegate/cell-renderer and general binding/validation systems remain deferred because

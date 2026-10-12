@@ -100,6 +100,25 @@ add_library(sasd_ui_rendered
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
 
+# M6 starts with the smallest real native consumer: a Win32 top-level host that translates native
+# messages into the existing Core Event pipeline. It intentionally does not add native widget logic
+# or a second presentation system. GTK/AppKit targets can validate this boundary later without
+# making Windows SDK headers part of Core, Terminal or Rendered.
+if(WIN32)
+    add_library(sasd_ui_native_win32
+        src/native/win32/win32_input_translation.cpp
+        src/native/win32/win32_window_backend.cpp
+    )
+    add_library(SASD::UI::Native::Win32 ALIAS sasd_ui_native_win32)
+    target_link_libraries(sasd_ui_native_win32 PUBLIC SASD::UI PRIVATE user32)
+    target_compile_features(sasd_ui_native_win32 PUBLIC cxx_std_20)
+    target_include_directories(sasd_ui_native_win32
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+               $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_compile_definitions(sasd_ui_native_win32 PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
+
 # The first concrete M3 adapter is intentionally optional and build-tree-only. It proves that the
 # generic DisplayList/RenderDevice contract can drive a real SDL3 renderer and SDL_ttf metrics before
 # we commit to desktop-window/event-loop packaging. Keeping it out of the normal install/export set
@@ -267,6 +286,14 @@ endif()
 set_target_properties(sasd_ui_core PROPERTIES EXPORT_NAME UI)
 set_target_properties(sasd_ui_terminal PROPERTIES EXPORT_NAME "UI::Terminal")
 set_target_properties(sasd_ui_rendered PROPERTIES EXPORT_NAME "UI::Rendered")
+if(WIN32)
+    set_target_properties(sasd_ui_native_win32 PROPERTIES EXPORT_NAME "UI::Native::Win32")
+endif()
+
+set(SASD_UI_INSTALL_TARGETS sasd_ui_core sasd_ui_terminal sasd_ui_rendered)
+if(WIN32)
+    list(APPEND SASD_UI_INSTALL_TARGETS sasd_ui_native_win32)
+endif()
 
 target_compile_features(sasd_ui_core PUBLIC cxx_std_20)
 target_include_directories(sasd_ui_core
@@ -293,10 +320,16 @@ if(MSVC)
     target_compile_options(sasd_ui_core PRIVATE /W4 /permissive-)
     target_compile_options(sasd_ui_terminal PRIVATE /W4 /permissive-)
     target_compile_options(sasd_ui_rendered PRIVATE /W4 /permissive-)
+    if(WIN32)
+        target_compile_options(sasd_ui_native_win32 PRIVATE /W4 /permissive-)
+    endif()
     if(SASD_UI_WARNINGS_AS_ERRORS)
         target_compile_options(sasd_ui_core PRIVATE /WX)
         target_compile_options(sasd_ui_terminal PRIVATE /WX)
         target_compile_options(sasd_ui_rendered PRIVATE /WX)
+        if(WIN32)
+            target_compile_options(sasd_ui_native_win32 PRIVATE /WX)
+        endif()
     endif()
 else()
     target_compile_options(sasd_ui_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -336,7 +369,7 @@ endif()
 set(SASD_UI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/SASDUIToolkit")
 
 install(
-    TARGETS sasd_ui_core sasd_ui_terminal sasd_ui_rendered
+    TARGETS ${SASD_UI_INSTALL_TARGETS}
     EXPORT SASDUIToolkitTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"

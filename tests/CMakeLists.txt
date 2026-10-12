@@ -186,6 +186,27 @@ endif()
 
 add_test(NAME sasd_ui_rendered_tests COMMAND sasd_ui_rendered_tests)
 
+if(WIN32)
+    add_executable(sasd_ui_win32_tests
+        test_main.cpp
+        native_win32_tests.cpp
+    )
+    target_link_libraries(sasd_ui_win32_tests PRIVATE SASD::UI::Native::Win32)
+    target_compile_features(sasd_ui_win32_tests PRIVATE cxx_std_20)
+    target_include_directories(sasd_ui_win32_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/src/native/win32
+    )
+    target_compile_definitions(sasd_ui_win32_tests PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+    if(MSVC)
+        target_compile_options(sasd_ui_win32_tests PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_win32_tests PRIVATE /WX)
+        endif()
+    endif()
+    add_test(NAME sasd_ui_win32_tests COMMAND sasd_ui_win32_tests)
+endif()
+
 # Compile/run the first real SDL3 + SDL_ttf adapter only when explicitly requested and when a test
 # font is supplied. The normal Core/Terminal/Rendered test matrix therefore remains dependency-free,
 # while the dedicated adapter CI job exercises actual upstream SDL code headlessly.

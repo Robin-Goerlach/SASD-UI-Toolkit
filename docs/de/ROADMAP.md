@@ -183,13 +183,27 @@ Dieser Meilenstein ist besonders wichtig für spätere wissenschaftliche, statis
 
 ## M6 – Native Desktop Peers
 
-Native Backends werden bewusst **nach** der Stabilisierung des Core-Kontrakts begonnen.
+Status: begonnen am 12.10.2026. Der erste M6-Schnitt etabliert zunächst eine kleine Native-Host-Grenze
+statt einer universellen Native-Control-Hierarchie. `SASD::UI::Native::Win32` besitzt ein Win32-
+Top-Level-Fenster, übersetzt dessen Message Queue in die bestehende Core-Event-Pipeline und wird ohne
+GUI-Automation getestet. Der Host verwendet bewusst die Core-Semantik von Button/TextField weiter
+und erzeugt noch keine nativen Child-Control-Peers. Siehe [ADR 0151](../adr/0151-m6-native-host-peer-boundary.md).
 
 Vorgesehen:
 
 - Windows/Win32
 - Linux/GTK
 - macOS/AppKit
+
+Erster-Schnitt-Folgearbeit:
+
+- [x] Win32-Top-Level-Host, RAII-HWND-Lifetime und UI-Thread-Vertrag
+- [x] Win32-Resize/Close, Tastatur-, Text- und Pointer-Übersetzung
+- [x] Core-Eventtypen bleiben der einzige semantische Eingabevertrag
+- [ ] Host an eine vollständige native oder Rendered-Presentation anbinden
+- [ ] konkreten Win32-Button-/TextField-Peer erst nach bewährtem Host-Vertrag prüfen
+- [ ] GTK-Host-Consumer
+- [ ] AppKit-Host-Consumer
 
 Reihenfolge und Umfang werden nach M3/M4 anhand realer Erfahrungen entschieden.
 
