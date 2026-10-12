@@ -1,0 +1,104 @@
+% SPDX-License-Identifier: MIT
+\chapter{Die erste eigene Oberflaeche}\label{chap:first}
+\ChapterSummary{An einem kleinen Formular lernen Sie, wie Widgets
+erzeugt, besessen und verschachtelt werden. Sie binden einen Button
+an eine Aktion und verstehen, welche Aufgaben eine reale
+Anwendungshuelle ausserhalb dieses bewusst kleinen Beispiels erledigt.}
+
+\section{Vom Formular zum Komponentenbaum}
+Bei SASD UI Toolkit schreiben Sie die sichtbare Oberflaeche als
+C++-Objekte. Der \term{Window}-Container ist eine Wurzel,
+\term{VBox} ordnet Elemente untereinander an, und \term{Label},
+\term{TextField} sowie \term{Button} bilden die sichtbaren Teile.
+Eine \term{Container::emplace}-Operation erzeugt eine Komponente,
+uebernimmt ihr Eigentum und gibt eine Referenz auf sie zurueck.
+
+\begin{lstlisting}[language=SASDCpp,caption={Ein kleiner Formularbaum, bewusst ohne Host/Eventloop}]
+#include <sasd/ui/window.hpp>
+#include <sasd/ui/vbox.hpp>
+#include <sasd/ui/label.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/button.hpp>
+
+void buildGreetingForm(sasd::ui::Window& window) {
+    using namespace sasd::ui;
+    auto& column = window.emplace<VBox>();
+    column.setSpacing(1);
+
+    column.emplace<Label>("Wie heissen Sie?");
+    auto& name = column.emplace<TextField>();
+    auto& message = column.emplace<Label>("Bereit");
+    auto& hello = column.emplace<Button>("Begruessen");
+
+    hello.setOnActivated([&name, &message] {
+        message.setText("Hallo, " + std::string{name.text()});
+    });
+}
+\end{lstlisting}
+
+Das ist \textbf{ein syntaktisch nutzbarer Formularbaustein},
+aber absichtlich \emph{keine vollstaendige Anwendung}.
+Eine laufende Terminalanwendung muss zusaetzlich das
+\term{TerminalBackend} oeffnen, Eingaben abholen,
+Fokus und Pointer-Routing betreiben, Layout ausfuehren
+und die Darstellung aktualisieren. Diese Verantwortung
+zeigt das ausfuehrlich kommentierte
+\filepath{examples/terminal_form_demo.cpp}; es ist der
+richtige Ausgangspunkt fuer einen eigenen Host.
+
+\section{Was die paar Zeilen wirklich tun}
+Die Referenz \texttt{column} ist kein Besitzer.
+Die \texttt{Window}-Wurzel besitzt ihre \texttt{VBox},
+und die \texttt{VBox} besitzt wiederum ihre Kinder.
+Die Referenzen \texttt{name}, \texttt{message} und
+\texttt{hello} sind gueltig, solange die Komponenten im
+Baum verbleiben. Beim Freigeben des Fensters endet auch
+ihre Lebensdauer.
+
+Der Lambda-Callback liest den aktuellen Text des
+\term{TextField} und ersetzt die Beschriftung des Labels.
+Die sichtbare Aktualisierung wird durch die
+Invalidierungs-/Praesentationsmechanik der laufenden
+Anwendung verarbeitet. Der Callback allein oeffnet
+keine Terminal-Session und pumpt keine Ereignisse.
+
+\section{Eine naheliegende Erweiterung}
+Ein zweiter Button kann die Eingabe zuruecksetzen:
+\begin{lstlisting}[language=SASDCpp]
+auto& clear = column.emplace<Button>("Leeren");
+clear.setOnActivated([&name, &message] {
+    name.setText("");
+    message.setText("Bereit");
+});
+\end{lstlisting}
+Die gezeigten Zeilen gehoeren \emph{innerhalb} von
+\texttt{buildGreetingForm}, nach dem Aufbau der zuvor
+verwendeten Variablen. Die Reihenfolge ist bedeutsam:
+Sie muessen den referenzierten Widgets laengeres Leben
+garantieren als den installierten Callbacks.
+
+\section{Der naechste Schritt: ein vollstaendiger Host}
+In der realen Terminal-Demo folgen auf den Widget-Aufbau
+die Einrichtung von \term{FocusManager}, \term{PointerRouter},
+Praesentations-Sink und den Callback-Bindungen.
+Der Host pollt Events, vermittelt sie an die
+zustaendigen Controls und praesentiert den geaenderten
+Frame. Das ist kein Versehen und keine fehlende
+magische \texttt{Application::run}-Methode:
+\term{Application} bietet derzeit unter anderem
+\texttt{processEvents()} und
+\texttt{processRoutedEvents()}, aber keinen versteckten
+universellen Desktop-Message-Loop.
+
+\section{Was Sie aus dem Beispiel mitnehmen}
+Der Anwendungsautor beschreibt \emph{Bedeutung und Verhalten}.
+Er verwaltet eine eindeutige Eigentumshierarchie und
+reagiert auf Ereignisse. Backend, Eingabegerate, Messung
+und Darstellung werden bewusst als separate Teile
+komponiert, damit die gleiche Semantik spaeter auf
+mehreren Ausgabegeraten tragfaehig bleibt.
+
+\PracticalTip{Ersetzen Sie zuerst in der Terminal-Demo nur
+den Formulartitel und einen Button-Callback. Vergleichen Sie
+danach, was beim Hinzufuegen eines Widgets an Fokusfolge,
+Layout und Darstellung ebenfalls betroffen ist.}
