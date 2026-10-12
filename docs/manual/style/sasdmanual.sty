@@ -1,6 +1,6 @@
 % SPDX-License-Identifier: MIT
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{sasdmanual}[2026/10/12 SASD UI Toolkit book design]
+\ProvidesPackage{style/sasdmanual}[2026/10/12 SASD UI Toolkit book design]
 \RequirePackage{iftex}
 \ifLuaTeX\else
  \PackageError{sasdmanual}{LuaLaTeX is required}{Run latexmk -lualatex main.tex}
@@ -33,6 +33,8 @@
  bookmarksopen=true,pdfencoding=auto}
 \setcounter{tocdepth}{1}
 \setlist{itemsep=.25em,topsep=.4em}
+\DeclareTOCStyleEntry[indent=1.5em,numwidth=3.0em]{tocline}{section}
+\AtBeginEnvironment{tabularx}{\small}
 \KOMAoptions{parskip=half,headsepline=true,footsepline=false}
 \clearpairofpagestyles
 \ihead{\headmark}\ohead{\sffamily SASD UI TOOLKIT}
@@ -50,7 +52,7 @@
 \newcommand{\ChapterSummary}[1]{\begin{summarybox}\textsf{\bfseries\ManualSummaryLabel}\par\medskip#1\end{summarybox}}
 \newcommand{\PracticalTip}[1]{\begin{tipbox}\textbf{\ManualTipLabel}\quad #1\end{tipbox}}
 \newcommand{\Important}[1]{\begin{noticebox}\textbf{\ManualImportantLabel}\quad #1\end{noticebox}}
-\newcommand{\filepath}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\filepath}[1]{\nolinkurl{#1}}
 \newcommand{\term}[1]{\textsf{\bfseries #1}}
 \lstdefinestyle{sasd}{
  basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{gray!6},
