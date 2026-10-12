@@ -64,12 +64,13 @@ in den Containerbaum; Modell und
 SelectionModel leben ausreichend lange.
 
 \section{Ein Viewport ist ein Vertrag, kein Datenverlust}
-Mit \texttt{setViewport(...)} bestimmen Sie den
-voraussichtlich sichtbaren Zeilenausschnitt.
-\texttt{visibleRows()} liefert dafür
-Werte-Snapshots statt direkter Besitzrechte
-an interne Modell-Strings.
+Die Methode \texttt{setViewport(...)} bestimmt den
+sichtbaren Ausschnitt einer Datenmenge.
 Das Modell selbst bleibt vollständig erhalten.
+
+Über \texttt{visibleRows()} liefert die View
+Werte-Snapshots, keine Besitzrechte
+an internen Modell-Strings.
 Nach einer Modellmutation wird der Viewport
 normalisiert; eine Auswahl soll in einem
 sinnvollen sichtbaren Bereich bleiben.

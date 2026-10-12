@@ -88,11 +88,16 @@ Die wichtigsten Methoden sind nach Aufgaben gruppiert:
 \item Cursor: \texttt{cursorPosition()} und \texttt{setCursorPosition()}.
 \item Auswahl: \texttt{setSelection()}, \texttt{selectAll()}
 und \texttt{selectedText()}.
-\item Zwischenablage: \texttt{copySelectionToClipboard()},
-\texttt{cutSelectionToClipboard()} und \texttt{pasteFromClipboard()}.
+\item Zwischenablage: Kopieren, Ausschneiden und
+Einfügen über ein explizites \term{Clipboard}-Objekt.
 \end{itemize}
 Die Auswahl hat getrennte Anker- und Cursorpositionen.
-Die Zwischenablage wird als explizites \term{Clipboard}-Objekt übergeben.
+Die zugehörigen API-Funktionen heißen:
+\begin{lstlisting}[language={},numbers=none]
+copySelectionToClipboard(clipboard)
+cutSelectionToClipboard(clipboard)
+pasteFromClipboard(clipboard)
+\end{lstlisting}
 
 \begin{lstlisting}[language=SASDCpp]
 auto& entry = form.emplace<TextField>("Beispiel");
