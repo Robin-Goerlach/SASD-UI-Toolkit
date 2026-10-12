@@ -1,0 +1,143 @@
+% SPDX-License-Identifier: MIT
+\chapter{Praxis: eine administrative Bedienoberflaeche}\label{chap:practice}
+\ChapterSummary{Sie planen eine kleine Administrationstool-
+Oberflaeche nach den Prinzipien des SASD UI Toolkit:
+ein Datenmodell fuer den Zustand, eine kontrollierte Auswahl,
+Commands fuer Aenderungen und eine Darstellung, die
+den Benutzer nicht ueber ihre Berechtigungen taeuscht.}
+
+\section{Beispielaufgabe und Grundsaetze}
+Angenommen, eine Anwendung soll eine Liste
+von Diensten anzeigen, deren Status lesen
+und einen ausgewaehlten Dienst neu laden.
+Fuer SASD Gatehold waere dieselbe
+Struktur fuer Firewallregeln oder
+Netzwerkschnittstellen geeignet.
+Wir unterscheiden vier Ebenen:
+\begin{enumerate}
+\item Die \term{Domaene} kennt den wirklichen
+Zustand des Systems und validiert Aktionen.
+\item Das \term{Model} liefert einen
+lesbaren Ausschnitt der Domaenendaten.
+\item Die \term{View} verwaltet Darstellung
+und aktuelle Auswahl.
+\item Ein \term{Command} beschreibt
+eine anforderungsgesteuerte Aktion.
+\end{enumerate}
+Die UI darf anzeigen, dass ein Command
+nicht verfuegbar ist. Das ist eine
+wichtige Rueckmeldung, aber keine
+Authentisierung oder Autorisierung.
+
+\section{Schritt eins: nur lesen}
+Beginnen Sie mit einem \term{StringTableModel}
+aus \texttt{Dienst} und \texttt{Status}.
+Fuellung und Erneuerung des Modells
+geschehen getrennt vom Renderer.
+Eine beispielhafte Quelle koennte einen
+Snapshot nach erfolgreicher Statusabfrage
+zurueckgeben. Ein \term{TableView}
+zeigt die ersten sichtbaren Zeilen;
+das \term{TableSelectionModel}
+identifiziert die aktuell gewaehlt Zelle.
+
+\begin{lstlisting}[language=SASDCpp]
+StringTableModel services(
+    {"Dienst", "Status"},
+    {{"dns", "aktiv"}, {"proxy", "aktiv"}});
+TableSelectionModel selection;
+selection.setModel(&services);
+
+TableView view;
+view.setModel(&services);
+view.setSelectionModel(&selection);
+view.setViewport(0, 10, 0, 2);
+\end{lstlisting}
+In einem realen Fenster muss die View in
+einen Container aufgenommen werden.
+Dieser Ausschnitt demonstriert den
+Datenvertrag unabhaengig vom Host.
+Er ersetzt weder den Eventloop
+noch die Terminal-Integration.
+
+\section{Schritt zwei: Aktion mit Guard}
+Ein \term{Command} namens
+\emph{Dienst neu laden} soll nur bei
+einem passenden Datensatz aktiviert werden.
+Dabei muessen mindestens folgende
+Fragen fachlich beantwortet sein:
+Existiert der Datensatz noch?
+Ist der Status frisch?
+Ist die Aktion fuer diesen Dienst erlaubt?
+Hat der Ausfuehrende die Berechtigung?
+Ist eine Bestaetigung erforderlich?
+
+Die UI kann \texttt{setEnabled(false)}
+setzen, bis alle sichtbaren Vorbedingungen
+gegeben sind. Unmittelbar vor der
+tatsaechlichen Aenderung muessen die
+sicherheitsrelevanten Bedingungen im
+zustandstragenden Dienst \emph{erneut}
+geprueft werden. Ein alter Viewport
+oder ein verzoegertes Tastaturereignis
+darf nicht zum unkontrollierten
+Neustart eines anderen Dienstes fuehren.
+
+\section{Schritt drei: Rueckmeldung und Fehlerbild}
+Aus einer administrativen Aktion
+muessen fuer Benutzer erkennbare
+Zustaende hervorgehen: \emph{angefordert},
+\emph{in Arbeit}, \emph{erfolgreich},
+\emph{fehlgeschlagen} und gegebenenfalls
+\emph{zurueckgenommen}.
+Ein \term{Label} kann den aktuellen
+Status anzeigen; eine
+\term{ListView} koennte eine
+kleine Ereignisliste darstellen.
+Die echte Protokollierung und
+Auditierung verbleiben ausserhalb
+der UI-Bibliothek.
+
+\section{Schritt vier: robuste Eingabe}
+Testen Sie nicht nur den Gluecksfall.
+Was passiert beim Resize waehrend
+eines offenen Popupmenues?
+Was bei einem Model-Reset genau nach
+der Zeilenauswahl?
+Was bei einer Aktion, die das aktuelle
+Fenster schliesst?
+Was bei einem Terminal ohne Maus?
+Was passiert nach Verlust des
+Terminal-/SSH-Kanals?
+Eine nuetzliche Verwaltungsoberflaeche
+erhaelt fuer solche Fragen explizite
+Antworten und automatisierte Tests.
+
+\section{Reale Projektreihenfolge}
+Fuer ein erstes wartbares Werkzeug ist
+diese Reihenfolge sinnvoll:
+\begin{enumerate}
+\item \textbf{Lesepfad:} Daten korrekt
+laden und ohne Veraenderung anzeigen.
+\item \textbf{Fokuspfad:} Vollstaendige
+Tastaturbedienung nachweisen.
+\item \textbf{Selektion:} Datensatz
+und Auswahl sichtbar abgleichen.
+\item \textbf{Commands:} Erst lokale
+Simulation, dann echte, abgesicherte
+Systemoperation.
+\item \textbf{Fehlerpfad:} Status,
+Auditlog und Wiederherstellbarkeit.
+\item \textbf{Zweiter Backend-Pfad:}
+Wenn erforderlich dieselbe Semantik
+mit Rendered testen.
+\end{enumerate}
+
+\PracticalTip{Nehmen Sie zum Start eine
+\emph{read-only} Bildschirmseite,
+beispielsweise eine Dienstliste.
+Die Kombination aus TableModel,
+SelectionModel und einem deaktivierten
+Command reicht aus, um den
+gesamten Daten- und Interaktionsweg
+ohne Risiko zu proben.}
