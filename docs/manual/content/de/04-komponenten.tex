@@ -6,11 +6,11 @@ Sie erfahren, wann ein Widget genuegt und wann eine nichtvisuelle
 Komponente oder ein Modell die bessere Wahl ist.}
 
 \section{Ein Besitzbaum, zwei Sichtweisen}
-\term{Component} ist die Grundlage fuer Objekte, die eine
-einheitliche Eigentums- und Lebensdauerbeziehung benoetigen.
+\term{Component} ist die Grundlage für Objekte, die eine
+einheitliche Eigentums- und Lebensdauerbeziehung benötigen.
 \term{Widget} erweitert dieses Konzept um Sichtbarkeit,
-Aktivierbarkeit, Fokusfaehigkeit, Groesse, Position und Ereignisse.
-\term{Container} besitzt Komponenten ueber eindeutiges
+Aktivierbarkeit, Fokusfaehigkeit, Größe, Position und Ereignisse.
+\term{Container} besitzt Komponenten über eindeutiges
 \texttt{std::unique\_ptr}-Eigentum. Nur Widgets bilden dabei
 sichtbare Kinder; eine Command-Komponente im gleichen
 Container erscheint nicht im Layout.
@@ -22,17 +22,17 @@ auto& caption = form.emplace<Label>("Einstellungen");
 auto& save = form.emplace<Button>("Speichern");
 \end{lstlisting}
 Der \texttt{Window}-Destruktor entsorgt die verschachtelten
-Komponenten. Fuer dynamische Strukturen existieren
+Komponenten. Für dynamische Strukturen existieren
 \texttt{adopt(std::unique\_ptr<Component>)} und
 \texttt{release(Component\&)}, womit die Lebensdauer bewusst
-uebertragen werden kann. Ein nach \texttt{release} entfernter
+übertragen werden kann. Ein nach \texttt{release} entfernter
 Teilbaum muss im Anwendungscode entweder weiterbesessen oder
-zerstoert werden.
+zerstört werden.
 
 \Important{C++-Referenzen auf Widgets sind nicht selbst
 lebensdauersicher. Wenn Sie einen Container aufloesen oder
-ein Kind entfernen, duerfen spaetere Callbacks nicht
-mehr ueber alte Referenzen zugreifen.}
+ein Kind entfernen, duerfen spätere Callbacks nicht
+mehr über alte Referenzen zugreifen.}
 
 \section{Gemeinsame Widget-Eigenschaften}
 Die wichtigsten Methoden aus \filepath{include/sasd/ui/widget.hpp}:
@@ -43,15 +43,15 @@ Methode & Bedeutung\\\midrule
 \texttt{setEnabled(bool)} & Sperrt oder erlaubt normale Benutzeraktionen.\\
 \texttt{setFocusable(bool)} & Definiert grundsaetzliche Fokusfaehigkeit.\\
 \texttt{hasFocus()} & Zeigt aktuellen logischen Fokus an.\\
-\texttt{setSizeConstraints(...)} & Begrenzt die gewuenschte Groesse.\\
-\texttt{measure(...)} & Berechnet die benoetigte Groesse.\\
+\texttt{setSizeConstraints(...)} & Begrenzt die gewuenschte Größe.\\
+\texttt{measure(...)} & Berechnet die benötigte Größe.\\
 \texttt{arrange(Rect)} & Setzt endgueltige Grenzen.\\
 \bottomrule
 \end{tabularx}
-\texttt{canReceiveFocus()} beruecksichtigt
+\texttt{canReceiveFocus()} berücksichtigt
 \emph{focusable, visible und enabled} gleichzeitig.
 Ein deaktivierter Button sollte daher weder als erreichbares
-Tab-Ziel noch als ausfuehrbare Aktion behandelt werden.
+Tab-Ziel noch als ausführbare Aktion behandelt werden.
 
 \section{Label und Button}
 Ein \term{Label} transportiert UTF-8-Text, aber keine
@@ -76,10 +76,10 @@ ist ein \term{Command} meist sinnvoller; Kapitel
 \section{TextField: Unicode und Auswahl}
 \term{TextField} ist ein einzelzeiliger UTF-8-Editor.
 Eingaben werden aus \term{TextInputEvent} verarbeitet,
-Tastaturbewegung und Loeschen arbeiten mit
+Tastaturbewegung und Löschen arbeiten mit
 Unicode-\emph{Scalars} statt rohen Bytes.
 Das ist ein wichtiger Unterschied: Ein mehrbyteiges UTF-8-Zeichen
-darf beim Rueckwaertsloeschen nicht zerstoert werden.
+darf beim Rückwaertsloeschen nicht zerstört werden.
 
 Die API kennt \texttt{text()}, \texttt{setText()},
 \texttt{cursorPosition()}, \texttt{setCursorPosition()},
@@ -99,9 +99,9 @@ entry.setCursorPosition(0);
 \end{lstlisting}
 Die Cursorposition wird in Unicode-Scalars gemessen,
 nicht in Bytes und nicht in Terminalzellen. Komplexe
-Graphemcluster koennen mehrere Scalars umfassen.
-Breite Zeichen koennen im Terminal mehr als eine Zelle
-belegen. Diese Groessen muessen getrennt bleiben.
+Graphemcluster können mehrere Scalars umfassen.
+Breite Zeichen können im Terminal mehr als eine Zelle
+belegen. Diese Größen müssen getrennt bleiben.
 
 \section{CheckBox, RadioButton und RadioGroup}
 \term{CheckBox} bildet einen booleschen Zustand ab:
@@ -113,7 +113,7 @@ logging.setOnCheckedChanged([](bool checked) {
 logging.setChecked(false);
 \end{lstlisting}
 Ein \term{RadioGroup} ist eine \emph{nichtvisuelle}
-Komponente fuer gegenseitig ausschliessende Optionen.
+Komponente für gegenseitig ausschliessende Optionen.
 RadioButtons referenzieren diese Gruppe explizit.
 Sie wird nicht aus benachbarten Widgets geraten.
 
@@ -127,26 +127,26 @@ read.setSelected(true);
 \end{lstlisting}
 Die Deklarationsreihenfolge sorgt hier dafuer,
 dass beim Verlassen des Scopes zuerst das Fenster
-und seine Buttons, danach die Gruppe zerstoert werden.
+und seine Buttons, danach die Gruppe zerstört werden.
 
 \section{ComboBox: Auswahl ist nicht Vorschau}
 \term{ComboBox} besitzt eine lokale Liste von Strings
-und einen optionalen gewaehlten Index. Sie ist derzeit
+und einen optionalen gewählten Index. Sie ist derzeit
 \emph{nicht editierbar}. Methoden wie
 \texttt{setSelectedIndex}, \texttt{selectedText},
 \texttt{appendItem} und \texttt{setItems} steuern
 die festgeschriebene Auswahl.
 Bei Austausch der gesamten Liste wird eine alte
-Auswahl bewusst geloescht, damit derselbe Zahlenindex
+Auswahl bewusst gelöscht, damit derselbe Zahlenindex
 nicht unbemerkt eine andere Bedeutung bekommt.
 
-Ein geoeffnetes Dropdown hat einen zweiten,
-vorlaeufigen \term{Preview-Index}. Navigation veraendert
-zunaechst nur die Vorschau. \textbf{Enter} uebernimmt,
+Ein geöffnetes Dropdown hat einen zweiten,
+vorlaeufigen \term{Preview-Index}. Navigation verändert
+zunächst nur die Vorschau. \textbf{Enter} übernimmt,
 \textbf{Escape} verwirft, \textbf{F4} steuert die
-Dropdown-Absicht. Das ist fuer Formulare wichtig,
+Dropdown-Absicht. Das ist für Formulare wichtig,
 deren teure oder gefaehrliche Folgeaktionen erst
-nach einer bestaetigten Wahl laufen sollen.
+nach einer bestätigten Wahl laufen sollen.
 \begin{lstlisting}[language=SASDCpp]
 auto& target = form.emplace<ComboBox>(
     std::vector<std::string>{"Test", "Produktion"});
@@ -165,9 +165,9 @@ style.foreground = Color::bright_cyan;
 style.bold = true;
 caption.setTextStyle(style);
 \end{lstlisting}
-Die Wirkung ist von den Faehigkeiten des Backends
-abhaengig. Verwenden Sie Farbe als Unterstuetzung,
-nicht als einziges Traegermedium fuer Bedeutung.
+Die Wirkung ist von den Fähigkeiten des Backends
+abhaengig. Verwenden Sie Farbe als Unterstützung,
+nicht als einziges Traegermedium für Bedeutung.
 \PracticalTip{Trennen Sie Statusdaten, sichtbaren Text und
 Benutzerinteraktion. Ein TextField ist kein Datenmodell;
 ein Label ist keine Protokollhistorie; ein Command ist
