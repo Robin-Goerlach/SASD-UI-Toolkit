@@ -1,0 +1,91 @@
+% SPDX-License-Identifier: MIT
+\chapter{Willkommen beim SASD UI Toolkit}\label{chap:intro}
+\ChapterSummary{Sie lernen die Zielsetzung, die Architektur und den aktuellen
+Reifegrad des Toolkits kennen. Am Ende koennen Sie einschaetzen, fuer welche
+Projekte es heute geeignet ist, welche Teile Sie zuerst kennenlernen sollten
+und was bewusst noch nicht versprochen wird.}
+
+\section{Wozu dieses Handbuch dient}
+Eine Bibliothek wird nicht schon dadurch nuetzlich, dass sie viele Klassen
+besitzt. Nuetzlich wird sie, wenn Entwickler die richtigen Bausteine finden,
+das Zusammenspiel verstehen, Fehler vorhersehen und eine Oberflaeche
+ueberschaubar erweitern koennen. Dieses Anwenderhandbuch richtet sich an
+C++-Entwickler, die \emph{Anwendungen mit} dem SASD UI Toolkit bauen wollen.
+Es ist weder eine interne Entwickler-Spezifikation noch der Ersatz fuer die
+API-Deklarationen in den Header-Dateien.
+
+Das Buch ist wie ein klassisches Software-Handbuch aufgebaut: Zuerst
+Orientierung und Installation, dann ein gefuehrtes Praxisbeispiel, danach
+die einzelnen Bedien- und Programmierkonzepte und zum Schluss
+Problembehandlung und ein kompakter Nachschlageteil. Jedes Kapitel beginnt
+mit einer Zusammenfassung; konkrete Quellpfade erleichtern die Vertiefung.
+
+\section{Die Idee: eine Semantik, mehrere Darstellungen}
+Ein \term{Button} bedeutet unabhaengig von seinem Ausgabegeraet:
+Er ist sichtbar oder verborgen, aktiviert oder deaktiviert, kann den
+Fokus besitzen und eine Aktion ausloesen. Wie seine Beschriftung,
+seine Umrandung oder sein gedrueckter Zustand aussehen, bestimmt dagegen
+die Darstellungsschicht.
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={draw,rounded corners=2pt,align=center,
+ font=\sffamily\small,minimum height=10mm},node distance=7mm]
+\node[fill=SASDPale,text width=10cm] (app) {Anwendungscode: Widgets, Datenmodelle, Commands};
+\node[below=of app,fill=gray!7,text width=10cm] (core) {SASD::UI Core: Layout, Fokus, Ereignisse, Lebensdauer};
+\node[below left=11mm and -16mm of core,fill=gray!7,text width=3.8cm] (term) {Terminal\\ANSI/VT};
+\node[below right=11mm and -16mm of core,fill=gray!7,text width=3.8cm] (rend) {Rendered\\SDL3 (experimentell)};
+\draw[-stealth,thick,SASDBlue] (app)--(core);
+\draw[-stealth,thick,SASDBlue] (core)--(term);
+\draw[-stealth,thick,SASDBlue] (core)--(rend);
+\end{tikzpicture}
+\end{center}
+
+Der Core ist \term{backendneutral}; er kennt keine Win32-Handles,
+SDL-Fenster oder terminalinternen Steuersequenzen. Das Terminal
+ist eine vollwertige Zielplattform. Die gerenderte Darstellung besitzt
+eine eigene, auch ohne SDL verwendbare Befehlsschicht.
+Native Desktop-Peers fuer Win32, GTK oder AppKit sind langfristige Ziele,
+keine heute austauschbaren Produktiv-Backends.
+
+\section{Was gegenwaertig vorhanden ist}
+Die folgenden Aussagen beziehen sich auf den Quellstand vom
+12.\ Oktober 2026; fuer neuere Entwicklungen sind README, Tests und
+Header massgeblich.
+
+\begin{tabularx}{\linewidth}{@{}p{32mm}X@{}}
+\toprule
+Bereich & Einordnung\\\midrule
+Core & C++20, Komponenten- und Widget-Baum, Ereignisse, Fokus,
+Layout, Commands, Shortcuts, Menumodelle, mehrere Form- und Daten-Widgets.\\
+Terminal & Benutzerseitig erprobtes ANSI/VT-Backend, TerminalSession
+mit Wiederherstellung, Demo und Terminaltests.\\
+Rendered & Backendneutrale DisplayList, Messung und Rendering-Schnittstellen;
+eigene Tests.\\
+SDL3 & Optionaler experimenteller Adapter mit Fenster- und
+Headless-Pfad; \emph{build-tree-only}.\\
+Native Desktop & Zukuenftig; kein fertiger gleichwertiger Win32-/GTK-/AppKit-Peer.\\
+Stabilitaet & Vor Version 1.0; Quellkompatibilitaet kann sich bei
+begruendeten Architekturverbesserungen aendern.\\
+\bottomrule
+\end{tabularx}
+
+\section{Wichtige Begriffe}
+\term{Widget} ist ein sichtbares, semantisches Bedienelement.
+\term{Container} besitzt \emph{Components} und ordnet sichtbare
+\emph{Widgets} als Kinder ein. \term{Backend} verbindet die
+Anwendungsereignisse mit einer Zielumgebung. \term{Model} liefert
+Daten, \term{View} stellt einen Ausschnitt dar. \term{Command} ist eine
+nichtvisuelle, wiederverwendbare Aktion. \term{Presentation Sink}
+erzeugt eine Darstellung aus dem aktuellen Zustand.
+
+\section{Lesepfade}
+Fuer einen schnellen Einstieg lesen Sie die Kapitel
+\ref{chap:install} und \ref{chap:first}. Wer eigene Formulare bauen will,
+vertieft Komponenten, Layout und Events in den Kapiteln
+\ref{chap:widgets} und \ref{chap:layout}. Fuer administrative Anwendungen
+mit Listen und Hierarchien ist Kapitel \ref{chap:models} besonders wichtig.
+Kapitel \ref{chap:backends} klaert die Grenzen der Ausgabegeraete.
+
+\PracticalTip{Beginnen Sie mit der mitgelieferten Terminal-Demo und
+veraendern Sie jeweils nur eine Sache: zuerst Text, dann ein Widget,
+dann die Fokusfolge, zuletzt Events oder Menues.}
