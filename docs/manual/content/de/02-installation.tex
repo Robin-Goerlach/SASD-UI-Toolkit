@@ -1,0 +1,131 @@
+% SPDX-License-Identifier: MIT
+\chapter{Voraussetzungen, Build und Installation}\label{chap:install}
+\ChapterSummary{Sie richten eine reproduzierbare C++20-Buildumgebung ein,
+starten die Demonstration, fuehren Tests aus und binden das installierte
+Toolkit in ein eigenes CMake-Projekt ein. Unterschiede zwischen
+Ein-Konfigurations- und Visual-Studio-Builds werden ausdruecklich erklaert.}
+
+\section{Voraussetzungen und Quellen}
+Sie benoetigen einen C++20-faehigen Compiler, CMake und ein
+Buildsystem fuer Ihre Plattform. Das Haupt-Toolkit ist bewusst ohne
+obligatorische SDL-Abhaengigkeit nutzbar. Unter Linux und macOS ist
+ein interaktives ANSI/VT-Terminal fuer die sichtbare Terminal-Demo
+sinnvoll; unter Windows wird eine geeignete Konsole bzw. ein
+Terminal mit VT-Unterstuetzung benoetigt.
+
+Der kanonische Quellstand liegt unter
+\url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit}.
+Klonen Sie das Repository oder arbeiten Sie in Ihrem vorhandenen
+Arbeitsverzeichnis. Bauen Sie \emph{ausserhalb} des Quellbaums in
+einem eigenen Build-Verzeichnis. Dadurch bleiben Quellstand, Cache,
+Tests und Varianten getrennt.
+
+\section{Erster Build unter Linux oder macOS}
+\begin{lstlisting}[language=bash,caption={Konfigurieren, bauen und testen}]
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_TESTS=ON \
+  -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+\term{Konfigurieren} prueft Compiler, Features und Abhaengigkeiten.
+\term{Bauen} erstellt Bibliotheken, Beispiele und Tests.
+\term{Testen} fuehrt die registrierten CTest-Faelle aus.
+Schlaegt schon die Konfiguration fehl, hilft ein Blick in die erste
+aussagekraeftige CMake-Fehlermeldung; das spaetere Weiterbauen mit
+einem inkonsistenten Cache ist meist keine gute Idee.
+
+\section{Visual Studio 2022 unter Windows}
+\begin{lstlisting}[language={},caption={Multi-Config-Build mit MSVC}]
+cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 ^
+  -DSASD_UI_BUILD_TESTS=ON ^
+  -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build-msvc --config Debug --parallel
+ctest --test-dir build-msvc -C Debug --output-on-failure
+\end{lstlisting}
+Die Fortsetzungszeichen \texttt{\^{}} sind fuer \emph{cmd.exe}
+gedacht; unter PowerShell verwenden Sie entweder eine einzige Zeile
+oder deren Backtick-Zeilenfortsetzung. Bei Visual-Studio-Generatoren
+muss die Konfiguration \filepath{Debug} oder \filepath{Release}
+sowohl beim Build als auch bei CTest angegeben werden.
+
+\section{Die Terminal-Demo starten}
+Unter einem ueblichen Linux-Ein-Konfigurations-Build:
+\begin{lstlisting}[language=bash]
+./build/examples/sasd_ui_terminal_demo
+\end{lstlisting}
+Unter Windows ist der Pfad beispielsweise
+\filepath{build-msvc/examples/Debug/sasd_ui_terminal_demo.exe}.
+Eine wirkliche Terminal-Sitzung ist erforderlich; die Anwendung
+laesst sich nicht sinnvoll als nichtinteraktiver Batch-Prozess testen.
+
+Erkunden Sie die Oberflaeche: Mit \textbf{Tab} und
+\textbf{Shift+Tab} wechseln Sie den Fokus. \textbf{Enter}
+oder \textbf{Leertaste} aktiviert geeignete Buttons.
+\textbf{F1} zeigt die Demo-Hilfe, \textbf{F10} oeffnet das Menue.
+Die Demo unterstuetzt unter anderem Texteingabe, Checkbox,
+Radiobuttons und eine ComboBox. Beenden ist ueber den Exit-Button,
+Escape oder den vorgesehenen Demo-Shortcut moeglich.
+
+\Important{Terminalgroesse, Mausprotokoll und
+Steuersequenzen haengen vom Hostterminal ab. Die \term{TerminalSession}
+verwaltet die Zustandsaenderungen per RAII und stellt sie bei normalem
+Verlassen und beim Abwickeln von C++-Ausnahmen wieder her.
+Eine harte Prozessbeendigung kann diese Garantie nicht bieten.}
+
+\section{Release-Build und Installation}
+\begin{lstlisting}[language=bash,caption={Installation in ein gewaehltes Praefix}]
+cmake -S . -B build-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSASD_UI_BUILD_TESTS=OFF \
+  -DSASD_UI_BUILD_EXAMPLES=OFF
+cmake --build build-release --parallel
+cmake --install build-release --prefix /opt/sasd-ui
+\end{lstlisting}
+Verwenden Sie unter Windows bei Bedarf zusaetzlich
+\filepath{--config Release}. Ein eigenstaendiges Installationspraefix
+ist fuer Tests und mehrere Versionen meist sicherer als eine
+ungefragte systemweite Installation.
+
+\section{Das Toolkit als CMake-Paket verwenden}
+\begin{lstlisting}[language={},caption={Auszug aus CMakeLists.txt}]
+cmake_minimum_required(VERSION 3.20)
+project(my_ui_app LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(SASDUIToolkit 0.2 CONFIG REQUIRED)
+add_executable(my_ui_app main.cpp)
+target_link_libraries(my_ui_app PRIVATE SASD::UI::Terminal)
+\end{lstlisting}
+Bei einem abweichenden Installationsort geben Sie ihn ueber
+\filepath{CMAKE_PREFIX_PATH} an, zum Beispiel:
+\begin{lstlisting}[language=bash]
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/sasd-ui
+\end{lstlisting}
+Die installierten Targets haben unterschiedliche Aufgaben:
+\texttt{SASD::UI} ist der Core, \texttt{SASD::UI::Terminal}
+enthaelt das Terminal-Backend, \texttt{SASD::UI::Rendered}
+die SDL-unabhaengige Rendered-Schicht. Verlinken Sie nur die
+Schicht, die Ihre Anwendung tatsaechlich benoetigt.
+Die Versionsnummer der Paketanforderung ist an den genutzten
+Entwicklungs- bzw. Release-Stand anzupassen: Das veroeffentlichte
+v0.1.0-Tag bildet den aelteren Terminal-Baseline-Stand ab.
+
+\section{Optional: SDL3 bewusst einschalten}
+Fuer die experimentelle Desktop-Demo existieren die Optionen
+\filepath{SASD_UI_BUILD_SDL3_ADAPTER=ON} und
+\filepath{SASD_UI_FETCH_SDL3=ON}. Hinzu kommt bei den
+entsprechenden Tests ein Fontpfad ueber
+\filepath{SASD_UI_SDL3_TEST_FONT}.
+Das normale Toolkit braucht weder SDL3 noch SDL\_ttf.
+Der Adapter wird gegenwaertig \emph{nicht} wie Core, Terminal und
+Rendered als stabiler externer CMake-Installationsvertrag angeboten.
+Weitere Details finden Sie in \filepath{README.md} und
+\filepath{docs/en/M3_RENDERED_DESKTOP_SMOKE_TEST.md}.
+
+\PracticalTip{Bei Problemen zuerst die Demo und die Tests aus dem
+gleichen Checkout bauen. Wenn diese funktionieren, liegt ein Fehler
+bei Ihrem Konsumentenprojekt haeufig an Link-Targets,
+Paketpfad oder einer gemischten Debug/Release-Konfiguration.}
