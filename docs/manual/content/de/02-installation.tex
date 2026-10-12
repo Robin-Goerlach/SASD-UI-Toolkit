@@ -105,10 +105,12 @@ Bei einem abweichenden Installationsort geben Sie ihn über
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/sasd-ui
 \end{lstlisting}
 Die installierten Targets haben unterschiedliche Aufgaben:
-\texttt{SASD::UI} ist der Core, \texttt{SASD::UI::Terminal}
-enthaelt das Terminal-Backend, \texttt{SASD::UI::Rendered}
-die SDL-unabhaengige Rendered-Schicht. Verlinken Sie nur die
-Schicht, die Ihre Anwendung tatsächlich benötigt.
+\begin{itemize}
+\item \texttt{SASD::UI}: backendneutraler Core.
+\item \texttt{SASD::UI::Terminal}: Terminal-Backend.
+\item \texttt{SASD::UI::Rendered}: SDL-unabhängige Rendered-Schicht.
+\end{itemize}
+Verlinken Sie nur die Schicht, die Ihre Anwendung tatsächlich benötigt.
 Die Versionsnummer der Paketanforderung ist an den genutzten
 Entwicklungs- bzw. Release-Stand anzupassen: Das veroeffentlichte
 v0.1.0-Tag bildet den aelteren Terminal-Baseline-Stand ab.
