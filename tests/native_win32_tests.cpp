@@ -65,9 +65,10 @@ TEST_CASE("Win32 pointer translation maps buttons, action, coordinates and modif
 }
 
 TEST_CASE("Win32 text and window lifecycle translation fails closed") {
-    const auto text = translateTextInput(L"Grüße");
+    // Keep the source literal ASCII-only so this test is independent of the MSVC source code page.
+    const auto text = translateTextInput(L"Gr\u00FC\u00DFe");
     CHECK(text.has_value());
-    CHECK(text->text == "Grüße");
+    CHECK(text->text == std::string{"Gr\xC3\xBC\xC3\x9F" "e"});
     CHECK(!translateTextInput(std::wstring{static_cast<wchar_t>(0xD800)}).has_value());
 
     const auto close = translateWindowMessage(WM_CLOSE, 0, 0);
