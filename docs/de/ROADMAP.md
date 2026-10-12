@@ -146,15 +146,16 @@ zweidimensionale `TableSelectionModel`, TableView-Tastatur-/Viewport-Integration
 die besitzende Terminal-TableView-Presentation mit stale-revision-Prüfung und die Integration in den
 generischen RenderedPresentationSink sind nun implementiert. Die SDL3-Form-Demo verwendet denselben
 TableModel-/TableSelectionModel-/TableView-Pfad für Tastatur und exakte Snapshot-Pointer-Selection
-ohne Widgets pro Zelle. Tree bleibt ein späterer Slice. Der SDL-unabhängige Rendered-TableView-
+ohne Widgets pro Zelle. Der SDL-unabhängige Rendered-TableView-
 ohne Widgets pro Zelle. Der backendneutrale TreeModel-/TreeSelectionModel-/TreeView-Core-Slice
 etabliert nun positionsbasierte Pfade, Reset-Invalidierung, Expansion-Normalisierung und sichtbare
 Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Das besitzende Terminal-TreeView-
 Snapshot ergänzt nun finale Zeilen-/Indikator-Geometrie, exaktes Hit-Testing und stale-revision-
 Prüfung. Das SDL-unabhängige, besitzende Rendered-TreeView-Snapshot ergänzt nun finale Zeilen- und
-Disclosure-Geometrie, transaktionales DisplayList-Rendering und exaktes Hit-Testing; die SDL3-
-Integration folgt in einem eigenen Slice. Der generische RenderedPresentationSink verwendet nun das
-TreeView-Snapshot; der SDL3-Consumer folgt weiterhin in einem eigenen Slice. Der SDL-unabhängige
+Disclosure-Geometrie, transaktionales DisplayList-Rendering und exaktes Hit-Testing. Der generische
+RenderedPresentationSink verwendet nun das
+TreeView-Snapshot; die SDL3-Form-Demo verwendet nun denselben Model-/Selection-/View-Pfad für
+Tastatur, Pointer-Selection und Disclosure-Toggle. Der SDL-unabhängige
 Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 
 - [x] `ListModel`
@@ -165,6 +166,7 @@ Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 - [x] `TreeView`-Core-Vertrag
 - [x] besitzende Terminal- und Rendered-`TreeView`-Presentation-Snapshots
 - [x] generischer RenderedPresentationSink-Consumer für TreeView
+- [x] SDL3-TreeView-Demo-Consumer
 - [x] initiales Single-Row-Selection-Modell
 - [x] initiales Single-Cell-`TableSelectionModel`
 - [ ] Delegate-/Cell-Renderer-Konzept

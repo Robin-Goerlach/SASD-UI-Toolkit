@@ -165,6 +165,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0146](0146-terminal-tree-view-owned-snapshot.md) | Owned Terminal TreeView snapshot and exact hit testing | Accepted |
 | [0147](0147-rendered-tree-view-owned-snapshot.md) | Owned Rendered TreeView snapshot and exact hit testing | Accepted |
 | [0148](0148-rendered-tree-view-sink-integration.md) | RenderedPresentationSink consumes the TreeView snapshot | Accepted |
+| [0149](0149-sdl3-tree-view-demo-consumer.md) | SDL3 demo consumes the backend-neutral TreeView pipeline | Accepted |
 
 ## ADR policy
 

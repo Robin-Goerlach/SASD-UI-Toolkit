@@ -149,7 +149,8 @@ depth-first traversal without flattening the complete tree. The owned Terminal T
 adds final row/indicator geometry, exact hit testing and stale-revision rejection. The owned
 SDL-independent Rendered TreeView snapshot now adds final row/disclosure geometry, transactional
 DisplayList rendering and exact hit testing. The generic RenderedPresentationSink now consumes the
-TreeView snapshot; SDL3 integration remains a follow-up slice. The SDL-independent Rendered TableView
+TreeView snapshot; the SDL3 form demo now consumes the same model/selection/view path for keyboard,
+pointer selection and disclosure toggling. The SDL-independent Rendered TableView
 snapshot remains the geometry source for every backend.
 
 - [x] `ListModel`
@@ -160,6 +161,7 @@ snapshot remains the geometry source for every backend.
 - [x] `TreeView` core contract
 - [x] owned Terminal and Rendered `TreeView` presentation snapshots
 - [x] generic RenderedPresentationSink TreeView consumer
+- [x] SDL3 TreeView demo consumer
 - [x] initial single-row selection model
 - [x] initial single-cell `TableSelectionModel`
 - [ ] delegate/cell-renderer concept
