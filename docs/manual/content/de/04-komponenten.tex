@@ -37,7 +37,7 @@ mehr über alte Referenzen zugreifen.}
 \section{Gemeinsame Widget-Eigenschaften}
 Die wichtigsten Methoden aus \filepath{include/sasd/ui/widget.hpp}:
 
-\begin{tabularx}{\linewidth}{@{}p{39mm}X@{}}
+\noindent\begin{tabularx}{\linewidth}{@{}p{39mm}X@{}}
 \toprule
 Methode & Bedeutung\\\midrule
 \texttt{setVisible(bool)} & Beeinflusst Darstellung und Teilnahme am Layout.\\
@@ -82,15 +82,17 @@ Unicode-\emph{Scalars} statt rohen Bytes.
 Das ist ein wichtiger Unterschied: Ein mehrbyteiges UTF-8-Zeichen
 darf beim Rückwaertsloeschen nicht zerstört werden.
 
-Die API kennt \texttt{text()}, \texttt{setText()},
-\texttt{cursorPosition()}, \texttt{setCursorPosition()},
-\texttt{setSelection()}, \texttt{selectAll()} und
-\texttt{selectedText()}. Die Auswahl hat getrennte
-Anker- und Cursorpositionen. Es existieren ausserdem
-\texttt{copySelectionToClipboard()},
-\texttt{cutSelectionToClipboard()} und
-\texttt{pasteFromClipboard()} mit einem expliziten
-\term{Clipboard}-Objekt.
+Die wichtigsten Methoden sind nach Aufgaben gruppiert:
+\begin{itemize}
+\item Textinhalt: \texttt{text()} und \texttt{setText()}.
+\item Cursor: \texttt{cursorPosition()} und \texttt{setCursorPosition()}.
+\item Auswahl: \texttt{setSelection()}, \texttt{selectAll()}
+und \texttt{selectedText()}.
+\item Zwischenablage: \texttt{copySelectionToClipboard()},
+\texttt{cutSelectionToClipboard()} und \texttt{pasteFromClipboard()}.
+\end{itemize}
+Die Auswahl hat getrennte Anker- und Cursorpositionen.
+Die Zwischenablage wird als explizites \term{Clipboard}-Objekt übergeben.
 
 \begin{lstlisting}[language=SASDCpp]
 auto& entry = form.emplace<TextField>("Beispiel");
