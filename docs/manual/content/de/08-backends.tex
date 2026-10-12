@@ -107,10 +107,11 @@ in Zeichenvorgaenge. Diese API ist
 nicht gleich SDL3 und kann ohne
 graphische Sitzung getestet werden.
 
-Erst der optionale \term{SDL3}-Adapter
-realisiert eine konkrete Fenster- oder
-Headless-Grafikumgebung mit SDL3/SDL\_ttf.
-Er ist experimentell, opt-in und
+Der optionale \term{SDL3}-Adapter stellt die
+konkrete Grafikanbindung bereit: im Fenster
+oder ohne sichtbares Fenster. Er verwendet
+SDL3 und SDL\_ttf, ist experimentell,
+muss bewusst aktiviert werden und
 noch kein garantiert installierbarer
 externer Adapter für beliebige Projekte.
 Ein Anwendungsautor sollte einen
@@ -131,7 +132,7 @@ Entwicklungsaufgaben.
 
 \section{Testmatrix für portable Programme}
 
-\begin{tabularx}{\linewidth}{@{}p{35mm}X@{}}
+\noindent\begin{tabularx}{\linewidth}{@{}p{35mm}X@{}}
 \toprule
 Testbereich & Zu prüfendes Verhalten\\\midrule
 Terminal klein/gross & Umbruch, Clipping,
