@@ -133,7 +133,7 @@ Planned:
 
 ## M5 – Model/View and data-heavy widgets / v0.4.x
 
-Status: in progress. The first List, TableModel and virtualized TableView core slices are implemented:
+Status: completed on 2026-10-12. The first List, TableModel and virtualized TableView core slices are implemented:
 small backend-neutral
 `ListModel` contract with lifetime-safe observation, concrete `StringListModel` test/demo storage,
 single-row `ListSelectionModel`, virtualized Core `ListView`, owned Terminal and Rendered visible-row
@@ -164,8 +164,15 @@ snapshot remains the geometry source for every backend.
 - [x] SDL3 TreeView demo consumer
 - [x] initial single-row selection model
 - [x] initial single-cell `TableSelectionModel`
-- [ ] delegate/cell-renderer concept
+- [ ] delegate/cell-renderer concept (deferred: List, Table and Tree currently share only owned text
+  presentation; no current consumer requires divergent editing or renderer strategies)
 - [x] visible-range virtualization for large data sets
+
+The M5 review found no concrete current consumer for a common Delegate/Cell-Renderer abstraction or
+for a general Binding/Validation framework. Those facilities remain deliberately deferred until a
+real control requires them. List, Table and Tree keep explicit model and selection contracts: their
+shared architecture is the owned-snapshot, revision/stale-state and lifetime-safe observation pattern,
+not a universal model or selection base class.
 
 This milestone is particularly important for scientific, statistical and engineering applications.
 

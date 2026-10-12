@@ -135,7 +135,7 @@ Geplant:
 
 ## M5 – Model/View und datenreiche Widgets / v0.4.x
 
-Status: in Arbeit. Die ersten List-, TableModel- und virtualisierten TableView-Core-Slices sind
+Status: abgeschlossen am 12.10.2026. Die ersten List-, TableModel- und virtualisierten TableView-Core-Slices sind
 implementiert: kleine backendneutrale
 `ListModel`-Vertrag mit lebenszeitsicherer Observation, konkreter `StringListModel`-Test-/Demo-
 Speicherung, `ListSelectionModel` für eine Zeile, virtualisierte Core-`ListView`, besitzende sichtbare
@@ -146,8 +146,8 @@ zweidimensionale `TableSelectionModel`, TableView-Tastatur-/Viewport-Integration
 die besitzende Terminal-TableView-Presentation mit stale-revision-Prüfung und die Integration in den
 generischen RenderedPresentationSink sind nun implementiert. Die SDL3-Form-Demo verwendet denselben
 TableModel-/TableSelectionModel-/TableView-Pfad für Tastatur und exakte Snapshot-Pointer-Selection
-ohne Widgets pro Zelle. Der SDL-unabhängige Rendered-TableView-
-ohne Widgets pro Zelle. Der backendneutrale TreeModel-/TreeSelectionModel-/TreeView-Core-Slice
+ohne Widgets pro Zelle. Der SDL-unabhängige Rendered-TableView-Snapshot bleibt die
+Geometriequelle für jedes Backend. Der backendneutrale TreeModel-/TreeSelectionModel-/TreeView-Core-Slice
 etabliert nun positionsbasierte Pfade, Reset-Invalidierung, Expansion-Normalisierung und sichtbare
 Depth-First-Traversierung ohne den vollständigen Baum zu flatten. Das besitzende Terminal-TreeView-
 Snapshot ergänzt nun finale Zeilen-/Indikator-Geometrie, exaktes Hit-Testing und stale-revision-
@@ -155,8 +155,7 @@ Prüfung. Das SDL-unabhängige, besitzende Rendered-TreeView-Snapshot ergänzt n
 Disclosure-Geometrie, transaktionales DisplayList-Rendering und exaktes Hit-Testing. Der generische
 RenderedPresentationSink verwendet nun das
 TreeView-Snapshot; die SDL3-Form-Demo verwendet nun denselben Model-/Selection-/View-Pfad für
-Tastatur, Pointer-Selection und Disclosure-Toggle. Der SDL-unabhängige
-Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
+Tastatur, Pointer-Selection und Disclosure-Toggle.
 
 - [x] `ListModel`
 - [x] `TableModel`
@@ -169,8 +168,16 @@ Rendered-TableView-Snapshot bleibt die Geometriequelle für jedes Backend.
 - [x] SDL3-TreeView-Demo-Consumer
 - [x] initiales Single-Row-Selection-Modell
 - [x] initiales Single-Cell-`TableSelectionModel`
-- [ ] Delegate-/Cell-Renderer-Konzept
+- [ ] Delegate-/Cell-Renderer-Konzept (bewusst deferred: List, Table und Tree verwenden derzeit
+  ausschließlich besitzende Text-Presentation; kein aktueller Consumer benötigt unterschiedliche
+  Editor- oder Renderer-Strategien)
 - [x] Virtualisierung sichtbarer Bereiche für große Datenmengen
+
+Das M5-Review ergab keinen konkreten aktuellen Consumer für eine gemeinsame Delegate-/Cell-Renderer-
+Abstraktion oder ein allgemeines Binding-/Validation-Framework. Diese Bausteine bleiben bewusst
+zurückgestellt, bis ein reales Control sie benötigt. List, Table und Tree teilen die Architektur
+besitzender Snapshots, Revisions-/Stale-State-Prüfung und lebenszeitsicherer Observation, aber keine
+universelle Model- oder Selection-Basisklasse.
 
 Dieser Meilenstein ist besonders wichtig für spätere wissenschaftliche, statistische und Engineering-Anwendungen.
 

@@ -65,12 +65,13 @@ they improve the architecture before compatibility commitments become expensive.
   hit testing, stale-state rejection, UTF-8/wide-cell coverage and large-model tests proving that
   presentation queries only the visible range instead of walking the complete model.
 - SDL3 rendered demo integration for `ListView`, including shared model usage, keyboard/pointer
-  selection and viewport behavior. The later TableModel/TableView slices are recorded below;
-  TreeModel/TreeView and delegate/cell renderer abstractions remain deferred.
+  selection and viewport behavior. The later TableModel/TableView and TreeModel/TreeView slices are
+  recorded below; delegate/cell renderer abstractions remain deferred.
 - Initial M5 `TableModel` slice: a rectangular textual Core contract, lifetime-safe observation,
   concrete `StringTableModel` storage and mutation/lifetime tests; TableView presentation and
   selection were added as separate follow-up slices. Tree and delegate/cell-renderer abstractions
-  remain separate deferred work.
+  were separate follow-up work; the Tree slice is now complete while delegate/cell-renderer remains
+  deferred.
 - Initial virtualized Core `TableView` slice: owned visible header/cell values, rectangular viewport
   normalization and large-model query-boundary tests. Table-specific selection and backend
   presentation were added as separate follow-up slices; delegates and editors remain deferred.
@@ -97,6 +98,10 @@ they improve the architecture before compatibility commitments become expensive.
   synchronization path as ListView and TableView.
 - SDL3 form demo TreeView consumer with application-owned model/selection, keyboard navigation and
   exact-snapshot pointer row selection/disclosure toggling.
+- M5 Model/View review completed: List, Table and Tree contracts are intentionally kept explicit;
+  their proven common boundary is lifetime-safe observation plus owned, revision-checked presentation
+  snapshots. Delegate/cell-renderer and general binding/validation systems remain deferred because
+  no current consumer requires them.
 
 ## [0.1.0] - 2026-09-28
 
