@@ -2,16 +2,16 @@
 \chapter{Praxis: eine administrative Bedienoberflaeche}\label{chap:practice}
 \ChapterSummary{Sie planen eine kleine Administrationstool-
 Oberflaeche nach den Prinzipien des SASD UI Toolkit:
-ein Datenmodell fuer den Zustand, eine kontrollierte Auswahl,
-Commands fuer Aenderungen und eine Darstellung, die
-den Benutzer nicht ueber ihre Berechtigungen taeuscht.}
+ein Datenmodell für den Zustand, eine kontrollierte Auswahl,
+Commands für Änderungen und eine Darstellung, die
+den Benutzer nicht über ihre Berechtigungen taeuscht.}
 
 \section{Beispielaufgabe und Grundsaetze}
 Angenommen, eine Anwendung soll eine Liste
 von Diensten anzeigen, deren Status lesen
 und einen ausgewaehlten Dienst neu laden.
-Fuer SASD Gatehold waere dieselbe
-Struktur fuer Firewallregeln oder
+Für SASD Gatehold waere dieselbe
+Struktur für Firewallregeln oder
 Netzwerkschnittstellen geeignet.
 Wir unterscheiden vier Ebenen:
 \begin{enumerate}
@@ -25,8 +25,8 @@ und aktuelle Auswahl.
 eine anforderungsgesteuerte Aktion.
 \end{enumerate}
 Die UI darf anzeigen, dass ein Command
-nicht verfuegbar ist. Das ist eine
-wichtige Rueckmeldung, aber keine
+nicht verfügbar ist. Das ist eine
+wichtige Rückmeldung, aber keine
 Authentisierung oder Autorisierung.
 
 \section{Schritt eins: nur lesen}
@@ -34,12 +34,12 @@ Beginnen Sie mit einem \term{StringTableModel}
 aus \texttt{Dienst} und \texttt{Status}.
 Fuellung und Erneuerung des Modells
 geschehen getrennt vom Renderer.
-Eine beispielhafte Quelle koennte einen
+Eine beispielhafte Quelle könnte einen
 Snapshot nach erfolgreicher Statusabfrage
 zurueckgeben. Ein \term{TableView}
 zeigt die ersten sichtbaren Zeilen;
 das \term{TableSelectionModel}
-identifiziert die aktuell gewaehlt Zelle.
+identifiziert die aktuell gewählt Zelle.
 
 \begin{lstlisting}[language=SASDCpp]
 StringTableModel services(
@@ -64,18 +64,18 @@ noch die Terminal-Integration.
 Ein \term{Command} namens
 \emph{Dienst neu laden} soll nur bei
 einem passenden Datensatz aktiviert werden.
-Dabei muessen mindestens folgende
+Dabei müssen mindestens folgende
 Fragen fachlich beantwortet sein:
 Existiert der Datensatz noch?
 Ist der Status frisch?
-Ist die Aktion fuer diesen Dienst erlaubt?
-Hat der Ausfuehrende die Berechtigung?
-Ist eine Bestaetigung erforderlich?
+Ist die Aktion für diesen Dienst erlaubt?
+Hat der Ausführende die Berechtigung?
+Ist eine Bestätigung erforderlich?
 
 Die UI kann \texttt{setEnabled(false)}
 setzen, bis alle sichtbaren Vorbedingungen
 gegeben sind. Unmittelbar vor der
-tatsaechlichen Aenderung muessen die
+tatsächlichen Änderung müssen die
 sicherheitsrelevanten Bedingungen im
 zustandstragenden Dienst \emph{erneut}
 geprueft werden. Ein alter Viewport
@@ -83,16 +83,16 @@ oder ein verzoegertes Tastaturereignis
 darf nicht zum unkontrollierten
 Neustart eines anderen Dienstes fuehren.
 
-\section{Schritt drei: Rueckmeldung und Fehlerbild}
+\section{Schritt drei: Rückmeldung und Fehlerbild}
 Aus einer administrativen Aktion
-muessen fuer Benutzer erkennbare
-Zustaende hervorgehen: \emph{angefordert},
+müssen für Benutzer erkennbare
+Zustände hervorgehen: \emph{angefordert},
 \emph{in Arbeit}, \emph{erfolgreich},
 \emph{fehlgeschlagen} und gegebenenfalls
 \emph{zurueckgenommen}.
 Ein \term{Label} kann den aktuellen
 Status anzeigen; eine
-\term{ListView} koennte eine
+\term{ListView} könnte eine
 kleine Ereignisliste darstellen.
 Die echte Protokollierung und
 Auditierung verbleiben ausserhalb
@@ -100,7 +100,7 @@ der UI-Bibliothek.
 
 \section{Schritt vier: robuste Eingabe}
 Testen Sie nicht nur den Gluecksfall.
-Was passiert beim Resize waehrend
+Was passiert beim Resize während
 eines offenen Popupmenues?
 Was bei einem Model-Reset genau nach
 der Zeilenauswahl?
@@ -109,17 +109,17 @@ Fenster schliesst?
 Was bei einem Terminal ohne Maus?
 Was passiert nach Verlust des
 Terminal-/SSH-Kanals?
-Eine nuetzliche Verwaltungsoberflaeche
-erhaelt fuer solche Fragen explizite
+Eine nützliche Verwaltungsoberflaeche
+erhält für solche Fragen explizite
 Antworten und automatisierte Tests.
 
 \section{Reale Projektreihenfolge}
-Fuer ein erstes wartbares Werkzeug ist
+Für ein erstes wartbares Werkzeug ist
 diese Reihenfolge sinnvoll:
 \begin{enumerate}
 \item \textbf{Lesepfad:} Daten korrekt
-laden und ohne Veraenderung anzeigen.
-\item \textbf{Fokuspfad:} Vollstaendige
+laden und ohne Veränderung anzeigen.
+\item \textbf{Fokuspfad:} Vollständige
 Tastaturbedienung nachweisen.
 \item \textbf{Selektion:} Datensatz
 und Auswahl sichtbar abgleichen.
