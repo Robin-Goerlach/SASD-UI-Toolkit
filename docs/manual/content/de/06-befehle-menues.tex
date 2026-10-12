@@ -8,8 +8,8 @@ ohne dass dreimal dieselbe Geschaeftslogik implementiert wird.}
 \section{Aktionen als eigene Komponenten}
 Ein \term{Command} besitzt einen Beschreibungstext,
 einen Enabled-Zustand und einen synchronen
-Ausfuehrungs-Callback. Es ist keine visuelle
-Schaltflaeche; sein Lebenszyklus gehoert der
+Ausführungs-Callback. Es ist keine visuelle
+Schaltflaeche; sein Lebenszyklus gehört der
 Anwendung, einem Besitzer oder einem
 ausdruecklich gesteuerten Scope.
 
@@ -24,9 +24,9 @@ auto& save = form.emplace<Button>();
 save.bindCommand(saveCommand);
 \end{lstlisting}
 Die Reihenfolge der lokalen Variablen ist
-absichtlich so gewaehlt, dass das Fenster und
+absichtlich so gewählt, dass das Fenster und
 der gebundene Button vor dem Command
-zerstoert werden. Der Binding-Vertrag kennt
+zerstört werden. Der Binding-Vertrag kennt
 auch lebensdauersichere, nichtbesitzende
 \term{Command::Reference}-Objekte; die
 Anwendung sollte die Abhaengigkeiten
@@ -34,12 +34,12 @@ trotzdem einfach und gut nachvollziehbar halten.
 
 \section{Enabled bedeutet auch semantisch gesperrt}
 Mit \texttt{saveCommand.setEnabled(false)}
-sperren Sie die Ausfuehrung des Commands.
+sperren Sie die Ausführung des Commands.
 \texttt{execute()} liefert dann \texttt{false}.
-Gebundene Buttons koennen Text- und Enabled-
-Zustand aus dem Command uebernehmen.
+Gebundene Buttons können Text- und Enabled-
+Zustand aus dem Command übernehmen.
 Ein solcher Vorgang ist verlasslicher, als nur
-die visuelle Farbe eines Buttons zu aendern.
+die visuelle Farbe eines Buttons zu ändern.
 
 \begin{lstlisting}[language=SASDCpp]
 saveCommand.setEnabled(formIsValid);
@@ -47,7 +47,7 @@ if (!saveCommand.execute()) {
     // Kommando war nicht ausfuehrbar.
 }
 \end{lstlisting}
-Hier steht \texttt{formIsValid} fuer eine
+Hier steht \texttt{formIsValid} für eine
 bereits berechnete boolesche Variable der
 Anwendung; die Validierung selbst liegt
 ausserhalb des Commands.
@@ -74,12 +74,12 @@ Command-Identitaet; in einer echten
 Anwendung waere ein zweimal angebotenes
 Speichern eventuell weniger sinnvoll
 als eine zweite Aktion. Menue-Hierarchien
-werden im aktuellen Terminal-Host ueber
+werden im aktuellen Terminal-Host über
 transiente Praesentationsansichten,
 Hit-Tests und Controller umgesetzt.
 
 \section{Anzeige eines Shortcuts ist nicht sein Routing}
-Ein MenuItem kann ein Kuerzel \emph{anzeigen}.
+Ein MenuItem kann ein Kürzel \emph{anzeigen}.
 Das ist nicht dasselbe wie dessen
 \emph{Registrierung}. Dafuer existiert
 \term{ShortcutMap}; sie ordnet
@@ -88,7 +88,7 @@ Der Host entscheidet, in welcher Phase
 ein KeyEvent zuerst an Menue/Fokusziel
 oder an eine globale ShortcutMap geht.
 Diese Unterscheidung verhindert, dass
-jedes sichtbare Kuerzel automatisch
+jedes sichtbare Kürzel automatisch
 eine unsichtbare globale Eingaberoute erzeugt.
 
 \begin{lstlisting}[language=SASDCpp]
@@ -108,28 +108,28 @@ Command nur aus, wenn der KeyEvent wirklich
 passt und das Command vorhanden und
 aktiviert ist.
 
-\section{Einmalige Ausfuehrung sicherstellen}
+\section{Einmalige Ausführung sicherstellen}
 Bei Tastenkombinationen und Menues besteht
 sonst die Gefahr, dass eine einzige Eingabe
-gleich zweimal zur Ausfuehrung gelangt.
+gleich zweimal zur Ausführung gelangt.
 Ein Host sollte eine feste Routing-Reihenfolge
 definieren und \term{handled/ignored}
 respektieren. Bei einem offenen Menue
-muessen Navigation, Escape, Untermenue-
+müssen Navigation, Escape, Untermenue-
 Wechsel und Pointer-Gesten kohaerent
 vorrangig behandelt werden.
 Als belastbares Referenzbeispiel dient
 \filepath{examples/terminal_form_demo.cpp}.
 
-\section{Beobachtbare Command-Zustaende}
+\section{Beobachtbare Command-Zustände}
 \texttt{observeState()} ermoeglicht
-ein synchrones Benachrichtigen ueber
-Text- und Enabled-Aenderungen.
-Die Rueckgabe ist eine move-only
+ein synchrones Benachrichtigen über
+Text- und Enabled-Änderungen.
+Die Rückgabe ist eine move-only
 \term{StateSubscription}; bei ihrem
 Destruktor wird die Beobachtung
 automatisch getrennt. Solche RAII-Tokens
-sind insbesondere fuer wiederverwendbare
+sind insbesondere für wiederverwendbare
 Widgets wichtig, die nicht zu
 dauerhaften Besitzern eines Commands
 werden sollen.
@@ -137,7 +137,7 @@ werden sollen.
 \PracticalTip{Bei SASD Gatehold kann etwa
 \emph{Regel anwenden} gleichzeitig Button,
 Menuepunkt und Funktionstaste sein.
-Definieren Sie die Pruefung der Berechtigung
+Definieren Sie die Prüfung der Berechtigung
 und die eigentliche Aktion genau einmal
 hinter dem Command, nicht je Ausloeser.
 Ein UI-Command ersetzt aber keine serverseitige
