@@ -1,0 +1,65 @@
+% SPDX-License-Identifier: MIT
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{sasdmanual}[2026/10/12 SASD UI Toolkit book design]
+\RequirePackage{iftex}
+\ifLuaTeX\else
+ \PackageError{sasdmanual}{LuaLaTeX is required}{Run latexmk -lualatex main.tex}
+\fi
+\RequirePackage{fontspec}
+\setmainfont{TeX Gyre Pagella}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{Latin Modern Mono}[Scale=0.85]
+\RequirePackage[english,ngerman]{babel}
+\RequirePackage{microtype}
+\RequirePackage[table]{xcolor}
+\definecolor{SASDDark}{HTML}{15283B}
+\definecolor{SASDDarkTwo}{HTML}{213950}
+\definecolor{SASDTurquoise}{HTML}{49D8D0}
+\definecolor{SASDBlue}{HTML}{185A83}
+\definecolor{SASDSoft}{HTML}{D7E7F0}
+\definecolor{SASDPale}{HTML}{EDF6F7}
+\definecolor{SASDGray}{HTML}{536373}
+\RequirePackage{tikz}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{enumitem}
+\RequirePackage{etoolbox}
+\RequirePackage{listings}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{scrlayer-scrpage}
+\RequirePackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=SASDBlue,urlcolor=SASDBlue,citecolor=SASDBlue,
+ bookmarksopen=true,pdfencoding=auto}
+\setcounter{tocdepth}{1}
+\setlist{itemsep=.25em,topsep=.4em}
+\KOMAoptions{parskip=half,headsepline=true,footsepline=false}
+\clearpairofpagestyles
+\ihead{\headmark}\ohead{\sffamily SASD UI TOOLKIT}
+\cfoot{\pagemark}
+\pagestyle{scrheadings}
+\addtokomafont{chapter}{\sffamily\color{SASDDark}}
+\addtokomafont{section}{\sffamily\color{SASDBlue}}
+\addtokomafont{subsection}{\sffamily\color{SASDDark}}
+\newtcolorbox{summarybox}{enhanced,breakable,colback=SASDPale,colframe=SASDBlue,
+ boxrule=0pt,leftrule=3pt,arc=0pt,left=11pt,right=11pt,top=10pt,bottom=8pt}
+\newtcolorbox{noticebox}{enhanced,breakable,colback=gray!5,colframe=SASDGray,
+ boxrule=.5pt,arc=1pt,left=9pt,right=9pt,top=8pt,bottom=8pt}
+\newtcolorbox{tipbox}{enhanced,breakable,colback=SASDPale,colframe=SASDTurquoise!60!black,
+ boxrule=.6pt,arc=1pt,left=9pt,right=9pt,top=8pt,bottom=8pt}
+\newcommand{\ChapterSummary}[1]{\begin{summarybox}\textsf{\bfseries\ManualSummaryLabel}\par\medskip#1\end{summarybox}}
+\newcommand{\PracticalTip}[1]{\begin{tipbox}\textbf{\ManualTipLabel}\quad #1\end{tipbox}}
+\newcommand{\Important}[1]{\begin{noticebox}\textbf{\ManualImportantLabel}\quad #1\end{noticebox}}
+\newcommand{\filepath}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\term}[1]{\textsf{\bfseries #1}}
+\lstdefinestyle{sasd}{
+ basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{gray!6},
+ keywordstyle=\color{SASDBlue}\bfseries,commentstyle=\color{SASDGray},
+ stringstyle=\color{SASDBlue!65!black},numbers=left,numberstyle=\tiny\color{SASDGray},
+ numbersep=7pt,frame=single,rulecolor=\color{gray!25},frameround=tttt,
+ breaklines=true,breakatwhitespace=true,columns=fullflexible,keepspaces=true,
+ showstringspaces=false,tabsize=2,upquote=true,captionpos=b,
+ xleftmargin=1.25em,framexleftmargin=1em,aboveskip=1em,belowskip=1em}
+\lstset{style=sasd}
+\lstdefinelanguage{SASDCpp}{language=C++,morekeywords={string_view,optional,nullopt,size_t,namespace,requires}}
+\newcommand{\CodeRef}[1]{\hfill{\footnotesize\color{SASDGray}\filepath{#1}}}
+\raggedbottom
