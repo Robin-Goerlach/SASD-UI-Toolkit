@@ -1,0 +1,180 @@
+% SPDX-License-Identifier: MIT
+\chapter{Listen, Tabellen und Baeume mit Model/View}\label{chap:models}
+\ChapterSummary{Sie erfahren, wie Daten und ihre Darstellung getrennt
+werden, wie Selektion und sichtbarer Ausschnitt funktionieren und
+weshalb ein ListView nicht fuer jede Datenzeile ein eigenes Widget
+erzeugen muss. Die Beispiele beschreiben den derzeitigen M5-Core-
+Vertrag und seine Grenzen.}
+
+\section{Warum nicht tausend Labels?}
+Eine Administrationsoberflaeche kann hunderte Hosts, Dienste,
+Firewallregeln oder Logzeilen anzeigen muessen.
+Wuerde jede Zelle zu einem eigenen Widget, wuerden
+Lebensdauer, Messung, Selektion und Redraw unnoetig teuer.
+Das Toolkit setzt deshalb fuer strukturierte Daten auf
+\term{Model/View}: Das Modell kennt Inhalt und Aenderungen,
+die View kennt Interaktion und einen sichtbaren Ausschnitt,
+und ein SelectionModel verwaltet die aktuelle Auswahl.
+
+\begin{center}
+\begin{tikzpicture}[node distance=13mm,every node/.style={draw,
+ rounded corners=2pt,minimum width=34mm,minimum height=11mm,
+ fill=SASDPale,font=\sffamily\small,align=center}]
+\node (model) {Datenmodell\\Inhalt + Revision};
+\node[right=of model] (selection) {SelectionModel\\gewaehlter Eintrag};
+\node[below=of selection,xshift=-22mm] (view) {View\\Viewport + Ereignisse};
+\draw[->,thick,SASDBlue] (model)--(selection);
+\draw[->,thick,SASDBlue] (model)--(view);
+\draw[->,thick,SASDBlue] (selection)--(view);
+\end{tikzpicture}
+\end{center}
+
+\section{ListModel und ListView}
+Ein \term{ListModel} bietet \texttt{rowCount()}
+und \texttt{textAt(row)}. Das mitgelieferte
+\term{StringListModel} speichert Strings und
+kennt \texttt{append}, \texttt{insert}, \texttt{erase},
+\texttt{setText} und \texttt{reset}.
+Bei inhaltlichen Aenderungen werden
+Modellbeobachter informiert; die Revisionsnummer
+steigt. Das \term{ListSelectionModel} verwaltet
+eine optionale Zeilenauswahl und kann vorwaerts
+oder rueckwaerts navigieren.
+
+\begin{lstlisting}[language=SASDCpp,caption={Sichtbaren Listenausschnitt an ein Modell binden}]
+StringListModel items{{"dns", "firewall", "logging"}};
+ListSelectionModel selected;
+selected.setModel(&items);
+
+ListView view;
+view.setModel(&items);
+view.setSelectionModel(&selected);
+view.setViewport(0, 10);
+
+selected.select(1);
+for (const auto& row : view.visibleRows()) {
+    // row.row, row.text, row.selected auswerten
+}
+\end{lstlisting}
+Dieses Beispiel ist reine Core-Datenlogik;
+es erzeugt ohne Presentation-Sink noch
+keine sichtbare Terminal-Anwendung.
+In der realen Oberflaeche gehoert die View
+in den Containerbaum; Modell und
+SelectionModel leben ausreichend lange.
+
+\section{Ein Viewport ist ein Vertrag, kein Datenverlust}
+\texttt{setViewport(first\_row, row\_count)} legt fest,
+welche Zeilen \emph{voraussichtlich} sichtbar sind.
+\texttt{visibleRows()} liefert dafuer
+Werte-Snapshots statt direkter Besitzrechte
+an interne Modell-Strings.
+Das Modell selbst bleibt vollstaendig erhalten.
+Nach einer Modellmutation wird der Viewport
+normalisiert; eine Auswahl soll in einem
+sinnvollen sichtbaren Bereich bleiben.
+
+\section{TableModel: Rechteckige Daten}
+Ein \term{TableModel} stellt \texttt{rowCount},
+\texttt{columnCount}, \texttt{headerAt(column)}
+und \texttt{textAt(row,column)} bereit.
+\term{StringTableModel} verwaltet eine
+rechteckige Tabelle: Jede Zeile muss zur
+Spaltenzahl passen. Die View kann
+sowohl Zeilen als auch Spalten virtualisieren;
+\term{TableSelectionModel} waehlt eine optionale
+\term{TableCell} aus Zeile und Spalte.
+
+\begin{lstlisting}[language=SASDCpp]
+StringTableModel table(
+    {"Host", "Status"},
+    {{"fw01", "ok"}, {"dns01", "offline"}});
+TableSelectionModel selection;
+selection.setModel(&table);
+TableView view;
+view.setModel(&table);
+view.setSelectionModel(&selection);
+view.setViewport(0, 12, 0, 2);
+selection.select(0, 1);
+
+const auto headers = view.visibleHeaders();
+const auto rows = view.visibleRows();
+\end{lstlisting}
+Das Beispiel kann unveraendert in Core-Tests
+oder im Datenaufbau einer realen Form
+verwendet werden. Eine produktive
+Darstellung von Tabellenkanten,
+Spaltenbreiten oder Scrollbars bleibt eine
+Aufgabe der jeweiligen Presentationsschicht.
+Ein \term{TableView} ist nicht automatisch
+ein kompletter spreadsheetartiger Editor.
+
+\section{TreeModel: Hierarchie mit Pfaden}
+Ein \term{TreeNodePath} enthaelt eine Folge
+von Kindindizes. Das ist ein strukturierter
+Pfad, \emph{keine} dauerhaft unveraenderliche
+Datenbank-ID. Ein \term{TreeModel} beantwortet
+\texttt{childCount(parent)} und
+\texttt{textAt(node)}. Ein
+\term{StringTreeModel} kann Wurzeln,
+Kindknoten, Umbenennen und Reset verwalten.
+Die \term{TreeView} kann Knoten
+expandieren, einklappen und nur den
+sichtbaren Teilbaum zurueckgeben.
+
+\begin{lstlisting}[language=SASDCpp]
+StringTreeModel tree{{"Netz", "System"}};
+const TreeNodePath root{{0}};
+const TreeNodePath child = tree.append(root, "DNS");
+
+TreeSelectionModel choice;
+choice.setModel(&tree);
+TreeView view;
+view.setModel(&tree);
+view.setSelectionModel(&choice);
+view.expand(root);
+view.setViewport(std::nullopt, 15);
+choice.select(child);
+\end{lstlisting}
+Bei strukturellen Aenderungen darf die
+Anwendung einen alten Pfad nicht
+unbesehen als weiterhin identisch ansehen.
+Fuer real persistierte Objekte benoetigt
+die Domaenenschicht stabile Kennungen,
+die sie mit Pfaden abgleichen kann.
+
+\section{Beobachtungen, Besitz und Lebensdauer}
+Modelle sind \term{Component}-Objekte,
+die Views halten aber nur lebensdauersicher
+\emph{nichtbesitzende} \term{Reference}-Handles.
+Die \term{Subscription}-Tokens melden sich
+bei der Zerstoerung automatisch ab.
+Das verhindert haengende rohe Zeiger
+in Beobachterlisten, ersetzt aber
+keine sorgfaeltige Anwendungstopologie.
+Benutzeraktionen, die nach Ablauf eines
+Models eintreffen, muessen kontrolliert
+ins Leere laufen.
+
+\section{Aktueller Implementationsumfang}
+Die Core-Vertraege fuer List-, Table- und
+Tree-Modelle, SelectionModels und Views
+sind implementiert. Terminal- und
+Rendered-Praesentationen sind je nach
+Widget und Demo-Faelligkeit unterschiedlich
+weit integriert. Planen Sie deswegen vor
+einem Produktivprojekt einen sichtbaren
+End-to-End-Test des konkret benoetigten
+Widget/Backend-Paars ein. Aus der Existenz
+eines Core-Headers folgt noch nicht,
+dass jede Oberflaechenvariante die gesamte
+Bedienung schon anbietet.
+
+\PracticalTip{Fuer SASD Gatehold waere
+eine Firewall-Regelliste ein gutes
+TableModel; der markierte Regel-Datensatz
+wird ueber ein SelectionModel identifiziert.
+Zustand und Berechtigung zum Anwenden
+gehoeren in die Domaenenlogik und die
+gebundenen Commands, nicht in den
+Zeilenrenderer.}
