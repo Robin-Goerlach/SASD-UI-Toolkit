@@ -2,17 +2,17 @@
 \chapter{Listen, Tabellen und Baeume mit Model/View}\label{chap:models}
 \ChapterSummary{Sie erfahren, wie Daten und ihre Darstellung getrennt
 werden, wie Selektion und sichtbarer Ausschnitt funktionieren und
-weshalb ein ListView nicht fuer jede Datenzeile ein eigenes Widget
+weshalb ein ListView nicht für jede Datenzeile ein eigenes Widget
 erzeugen muss. Die Beispiele beschreiben den derzeitigen M5-Core-
 Vertrag und seine Grenzen.}
 
 \section{Warum nicht tausend Labels?}
 Eine Administrationsoberflaeche kann hunderte Hosts, Dienste,
-Firewallregeln oder Logzeilen anzeigen muessen.
+Firewallregeln oder Logzeilen anzeigen müssen.
 Wuerde jede Zelle zu einem eigenen Widget, wuerden
-Lebensdauer, Messung, Selektion und Redraw unnoetig teuer.
-Das Toolkit setzt deshalb fuer strukturierte Daten auf
-\term{Model/View}: Das Modell kennt Inhalt und Aenderungen,
+Lebensdauer, Messung, Selektion und Redraw unnötig teuer.
+Das Toolkit setzt deshalb für strukturierte Daten auf
+\term{Model/View}: Das Modell kennt Inhalt und Änderungen,
 die View kennt Interaktion und einen sichtbaren Ausschnitt,
 und ein SelectionModel verwaltet die aktuelle Auswahl.
 
@@ -21,7 +21,7 @@ und ein SelectionModel verwaltet die aktuelle Auswahl.
  rounded corners=2pt,minimum width=34mm,minimum height=11mm,
  fill=SASDPale,font=\sffamily\small,align=center}]
 \node (model) {Datenmodell\\Inhalt + Revision};
-\node[right=of model] (selection) {SelectionModel\\gewaehlter Eintrag};
+\node[right=of model] (selection) {SelectionModel\\gewählter Eintrag};
 \node[below=of selection,xshift=-22mm] (view) {View\\Viewport + Ereignisse};
 \draw[->,thick,SASDBlue] (model)--(selection);
 \draw[->,thick,SASDBlue] (model)--(view);
@@ -35,11 +35,11 @@ und \texttt{textAt(row)}. Das mitgelieferte
 \term{StringListModel} speichert Strings und
 kennt \texttt{append}, \texttt{insert}, \texttt{erase},
 \texttt{setText} und \texttt{reset}.
-Bei inhaltlichen Aenderungen werden
+Bei inhaltlichen Änderungen werden
 Modellbeobachter informiert; die Revisionsnummer
 steigt. Das \term{ListSelectionModel} verwaltet
 eine optionale Zeilenauswahl und kann vorwaerts
-oder rueckwaerts navigieren.
+oder rückwaerts navigieren.
 
 \begin{lstlisting}[language=SASDCpp,caption={Sichtbaren Listenausschnitt an ein Modell binden}]
 StringListModel items{{"dns", "firewall", "logging"}};
@@ -59,7 +59,7 @@ for (const auto& row : view.visibleRows()) {
 Dieses Beispiel ist reine Core-Datenlogik;
 es erzeugt ohne Presentation-Sink noch
 keine sichtbare Terminal-Anwendung.
-In der realen Oberflaeche gehoert die View
+In der realen Oberflaeche gehört die View
 in den Containerbaum; Modell und
 SelectionModel leben ausreichend lange.
 
@@ -69,7 +69,7 @@ welche Zeilen \emph{voraussichtlich} sichtbar sind.
 \texttt{visibleRows()} liefert dafuer
 Werte-Snapshots statt direkter Besitzrechte
 an interne Modell-Strings.
-Das Modell selbst bleibt vollstaendig erhalten.
+Das Modell selbst bleibt vollständig erhalten.
 Nach einer Modellmutation wird der Viewport
 normalisiert; eine Auswahl soll in einem
 sinnvollen sichtbaren Bereich bleiben.
@@ -136,10 +136,10 @@ view.expand(root);
 view.setViewport(std::nullopt, 15);
 choice.select(child);
 \end{lstlisting}
-Bei strukturellen Aenderungen darf die
+Bei strukturellen Änderungen darf die
 Anwendung einen alten Pfad nicht
 unbesehen als weiterhin identisch ansehen.
-Fuer real persistierte Objekte benoetigt
+Für real persistierte Objekte benötigt
 die Domaenenschicht stabile Kennungen,
 die sie mit Pfaden abgleichen kann.
 
@@ -148,33 +148,33 @@ Modelle sind \term{Component}-Objekte,
 die Views halten aber nur lebensdauersicher
 \emph{nichtbesitzende} \term{Reference}-Handles.
 Die \term{Subscription}-Tokens melden sich
-bei der Zerstoerung automatisch ab.
-Das verhindert haengende rohe Zeiger
+bei der Zerstörung automatisch ab.
+Das verhindert hängende rohe Zeiger
 in Beobachterlisten, ersetzt aber
 keine sorgfaeltige Anwendungstopologie.
 Benutzeraktionen, die nach Ablauf eines
-Models eintreffen, muessen kontrolliert
+Models eintreffen, müssen kontrolliert
 ins Leere laufen.
 
 \section{Aktueller Implementationsumfang}
-Die Core-Vertraege fuer List-, Table- und
+Die Core-Vertraege für List-, Table- und
 Tree-Modelle, SelectionModels und Views
 sind implementiert. Terminal- und
 Rendered-Praesentationen sind je nach
-Widget und Demo-Faelligkeit unterschiedlich
+Widget und Demo-Fälligkeit unterschiedlich
 weit integriert. Planen Sie deswegen vor
 einem Produktivprojekt einen sichtbaren
-End-to-End-Test des konkret benoetigten
+End-to-End-Test des konkret benötigten
 Widget/Backend-Paars ein. Aus der Existenz
 eines Core-Headers folgt noch nicht,
 dass jede Oberflaechenvariante die gesamte
 Bedienung schon anbietet.
 
-\PracticalTip{Fuer SASD Gatehold waere
+\PracticalTip{Für SASD Gatehold waere
 eine Firewall-Regelliste ein gutes
 TableModel; der markierte Regel-Datensatz
-wird ueber ein SelectionModel identifiziert.
+wird über ein SelectionModel identifiziert.
 Zustand und Berechtigung zum Anwenden
-gehoeren in die Domaenenlogik und die
+gehören in die Domaenenlogik und die
 gebundenen Commands, nicht in den
 Zeilenrenderer.}
