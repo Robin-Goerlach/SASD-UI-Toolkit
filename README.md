@@ -325,6 +325,16 @@ See the full [English roadmap](docs/en/ROADMAP.md) or [German roadmap](docs/de/R
 
 ## Documentation
 
+### LaTeX Anwenderhandbuch
+
+Das ausführliche [deutsche Anwenderhandbuch](docs/manual/README.md)
+liegt als mehrsprachig vorbereitete LaTeX-Quelle vor. Es erklärt
+Installation, erste Anwendungen, Komponenten und Layout, Fokus und Events,
+Commands/Menüs, Model/View, Terminal- und Rendered-Backends sowie
+Fehlersuche. Die Kapitel beginnen jeweils mit einer Zusammenfassung.
+Eine englische Textausgabe ist noch nicht übersetzt.
+
+
 Documentation is maintained in German and English.
 
 ### English
