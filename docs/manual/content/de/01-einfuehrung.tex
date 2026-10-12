@@ -1,30 +1,30 @@
 % SPDX-License-Identifier: MIT
 \chapter{Willkommen beim SASD UI Toolkit}\label{chap:intro}
 \ChapterSummary{Sie lernen die Zielsetzung, die Architektur und den aktuellen
-Reifegrad des Toolkits kennen. Am Ende können Sie einschaetzen, für welche
+Reifegrad des Toolkits kennen. Am Ende können Sie einschätzen, für welche
 Projekte es heute geeignet ist, welche Teile Sie zuerst kennenlernen sollten
 und was bewusst noch nicht versprochen wird.}
 
 \section{Wozu dieses Handbuch dient}
 Eine Bibliothek wird nicht schon dadurch nützlich, dass sie viele Klassen
 besitzt. Nützlich wird sie, wenn Entwickler die richtigen Bausteine finden,
-das Zusammenspiel verstehen, Fehler vorhersehen und eine Oberflaeche
+das Zusammenspiel verstehen, Fehler vorhersehen und eine Oberfläche
 überschaubar erweitern können. Dieses Anwenderhandbuch richtet sich an
 C++-Entwickler, die \emph{Anwendungen mit} dem SASD UI Toolkit bauen wollen.
 Es ist weder eine interne Entwickler-Spezifikation noch der Ersatz für die
 API-Deklarationen in den Header-Dateien.
 
 Das Buch ist wie ein klassisches Software-Handbuch aufgebaut: Zuerst
-Orientierung und Installation, dann ein gefuehrtes Praxisbeispiel, danach
+Orientierung und Installation, dann ein geführtes Praxisbeispiel, danach
 die einzelnen Bedien- und Programmierkonzepte und zum Schluss
 Problembehandlung und ein kompakter Nachschlageteil. Jedes Kapitel beginnt
 mit einer Zusammenfassung; konkrete Quellpfade erleichtern die Vertiefung.
 
 \section{Die Idee: eine Semantik, mehrere Darstellungen}
-Ein \term{Button} bedeutet unabhaengig von seinem Ausgabegeraet:
+Ein \term{Button} bedeutet unabhängig von seinem Ausgabegerät:
 Er ist sichtbar oder verborgen, aktiviert oder deaktiviert, kann den
-Fokus besitzen und eine Aktion ausloesen. Wie seine Beschriftung,
-seine Umrandung oder sein gedrueckter Zustand aussehen, bestimmt dagegen
+Fokus besitzen und eine Aktion auslösen. Wie seine Beschriftung,
+seine Umrandung oder sein gedrückter Zustand aussehen, bestimmt dagegen
 die Darstellungsschicht.
 
 \begin{center}
@@ -64,7 +64,7 @@ eigene Tests.\\
 SDL3 & Optionaler experimenteller Adapter mit Fenster- und
 Headless-Pfad; \emph{build-tree-only}.\\
 Native Desktop & Zukünftig; kein fertiger gleichwertiger Win32-/GTK-/AppKit-Peer.\\
-Stabilitaet & Vor Version 1.0; Quellkompatibilitaet kann sich bei
+Stabilität & Vor Version 1.0; Quellkompatibilitaet kann sich bei
 begruendeten Architekturverbesserungen ändern.\\
 \bottomrule
 \end{tabularx}
@@ -84,8 +84,8 @@ Für einen schnellen Einstieg lesen Sie die Kapitel
 vertieft Komponenten, Layout und Events in den Kapiteln
 \ref{chap:widgets} und \ref{chap:layout}. Für administrative Anwendungen
 mit Listen und Hierarchien ist Kapitel \ref{chap:models} besonders wichtig.
-Kapitel \ref{chap:backends} klärt die Grenzen der Ausgabegeraete.
+Kapitel \ref{chap:backends} klärt die Grenzen der Ausgabegeräte.
 
 \PracticalTip{Beginnen Sie mit der mitgelieferten Terminal-Demo und
 verändern Sie jeweils nur eine Sache: zuerst Text, dann ein Widget,
-dann die Fokusfolge, zuletzt Events oder Menues.}
+dann die Fokusfolge, zuletzt Events oder Menüs.}

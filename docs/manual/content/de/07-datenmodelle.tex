@@ -1,5 +1,5 @@
 % SPDX-License-Identifier: MIT
-\chapter{Listen, Tabellen und Baeume mit Model/View}\label{chap:models}
+\chapter{Listen, Tabellen und Bäume mit Model/View}\label{chap:models}
 \ChapterSummary{Sie erfahren, wie Daten und ihre Darstellung getrennt
 werden, wie Selektion und sichtbarer Ausschnitt funktionieren und
 weshalb ein ListView nicht für jede Datenzeile ein eigenes Widget
@@ -7,9 +7,9 @@ erzeugen muss. Die Beispiele beschreiben den derzeitigen M5-Core-
 Vertrag und seine Grenzen.}
 
 \section{Warum nicht tausend Labels?}
-Eine Administrationsoberflaeche kann hunderte Hosts, Dienste,
+Eine Administrationsoberfläche kann hunderte Hosts, Dienste,
 Firewallregeln oder Logzeilen anzeigen müssen.
-Wuerde jede Zelle zu einem eigenen Widget, wuerden
+Würde jede Zelle zu einem eigenen Widget, würden
 Lebensdauer, Messung, Selektion und Redraw unnötig teuer.
 Das Toolkit setzt deshalb für strukturierte Daten auf
 \term{Model/View}: Das Modell kennt Inhalt und Änderungen,
@@ -38,8 +38,8 @@ kennt \texttt{append}, \texttt{insert}, \texttt{erase},
 Bei inhaltlichen Änderungen werden
 Modellbeobachter informiert; die Revisionsnummer
 steigt. Das \term{ListSelectionModel} verwaltet
-eine optionale Zeilenauswahl und kann vorwaerts
-oder rückwaerts navigieren.
+eine optionale Zeilenauswahl und kann vorwärts
+oder rückwärts navigieren.
 
 \begin{lstlisting}[language=SASDCpp,caption={Sichtbaren Listenausschnitt an ein Modell binden}]
 StringListModel items{{"dns", "firewall", "logging"}};
@@ -59,7 +59,7 @@ for (const auto& row : view.visibleRows()) {
 Dieses Beispiel ist reine Core-Datenlogik;
 es erzeugt ohne Presentation-Sink noch
 keine sichtbare Terminal-Anwendung.
-In der realen Oberflaeche gehört die View
+In der realen Oberfläche gehört die View
 in den Containerbaum; Modell und
 SelectionModel leben ausreichend lange.
 
@@ -82,7 +82,7 @@ und \texttt{textAt(row,column)} bereit.
 rechteckige Tabelle: Jede Zeile muss zur
 Spaltenzahl passen. Die View kann
 sowohl Zeilen als auch Spalten virtualisieren;
-\term{TableSelectionModel} waehlt eine optionale
+\term{TableSelectionModel} wählt eine optionale
 \term{TableCell} aus Zeile und Spalte.
 
 \begin{lstlisting}[language=SASDCpp]
@@ -100,7 +100,7 @@ selection.select(0, 1);
 const auto headers = view.visibleHeaders();
 const auto rows = view.visibleRows();
 \end{lstlisting}
-Das Beispiel kann unveraendert in Core-Tests
+Das Beispiel kann unverändert in Core-Tests
 oder im Datenaufbau einer realen Form
 verwendet werden. Eine produktive
 Darstellung von Tabellenkanten,
@@ -110,9 +110,9 @@ Ein \term{TableView} ist nicht automatisch
 ein kompletter spreadsheetartiger Editor.
 
 \section{TreeModel: Hierarchie mit Pfaden}
-Ein \term{TreeNodePath} enthaelt eine Folge
+Ein \term{TreeNodePath} enthält eine Folge
 von Kindindizes. Das ist ein strukturierter
-Pfad, \emph{keine} dauerhaft unveraenderliche
+Pfad, \emph{keine} dauerhaft unveränderliche
 Datenbank-ID. Ein \term{TreeModel} beantwortet
 \texttt{childCount(parent)} und
 \texttt{textAt(node)}. Ein
@@ -120,7 +120,7 @@ Datenbank-ID. Ein \term{TreeModel} beantwortet
 Kindknoten, Umbenennen und Reset verwalten.
 Die \term{TreeView} kann Knoten
 expandieren, einklappen und nur den
-sichtbaren Teilbaum zurueckgeben.
+sichtbaren Teilbaum zurückgeben.
 
 \begin{lstlisting}[language=SASDCpp]
 StringTreeModel tree{{"Netz", "System"}};
@@ -140,7 +140,7 @@ Bei strukturellen Änderungen darf die
 Anwendung einen alten Pfad nicht
 unbesehen als weiterhin identisch ansehen.
 Für real persistierte Objekte benötigt
-die Domaenenschicht stabile Kennungen,
+die Domänenschicht stabile Kennungen,
 die sie mit Pfaden abgleichen kann.
 
 \section{Beobachtungen, Besitz und Lebensdauer}
@@ -151,30 +151,30 @@ Die \term{Subscription}-Tokens melden sich
 bei der Zerstörung automatisch ab.
 Das verhindert hängende rohe Zeiger
 in Beobachterlisten, ersetzt aber
-keine sorgfaeltige Anwendungstopologie.
+keine sorgfältige Anwendungstopologie.
 Benutzeraktionen, die nach Ablauf eines
 Models eintreffen, müssen kontrolliert
 ins Leere laufen.
 
 \section{Aktueller Implementationsumfang}
-Die Core-Vertraege für List-, Table- und
+Die Core-Verträge für List-, Table- und
 Tree-Modelle, SelectionModels und Views
 sind implementiert. Terminal- und
-Rendered-Praesentationen sind je nach
+Rendered-Präsentationen sind je nach
 Widget und Demo-Fälligkeit unterschiedlich
 weit integriert. Planen Sie deswegen vor
 einem Produktivprojekt einen sichtbaren
 End-to-End-Test des konkret benötigten
 Widget/Backend-Paars ein. Aus der Existenz
 eines Core-Headers folgt noch nicht,
-dass jede Oberflaechenvariante die gesamte
+dass jede Oberflächenvariante die gesamte
 Bedienung schon anbietet.
 
-\PracticalTip{Für SASD Gatehold waere
+\PracticalTip{Für SASD Gatehold wäre
 eine Firewall-Regelliste ein gutes
 TableModel; der markierte Regel-Datensatz
 wird über ein SelectionModel identifiziert.
 Zustand und Berechtigung zum Anwenden
-gehören in die Domaenenlogik und die
+gehören in die Domänenlogik und die
 gebundenen Commands, nicht in den
 Zeilenrenderer.}

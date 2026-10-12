@@ -1,17 +1,17 @@
 % SPDX-License-Identifier: MIT
-\chapter{Die erste eigene Oberflaeche}\label{chap:first}
+\chapter{Die erste eigene Oberfläche}\label{chap:first}
 \ChapterSummary{An einem kleinen Formular lernen Sie, wie Widgets
 erzeugt, besessen und verschachtelt werden. Sie binden einen Button
 an eine Aktion und verstehen, welche Aufgaben eine reale
 Anwendungshuelle ausserhalb dieses bewusst kleinen Beispiels erledigt.}
 
 \section{Vom Formular zum Komponentenbaum}
-Bei SASD UI Toolkit schreiben Sie die sichtbare Oberflaeche als
+Bei SASD UI Toolkit schreiben Sie die sichtbare Oberfläche als
 C++-Objekte. Der \term{Window}-Container ist eine Wurzel,
 \term{VBox} ordnet Elemente untereinander an, und \term{Label},
 \term{TextField} sowie \term{Button} bilden die sichtbaren Teile.
 Eine \term{Container::emplace}-Operation erzeugt eine Komponente,
-übernimmt ihr Eigentum und gibt eine Referenz auf sie zurueck.
+übernimmt ihr Eigentum und gibt eine Referenz auf sie zurück.
 
 \begin{lstlisting}[language=SASDCpp,caption={Ein kleiner Formularbaum, bewusst ohne Host/Eventloop}]
 #include <sasd/ui/window.hpp>
@@ -38,7 +38,7 @@ void buildGreetingForm(sasd::ui::Window& window) {
 
 Das ist \textbf{ein syntaktisch nutzbarer Formularbaustein},
 aber absichtlich \emph{keine vollständige Anwendung}.
-Eine laufende Terminalanwendung muss zusaetzlich das
+Eine laufende Terminalanwendung muss zusätzlich das
 \term{TerminalBackend} öffnen, Eingaben abholen,
 Fokus und Pointer-Routing betreiben, Layout ausführen
 und die Darstellung aktualisieren. Diese Verantwortung
@@ -58,12 +58,12 @@ ihre Lebensdauer.
 Der Lambda-Callback liest den aktuellen Text des
 \term{TextField} und ersetzt die Beschriftung des Labels.
 Die sichtbare Aktualisierung wird durch die
-Invalidierungs-/Praesentationsmechanik der laufenden
+Invalidierungs-/Präsentationsmechanik der laufenden
 Anwendung verarbeitet. Der Callback allein öffnet
 keine Terminal-Session und pumpt keine Ereignisse.
 
 \section{Eine naheliegende Erweiterung}
-Ein zweiter Button kann die Eingabe zuruecksetzen:
+Ein zweiter Button kann die Eingabe zurücksetzen:
 \begin{lstlisting}[language=SASDCpp]
 auto& clear = column.emplace<Button>("Leeren");
 clear.setOnActivated([&name, &message] {
@@ -80,9 +80,9 @@ garantieren als den installierten Callbacks.
 \section{Der nächste Schritt: ein vollständiger Host}
 In der realen Terminal-Demo folgen auf den Widget-Aufbau
 die Einrichtung von \term{FocusManager}, \term{PointerRouter},
-Praesentations-Sink und den Callback-Bindungen.
+Präsentations-Sink und den Callback-Bindungen.
 Der Host pollt Events, vermittelt sie an die
-zuständigen Controls und praesentiert den geaenderten
+zuständigen Controls und präsentiert den geaenderten
 Frame. Das ist kein Versehen und keine fehlende
 magische \texttt{Application::run}-Methode:
 \term{Application} bietet derzeit unter anderem
@@ -96,9 +96,9 @@ Er verwaltet eine eindeutige Eigentumshierarchie und
 reagiert auf Ereignisse. Backend, Eingabegerate, Messung
 und Darstellung werden bewusst als separate Teile
 komponiert, damit die gleiche Semantik später auf
-mehreren Ausgabegeraten tragfaehig bleibt.
+mehreren Ausgabegeraten tragfähig bleibt.
 
 \PracticalTip{Ersetzen Sie zuerst in der Terminal-Demo nur
 den Formulartitel und einen Button-Callback. Vergleichen Sie
-danach, was beim Hinzufuegen eines Widgets an Fokusfolge,
+danach, was beim Hinzufügen eines Widgets an Fokusfolge,
 Layout und Darstellung ebenfalls betroffen ist.}

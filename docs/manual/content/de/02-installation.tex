@@ -1,14 +1,14 @@
 % SPDX-License-Identifier: MIT
 \chapter{Voraussetzungen, Build und Installation}\label{chap:install}
 \ChapterSummary{Sie richten eine reproduzierbare C++20-Buildumgebung ein,
-starten die Demonstration, fuehren Tests aus und binden das installierte
+starten die Demonstration, führen Tests aus und binden das installierte
 Toolkit in ein eigenes CMake-Projekt ein. Unterschiede zwischen
-Ein-Konfigurations- und Visual-Studio-Builds werden ausdruecklich erklärt.}
+Ein-Konfigurations- und Visual-Studio-Builds werden ausdrücklich erklärt.}
 
 \section{Voraussetzungen und Quellen}
 Sie benötigen einen C++20-fähigen Compiler, CMake und ein
 Buildsystem für Ihre Plattform. Das Haupt-Toolkit ist bewusst ohne
-obligatorische SDL-Abhaengigkeit nutzbar. Unter Linux und macOS ist
+obligatorische SDL-Abhängigkeit nutzbar. Unter Linux und macOS ist
 ein interaktives ANSI/VT-Terminal für die sichtbare Terminal-Demo
 sinnvoll; unter Windows wird eine geeignete Konsole bzw. ein
 Terminal mit VT-Unterstützung benötigt.
@@ -29,11 +29,11 @@ cmake -S . -B build \
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 \end{lstlisting}
-\term{Konfigurieren} prüft Compiler, Features und Abhaengigkeiten.
+\term{Konfigurieren} prüft Compiler, Features und Abhängigkeiten.
 \term{Bauen} erstellt Bibliotheken, Beispiele und Tests.
-\term{Testen} fuehrt die registrierten CTest-Fälle aus.
-Schlaegt schon die Konfiguration fehl, hilft ein Blick in die erste
-aussagekraeftige CMake-Fehlermeldung; das spätere Weiterbauen mit
+\term{Testen} führt die registrierten CTest-Fälle aus.
+Schlägt schon die Konfiguration fehl, hilft ein Blick in die erste
+aussagekräftige CMake-Fehlermeldung; das spätere Weiterbauen mit
 einem inkonsistenten Cache ist meist keine gute Idee.
 
 \section{Visual Studio 2022 unter Windows}
@@ -60,17 +60,17 @@ Unter Windows ist der Pfad beispielsweise
 Eine wirkliche Terminal-Sitzung ist erforderlich; die Anwendung
 lässt sich nicht sinnvoll als nichtinteraktiver Batch-Prozess testen.
 
-Erkunden Sie die Oberflaeche: Mit \textbf{Tab} und
+Erkunden Sie die Oberfläche: Mit \textbf{Tab} und
 \textbf{Shift+Tab} wechseln Sie den Fokus. \textbf{Enter}
 oder \textbf{Leertaste} aktiviert geeignete Buttons.
-\textbf{F1} zeigt die Demo-Hilfe, \textbf{F10} öffnet das Menue.
+\textbf{F1} zeigt die Demo-Hilfe, \textbf{F10} öffnet das Menü.
 Die Demo unterstützt unter anderem Texteingabe, Checkbox,
 Radiobuttons und eine ComboBox. Beenden ist über den Exit-Button,
 Escape oder den vorgesehenen Demo-Shortcut möglich.
 
 \Important{Terminalgroesse, Mausprotokoll und
 Steuersequenzen hängen vom Hostterminal ab. Die \term{TerminalSession}
-verwaltet die Zustandsaenderungen per RAII und stellt sie bei normalem
+verwaltet die Zustandsänderungen per RAII und stellt sie bei normalem
 Verlassen und beim Abwickeln von C++-Ausnahmen wieder her.
 Eine harte Prozessbeendigung kann diese Garantie nicht bieten.}
 
@@ -83,8 +83,8 @@ cmake -S . -B build-release \
 cmake --build build-release --parallel
 cmake --install build-release --prefix /opt/sasd-ui
 \end{lstlisting}
-Verwenden Sie unter Windows bei Bedarf zusaetzlich
-\filepath{--config Release}. Ein eigenstaendiges Installationspraefix
+Verwenden Sie unter Windows bei Bedarf zusätzlich
+\filepath{--config Release}. Ein eigenständiges Installationspräfix
 ist für Tests und mehrere Versionen meist sicherer als eine
 ungefragte systemweite Installation.
 
@@ -112,8 +112,8 @@ Die installierten Targets haben unterschiedliche Aufgaben:
 \end{itemize}
 Verlinken Sie nur die Schicht, die Ihre Anwendung tatsächlich benötigt.
 Die Versionsnummer der Paketanforderung ist an den genutzten
-Entwicklungs- bzw. Release-Stand anzupassen: Das veroeffentlichte
-v0.1.0-Tag bildet den aelteren Terminal-Baseline-Stand ab.
+Entwicklungs- bzw. Release-Stand anzupassen: Das veröffentlichte
+v0.1.0-Tag bildet den älteren Terminal-Baseline-Stand ab.
 
 \section{Optional: SDL3 bewusst einschalten}
 Für die experimentelle Desktop-Demo existieren die Optionen

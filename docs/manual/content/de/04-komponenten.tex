@@ -1,6 +1,6 @@
 % SPDX-License-Identifier: MIT
 \chapter{Komponenten, Widgets und Formulare}\label{chap:widgets}
-\ChapterSummary{Dieses Kapitel fuehrt durch die gebrauchsfertigen
+\ChapterSummary{Dieses Kapitel führt durch die gebrauchsfertigen
 Grund-Controls, ihre Zustandseigenschaften und ihre Lebensdauer.
 Sie erfahren, wann ein Widget genuegt und wann eine nichtvisuelle
 Komponente oder ein Modell die bessere Wahl ist.}
@@ -9,7 +9,7 @@ Komponente oder ein Modell die bessere Wahl ist.}
 \term{Component} ist die Grundlage für Objekte, die eine
 einheitliche Eigentums- und Lebensdauerbeziehung benötigen.
 \term{Widget} erweitert dieses Konzept um Sichtbarkeit,
-Aktivierbarkeit, Fokusfaehigkeit, Größe, Position und Ereignisse.
+Aktivierbarkeit, Fokusfähigkeit, Größe, Position und Ereignisse.
 \term{Container} besitzt Komponenten über eindeutiges
 \texttt{std::unique\_ptr}-Eigentum. Nur Widgets bilden dabei
 sichtbare Kinder; eine Command-Komponente im gleichen
@@ -30,8 +30,8 @@ Teilbaum muss im Anwendungscode entweder weiterbesessen oder
 zerstört werden.
 
 \Important{C++-Referenzen auf Widgets sind nicht selbst
-lebensdauersicher. Wenn Sie einen Container aufloesen oder
-ein Kind entfernen, duerfen spätere Callbacks nicht
+lebensdauersicher. Wenn Sie einen Container auflösen oder
+ein Kind entfernen, dürfen spätere Callbacks nicht
 mehr über alte Referenzen zugreifen.}
 
 \section{Gemeinsame Widget-Eigenschaften}
@@ -42,11 +42,11 @@ Die wichtigsten Methoden aus \filepath{include/sasd/ui/widget.hpp}:
 Methode & Bedeutung\\\midrule
 \texttt{setVisible(bool)} & Beeinflusst Darstellung und Teilnahme am Layout.\\
 \texttt{setEnabled(bool)} & Sperrt oder erlaubt normale Benutzeraktionen.\\
-\texttt{setFocusable(bool)} & Definiert grundsaetzliche Fokusfaehigkeit.\\
+\texttt{setFocusable(bool)} & Definiert grundsätzliche Fokusfähigkeit.\\
 \texttt{hasFocus()} & Zeigt aktuellen logischen Fokus an.\\
-\texttt{setSizeConstraints(...)} & Begrenzt die gewuenschte Größe.\\
+\texttt{setSizeConstraints(...)} & Begrenzt die gewünschte Größe.\\
 \texttt{measure(...)} & Berechnet die benötigte Größe.\\
-\texttt{arrange(Rect)} & Setzt endgueltige Grenzen.\\
+\texttt{arrange(Rect)} & Setzt endgültige Grenzen.\\
 \bottomrule
 \end{tabularx}
 \texttt{canReceiveFocus()} berücksichtigt
@@ -59,9 +59,9 @@ Ein \term{Label} transportiert UTF-8-Text, aber keine
 eingebaute Editierfunktion. Ein \term{Button} bietet
 \texttt{setText}, \texttt{setOnActivated} und
 \texttt{activate}. Ein aktivierbarer Button kann per
-Tastatur oder Zeigegeraet ausgeloest werden. Das eigene
+Tastatur oder Zeigegerät ausgelöst werden. Das eigene
 Pressed-Feedback wird getrennt vom dauerhaften Enabled-Zustand
-gefuehrt.
+geführt.
 
 \begin{lstlisting}[language=SASDCpp]
 auto& status = form.emplace<Label>("Noch nichts gespeichert");
@@ -70,7 +70,7 @@ save.setOnActivated([&status] {
     status.setText("Speichern angefordert");
 });
 \end{lstlisting}
-Soll derselbe Vorgang auch aus Menue und Shortcut erreichbar sein,
+Soll derselbe Vorgang auch aus Menü und Shortcut erreichbar sein,
 ist ein \term{Command} meist sinnvoller; Kapitel
 \ref{chap:commands} zeigt die Bindung.
 
@@ -80,7 +80,7 @@ Eingaben werden aus \term{TextInputEvent} verarbeitet,
 Tastaturbewegung und Löschen arbeiten mit
 Unicode-\emph{Scalars} statt rohen Bytes.
 Das ist ein wichtiger Unterschied: Ein mehrbyteiges UTF-8-Zeichen
-darf beim Rückwaertsloeschen nicht zerstört werden.
+darf beim Rückwaertslöschen nicht zerstört werden.
 
 Die wichtigsten Methoden sind nach Aufgaben gruppiert:
 \begin{itemize}
@@ -116,7 +116,7 @@ logging.setOnCheckedChanged([](bool checked) {
 logging.setChecked(false);
 \end{lstlisting}
 Ein \term{RadioGroup} ist eine \emph{nichtvisuelle}
-Komponente für gegenseitig ausschliessende Optionen.
+Komponente für gegenseitig ausschließende Optionen.
 RadioButtons referenzieren diese Gruppe explizit.
 Sie wird nicht aus benachbarten Widgets geraten.
 
@@ -128,7 +128,7 @@ auto& read = form.emplace<RadioButton>(modeGroup,"Nur lesen");
 auto& edit = form.emplace<RadioButton>(modeGroup,"Bearbeiten");
 read.setSelected(true);
 \end{lstlisting}
-Die Deklarationsreihenfolge sorgt hier dafuer,
+Die Deklarationsreihenfolge sorgt hier dafür,
 dass beim Verlassen des Scopes zuerst das Fenster
 und seine Buttons, danach die Gruppe zerstört werden.
 
@@ -144,11 +144,11 @@ Auswahl bewusst gelöscht, damit derselbe Zahlenindex
 nicht unbemerkt eine andere Bedeutung bekommt.
 
 Ein geöffnetes Dropdown hat einen zweiten,
-vorlaeufigen \term{Preview-Index}. Navigation verändert
+vorläufigen \term{Preview-Index}. Navigation verändert
 zunächst nur die Vorschau. \textbf{Enter} übernimmt,
 \textbf{Escape} verwirft, \textbf{F4} steuert die
 Dropdown-Absicht. Das ist für Formulare wichtig,
-deren teure oder gefaehrliche Folgeaktionen erst
+deren teure oder gefährliche Folgeaktionen erst
 nach einer bestätigten Wahl laufen sollen.
 \begin{lstlisting}[language=SASDCpp]
 auto& target = form.emplace<ComboBox>(
@@ -160,7 +160,7 @@ target.setOnSelectionChanged([](auto index) {
 \end{lstlisting}
 
 \section{Textstil statt plattformspezifischer Farbe}
-\term{TextStyle} ermoeglicht eine reduzierte, portable
+\term{TextStyle} ermöglicht eine reduzierte, portable
 Textgestaltung mit Farbangaben und Attributen.
 \begin{lstlisting}[language=SASDCpp]
 TextStyle style;
@@ -169,9 +169,9 @@ style.bold = true;
 caption.setTextStyle(style);
 \end{lstlisting}
 Die Wirkung ist von den Fähigkeiten des Backends
-abhaengig. Verwenden Sie Farbe als Unterstützung,
-nicht als einziges Traegermedium für Bedeutung.
+abhängig. Verwenden Sie Farbe als Unterstützung,
+nicht als einziges Trägermedium für Bedeutung.
 \PracticalTip{Trennen Sie Statusdaten, sichtbaren Text und
 Benutzerinteraktion. Ein TextField ist kein Datenmodell;
 ein Label ist keine Protokollhistorie; ein Command ist
-keine kuenstlich verborgene Schaltflaeche.}
+keine künstlich verborgene Schaltflaeche.}

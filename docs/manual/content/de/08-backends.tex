@@ -1,5 +1,5 @@
 % SPDX-License-Identifier: MIT
-\chapter{Terminal, Rendered und Portabilitaet}\label{chap:backends}
+\chapter{Terminal, Rendered und Portabilität}\label{chap:backends}
 \ChapterSummary{Dieses Kapitel hilft bei der Auswahl eines
 Ausgabebackends. Sie lernen die praktischen Unterschiede
 zwischen Terminalzellen, Grafikpixeln und nativen Widgets
@@ -10,13 +10,13 @@ für Administrationssoftware entscheidend sind.}
 Die Terminalfamilie ist nicht lediglich ein
 schlechter Ersatz für eine Desktop-GUI.
 Sie bietet Bedienung über SSH, geringe
-grafische Abhaengigkeiten, klare Tastaturwege
+grafische Abhängigkeiten, klare Tastaturwege
 und Möglichkeiten für Systeme ohne
 Desktop-Umgebung. Genau das ist für
 Remoteadministration und Wartung
 interessant.
 
-Die aktuelle Terminal-Schicht enthaelt
+Die aktuelle Terminal-Schicht enthält
 unter anderem \term{ScreenBuffer},
 \term{TextMetrics}, \term{AnsiFrameEncoder},
 \term{TerminalSession},
@@ -28,13 +28,13 @@ Die normale Widget-Semantik bleibt im Core.
 \section{Der Weg von Eingabe zu Bild}
 \begin{enumerate}
 \item Ein Terminal liefert Bytes oder eine
-plattformabhaengige Konsoleneingabe.
+plattformabhängige Konsoleneingabe.
 \item Der Backend-Adapter ordnet daraus
 Tasten-, Text-, Resize- und gegebenenfalls
 Pointer-Ereignisse zu.
 \item Fokus, Eventrouting, Command oder Widget
 ändern den semantischen Zustand.
-\item Messung und Praesentation erzeugen
+\item Messung und Präsentation erzeugen
 einen Bildschirmzustand im \term{ScreenBuffer}.
 \item Der \term{AnsiFrameEncoder} wandelt
 den fertigen Frame in ANSI/VT-Bytes um;
@@ -53,7 +53,7 @@ anderen Anzahl Terminalzellen bestehen.
 Besonders breite ostasiatische Zeichen,
 kombinierende Zeichen und unterschiedliche
 Terminal-Font-/Breitenregeln sind relevant.
-\term{TextMetrics} besitzt dafuer eine
+\term{TextMetrics} besitzt dafür eine
 explizite Breitenpolitik und
 Wide-Cell-Belegung.
 Eine Anwendung sollte niemals mit
@@ -69,7 +69,7 @@ Die \term{TerminalSession} kapselt
 Erwerb und Freigabe dieser Geräteressourcen.
 Das reduziert die Gefahr, nach regularem
 Programmende eine unbrauchbare Konsole
-zurueckzulassen.
+zurückzulassen.
 
 \Important{Wenn Sie eine Anwendung mit einem
 harten Kill abbrechen, etwa bei einem
@@ -96,14 +96,14 @@ ist keine portable Bediengarantie.
 
 \section{Rendered: Befehlsliste statt SDL in Core}
 \term{DisplayList} und \term{RenderDevice}
-ermoeglichen es, Grafikoperationen
+ermöglichen es, Grafikoperationen
 deterministisch zu beschreiben und
 zu wiederholen. Die
 \term{RenderedMeasurementContext}
 liefert dazu Schriftmetriken.
 \term{RenderedPresentationSink}
 übersetzt semantische Widget-Zustände
-in Zeichenvorgaenge. Diese API ist
+in Zeichenvorgänge. Diese API ist
 nicht gleich SDL3 und kann ohne
 graphische Sitzung getestet werden.
 
@@ -120,14 +120,14 @@ ungetesteten Umschalter behandeln.
 
 \section{Native Peers sind später vorgesehen}
 Eine native Win32-, GTK- oder AppKit-
-Implementierung waere eine weitere
+Implementierung wäre eine weitere
 Darstellung derselben Widgets,
 nicht eine neue Semantik. Es ist aber
-\emph{kein} fertiger Paritaetsstand
+\emph{kein} fertiger Paritätsstand
 vorhanden. Plattformintegration,
 Barrierefreiheit, Text-Input-
 Methoden, HiDPI, Fensterlebensdauer
-und native Menues sind eigene
+und native Menüs sind eigene
 Entwicklungsaufgaben.
 
 \section{Testmatrix für portable Programme}
@@ -153,10 +153,10 @@ Terminal-PTY/ConPTY, bei Bedarf SDL3.\\
 Die vorhandene CI und die manuellen
 Smoke-Test-Protokolle unter
 \filepath{docs/de/} und \filepath{docs/en/}
-sind dafuer Referenzen.
+sind dafür Referenzen.
 
 \PracticalTip{Für ein Administrationsprogramm
 ist ein vollständiger, tastaturbedienbarer
 Terminalpfad oft wertvoller als eine
 visuell beeindruckende, aber noch
-unvollstaendige SDL3-Version.}
+unvollständige SDL3-Version.}

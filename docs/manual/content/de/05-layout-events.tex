@@ -1,22 +1,22 @@
 % SPDX-License-Identifier: MIT
 \chapter{Layout, Fokus und Ereignisse}\label{chap:layout}
 \ChapterSummary{Sie lernen die Zweiphasen-Messung kennen,
-waehlen geeignete Layout-Container und verstehen, wie Tastatur-,
+wählen geeignete Layout-Container und verstehen, wie Tastatur-,
 Text- und Pointer-Ereignisse zum richtigen Widget gelangen.
-Das Kapitel vermittelt die Grundlage für reaktionsfaehige,
-gut testbare Oberflaechen.}
+Das Kapitel vermittelt die Grundlage für reaktionsfähige,
+gut testbare Oberflächen.}
 
 \section{Warum Layout in zwei Phasen erfolgt}
 Ein Widget weiss vor der Darstellung nicht zwingend, wie viel
 Platz seine Beschriftung benötigt: Ein Terminal misst in
-Zeichen-Zellen, eine gerenderte Oberflaeche in Schriftmetriken.
+Zeichen-Zellen, eine gerenderte Oberfläche in Schriftmetriken.
 Darum verwendet das Toolkit \term{measure} und \term{arrange}.
 
 \term{measure} fragt mit Minimal- und Maximalbedingungen
-nach der gewuenschten Größe. Die \term{MeasurementContext}
+nach der gewünschten Größe. Die \term{MeasurementContext}
 liefert passende backendbezogene Messregeln, ohne dass
 ein Core-Widget das Backend kennen muss.
-\term{arrange} legt danach die endgueltige Position
+\term{arrange} legt danach die endgültige Position
 und Größe innerhalb des zugewiesenen Rechtecks fest.
 
 \begin{lstlisting}[language=SASDCpp]
@@ -50,7 +50,7 @@ lokalen Inhaltsbereich, etwa für Overlays.\\
 \end{tabularx}
 Das sind zurzeit konkrete Container, kein
 CSS-/HTML-Layoutsystem. \term{VBox} und \term{HBox}
-fuehren keine magische automatische Flexbox-Logik ein,
+führen keine magische automatische Flexbox-Logik ein,
 die beliebige UI-Fälle bereits abdeckt.
 
 \begin{lstlisting}[language=SASDCpp,caption={FormLayout fuer beschriftete Felder}]
@@ -61,18 +61,18 @@ nameRow.field.setText("admin");
 \end{lstlisting}
 Für Überlagerungen benutzen Sie \term{StackLayout}
 nur dann, wenn das erwartete Sichtbarkeits- und
-Fokusverhalten ausdruecklich geregelt ist.
+Fokusverhalten ausdrücklich geregelt ist.
 Ein Stack bedeutet noch keinen kompletten
 modale-Dialoge-Manager.
 
 \section{Fokus ist logischer Zustand}
 \term{FocusManager} verwaltet genau den gültigen
-logischen Empfaenger der Tastatureingabe.
+logischen Empfänger der Tastatureingabe.
 \term{FocusTraversal} bestimmt eine reproduzierbare
 Reihenfolge durch den sichtbaren Widget-Baum.
 \textbf{Tab} und \textbf{Shift+Tab} können so Fokus
 wechseln, ohne dass jeder Button die gesamte
-Oberflaeche kennen muss.
+Oberfläche kennen muss.
 
 Die Wirksamkeit des Fokus hängt von
 \texttt{isFocusable()}, \texttt{isVisible()} und
@@ -103,16 +103,16 @@ ermittelt, wann Fokus umgeschaltet und
 wie die nächste Darstellung angestossen wird.
 
 \section{Maus und Pointer: Capture hat einen Besitzer}
-\term{PointerRouter} fuehrt geometrisches Hit-Testing,
+\term{PointerRouter} führt geometrisches Hit-Testing,
 Hover und explizites Pointer-Capture zusammen.
-Beim Ziehen darf nicht ploetzlich ein anderes
+Beim Ziehen darf nicht plötzlich ein anderes
 Widget die laufende Geste übernehmen, nur weil
-die Maus das urspruengliche Rechteck verlässt.
+die Maus das ursprüngliche Rechteck verlässt.
 Ein Button besitzt semantische Armed-/Pressed-Zustände;
 der Router verwaltet, welches Widget die physische
 Geste beansprucht. Verliert ein Widget seine
 Capture-Berechtigung, muss es seine Geste sauber
-zuruecksetzen.
+zurücksetzen.
 
 Das Terminal kennt Pointer-Ereignisse nur dann,
 wenn das verwendete Terminal das entsprechende
@@ -121,15 +121,15 @@ gewollt hat. Eine alternative reine Tastaturbedienung
 muss deshalb erhalten bleiben.
 
 \section{Invalidierung und Darstellung}
-Eine Textaenderung kann anderes \term{Layout} erfordern,
+Eine Textänderung kann anderes \term{Layout} erfordern,
 eine reine Farb- oder Pressed-Änderung meist nur
 eine neue \term{Darstellung}.
 Das Toolkit unterscheidet Mess-Invalidierung und
 visuelle Invalidierung. Der \term{PresentationCoordinator}
-organisiert danach die anstehenden Praesentationsupdates,
+organisiert danach die anstehenden Präsentationsupdates,
 und ein \term{PresentationSink} erzeugt den Ziel-Frame.
-Bei Oberflaechenveraenderungen duerfen alte Regionen
-nicht versehentlich sichtbar bleiben; dafuer existiert
+Bei Oberflächenveraenderungen dürfen alte Regionen
+nicht versehentlich sichtbar bleiben; dafür existiert
 konservatives Refresh-Verhalten.
 
 \Important{Callbacks sind keine Einladung zu blockierendem

@@ -1,8 +1,8 @@
 % SPDX-License-Identifier: MIT
-\chapter{Commands, Menues und Tastaturkuerzel}\label{chap:commands}
+\chapter{Commands, Menüs und Tastaturkürzel}\label{chap:commands}
 \ChapterSummary{Hier lernen Sie, Benutzeraktionen von ihrer
 Darstellung zu trennen. Ein Command kann von einem Button,
-einem Menuepunkt und einem Shortcut verwendet werden,
+einem Menüpunkt und einem Shortcut verwendet werden,
 ohne dass dreimal dieselbe Geschaeftslogik implementiert wird.}
 
 \section{Aktionen als eigene Komponenten}
@@ -11,7 +11,7 @@ einen Enabled-Zustand und einen synchronen
 Ausführungs-Callback. Es ist keine visuelle
 Schaltflaeche; sein Lebenszyklus gehört der
 Anwendung, einem Besitzer oder einem
-ausdruecklich gesteuerten Scope.
+ausdrücklich gesteuerten Scope.
 
 \begin{lstlisting}[language=SASDCpp,caption={Eine Aktion, mehrere Ausloeser}]
 Command saveCommand{"Speichern"};
@@ -29,7 +29,7 @@ der gebundene Button vor dem Command
 zerstört werden. Der Binding-Vertrag kennt
 auch lebensdauersichere, nichtbesitzende
 \term{Command::Reference}-Objekte; die
-Anwendung sollte die Abhaengigkeiten
+Anwendung sollte die Abhängigkeiten
 trotzdem einfach und gut nachvollziehbar halten.
 
 \section{Enabled bedeutet auch semantisch gesperrt}
@@ -53,13 +53,13 @@ Anwendung; die Validierung selbst liegt
 ausserhalb des Commands.
 
 \section{MenuModel und MenuBarModel}
-Ein \term{MenuBarModel} besitzt Menues,
-ein \term{MenuModel} besitzt Menueeintraege.
+Ein \term{MenuBarModel} besitzt Menüs,
+ein \term{MenuModel} besitzt Menüeinträge.
 Ein Eintrag ist ein Command, ein Separator
-oder ein rekursives Submenue. Die Modelle
+oder ein rekursives Submenü. Die Modelle
 sind semantisch: Der Core muss die Position
 eines terminalbasierten Popups oder einer
-grafischen Menueleiste nicht selbst kennen.
+grafischen Menüleiste nicht selbst kennen.
 
 \begin{lstlisting}[language=SASDCpp,caption={Menuebaum aufbauen}]
 MenuBarModel bar;
@@ -70,22 +70,22 @@ MenuModel& advanced = file.appendSubmenu("Erweitert");
 advanced.appendCommand(saveCommand);
 \end{lstlisting}
 Das Beispiel demonstriert die gemeinsame
-Command-Identitaet; in einer echten
-Anwendung waere ein zweimal angebotenes
+Command-Identität; in einer echten
+Anwendung wäre ein zweimal angebotenes
 Speichern eventuell weniger sinnvoll
-als eine zweite Aktion. Menue-Hierarchien
+als eine zweite Aktion. Menü-Hierarchien
 werden im aktuellen Terminal-Host über
-transiente Praesentationsansichten,
+transiente Präsentationsansichten,
 Hit-Tests und Controller umgesetzt.
 
 \section{Anzeige eines Shortcuts ist nicht sein Routing}
 Ein MenuItem kann ein Kürzel \emph{anzeigen}.
 Das ist nicht dasselbe wie dessen
-\emph{Registrierung}. Dafuer existiert
+\emph{Registrierung}. Dafür existiert
 \term{ShortcutMap}; sie ordnet
 \term{Shortcut}-Werte einem Command zu.
 Der Host entscheidet, in welcher Phase
-ein KeyEvent zuerst an Menue/Fokusziel
+ein KeyEvent zuerst an Menü/Fokusziel
 oder an eine globale ShortcutMap geht.
 Diese Unterscheidung verhindert, dass
 jedes sichtbare Kürzel automatisch
@@ -103,20 +103,20 @@ const bool dispatched = shortcuts.dispatch(event);
 Dieser Ausschnitt zeigt die Kern-API;
 \texttt{event} muss im Host als
 \term{KeyEvent} vorliegen. Die Methode
-\texttt{dispatch} fuehrt das zugeordnete
+\texttt{dispatch} führt das zugeordnete
 Command nur aus, wenn der KeyEvent wirklich
 passt und das Command vorhanden und
 aktiviert ist.
 
 \section{Einmalige Ausführung sicherstellen}
-Bei Tastenkombinationen und Menues besteht
+Bei Tastenkombinationen und Menüs besteht
 sonst die Gefahr, dass eine einzige Eingabe
 gleich zweimal zur Ausführung gelangt.
 Ein Host sollte eine feste Routing-Reihenfolge
 definieren und \term{handled/ignored}
-respektieren. Bei einem offenen Menue
-müssen Navigation, Escape, Untermenue-
-Wechsel und Pointer-Gesten kohaerent
+respektieren. Bei einem offenen Menü
+müssen Navigation, Escape, Untermenü-
+Wechsel und Pointer-Gesten kohärent
 vorrangig behandelt werden.
 Als belastbares Referenzbeispiel dient
 \filepath{examples/terminal_form_demo.cpp}.
@@ -135,9 +135,9 @@ werden sollen.
 
 \PracticalTip{Bei SASD Gatehold kann etwa
 \emph{Regel anwenden} gleichzeitig Button,
-Menuepunkt und Funktionstaste sein.
+Menüpunkt und Funktionstaste sein.
 Definieren Sie die Prüfung der Berechtigung
 und die eigentliche Aktion genau einmal
-hinter dem Command, nicht je Ausloeser.
+hinter dem Command, nicht je Auslöser.
 Ein UI-Command ersetzt aber keine serverseitige
 Autorisierung.}

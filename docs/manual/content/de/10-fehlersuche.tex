@@ -12,7 +12,7 @@ kein \texttt{SASDUIToolkitConfig.cmake}.
 
 \textbf{Prüfen:} Wurde die Library wirklich
 installiert? Zeigt \filepath{CMAKE_PREFIX_PATH}
-auf den \emph{Installationspraefix}, nicht
+auf den \emph{Installationspräfix}, nicht
 auf eine beliebige Quelldatei?
 Fordert der Konsument eine zum
 installierten Paket passende Version?
@@ -41,7 +41,7 @@ kann der Pfad anders aussehen.
 \textbf{Symptom:} Beim Demo-Start
 erscheint kein sinnvoller Bildschirm.
 
-\textbf{Prüfen:} Laeuft die Anwendung
+\textbf{Prüfen:} Läuft die Anwendung
 in einem interaktiven, ANSI/VT-fähigen
 Terminal? Werden Ein-/Ausgabe eventuell
 in eine Datei oder fremde Prozesskonsole
@@ -56,24 +56,24 @@ Frame-Encoder und Backend ist notwendig.
 
 \section{Button reagiert nicht}
 \textbf{Prüfen:} Ist er sichtbar,
-aktiviert und für die gewuenschte
+aktiviert und für die gewünschte
 Bedienung fokussierbar?
-Erhaelt der Host die KeyEvents
+Erhält der Host die KeyEvents
 und leitet er sie an das korrekte
 Fokusziel weiter?
 Ist ein Command gebunden und
 möglicherweise deaktiviert?
-Hat ein geöffnetes Menue oder
+Hat ein geöffnetes Menü oder
 Popup den Eingabefokus?
-Bei Mausaktionen ist zusaetzlich
+Bei Mausaktionen ist zusätzlich
 Pointer-Routing/Capture zu prüfen.
 
-\section{Nach Textaenderung sieht man nichts}
+\section{Nach Textänderung sieht man nichts}
 \textbf{Prüfen:} Verändert
 \texttt{setText()} wirklich den
 Wert? Fordert die Host-Schleife
 nach Invalidierung einen
-Praesentations-Refresh an?
+Präsentations-Refresh an?
 Wurde die Größe bei längerem
 Text erneut gemessen und
 arrangiert?
@@ -91,7 +91,7 @@ Widgets Fokus erhalten?
 Sind TextInputEvents von
 KeyEvents getrennt?
 Leitet ein globaler Shortcut
-irrtuemlich dieselbe Taste weiter?
+irrtümlich dieselbe Taste weiter?
 Wurde ein altes Popup oder
 Pointer-Capture nicht geschlossen?
 
@@ -121,7 +121,7 @@ Arbeitet die normale Rendered-
 Schicht im Headless-Test korrekt?
 SDL3 ist gegenwärtig
 experimentell und nicht mit
-voller Terminal-/Native-Paritaet
+voller Terminal-/Native-Parität
 gleichzusetzen.
 
 \section{Was noch nicht zum Vertrag gehört}
@@ -144,7 +144,7 @@ Ein guter Bericht nennt den exakten
 Commit/Tag, Compiler, Plattform,
 Terminal oder SDL-Konfiguration,
 CMake-Flags und die kleinste
-Reproduktionsfolge. Fuegen Sie
+Reproduktionsfolge. Fügen Sie
 einen kurzen, vollständigen
 Codeausschnitt und die
 \emph{erste} entscheidende
@@ -156,7 +156,7 @@ die passenden CTest-Suiten laufen.
 Technische Diskussionen finden
 unter \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit/issues} statt.
 
-\PracticalTip{Bei einer unklaren Stoerung
+\PracticalTip{Bei einer unklaren Störung
 zuerst das mitgelieferte Beispiel
 auf genau demselben System starten,
 dann Ihr Programm schrittweise
