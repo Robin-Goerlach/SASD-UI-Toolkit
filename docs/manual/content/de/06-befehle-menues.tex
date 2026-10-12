@@ -1,0 +1,144 @@
+% SPDX-License-Identifier: MIT
+\chapter{Commands, Menues und Tastaturkuerzel}\label{chap:commands}
+\ChapterSummary{Hier lernen Sie, Benutzeraktionen von ihrer
+Darstellung zu trennen. Ein Command kann von einem Button,
+einem Menuepunkt und einem Shortcut verwendet werden,
+ohne dass dreimal dieselbe Geschaeftslogik implementiert wird.}
+
+\section{Aktionen als eigene Komponenten}
+Ein \term{Command} besitzt einen Beschreibungstext,
+einen Enabled-Zustand und einen synchronen
+Ausfuehrungs-Callback. Es ist keine visuelle
+Schaltflaeche; sein Lebenszyklus gehoert der
+Anwendung, einem Besitzer oder einem
+ausdruecklich gesteuerten Scope.
+
+\begin{lstlisting}[language=SASDCpp,caption={Eine Aktion, mehrere Ausloeser}]
+Command saveCommand{"Speichern"};
+saveCommand.setOnExecuted([] {
+    // Validieren und Speicherung ausloesen.
+});
+Window window;
+auto& form = window.emplace<VBox>();
+auto& save = form.emplace<Button>();
+save.bindCommand(saveCommand);
+\end{lstlisting}
+Die Reihenfolge der lokalen Variablen ist
+absichtlich so gewaehlt, dass das Fenster und
+der gebundene Button vor dem Command
+zerstoert werden. Der Binding-Vertrag kennt
+auch lebensdauersichere, nichtbesitzende
+\term{Command::Reference}-Objekte; die
+Anwendung sollte die Abhaengigkeiten
+trotzdem einfach und gut nachvollziehbar halten.
+
+\section{Enabled bedeutet auch semantisch gesperrt}
+Mit \texttt{saveCommand.setEnabled(false)}
+sperren Sie die Ausfuehrung des Commands.
+\texttt{execute()} liefert dann \texttt{false}.
+Gebundene Buttons koennen Text- und Enabled-
+Zustand aus dem Command uebernehmen.
+Ein solcher Vorgang ist verlasslicher, als nur
+die visuelle Farbe eines Buttons zu aendern.
+
+\begin{lstlisting}[language=SASDCpp]
+saveCommand.setEnabled(formIsValid);
+if (!saveCommand.execute()) {
+    // Kommando war nicht ausfuehrbar.
+}
+\end{lstlisting}
+Hier steht \texttt{formIsValid} fuer eine
+bereits berechnete boolesche Variable der
+Anwendung; die Validierung selbst liegt
+ausserhalb des Commands.
+
+\section{MenuModel und MenuBarModel}
+Ein \term{MenuBarModel} besitzt Menues,
+ein \term{MenuModel} besitzt Menueeintraege.
+Ein Eintrag ist ein Command, ein Separator
+oder ein rekursives Submenue. Die Modelle
+sind semantisch: Der Core muss die Position
+eines terminalbasierten Popups oder einer
+grafischen Menueleiste nicht selbst kennen.
+
+\begin{lstlisting}[language=SASDCpp,caption={Menuebaum aufbauen}]
+MenuBarModel bar;
+MenuModel& file = bar.appendMenu("Datei");
+file.appendCommand(saveCommand);
+file.appendSeparator();
+MenuModel& advanced = file.appendSubmenu("Erweitert");
+advanced.appendCommand(saveCommand);
+\end{lstlisting}
+Das Beispiel demonstriert die gemeinsame
+Command-Identitaet; in einer echten
+Anwendung waere ein zweimal angebotenes
+Speichern eventuell weniger sinnvoll
+als eine zweite Aktion. Menue-Hierarchien
+werden im aktuellen Terminal-Host ueber
+transiente Praesentationsansichten,
+Hit-Tests und Controller umgesetzt.
+
+\section{Anzeige eines Shortcuts ist nicht sein Routing}
+Ein MenuItem kann ein Kuerzel \emph{anzeigen}.
+Das ist nicht dasselbe wie dessen
+\emph{Registrierung}. Dafuer existiert
+\term{ShortcutMap}; sie ordnet
+\term{Shortcut}-Werte einem Command zu.
+Der Host entscheidet, in welcher Phase
+ein KeyEvent zuerst an Menue/Fokusziel
+oder an eine globale ShortcutMap geht.
+Diese Unterscheidung verhindert, dass
+jedes sichtbare Kuerzel automatisch
+eine unsichtbare globale Eingaberoute erzeugt.
+
+\begin{lstlisting}[language=SASDCpp]
+ShortcutMap shortcuts;
+const Shortcut saveKey{Key::f2, KeyModifier::none};
+shortcuts.bind(saveKey, saveCommand);
+file.appendCommand(saveCommand, saveKey);
+
+// 'event' ist ein KeyEvent aus dem Host:
+const bool dispatched = shortcuts.dispatch(event);
+\end{lstlisting}
+Dieser Ausschnitt zeigt die Kern-API;
+\texttt{event} muss im Host als
+\term{KeyEvent} vorliegen. Die Methode
+\texttt{dispatch} fuehrt das zugeordnete
+Command nur aus, wenn der KeyEvent wirklich
+passt und das Command vorhanden und
+aktiviert ist.
+
+\section{Einmalige Ausfuehrung sicherstellen}
+Bei Tastenkombinationen und Menues besteht
+sonst die Gefahr, dass eine einzige Eingabe
+gleich zweimal zur Ausfuehrung gelangt.
+Ein Host sollte eine feste Routing-Reihenfolge
+definieren und \term{handled/ignored}
+respektieren. Bei einem offenen Menue
+muessen Navigation, Escape, Untermenue-
+Wechsel und Pointer-Gesten kohaerent
+vorrangig behandelt werden.
+Als belastbares Referenzbeispiel dient
+\filepath{examples/terminal_form_demo.cpp}.
+
+\section{Beobachtbare Command-Zustaende}
+\texttt{observeState()} ermoeglicht
+ein synchrones Benachrichtigen ueber
+Text- und Enabled-Aenderungen.
+Die Rueckgabe ist eine move-only
+\term{StateSubscription}; bei ihrem
+Destruktor wird die Beobachtung
+automatisch getrennt. Solche RAII-Tokens
+sind insbesondere fuer wiederverwendbare
+Widgets wichtig, die nicht zu
+dauerhaften Besitzern eines Commands
+werden sollen.
+
+\PracticalTip{Bei SASD Gatehold kann etwa
+\emph{Regel anwenden} gleichzeitig Button,
+Menuepunkt und Funktionstaste sein.
+Definieren Sie die Pruefung der Berechtigung
+und die eigentliche Aktion genau einmal
+hinter dem Command, nicht je Ausloeser.
+Ein UI-Command ersetzt aber keine serverseitige
+Autorisierung.}
