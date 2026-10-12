@@ -122,9 +122,8 @@ Als belastbares Referenzbeispiel dient
 \filepath{examples/terminal_form_demo.cpp}.
 
 \section{Beobachtbare Command-Zustände}
-\texttt{observeState()} ermoeglicht
-ein synchrones Benachrichtigen über
-Text- und Enabled-Änderungen.
+Mit \texttt{observeState()} lassen sich Änderungen
+am Text und am Enabled-Zustand synchron beobachten.
 Die Rückgabe ist eine move-only
 \term{StateSubscription}; bei ihrem
 Destruktor wird die Beobachtung
