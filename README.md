@@ -1,12 +1,12 @@
 # SASD UI Toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Project status](https://img.shields.io/badge/status-M3%20rendered%20desktop%20preview-orange)
+![Project status](https://img.shields.io/badge/status-M6%20native%20host%20preview-orange)
 ![C++ target](https://img.shields.io/badge/C%2B%2B-20-blue)
 
 **Open-source C++ UI toolkit for building portable desktop and terminal applications across Windows, Linux and macOS.**
 
-> **Current status:** v0.1.0 (M2 Terminal Preview) is published. Development has moved to M3 / v0.2.0, introducing a rendered desktop presentation path while preserving the backend-neutral Core and Terminal backend.
+> **Current status:** M5 Model/View is complete and M6 has started with an experimental Win32 native-host slice. M3's visible macOS validation remains an external gate; the Win32 host keeps Core, Terminal and Rendered APIs backend-neutral.
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 

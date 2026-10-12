@@ -79,7 +79,20 @@ desktop validation remain later M3 slices.
 
 ### 3. Native Windows backend
 
-Long-term goal: map suitable widgets to native Win32/Windows controls and services.
+The first M6 implementation is the separately linkable `SASD::UI::Native::Win32` target. Its
+`Win32WindowBackend` owns one top-level HWND and translates Win32 messages into the existing Core
+`Backend`/`Event` pipeline. It is intentionally a native host, not a second Button/TextField
+semantic system; the existing `EventDispatcher`, `FocusManager`, `PointerRouter`, Commands and
+Model/View contracts remain authoritative. HWND ownership is RAII-managed and UI-thread-affine,
+with `WM_NCCREATE`/`GWLP_USERDATA` used only inside the adapter. The host can later feed the existing
+Rendered presentation path or a concrete native peer sink. `WM_MOUSELEAVE` is translated to the
+existing `PointerSurfaceEvent` contract so Core can retire hover/capture deterministically.
+
+Deferred by this slice: IME composition, native child controls, native menus, accessibility, drag and
+drop, advanced DPI policy and visible GUI automation. Unsupported native messages fail closed.
+
+Long-term goal: map suitable widgets to native Win32/Windows controls and services only where a real
+platform benefit justifies a separately specified peer contract.
 
 Important areas include:
 

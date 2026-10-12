@@ -79,7 +79,21 @@ IME-Composition und breitere Desktopvalidierung folgen in weiteren M3-Schnitten.
 
 ### 3. Native Windows-Backend
 
-Langfristiges Ziel: Abbildung geeigneter Widgets auf Win32-/Windows-Controls und Nutzung nativer Plattformdienste.
+Der erste M6-Schnitt ist das separat linkbare Target `SASD::UI::Native::Win32`. Sein
+`Win32WindowBackend` besitzt ein Top-Level-HWND und übersetzt Win32-Nachrichten in die bestehende
+Core-`Backend`-/`Event`-Pipeline. Es ist bewusst ein nativer Host und kein zweites Button-/TextField-
+Semantiksystem: `EventDispatcher`, `FocusManager`, `PointerRouter`, Commands und Model/View bleiben
+maßgeblich. HWND-Ownership ist RAII- und UI-Thread-gebunden; `WM_NCCREATE`/`GWLP_USERDATA` bleiben
+innerhalb des Adapters. Der Host kann später die bestehende Rendered-Pipeline oder einen konkreten
+Native-Peer-Sink speisen. `WM_MOUSELEAVE` wird in den bestehenden `PointerSurfaceEvent`-Vertrag
+übersetzt, sodass Core Hover/Capture deterministisch beenden kann.
+
+Bewusst zurückgestellt sind IME-Komposition, native Child-Controls, native Menüs, Accessibility,
+Drag & Drop, weitergehende DPI-Policy und GUI-Automation. Nicht unterstützte Nachrichten werden
+fail-closed ignoriert.
+
+Langfristiges Ziel: geeignete Widgets nur dann auf Win32-/Windows-Controls und Plattformdienste
+abbilden, wenn ein realer Plattformvorteil einen eigenen Peer-Vertrag rechtfertigt.
 
 Schwerpunkte:
 
