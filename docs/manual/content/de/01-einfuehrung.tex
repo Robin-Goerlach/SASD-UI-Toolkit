@@ -1,17 +1,17 @@
 % SPDX-License-Identifier: MIT
 \chapter{Willkommen beim SASD UI Toolkit}\label{chap:intro}
 \ChapterSummary{Sie lernen die Zielsetzung, die Architektur und den aktuellen
-Reifegrad des Toolkits kennen. Am Ende koennen Sie einschaetzen, fuer welche
+Reifegrad des Toolkits kennen. Am Ende können Sie einschaetzen, für welche
 Projekte es heute geeignet ist, welche Teile Sie zuerst kennenlernen sollten
 und was bewusst noch nicht versprochen wird.}
 
 \section{Wozu dieses Handbuch dient}
-Eine Bibliothek wird nicht schon dadurch nuetzlich, dass sie viele Klassen
-besitzt. Nuetzlich wird sie, wenn Entwickler die richtigen Bausteine finden,
+Eine Bibliothek wird nicht schon dadurch nützlich, dass sie viele Klassen
+besitzt. Nützlich wird sie, wenn Entwickler die richtigen Bausteine finden,
 das Zusammenspiel verstehen, Fehler vorhersehen und eine Oberflaeche
-ueberschaubar erweitern koennen. Dieses Anwenderhandbuch richtet sich an
+überschaubar erweitern können. Dieses Anwenderhandbuch richtet sich an
 C++-Entwickler, die \emph{Anwendungen mit} dem SASD UI Toolkit bauen wollen.
-Es ist weder eine interne Entwickler-Spezifikation noch der Ersatz fuer die
+Es ist weder eine interne Entwickler-Spezifikation noch der Ersatz für die
 API-Deklarationen in den Header-Dateien.
 
 Das Buch ist wie ein klassisches Software-Handbuch aufgebaut: Zuerst
@@ -44,12 +44,12 @@ Der Core ist \term{backendneutral}; er kennt keine Win32-Handles,
 SDL-Fenster oder terminalinternen Steuersequenzen. Das Terminal
 ist eine vollwertige Zielplattform. Die gerenderte Darstellung besitzt
 eine eigene, auch ohne SDL verwendbare Befehlsschicht.
-Native Desktop-Peers fuer Win32, GTK oder AppKit sind langfristige Ziele,
+Native Desktop-Peers für Win32, GTK oder AppKit sind langfristige Ziele,
 keine heute austauschbaren Produktiv-Backends.
 
-\section{Was gegenwaertig vorhanden ist}
+\section{Was gegenwärtig vorhanden ist}
 Die folgenden Aussagen beziehen sich auf den Quellstand vom
-12.\ Oktober 2026; fuer neuere Entwicklungen sind README, Tests und
+12.\ Oktober 2026; für neuere Entwicklungen sind README, Tests und
 Header massgeblich.
 
 \begin{tabularx}{\linewidth}{@{}p{32mm}X@{}}
@@ -63,9 +63,9 @@ Rendered & Backendneutrale DisplayList, Messung und Rendering-Schnittstellen;
 eigene Tests.\\
 SDL3 & Optionaler experimenteller Adapter mit Fenster- und
 Headless-Pfad; \emph{build-tree-only}.\\
-Native Desktop & Zukuenftig; kein fertiger gleichwertiger Win32-/GTK-/AppKit-Peer.\\
+Native Desktop & Zukünftig; kein fertiger gleichwertiger Win32-/GTK-/AppKit-Peer.\\
 Stabilitaet & Vor Version 1.0; Quellkompatibilitaet kann sich bei
-begruendeten Architekturverbesserungen aendern.\\
+begruendeten Architekturverbesserungen ändern.\\
 \bottomrule
 \end{tabularx}
 
@@ -79,13 +79,13 @@ nichtvisuelle, wiederverwendbare Aktion. \term{Presentation Sink}
 erzeugt eine Darstellung aus dem aktuellen Zustand.
 
 \section{Lesepfade}
-Fuer einen schnellen Einstieg lesen Sie die Kapitel
+Für einen schnellen Einstieg lesen Sie die Kapitel
 \ref{chap:install} und \ref{chap:first}. Wer eigene Formulare bauen will,
 vertieft Komponenten, Layout und Events in den Kapiteln
-\ref{chap:widgets} und \ref{chap:layout}. Fuer administrative Anwendungen
+\ref{chap:widgets} und \ref{chap:layout}. Für administrative Anwendungen
 mit Listen und Hierarchien ist Kapitel \ref{chap:models} besonders wichtig.
-Kapitel \ref{chap:backends} klaert die Grenzen der Ausgabegeraete.
+Kapitel \ref{chap:backends} klärt die Grenzen der Ausgabegeraete.
 
 \PracticalTip{Beginnen Sie mit der mitgelieferten Terminal-Demo und
-veraendern Sie jeweils nur eine Sache: zuerst Text, dann ein Widget,
+verändern Sie jeweils nur eine Sache: zuerst Text, dann ein Widget,
 dann die Fokusfolge, zuletzt Events oder Menues.}
