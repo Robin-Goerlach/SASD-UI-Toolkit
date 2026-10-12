@@ -1,7 +1,7 @@
 % SPDX-License-Identifier: MIT
 \chapter{Fehlersuche und bewusste Grenzen}\label{chap:trouble}
 \ChapterSummary{Dieses Kapitel liefert eine symptomorientierte
-Diagnose fuer die haeufigsten Probleme bei Build,
+Diagnose für die häufigsten Probleme bei Build,
 Terminalbetrieb, Layout, Eingabe und Modellbindung.
 Es zeigt ausserdem, welche Eigenschaften derzeit
 noch keine garantierte Produktfunktion sind.}
@@ -10,7 +10,7 @@ noch keine garantierte Produktfunktion sind.}
 \textbf{Symptom:} \texttt{find\_package} meldet
 kein \texttt{SASDUIToolkitConfig.cmake}.
 
-\textbf{Pruefen:} Wurde die Library wirklich
+\textbf{Prüfen:} Wurde die Library wirklich
 installiert? Zeigt \filepath{CMAKE_PREFIX_PATH}
 auf den \emph{Installationspraefix}, nicht
 auf eine beliebige Quelldatei?
@@ -26,11 +26,11 @@ Caches mit falschen Fundstellen.
 \textbf{Symptom:} Sie haben kompiliert,
 finden aber das Beispiel nicht.
 
-\textbf{Pruefen:} Der Visual-Studio-
+\textbf{Prüfen:} Der Visual-Studio-
 Generator nutzt Konfigurationsordner
 wie \filepath{Debug} und
 \filepath{Release}. Wurde die
-richtige Architektur gewaehlt?
+richtige Architektur gewählt?
 Passen \filepath{--config Debug}
 bei Build und \filepath{-C Debug}
 bei CTest zusammen?
@@ -41,13 +41,13 @@ kann der Pfad anders aussehen.
 \textbf{Symptom:} Beim Demo-Start
 erscheint kein sinnvoller Bildschirm.
 
-\textbf{Pruefen:} Laeuft die Anwendung
-in einem interaktiven, ANSI/VT-faehigen
+\textbf{Prüfen:} Laeuft die Anwendung
+in einem interaktiven, ANSI/VT-fähigen
 Terminal? Werden Ein-/Ausgabe eventuell
 in eine Datei oder fremde Prozesskonsole
 umgelenkt? Ist das Terminal sehr klein?
-Unterstuetzt das Terminal die
-benoetigten Escape-Sequenzen?
+Unterstützt das Terminal die
+benötigten Escape-Sequenzen?
 Testen Sie die Referenz-Demo, bevor
 Sie den eigenen Host untersuchen.
 Der Core allein sendet keine Frames;
@@ -55,26 +55,26 @@ die Kombination aus PresentationSink,
 Frame-Encoder und Backend ist notwendig.
 
 \section{Button reagiert nicht}
-\textbf{Pruefen:} Ist er sichtbar,
-aktiviert und fuer die gewuenschte
+\textbf{Prüfen:} Ist er sichtbar,
+aktiviert und für die gewuenschte
 Bedienung fokussierbar?
 Erhaelt der Host die KeyEvents
 und leitet er sie an das korrekte
 Fokusziel weiter?
 Ist ein Command gebunden und
-moeglicherweise deaktiviert?
-Hat ein geoeffnetes Menue oder
+möglicherweise deaktiviert?
+Hat ein geöffnetes Menue oder
 Popup den Eingabefokus?
 Bei Mausaktionen ist zusaetzlich
-Pointer-Routing/Capture zu pruefen.
+Pointer-Routing/Capture zu prüfen.
 
 \section{Nach Textaenderung sieht man nichts}
-\textbf{Pruefen:} Veraendert
+\textbf{Prüfen:} Verändert
 \texttt{setText()} wirklich den
 Wert? Fordert die Host-Schleife
 nach Invalidierung einen
 Praesentations-Refresh an?
-Wurde die Groesse bei laengerem
+Wurde die Größe bei längerem
 Text erneut gemessen und
 arrangiert?
 Handelt es sich um ein
@@ -83,10 +83,10 @@ Die Kernobjekte sind kein
 automatisches Desktop-Fenstersystem.
 
 \section{Tab-Reihenfolge oder Eingabe stimmt nicht}
-\textbf{Pruefen:} Wurde
+\textbf{Prüfen:} Wurde
 \term{FocusTraversal} mit
 dem aktuellen sichtbaren Baum
-benutzt? Koennen die betreffenden
+benutzt? Können die betreffenden
 Widgets Fokus erhalten?
 Sind TextInputEvents von
 KeyEvents getrennt?
@@ -96,35 +96,35 @@ Wurde ein altes Popup oder
 Pointer-Capture nicht geschlossen?
 
 \section{Das Model zeigt alte oder falsche Zeilen}
-\textbf{Pruefen:} Wurde ein
-mitgeliefertes StringModel ueber
+\textbf{Prüfen:} Wurde ein
+mitgeliefertes StringModel über
 seine Mutationsmethoden
 aktualisiert? Meldet ein
-eigenes Model seine Aenderungen
+eigenes Model seine Änderungen
 und Revisionen korrekt?
 Sind bei der Table alle Zeilen
 rechteckig? Wurde
 die Auswahl nach strukturellen
-Aenderungen neu validiert?
+Änderungen neu validiert?
 Ist der Viewport noch passend?
 Wurden die Lebensdauern von Model,
 SelectionModel und View bedacht?
 
 \section{Unterschiedliche Darstellung unter SDL3}
-\textbf{Pruefen:} Ist der
+\textbf{Prüfen:} Ist der
 optionale Adapter wirklich aktiviert?
 Sind SDL3 und SDL\_ttf in der
 geforderten Version vorhanden?
-Ist ein gueltiger Fontpfad
-fuer entsprechende Tests gesetzt?
+Ist ein gültiger Fontpfad
+für entsprechende Tests gesetzt?
 Arbeitet die normale Rendered-
 Schicht im Headless-Test korrekt?
-SDL3 ist gegenwaertig
+SDL3 ist gegenwärtig
 experimentell und nicht mit
 voller Terminal-/Native-Paritaet
 gleichzusetzen.
 
-\section{Was noch nicht zum Vertrag gehoert}
+\section{Was noch nicht zum Vertrag gehört}
 Das Toolkit hat derzeit keinen
 abgeschlossenen visuellen RAD-Designer,
 keinen garantierten universellen
@@ -136,7 +136,7 @@ identisch bedienbar ist.
 Auch grosse Daten-Views und
 komplexe Popup-Interaktion sollten
 im Zielbackend stets mit den
-tatsaechlichen Demos und Tests
+tatsächlichen Demos und Tests
 abgeglichen werden.
 
 \section{Wie Sie einen hilfreichen Fehlerbericht schreiben}
@@ -145,7 +145,7 @@ Commit/Tag, Compiler, Plattform,
 Terminal oder SDL-Konfiguration,
 CMake-Flags und die kleinste
 Reproduktionsfolge. Fuegen Sie
-einen kurzen, vollstaendigen
+einen kurzen, vollständigen
 Codeausschnitt und die
 \emph{erste} entscheidende
 Fehlerausgabe bei.
