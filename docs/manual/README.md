@@ -29,12 +29,12 @@ docs/manual/
 ├── style/sasdmanual.sty      # typography, layout, code and callouts
 ├── i18n/de.tex               # German common strings and metadata
 ├── i18n/en.tex               # English common strings (scaffold)
-├── content/de/               # Complete German manuscript, 10 chapters + appendix
+├── content/de/               # Complete German book text, 10 chapters + front/back matter
 └── Makefile
 ~~~
 
 For another language, create every corresponding chapter in
-**content/LOCALE/**, translate *narrative text* while keeping the C++ API
+**content/LOCALE/**, translate *all prose including front/back matter* while keeping the C++ API
 identifiers, code paths, labels and examples accurate, and provide
 **i18n/LOCALE.tex**. Then set the chosen locale using the
 **SASDLanguage** macro before inputting main.tex. For example, an
