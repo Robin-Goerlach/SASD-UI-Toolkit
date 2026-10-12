@@ -11,7 +11,7 @@ C++-Objekte. Der \term{Window}-Container ist eine Wurzel,
 \term{VBox} ordnet Elemente untereinander an, und \term{Label},
 \term{TextField} sowie \term{Button} bilden die sichtbaren Teile.
 Eine \term{Container::emplace}-Operation erzeugt eine Komponente,
-uebernimmt ihr Eigentum und gibt eine Referenz auf sie zurueck.
+übernimmt ihr Eigentum und gibt eine Referenz auf sie zurueck.
 
 \begin{lstlisting}[language=SASDCpp,caption={Ein kleiner Formularbaum, bewusst ohne Host/Eventloop}]
 #include <sasd/ui/window.hpp>
@@ -37,21 +37,21 @@ void buildGreetingForm(sasd::ui::Window& window) {
 \end{lstlisting}
 
 Das ist \textbf{ein syntaktisch nutzbarer Formularbaustein},
-aber absichtlich \emph{keine vollstaendige Anwendung}.
+aber absichtlich \emph{keine vollständige Anwendung}.
 Eine laufende Terminalanwendung muss zusaetzlich das
-\term{TerminalBackend} oeffnen, Eingaben abholen,
-Fokus und Pointer-Routing betreiben, Layout ausfuehren
+\term{TerminalBackend} öffnen, Eingaben abholen,
+Fokus und Pointer-Routing betreiben, Layout ausführen
 und die Darstellung aktualisieren. Diese Verantwortung
-zeigt das ausfuehrlich kommentierte
+zeigt das ausführlich kommentierte
 \filepath{examples/terminal_form_demo.cpp}; es ist der
-richtige Ausgangspunkt fuer einen eigenen Host.
+richtige Ausgangspunkt für einen eigenen Host.
 
 \section{Was die paar Zeilen wirklich tun}
 Die Referenz \texttt{column} ist kein Besitzer.
 Die \texttt{Window}-Wurzel besitzt ihre \texttt{VBox},
 und die \texttt{VBox} besitzt wiederum ihre Kinder.
 Die Referenzen \texttt{name}, \texttt{message} und
-\texttt{hello} sind gueltig, solange die Komponenten im
+\texttt{hello} sind gültig, solange die Komponenten im
 Baum verbleiben. Beim Freigeben des Fensters endet auch
 ihre Lebensdauer.
 
@@ -59,7 +59,7 @@ Der Lambda-Callback liest den aktuellen Text des
 \term{TextField} und ersetzt die Beschriftung des Labels.
 Die sichtbare Aktualisierung wird durch die
 Invalidierungs-/Praesentationsmechanik der laufenden
-Anwendung verarbeitet. Der Callback allein oeffnet
+Anwendung verarbeitet. Der Callback allein öffnet
 keine Terminal-Session und pumpt keine Ereignisse.
 
 \section{Eine naheliegende Erweiterung}
@@ -71,18 +71,18 @@ clear.setOnActivated([&name, &message] {
     message.setText("Bereit");
 });
 \end{lstlisting}
-Die gezeigten Zeilen gehoeren \emph{innerhalb} von
+Die gezeigten Zeilen gehören \emph{innerhalb} von
 \texttt{buildGreetingForm}, nach dem Aufbau der zuvor
 verwendeten Variablen. Die Reihenfolge ist bedeutsam:
-Sie muessen den referenzierten Widgets laengeres Leben
+Sie müssen den referenzierten Widgets längeres Leben
 garantieren als den installierten Callbacks.
 
-\section{Der naechste Schritt: ein vollstaendiger Host}
+\section{Der nächste Schritt: ein vollständiger Host}
 In der realen Terminal-Demo folgen auf den Widget-Aufbau
 die Einrichtung von \term{FocusManager}, \term{PointerRouter},
 Praesentations-Sink und den Callback-Bindungen.
 Der Host pollt Events, vermittelt sie an die
-zustaendigen Controls und praesentiert den geaenderten
+zuständigen Controls und praesentiert den geaenderten
 Frame. Das ist kein Versehen und keine fehlende
 magische \texttt{Application::run}-Methode:
 \term{Application} bietet derzeit unter anderem
@@ -95,7 +95,7 @@ Der Anwendungsautor beschreibt \emph{Bedeutung und Verhalten}.
 Er verwaltet eine eindeutige Eigentumshierarchie und
 reagiert auf Ereignisse. Backend, Eingabegerate, Messung
 und Darstellung werden bewusst als separate Teile
-komponiert, damit die gleiche Semantik spaeter auf
+komponiert, damit die gleiche Semantik später auf
 mehreren Ausgabegeraten tragfaehig bleibt.
 
 \PracticalTip{Ersetzen Sie zuerst in der Terminal-Demo nur
