@@ -24,8 +24,8 @@
 \fill[SASDTurquoise] (.07,3.65) rectangle (11.93,4.30);
 \node[anchor=west,SASDDark,font=\ttfamily\bfseries] at (.38,3.96) {SASD UI Toolkit --- Terminal / Rendered / Native};
 \node[anchor=west,white,font=\ttfamily\large] at (.55,2.85) {\$ sasd\_ui\_terminal\_demo};
-\node[anchor=west,SASDSoft,font=\ttfamily] at (.55,2.15) {Name: \_\_\_\_\_\_\_\_\_\_\_\_};
-\node[anchor=west,SASDTurquoise,font=\ttfamily] at (.55,1.43) {[ Begruessen ]   [ Beenden ]};
+\node[anchor=west,SASDSoft,font=\ttfamily] at (.55,2.15) {\ManualCoverName: \_\_\_\_\_\_\_\_\_\_\_\_};
+\node[anchor=west,SASDTurquoise,font=\ttfamily] at (.55,1.43) {[ \ManualCoverGreet ]   [ \ManualCoverExit ]};
 \node[anchor=west,SASDSoft,font=\ttfamily\small] at (.55,.65) {C++20  |  CMake  |  ANSI/VT  |  SDL3 experimental};
 \end{tikzpicture}
 \vfill
@@ -33,34 +33,7 @@
 {\sffamily\small \ManualEdition\quad\textbullet\quad \ManualDate\par}
 \end{titlepage}
 \nopagecolor\color{black}
-\cleardoublepage
-\thispagestyle{plain}
-{\Large\bfseries Impressum und Hinweise\par}
-\vspace{.6cm}
-\noindent\textbf{Herausgeber:} SASD GmbH\\
-\textbf{Projekt:} \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit}\\
-\textbf{Stand:} Repository-main, Dokumentationsbasis vom 12. Oktober 2026.\\
-\textbf{Status:} Vorab-Handbuch zu einer noch nicht API-stabilen C++20-Bibliothek.
-\par\medskip
-Dieses Handbuch ist eine eigenstaendige, neu verfasste Dokumentation. Die
-didaktische Gliederung (Einstieg, gefuehrtes Beispiel, Vertiefung,
-Nachschlageteil) nimmt klassische Borland-Handbuecher als Anregung,
-ohne deren Text, Abbildungen oder Beispielprogramme zu uebernehmen.
-Borland und Turbo Vision sind Marken bzw. Werke ihrer Rechteinhaber;
-es besteht keine Hersteller- oder API-Kompatibilitaetsaussage.
-\par\medskip
-C++-Quellcode, Tests und akzeptierte Architekturentscheidungen des Repositorys
-gehen diesem Handbuch im Konfliktfall vor. Nicht vorhandene Funktionen
-werden nicht als einsatzbereit beschrieben.
-\par\medskip
-\textbf{Lizenz:} MIT; siehe \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit/blob/main/LICENSE}.
-Die Handbuchquellen stehen ebenfalls unter MIT.
-\par\medskip
-\textbf{Sprachen:} Diese Ausgabe ist deutsch. Satzvorlage, Sprachtexte und
-Kapitelquellen sind getrennt. Weitere Ausgaben koennen unter
-\filepath{content/<sprache>/} entstehen; die englische Ausgabe ist
-noch nicht uebersetzt.
-\cleardoublepage
+\input{content/\SASDLanguage/frontmatter.tex}
 \tableofcontents
 \mainmatter
 \input{content/\SASDLanguage/01-einfuehrung.tex}
@@ -76,11 +49,5 @@ noch nicht uebersetzt.
 \appendix
 \input{content/\SASDLanguage/anhang.tex}
 \backmatter
-\cleardoublepage
-\chapter*{Weitere Dokumentation}
-\addcontentsline{toc}{chapter}{Weitere Dokumentation}
-Die verbindlichen Schnittstellen stehen unter \filepath{include/sasd/ui/};
-Architekturentscheidungen unter \filepath{docs/adr/}; lauffaehige Demos unter
-\filepath{examples/}; Tests unter \filepath{tests/}.
-Quelltexte: \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit}.
+\input{content/\SASDLanguage/closing.tex}
 \end{document}
