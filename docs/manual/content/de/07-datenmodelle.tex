@@ -171,6 +171,32 @@ eines Core-Headers folgt noch nicht,
 dass jede Oberflächenvariante die gesamte
 Bedienung schon anbietet.
 
+\section{Snapshots und Modelländerungen testen}
+Eine View darf nicht voraussetzen, dass ihre Daten
+seit dem letzten Frame unverändert sind. Testen
+Sie für Ihr Modell daher das Zusammenspiel von
+\texttt{revision()}, Änderungsbenachrichtigung,
+SelectionModel und Viewport. Eine praxistaugliche
+Testfolge besteht aus fünf Schritten:
+\begin{enumerate}
+\item Füllen Sie ein Modell mit bekannten Zeilen und
+legen Sie den sichtbaren Ausschnitt fest.
+\item Wählen Sie bewusst eine Zeile außerhalb
+des zuerst sichtbaren Ausschnitts.
+\item Lesen Sie den neuen \texttt{visibleRows()}-Snapshot
+und prüfen Sie die sichtbare Auswahl.
+\item Löschen oder ersetzen Sie im Modell den zuvor
+gewählten Datensatz und prüfen Sie erneut Selektion
+und sichtbare Zeilen.
+\item Zerstören Sie das Modell in einem kontrollierten
+Test vor der View. Weitere UI-Ereignisse dürfen
+keinen ungültigen Modellzeiger dereferenzieren.
+\end{enumerate}
+Testen Sie außerdem leere Modelle, Null-Zeilen-
+Viewports und besonders lange Feldwerte. Für
+Bäume gehört ein Reset bei aufgeklapptem Knoten
+zu den wichtigen Fehlerfällen.
+
 \PracticalTip{Für SASD Gatehold wäre
 eine Firewall-Regelliste ein gutes
 TableModel; der markierte Regel-Datensatz

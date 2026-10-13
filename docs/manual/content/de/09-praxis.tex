@@ -4,9 +4,9 @@
 Oberfläche nach den Prinzipien des SASD UI Toolkit:
 ein Datenmodell für den Zustand, eine kontrollierte Auswahl,
 Commands für Änderungen und eine Darstellung, die
-den Benutzer nicht über ihre Berechtigungen taeuscht.}
+den Benutzer nicht über ihre Berechtigungen täuscht.}
 
-\section{Beispielaufgabe und Grundsaetze}
+\section{Beispielaufgabe und Grundsätze}
 Angenommen, eine Anwendung soll eine Liste
 von Diensten anzeigen, deren Status lesen
 und einen ausgewählten Dienst neu laden.
@@ -95,7 +95,7 @@ Status anzeigen; eine
 \term{ListView} könnte eine
 kleine Ereignisliste darstellen.
 Die echte Protokollierung und
-Auditierung verbleiben ausserhalb
+Auditierung verbleiben außerhalb
 der UI-Bibliothek.
 
 \section{Schritt vier: robuste Eingabe}
@@ -132,6 +132,36 @@ Auditlog und Wiederherstellbarkeit.
 Wenn erforderlich dieselbe Semantik
 mit Rendered testen.
 \end{enumerate}
+
+\section{Abnahme eines sicheren Administrationsdialogs}
+Ein erster erfolgreicher Klick ist kein ausreichender
+Abnahmetest für eine Verwaltungsoberfläche. Definieren
+Sie vor der Freigabe beobachtbare Ergebnisse für
+mindestens die folgenden Situationen:
+
+\begin{itemize}
+\item \textbf{Nur lesen:} Das Anzeigen und Navigieren der
+Dienstliste verändert den Systemzustand nicht.
+\item \textbf{Keine Auswahl:} Der Änderungs-Command ist
+deaktiviert; auch ein manuell ausgelöster Aufruf ändert nichts.
+\item \textbf{Veralteter Datensatz:} Nach Modell-Reset wird
+eine alte Auswahl nicht stillschweigend auf den nun an
+derselben Position stehenden Dienst übertragen.
+\item \textbf{Fehlende Berechtigung:} Der zuständige
+Systemdienst lehnt die Operation unabhängig vom
+Enabled-Zustand des sichtbaren Buttons ab.
+\item \textbf{Fehler und Wiederholung:} Ein fehlgeschlagener
+Aufruf liefert nachvollziehbare Rückmeldung und führt
+nicht zu unkontrollierten Mehrfachausführungen.
+\item \textbf{Schwaches Terminal:} Alle Kernfunktionen sind
+ohne Maus erreichbar; Escape und Tab bleiben vorhersagbar.
+\end{itemize}
+
+Beziehen Sie die Fehlerfälle in automatisierte Domänentests
+ein. UI-Tests untersuchen ergänzend die sichtbaren Zustände
+und das Eventrouting. Verwechseln Sie diese beiden
+Verantwortlichkeiten nicht: Eine gesperrte Schaltfläche
+ist eine Bedienhilfe, keine Sicherheitsgrenze.
 
 \PracticalTip{Nehmen Sie zum Start eine
 \emph{read-only} Bildschirmseite,

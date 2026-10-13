@@ -31,7 +31,7 @@ die Darstellungsschicht.
 \begin{tikzpicture}[every node/.style={draw,rounded corners=2pt,align=center,
  font=\sffamily\small,minimum height=10mm},node distance=7mm]
 \node[fill=SASDPale,text width=10cm] (app) {Anwendungscode: Widgets, Datenmodelle, Commands};
-\node[below=of app,fill=gray!7,text width=10cm] (core) {SASD::UI Core: Layout, Fokus, Ereignisse, Lebensdauer};
+\node[below=of app,fill=gray!7,text width=10cm] (core) {sasd::ui Core: Layout, Fokus, Ereignisse, Lebensdauer};
 \node[below left=11mm and -16mm of core,fill=gray!7,text width=3.8cm] (term) {Terminal\\ANSI/VT};
 \node[below right=11mm and -16mm of core,fill=gray!7,text width=3.8cm] (rend) {Rendered\\SDL3 (experimentell)};
 \draw[-stealth,thick,SASDBlue] (app)--(core);
@@ -50,7 +50,7 @@ keine heute austauschbaren Produktiv-Backends.
 \section{Was gegenwärtig vorhanden ist}
 Die folgenden Aussagen beziehen sich auf den Quellstand vom
 12.\ Oktober 2026; für neuere Entwicklungen sind README, Tests und
-Header massgeblich.
+Header maßgeblich.
 
 \noindent\begin{tabularx}{\dimexpr\linewidth-14pt\relax}{@{}p{32mm}X@{}}
 \toprule
@@ -64,8 +64,8 @@ eigene Tests.\\
 SDL3 & Optionaler experimenteller Adapter mit Fenster- und
 Headless-Pfad; \emph{build-tree-only}.\\
 Native Desktop & Zukünftig; kein fertiger gleichwertiger Win32-/GTK-/AppKit-Peer.\\
-Stabilität & Vor Version 1.0; Quellkompatibilitaet kann sich bei
-begruendeten Architekturverbesserungen ändern.\\
+Stabilität & Vor Version 1.0; Quellkompatibilität kann sich bei
+begründeten Architekturverbesserungen ändern.\\
 \bottomrule
 \end{tabularx}
 

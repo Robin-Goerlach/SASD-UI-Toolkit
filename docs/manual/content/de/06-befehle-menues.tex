@@ -3,20 +3,20 @@
 \ChapterSummary{Hier lernen Sie, Benutzeraktionen von ihrer
 Darstellung zu trennen. Ein Command kann von einem Button,
 einem Menüpunkt und einem Shortcut verwendet werden,
-ohne dass dreimal dieselbe Geschaeftslogik implementiert wird.}
+ohne dass dreimal dieselbe Geschäftslogik implementiert wird.}
 
 \section{Aktionen als eigene Komponenten}
 Ein \term{Command} besitzt einen Beschreibungstext,
 einen Enabled-Zustand und einen synchronen
 Ausführungs-Callback. Es ist keine visuelle
-Schaltflaeche; sein Lebenszyklus gehört der
+Schaltfläche; sein Lebenszyklus gehört der
 Anwendung, einem Besitzer oder einem
 ausdrücklich gesteuerten Scope.
 
-\begin{lstlisting}[language=SASDCpp,caption={Eine Aktion, mehrere Ausloeser}]
+\begin{lstlisting}[language=SASDCpp,caption={Eine Aktion, mehrere Auslöser}]
 Command saveCommand{"Speichern"};
 saveCommand.setOnExecuted([] {
-    // Validieren und Speicherung ausloesen.
+    // Validieren und Speicherung auslösen.
 });
 Window window;
 auto& form = window.emplace<VBox>();
@@ -38,19 +38,19 @@ sperren Sie die Ausführung des Commands.
 \texttt{execute()} liefert dann \texttt{false}.
 Gebundene Buttons können Text- und Enabled-
 Zustand aus dem Command übernehmen.
-Ein solcher Vorgang ist verlasslicher, als nur
+Ein solcher Vorgang ist verlässlicher, als nur
 die visuelle Farbe eines Buttons zu ändern.
 
 \begin{lstlisting}[language=SASDCpp]
 saveCommand.setEnabled(formIsValid);
 if (!saveCommand.execute()) {
-    // Kommando war nicht ausfuehrbar.
+    // Kommando war nicht ausführbar.
 }
 \end{lstlisting}
 Hier steht \texttt{formIsValid} für eine
 bereits berechnete boolesche Variable der
 Anwendung; die Validierung selbst liegt
-ausserhalb des Commands.
+außerhalb des Commands.
 
 \section{MenuModel und MenuBarModel}
 Ein \term{MenuBarModel} besitzt Menüs,
@@ -61,7 +61,7 @@ sind semantisch: Der Core muss die Position
 eines terminalbasierten Popups oder einer
 grafischen Menüleiste nicht selbst kennen.
 
-\begin{lstlisting}[language=SASDCpp,caption={Menuebaum aufbauen}]
+\begin{lstlisting}[language=SASDCpp,caption={Menübaum aufbauen}]
 MenuBarModel bar;
 MenuModel& file = bar.appendMenu("Datei");
 file.appendCommand(saveCommand);

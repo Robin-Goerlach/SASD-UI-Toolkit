@@ -7,7 +7,7 @@ Das Kapitel vermittelt die Grundlage für reaktionsfähige,
 gut testbare Oberflächen.}
 
 \section{Warum Layout in zwei Phasen erfolgt}
-Ein Widget weiss vor der Darstellung nicht zwingend, wie viel
+Ein Widget weiß vor der Darstellung nicht zwingend, wie viel
 Platz seine Beschriftung benötigt: Ein Terminal misst in
 Zeichen-Zellen, eine gerenderte Oberfläche in Schriftmetriken.
 Darum verwendet das Toolkit \term{measure} und \term{arrange}.
@@ -20,12 +20,13 @@ ein Core-Widget das Backend kennen muss.
 und Größe innerhalb des zugewiesenen Rechtecks fest.
 
 \begin{lstlisting}[language=SASDCpp]
-TerminalMeasurementContext metrics;
+sasd::ui::terminal::TerminalMeasurementContext metrics;
 const Size viewport{80, 24};
 (void)form.measure(metrics, {{0, 0}, viewport});
 form.arrange({0, 0, viewport.width, viewport.height});
 \end{lstlisting}
-Der Ausschnitt setzt voraus, dass \texttt{form}
+Der Ausschnitt setzt voraus, dass die Core-Typen aus
+\texttt{sasd::ui} bekannt sind und \texttt{form}
 bereits existiert und Sie den Terminal-Header
 \filepath{sasd/ui/terminal/terminal_measurement_context.hpp}
 eingebunden haben. Eine echte Host-Anwendung passt
@@ -39,7 +40,7 @@ Container & Praktische Verwendung\\\midrule
 \term{VBox} & Beschriftete Schritte, einfache Formulare,
 Aktionsstapel; \texttt{setSpacing}.\\
 \term{HBox} & Horizontale Befehlsleisten und kleine
-zusammengehoerige Bedienelemente.\\
+zusammengehörige Bedienelemente.\\
 \term{GridLayout} & Regelmäßige Spalten/Raster mit
 konfigurierbaren Zeilen- und Spaltenabstaenden.\\
 \term{FormLayout} & Label-Feld-Paare; mit
@@ -53,7 +54,7 @@ CSS-/HTML-Layoutsystem. \term{VBox} und \term{HBox}
 führen keine magische automatische Flexbox-Logik ein,
 die beliebige UI-Fälle bereits abdeckt.
 
-\begin{lstlisting}[language=SASDCpp,caption={FormLayout fuer beschriftete Felder}]
+\begin{lstlisting}[language=SASDCpp,caption={FormLayout für beschriftete Felder}]
 auto& fields = window.emplace<FormLayout>();
 fields.setColumnSpacing(2);
 auto nameRow = fields.emplaceRow<TextField>("Benutzer:");
@@ -79,7 +80,7 @@ Die Wirksamkeit des Fokus hängt von
 \texttt{isEnabled()} ab. Wenn ein zuvor fokussiertes
 Element unbrauchbar wird, darf kein veralteter
 Fokuszeiger unkontrolliert weiterverwendet werden.
-Für grosse Formulare empfiehlt es sich, zuerst
+Für große Formulare empfiehlt es sich, zuerst
 die Tab-Reihenfolge festzulegen und danach
 Shortcuts und Popups einzubauen.
 
@@ -128,7 +129,7 @@ Das Toolkit unterscheidet Mess-Invalidierung und
 visuelle Invalidierung. Der \term{PresentationCoordinator}
 organisiert danach die anstehenden Präsentationsupdates,
 und ein \term{PresentationSink} erzeugt den Ziel-Frame.
-Bei Oberflächenveraenderungen dürfen alte Regionen
+Bei Oberflächenveränderungen dürfen alte Regionen
 nicht versehentlich sichtbar bleiben; dafür existiert
 konservatives Refresh-Verhalten.
 

@@ -2,7 +2,7 @@
 \chapter{Komponenten, Widgets und Formulare}\label{chap:widgets}
 \ChapterSummary{Dieses Kapitel führt durch die gebrauchsfertigen
 Grund-Controls, ihre Zustandseigenschaften und ihre Lebensdauer.
-Sie erfahren, wann ein Widget genuegt und wann eine nichtvisuelle
+Sie erfahren, wann ein Widget genügt und wann eine nichtvisuelle
 Komponente oder ein Modell die bessere Wahl ist.}
 
 \section{Ein Besitzbaum, zwei Sichtweisen}
@@ -15,7 +15,7 @@ Aktivierbarkeit, Fokusfähigkeit, Größe, Position und Ereignisse.
 sichtbare Kinder; eine Command-Komponente im gleichen
 Container erscheint nicht im Layout.
 
-\begin{lstlisting}[language=SASDCpp,caption={Eigentum ausdruecklich uebergeben}]
+\begin{lstlisting}[language=SASDCpp,caption={Eigentum ausdrücklich übergeben}]
 Window window;
 auto& form = window.emplace<VBox>();
 auto& caption = form.emplace<Label>("Einstellungen");
@@ -160,7 +160,7 @@ auto& target = form.emplace<ComboBox>(
     std::vector<std::string>{"Test", "Produktion"});
 target.setSelectedIndex(0);
 target.setOnSelectionChanged([](auto index) {
-    // Nur bestaetigte Auswahl verarbeiten.
+    // Nur bestätigte Auswahl verarbeiten.
 });
 \end{lstlisting}
 
@@ -179,4 +179,4 @@ nicht als einziges Trägermedium für Bedeutung.
 \PracticalTip{Trennen Sie Statusdaten, sichtbaren Text und
 Benutzerinteraktion. Ein TextField ist kein Datenmodell;
 ein Label ist keine Protokollhistorie; ein Command ist
-keine künstlich verborgene Schaltflaeche.}
+keine künstlich verborgene Schaltfläche.}

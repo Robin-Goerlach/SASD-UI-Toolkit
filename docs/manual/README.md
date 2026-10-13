@@ -19,13 +19,18 @@ make pdf
 latexmk -lualatex -interaction=nonstopmode -halt-on-error -outdir=build main.tex
 ~~~
 
-Output: **build/main.pdf**. Do not check generated artifacts into Git.
+Output: **build/main.pdf** (screen-reading PDF without deliberately empty verso pages).
+For a classic duplex-print book with chapters beginning on right-hand pages run
+**`make pdf-print`**, which generates **build/print.pdf**.
+The two files share exactly the same German chapters and API examples.
+Do not check generated artifacts into Git.
 
 ## Structure and translation workflow
 
 ~~~text
 docs/manual/
-├── main.tex                  # language-independent book assembly
+├── main.tex                  # language-independent book assembly (reading PDF)
+├── print.tex                 # optional duplex-print edition
 ├── style/sasdmanual.sty      # typography, layout, code and callouts
 ├── i18n/de.tex               # German common strings and metadata
 ├── i18n/en.tex               # English common strings (scaffold)
@@ -58,5 +63,16 @@ released independently.
 - Do not reproduce proprietary Borland material.
 - Treat pre-1.0 API changes as documentation update triggers.
 - Use UTF-8 with LuaLaTeX. Do not commit fonts, PDFs or build caches.
+
+## Editorial quality checks
+
+Before merging a revision, build **both** PDF variants and inspect title, contents,
+chapter transitions, C++ listings, long paths, tables, index/links, and last pages.
+The automated CI additionally checks that both PDFs contain extractable text and
+expected chapter markers; this complements, but cannot replace, visual inspection.
+
+Check the implementation against public headers and the reference demo whenever
+APIs change. There is no guarantee that a snippet showing only a Widget tree is
+itself a complete event-loop-driven application.
 
 See the repository [documentation index](../README.md).

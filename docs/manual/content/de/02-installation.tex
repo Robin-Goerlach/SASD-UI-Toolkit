@@ -16,7 +16,7 @@ Terminal mit VT-Unterstützung benötigt.
 Der kanonische Quellstand liegt unter
 \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit}.
 Klonen Sie das Repository oder arbeiten Sie in Ihrem vorhandenen
-Arbeitsverzeichnis. Bauen Sie \emph{ausserhalb} des Quellbaums in
+Arbeitsverzeichnis. Bauen Sie \emph{außerhalb} des Quellbaums in
 einem eigenen Build-Verzeichnis. Dadurch bleiben Quellstand, Cache,
 Tests und Varianten getrennt.
 
@@ -44,7 +44,7 @@ cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 ^
 cmake --build build-msvc --config Debug --parallel
 ctest --test-dir build-msvc -C Debug --output-on-failure
 \end{lstlisting}
-Die Fortsetzungszeichen \texttt{\^{}} sind für \emph{cmd.exe}
+Die Fortsetzungszeichen \texttt{\char94} sind für \emph{cmd.exe}
 gedacht; unter PowerShell verwenden Sie entweder eine einzige Zeile
 oder deren Backtick-Zeilenfortsetzung. Bei Visual-Studio-Generatoren
 muss die Konfiguration \filepath{Debug} oder \filepath{Release}
@@ -75,7 +75,7 @@ Verlassen und beim Abwickeln von C++-Ausnahmen wieder her.
 Eine harte Prozessbeendigung kann diese Garantie nicht bieten.}
 
 \section{Release-Build und Installation}
-\begin{lstlisting}[language=bash,caption={Installation in ein gewaehltes Praefix}]
+\begin{lstlisting}[language=bash,caption={Installation in ein gewähltes Präfix}]
 cmake -S . -B build-release \
   -DCMAKE_BUILD_TYPE=Release \
   -DSASD_UI_BUILD_TESTS=OFF \
@@ -126,6 +126,34 @@ Der Adapter wird gegenwärtig \emph{nicht} wie Core, Terminal und
 Rendered als stabiler externer CMake-Installationsvertrag angeboten.
 Weitere Details finden Sie in \filepath{README.md} und
 \filepath{docs/en/M3_RENDERED_DESKTOP_SMOKE_TEST.md}.
+
+\section{Den erfolgreichen Build überprüfen}
+Bevor Sie ein eigenes Projekt aufsetzen, prüfen Sie vier voneinander
+unabhängige Punkte: CMake hat die gewünschten Targets erzeugt;
+der Compiler und Linker haben keine Fehler gemeldet; CTest
+hat die vorgesehenen Testfälle wirklich ausgeführt; und die
+Terminal-Demo lässt sich interaktiv bedienen. Ein erfolgreiches
+Kompilieren allein bestätigt noch nicht den tatsächlichen
+Eingabe- und Darstellungspfad.
+
+\begin{lstlisting}[language=bash,caption={Build- und Testumfang nachvollziehen}]
+cmake --build build --target help
+ctest --test-dir build -N
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+Die erste Zeile listet die vom gewählten Generator angebotenen
+Targets; die zweite zeigt die von CTest registrierten Testfälle,
+ohne sie auszuführen. Fehlen erwartete Tests, prüfen Sie
+\filepath{SASD_UI_BUILD_TESTS} und den CMake-Cache. Für
+Fehleranalysen sollten Sie die erste fehlgeschlagene
+Testausgabe mitsamt Compiler- und Betriebssystemversion
+festhalten, statt ungezielt Build-Dateien zu verändern.
+
+\Important{Ein von CTest bestätigter Headless-Test beweist nicht
+automatisch, dass Ihr konkretes Terminal alle benötigten
+Tasten, Mausprotokolle oder Unicode-Breitenkonventionen
+unterstützt. Testen Sie die Referenz-Demo zusätzlich in der
+später vorgesehenen Zielumgebung.}
 
 \PracticalTip{Bei Problemen zuerst die Demo und die Tests aus dem
 gleichen Checkout bauen. Wenn diese funktionieren, liegt ein Fehler

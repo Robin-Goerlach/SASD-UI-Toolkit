@@ -3,7 +3,7 @@
 \ChapterSummary{An einem kleinen Formular lernen Sie, wie Widgets
 erzeugt, besessen und verschachtelt werden. Sie binden einen Button
 an eine Aktion und verstehen, welche Aufgaben eine reale
-Anwendungshuelle ausserhalb dieses bewusst kleinen Beispiels erledigt.}
+Anwendungshülle außerhalb dieses bewusst kleinen Beispiels erledigt.}
 
 \section{Vom Formular zum Komponentenbaum}
 Bei SASD UI Toolkit schreiben Sie die sichtbare Oberfläche als
@@ -25,10 +25,10 @@ void buildGreetingForm(sasd::ui::Window& window) {
     auto& column = window.emplace<VBox>();
     column.setSpacing(1);
 
-    column.emplace<Label>("Wie heissen Sie?");
+    column.emplace<Label>("Wie heißen Sie?");
     auto& name = column.emplace<TextField>();
     auto& message = column.emplace<Label>("Bereit");
-    auto& hello = column.emplace<Button>("Begruessen");
+    auto& hello = column.emplace<Button>("Begrüßen");
 
     hello.setOnActivated([&name, &message] {
         message.setText("Hallo, " + std::string{name.text()});
@@ -82,7 +82,7 @@ In der realen Terminal-Demo folgen auf den Widget-Aufbau
 die Einrichtung von \term{FocusManager}, \term{PointerRouter},
 Präsentations-Sink und den Callback-Bindungen.
 Der Host pollt Events, vermittelt sie an die
-zuständigen Controls und präsentiert den geaenderten
+zuständigen Controls und präsentiert den geänderten
 Frame. Das ist kein Versehen und keine fehlende
 magische \texttt{Application::run}-Methode:
 \term{Application} bietet derzeit unter anderem
@@ -93,10 +93,39 @@ universellen Desktop-Message-Loop.
 \section{Was Sie aus dem Beispiel mitnehmen}
 Der Anwendungsautor beschreibt \emph{Bedeutung und Verhalten}.
 Er verwaltet eine eindeutige Eigentumshierarchie und
-reagiert auf Ereignisse. Backend, Eingabegerate, Messung
+reagiert auf Ereignisse. Backend, Eingabegeräte, Messung
 und Darstellung werden bewusst als separate Teile
 komponiert, damit die gleiche Semantik später auf
-mehreren Ausgabegeraten tragfähig bleibt.
+mehreren Ausgabegeräten tragfähig bleibt.
+
+\section{Vom Quellausschnitt zur laufenden Demo}
+Die mitgelieferte Demo ist eine praktische Vorlage, aber nicht
+durch bloßes Kopieren des obigen Widget-Baums ersetzbar.
+Suchen Sie in \filepath{examples/terminal_form_demo.cpp}
+nacheinander die folgenden Verantwortlichkeiten:
+\begin{enumerate}
+\item \textbf{Aufbau:} Hier entstehen Window, Layout-Container,
+Controls, Commands und Menüs. Neue Widgets sollten im richtigen
+Besitzbaum erzeugt werden.
+\item \textbf{Messung und Platzierung:} Nach dem Aufbau und bei
+Größenänderungen wird der verfügbare Anzeigebereich neu vermessen
+und angeordnet. Eine reine Textänderung benötigt eventuell eine
+neue Messung.
+\item \textbf{Eingabe:} Die Host-Schleife fragt das Terminal-Backend
+nach Ereignissen. Fokuswechsel, Textverarbeitung, Menüinteraktion
+und Pointer-Routing sind unterschiedliche Schritte.
+\item \textbf{Präsentation:} Der Präsentationspfad erzeugt den
+sichtbaren Zustand und übergibt den Terminal-Frame zur Ausgabe.
+\item \textbf{Lebensdauer:} Beim normalen Beenden muss die
+Terminal-Sitzung ihre Geräteeinstellungen zurücksetzen.
+\end{enumerate}
+Für den ersten eigenen Versuch genügt es, einen zusätzlichen
+Button innerhalb des vorhandenen Demo-Baums anzulegen,
+dessen Aktion zunächst nur einen Label-Text verändert.
+Prüfen Sie anschließend Tab-Navigation, Bildschirmaktualisierung
+und Verhalten nach Vergrößerung beziehungsweise Verkleinerung
+des Terminalfensters. Erst danach sollten Sie neue
+Menüs oder Systemoperationen hinzufügen.
 
 \PracticalTip{Ersetzen Sie zuerst in der Terminal-Demo nur
 den Formulartitel und einen Button-Callback. Vergleichen Sie
