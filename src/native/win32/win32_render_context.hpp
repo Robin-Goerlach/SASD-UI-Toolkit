@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/rendered/display_list.hpp>
+#include <sasd/ui/rendered/render_device.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
 
 #include <windows.h>
@@ -12,14 +13,14 @@
 namespace sasd::ui::native::win32::detail {
 
 /** GDI implementation of the backend-neutral RenderDevice/measurement contract. */
-class Win32RenderContext final {
+class Win32RenderContext final : public rendered::RenderDevice {
 public:
     Win32RenderContext(HDC device_context, HFONT font, UINT dpi) noexcept;
 
     void clear(Color color);
-    void fillRect(const rendered::FillRectCommand& command);
-    void strokeRect(const rendered::StrokeRectCommand& command);
-    void drawText(const rendered::DrawTextCommand& command);
+    void fillRect(const rendered::FillRectCommand& command) override;
+    void strokeRect(const rendered::StrokeRectCommand& command) override;
+    void drawText(const rendered::DrawTextCommand& command) override;
 
     [[nodiscard]] Size measureText(std::string_view utf8_text) const;
     [[nodiscard]] Coordinate lineHeight() const noexcept { return line_height_; }

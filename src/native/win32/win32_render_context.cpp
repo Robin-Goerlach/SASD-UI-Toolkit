@@ -202,7 +202,7 @@ std::optional<Coordinate> Win32RenderContext::textAdvanceToScalar(std::string_vi
     if (text.find('\n') != std::string_view::npos) return std::nullopt;
     const std::size_t count = utf8::scalarCount(text);
     if (scalar_index > count) return std::nullopt;
-    const std::string prefix = text.substr(0, utf8::byteOffsetForScalarIndex(text, scalar_index));
+    const std::string prefix{text.substr(0, utf8::byteOffsetForScalarIndex(text, scalar_index))};
     const std::wstring wide = toWide(prefix);
     FontScope scope{device_context_, font_};
     SIZE measured{};

@@ -111,10 +111,11 @@ struct Win32WindowBackend::Impl {
             return 0;
         case WM_SIZE:
             if (const auto event = detail::translateWindowMessage(message, w_param, l_param)) {
-                current_size = logicalSizeFromPhysical(std::get<ResizeEvent>(*event).size);
-                std::get<ResizeEvent>(*event).size = current_size;
+                auto resize_event = std::get<ResizeEvent>(*event);
+                current_size = logicalSizeFromPhysical(resize_event.size);
+                resize_event.size = current_size;
                 presentation_requested = true;
-                events.push(*event);
+                events.push(Event{resize_event});
             }
             return 0;
         case WM_KEYDOWN:
@@ -208,7 +209,7 @@ struct Win32WindowBackend::Impl {
                 detail::Win32RenderContext context{dc, font, dpi};
                 context.clear(config.background_color);
                 active_context = &context;
-                (void)::sasd::ui::rendered::DisplayListExecutor::execute(last_frame, *this);
+                (void)::sasd::ui::rendered::DisplayListExecutor::execute(last_frame, *active_context);
                 active_context = nullptr;
                 presentation_requested = false;
             } catch (...) {
@@ -309,7 +310,7 @@ struct Win32WindowBackend::Impl {
             detail::Win32RenderContext context{dc, font, dpi};
             context.clear(config.background_color);
             active_context = &context;
-            const std::size_t executed = ::sasd::ui::rendered::DisplayListExecutor::execute(list, *this);
+            const std::size_t executed = ::sasd::ui::rendered::DisplayListExecutor::execute(list, *active_context);
             active_context = nullptr;
             ReleaseDC(window, dc);
             last_frame = list;
