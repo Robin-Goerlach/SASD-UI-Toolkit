@@ -1,0 +1,25 @@
+name: AppKit Native CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  appkit:
+    name: macOS AppKit Native
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AppKit adapter
+        run: >-
+          cmake -S . -B build-appkit
+          -DCMAKE_BUILD_TYPE=Debug
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_BUILD_EXAMPLES=ON
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          -DSASD_UI_BUILD_APPKIT_ADAPTER=ON
+      - name: Build AppKit adapter, tests and demo
+        run: cmake --build build-appkit --config Debug --parallel
+      - name: Test AppKit adapter
+        run: ctest --test-dir build-appkit -C Debug -R 'sasd_ui_appkit_tests' --output-on-failure

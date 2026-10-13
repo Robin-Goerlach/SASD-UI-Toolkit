@@ -41,6 +41,9 @@ they improve the architecture before compatibility commitments become expensive.
 - Optional GTK4 native host target `SASD::UI::Native::GTK` with Cairo/Pango RenderDevice and measurement.
 - GTK4 lifecycle, GLib event pump, logical input translation and complete DisplayList redraw replay.
 - Xvfb-backed GTK integration tests and a build-tree GTK demo; native peers, IME preedit and installed GTK export remain deferred.
+- Optional macOS AppKit native rendered host with CoreGraphics/CoreText replay, committed text input,
+  dedicated AppKit CI and a manual visible smoke-test procedure; native child peers and IME preedit
+  remain deferred.
 - Snapshot-exact Rendered ComboBox popup hit testing and modal pointer interaction with hover preview,
   Primary click commit, outside-press dismissal, stale-state rejection and SDL3 demo integration.
 - Backend-neutral logical Latin-letter `Key` identities and deterministic `Ctrl+A/C/X/V` ShortcutMap

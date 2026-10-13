@@ -207,7 +207,14 @@ Erster-Schnitt-Folgearbeit:
 - [x] Host an eine vollständige Rendered-Presentation anbinden
 - [ ] konkreten Win32-Button-/TextField-Peer erst nach bewährtem Host-Vertrag prüfen
 - [x] GTK4-Host-Consumer mit Cairo/Pango-Rendered-Replay und Xvfb-Abdeckung
-- [ ] AppKit-Host-Consumer
+- [x] AppKit-Host-Consumer mit CoreGraphics/CoreText-Rendered-Replay und eigener macOS-CI
+- [ ] sichtbare macOS-/Cocoa-Validierung für das M3-Gate (siehe `tools/m6_smoke_appkit_macos.sh`)
+
+Die native Desktop-Host-Integration von M6 ist mit Win32, GTK4 und AppKit fachlich abgeschlossen.
+Alle drei verwenden die bestehenden Core-/Rendered-Verträge; native Child-Control-Peers bleiben
+zurückgestellt, bis ein konkreter Plattformbedarf wie Accessibility oder native Textdienste sie
+rechtfertigt. AppKit bleibt build-tree-only, da ein installierter Framework-Consumer noch nicht
+validiert ist.
 
 Reihenfolge und Umfang werden nach M3/M4 anhand realer Erfahrungen entschieden.
 
