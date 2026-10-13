@@ -117,7 +117,7 @@ TEST_CASE("Win32 native menu binding projects structure and activates the Core C
     HMENU file_popup = GetSubMenu(binding.root(), 0);
     CHECK(file_popup != nullptr);
     CHECK(GetMenuItemCount(file_popup) == 3);
-    CHECK(GetMenuItemID(file_popup, 1) == static_cast<UINT>(-1));
+    CHECK((GetMenuState(file_popup, 1, MF_BYPOSITION) & MF_SEPARATOR) != 0U);
     const UINT open_id = GetMenuItemID(file_popup, 0);
     CHECK(open_id != static_cast<UINT>(-1));
     CHECK(binding.handleCommand(open_id));
