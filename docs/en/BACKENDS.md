@@ -146,10 +146,6 @@ framework consumer is validated. See [ADR 0153](../adr/0153-m6-appkit-native-ren
 `tools/m6_smoke_appkit_macos.sh` for the visible macOS procedure. This visible test remains the open
 M3 macOS/Cocoa gate.
 
-### 5. Native macOS backend
-
-An AppKit-based backend is planned for macOS. C++/Objective-C++ may be used inside the backend without leaking Objective-C++ into the public C++ API.
-
 ## Backend selection
 
 Backends should be selectable at build time and, where practical, at runtime.

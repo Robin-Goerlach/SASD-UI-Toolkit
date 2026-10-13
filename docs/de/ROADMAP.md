@@ -183,7 +183,7 @@ Dieser Meilenstein ist besonders wichtig für spätere wissenschaftliche, statis
 
 ## M6 – Native Desktop Peers
 
-Status: begonnen am 12.10.2026. Der erste M6-Schnitt etabliert zunächst eine kleine Native-Host-Grenze
+Status: abgeschlossen am 13.10.2026. Der erste M6-Schnitt etabliert zunächst eine kleine Native-Host-Grenze
 statt einer universellen Native-Control-Hierarchie. `SASD::UI::Native::Win32` besitzt ein Win32-
 Top-Level-Fenster, übersetzt dessen Message Queue in die bestehende Core-Event-Pipeline und wird ohne
 GUI-Automation getestet. Der Host verwendet bewusst die Core-Semantik von Button/TextField weiter
