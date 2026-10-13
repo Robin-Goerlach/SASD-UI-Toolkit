@@ -170,6 +170,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0151](0151-m6-native-host-peer-boundary.md) | M6 starts with a native host boundary and one Win32 consumer | Accepted |
 | [0152](0152-m6-gtk-native-rendered-host.md) | M6 GTK validates the native rendered-host boundary | Accepted |
 | [0153](0153-m6-appkit-native-rendered-host.md) | M6 AppKit validates the third native rendered-host consumer | Accepted |
+| [0154](0154-win32-native-menu-consumer.md) | First M7 consumer: Win32 native menus | Accepted |
 
 ## ADR policy
 

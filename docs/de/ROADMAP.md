@@ -220,6 +220,11 @@ Reihenfolge und Umfang werden nach M3/M4 anhand realer Erfahrungen entschieden.
 
 ## M7 – Desktop-Integration
 
+Status: begonnen am 13.10.2026. Slice 1 ist der erste reale Consumer: Der Win32-Native-Host projiziert
+die bestehende Core-Menüsemantik in einen besitzenden HMENU-Baum und routet `WM_COMMAND` zurück an
+denselben `Command`. Windows besitzt die Popup-Interaktion; AppKit-/GTK-Menüs und alle übrigen M7-
+Themen bleiben zurückgestellt. Siehe [ADR 0154](../adr/0154-win32-native-menu-consumer.md).
+
 Langfristige Themen:
 
 - native Menüs

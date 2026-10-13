@@ -213,6 +213,11 @@ Order and exact scope will be chosen after lessons from M3/M4.
 
 ## M7 – Desktop integration
 
+Status: started on 2026-10-13. Slice 1 is the first real consumer: the Win32 native host projects the
+existing Core menu semantics into an owned HMENU tree and routes `WM_COMMAND` back to the same
+`Command`. Windows owns popup interaction; AppKit/GTK menus and all other M7 topics remain deferred.
+See [ADR 0154](../adr/0154-win32-native-menu-consumer.md).
+
 Longer-term areas:
 
 - native menus
