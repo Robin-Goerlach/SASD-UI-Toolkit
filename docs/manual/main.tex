@@ -39,7 +39,16 @@
 \nopagecolor\color{black}
 \input{content/\SASDLanguage/frontmatter.tex}
 \tableofcontents
-\mainmatter
+% KOMA-Script erzwingt bei \mainmatter auch bei open=any eine unbedruckte
+% Verso-Seite im twoside-Modus. Nur in der Bildschirmfassung unterdruecken.
+\ifdefined\SASDPrintEdition
+  \mainmatter
+\else
+  \let\SASDSavedCleardoubleoddpage\cleardoubleoddpage
+  \let\cleardoubleoddpage\clearpage
+  \mainmatter
+  \let\cleardoubleoddpage\SASDSavedCleardoubleoddpage
+\fi
 \input{content/\SASDLanguage/01-einfuehrung.tex}
 \input{content/\SASDLanguage/02-installation.tex}
 \input{content/\SASDLanguage/03-erste-schritte.tex}
