@@ -26,6 +26,16 @@ The first native contract is a small top-level host, implemented as the separate
   lifecycle event.
 - A native host may feed either the existing Rendered presentation pipeline or a later native peer
   sink. This first slice is a host, not a native child-control implementation.
+- The Win32 host is also the first real Rendered consumer: it implements `RenderDevice` and
+  `RenderedMeasurementContext` beside `Backend`, and exposes `presentFrame(DisplayList)`. Complete
+  frames are replayed through `WM_PAINT`; `RenderedPresentationSink` remains the only semantic
+  Widget-to-DisplayList translation.
+- GDI is the deliberately small text policy for this slice. The adapter owns a Segoe UI system font,
+  uses `GetTextExtentPoint32W` for UTF-8-derived logical advances, and draws the same DisplayList.
+  No generic font registry, DirectWrite dependency or native child control is added.
+- Win32 logical Rendered coordinates are 96-DPI units. Client pixels, pointer coordinates and GDI
+  font sizes are converted using the current window DPI; a DPI transition changes measurement
+  revision and requests complete replay without creating a second Widget geometry model.
 - Native handles are exclusively owned by the backend implementation, attached to the Win32 window
   with `WM_NCCREATE`/`GWLP_USERDATA`, and destroyed through one RAII shutdown path. No handle is
   exposed by Core or required by the portable host configuration.
@@ -65,6 +75,18 @@ Der erste native Vertrag ist ein kleiner Top-Level-Host im separat linkbaren Tar
   Lifecycle-Vertrag Hover und Capture.
 - Ein nativer Host kann die bestehende Rendered-Pipeline oder später einen nativen Peer-Sink speisen.
   Dieser erste Schnitt ist ein Host, keine native Child-Control-Implementierung.
+- Der Win32-Host ist zugleich der erste reale Rendered-Consumer: Neben `Backend` implementiert er
+  `RenderDevice` und `RenderedMeasurementContext` und bietet `presentFrame(DisplayList)`. Vollständige
+  Frames werden über `WM_PAINT` erneut abgespielt; `RenderedPresentationSink` bleibt die einzige
+  semantische Widget-zu-DisplayList-Übersetzung.
+- GDI ist die bewusst kleine Text-Policy dieses Schnitts. Der Adapter besitzt einen Segoe-UI-
+  Systemfont, verwendet `GetTextExtentPoint32W` für aus UTF-8 abgeleitete logische Advances und
+  zeichnet dieselbe DisplayList. Es gibt kein generisches Font-Register, keine DirectWrite-
+  Abhängigkeit und keine nativen Child-Controls.
+- Logische Win32-Rendered-Koordinaten sind 96-DPI-Einheiten. Client-Pixel, Pointer-Koordinaten und
+  GDI-Fontgrößen werden mit der aktuellen Window-DPI umgerechnet; ein DPI-Wechsel ändert die
+  Measurement-Revision und fordert ein vollständiges Replay an, ohne ein zweites Widget-
+  Geometriemodell zu erzeugen.
 - Native Handles gehören exklusiv dem Backend, werden über `WM_NCCREATE`/`GWLP_USERDATA` verbunden und
   über einen einzigen RAII-Shutdown-Pfad zerstört. Core und portable Host-Konfiguration sehen keinen
   Handle.

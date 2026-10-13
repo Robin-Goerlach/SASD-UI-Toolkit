@@ -183,6 +183,9 @@ than a universal native-control hierarchy. `SASD::UI::Native::Win32` owns one to
 translates its message queue into the existing Core event pipeline and is tested without GUI
 automation. The host deliberately reuses Core Button/TextField semantics and does not yet create
 native child-control peers. See [ADR 0151](../adr/0151-m6-native-host-peer-boundary.md).
+The next vertical slice now consumes the existing `RenderedPresentationSink` -> `DisplayList` path
+through a GDI-backed Win32 `RenderDevice` and `RenderedMeasurementContext`; it uses 96-DPI logical
+coordinates and full-frame repaint replay without adding native child peers.
 
 Planned targets:
 
@@ -195,7 +198,7 @@ First-slice follow-up:
 - [x] Win32 top-level host, RAII HWND lifetime and UI-thread contract
 - [x] Win32 resize/close, keyboard, committed text and pointer translation
 - [x] Core event types remain the only semantic input contract
-- [ ] connect the host to a complete native or Rendered presentation pass
+- [x] connect the host to a complete Rendered presentation pass
 - [ ] validate a concrete Win32 Button/TextField peer only when host experience justifies it
 - [ ] GTK host consumer
 - [ ] AppKit host consumer
