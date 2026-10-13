@@ -186,6 +186,32 @@ endif()
 
 add_test(NAME sasd_ui_rendered_tests COMMAND sasd_ui_rendered_tests)
 
+if(SASD_UI_BUILD_GTK_ADAPTER)
+    add_executable(sasd_ui_gtk_tests
+        test_main.cpp
+        native_gtk_tests.cpp
+    )
+    target_link_libraries(sasd_ui_gtk_tests PRIVATE SASD::UI::Native::GTK)
+    target_compile_features(sasd_ui_gtk_tests PRIVATE cxx_std_20)
+    target_include_directories(sasd_ui_gtk_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/src/native/gtk
+    )
+    if(MSVC)
+        target_compile_options(sasd_ui_gtk_tests PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_gtk_tests PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(sasd_ui_gtk_tests PRIVATE -Wall -Wextra -Wpedantic)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_gtk_tests PRIVATE -Werror)
+        endif()
+    endif()
+    add_test(NAME sasd_ui_gtk_tests COMMAND sasd_ui_gtk_tests)
+    set_tests_properties(sasd_ui_gtk_tests PROPERTIES TIMEOUT 15)
+endif()
+
 if(WIN32)
     add_executable(sasd_ui_win32_tests
         test_main.cpp

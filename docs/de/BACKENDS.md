@@ -107,7 +107,11 @@ Schwerpunkte:
 
 ### 4. Native Linux-Backend
 
-Für Linux ist ein GTK-basiertes natives Backend ein naheliegender Kandidat. Die konkrete GTK-Version wird erst bei Implementierungsbeginn festgelegt.
+GTK4 ist nun ein optionaler zweiter Native Host. `SASD::UI::Native::GTK` bleibt build-tree-only und
+verwendet `GtkWindowBackend`, Cairo als `RenderDevice` und Pango als gemeinsame Mess-/Zeichenpolicy.
+GTK wird nur bei `SASD_UI_BUILD_GTK_ADAPTER=ON` über pkg-config gefunden; normale Builds bleiben
+GTK-frei. GLib wird in `pollEvent()` gepumpt und vollständige DisplayLists werden für Repaints
+behalten. Druckbarer Commit-Text wird unterstützt, IME-Preedit bleibt offen.
 
 Wichtig ist, dass GTK nicht Teil der öffentlichen Core-API wird.
 

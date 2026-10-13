@@ -1,0 +1,37 @@
+name: GTK Native CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gtk4:
+    name: GTK4 Native Host
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install GTK4/Xvfb dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev xvfb xauth fonts-dejavu-core
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build-gtk
+          -DCMAKE_BUILD_TYPE=Debug
+          -DSASD_UI_BUILD_TESTS=ON
+          -DSASD_UI_BUILD_EXAMPLES=ON
+          -DSASD_UI_WARNINGS_AS_ERRORS=ON
+          -DSASD_UI_BUILD_GTK_ADAPTER=ON
+
+      - name: Build
+        run: cmake --build build-gtk --parallel
+
+      - name: Test under Xvfb
+        run: xvfb-run -a ctest --test-dir build-gtk --output-on-failure
