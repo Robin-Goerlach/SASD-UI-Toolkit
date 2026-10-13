@@ -3,6 +3,7 @@
 #include "win32_input_translation.hpp"
 
 #include <sasd/ui/native/win32_backend.hpp>
+#include <sasd/ui/rendered/display_list.hpp>
 
 #include <variant>
 
@@ -92,4 +93,22 @@ TEST_CASE("Win32 host owns a hidden top-level window through deterministic lifec
     CHECK(!backend.pollEvent().has_value());
     backend.shutdown();
     CHECK(!backend.isInitialized());
+}
+
+TEST_CASE("Win32 host consumes the backend-neutral DisplayList and rendered metrics") {
+    Win32WindowBackend backend{{"SASD Win32 rendered test", {320, 200}, true, false}};
+    backend.initialize();
+
+    rendered::DisplayList frame;
+    frame.fillRect({0, 0, 320, 200}, Color::black);
+    frame.strokeRect({8, 8, 180, 36}, Color::bright_white);
+    frame.drawText({16, 16}, "Win32 Rendered", TextStyle{Color::bright_white});
+
+    CHECK(backend.presentFrame(frame) == frame.size());
+    CHECK(!backend.presentationRequested());
+    CHECK(backend.measureText("SASD").width > 0);
+    CHECK(backend.lineHeight() > 0);
+    CHECK(backend.textAdvanceToScalar("SASD", 2).has_value());
+
+    backend.shutdown();
 }

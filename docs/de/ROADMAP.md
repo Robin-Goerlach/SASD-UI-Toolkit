@@ -188,6 +188,10 @@ statt einer universellen Native-Control-Hierarchie. `SASD::UI::Native::Win32` be
 Top-Level-Fenster, übersetzt dessen Message Queue in die bestehende Core-Event-Pipeline und wird ohne
 GUI-Automation getestet. Der Host verwendet bewusst die Core-Semantik von Button/TextField weiter
 und erzeugt noch keine nativen Child-Control-Peers. Siehe [ADR 0151](../adr/0151-m6-native-host-peer-boundary.md).
+Der nächste Vertikalschnitt konsumiert nun den bestehenden `RenderedPresentationSink`-zu-
+`DisplayList`-Pfad über einen GDI-basierten Win32-`RenderDevice` und eine
+`RenderedMeasurementContext`; er verwendet logische 96-DPI-Koordinaten und vollständiges
+Replay bei Repaints, ohne native Child-Peers hinzuzufügen.
 
 Vorgesehen:
 
@@ -200,7 +204,7 @@ Erster-Schnitt-Folgearbeit:
 - [x] Win32-Top-Level-Host, RAII-HWND-Lifetime und UI-Thread-Vertrag
 - [x] Win32-Resize/Close, Tastatur-, Text- und Pointer-Übersetzung
 - [x] Core-Eventtypen bleiben der einzige semantische Eingabevertrag
-- [ ] Host an eine vollständige native oder Rendered-Presentation anbinden
+- [x] Host an eine vollständige Rendered-Presentation anbinden
 - [ ] konkreten Win32-Button-/TextField-Peer erst nach bewährtem Host-Vertrag prüfen
 - [ ] GTK-Host-Consumer
 - [ ] AppKit-Host-Consumer

@@ -1,11 +1,17 @@
 #include <sasd/ui/native/win32_backend.hpp>
 
 #include "win32_input_translation.hpp"
+#include "win32_render_context.hpp"
 
 #include <windows.h>
 
 #include <sasd/ui/events/event_queue.hpp>
+#include <sasd/ui/rendered/display_list_executor.hpp>
 
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -48,6 +54,9 @@ struct Win32WindowBackend::Impl {
         if (config.initial_size.width <= 0 || config.initial_size.height <= 0) {
             throw std::invalid_argument{"Win32 window initial size must be positive"};
         }
+        if (!(config.font_point_size > 0.0F) || !std::isfinite(config.font_point_size)) {
+            throw std::invalid_argument{"Win32 font point size must be finite and positive"};
+        }
         title = utf8ToWide(config.title);
     }
     ~Impl() { shutdown(); }
@@ -79,6 +88,21 @@ struct Win32WindowBackend::Impl {
     LRESULT handleMessage(HWND native_window, UINT message, WPARAM w_param,
                           LPARAM l_param) noexcept {
         switch (message) {
+        case WM_PAINT:
+            paintInvalidatedSurface(native_window);
+            return 0;
+        case WM_DPICHANGED:
+            dpi = HIWORD(w_param) == 0 ? 96U : HIWORD(w_param);
+            try {
+                recreateFont();
+            } catch (...) {
+                // Window procedures cannot propagate exceptions across the Win32 ABI. Keep the
+                // surface marked for replay; the next explicit presentation reports the failure.
+                presentation_requested = true;
+                return 0;
+            }
+            presentation_requested = true;
+            return 0;
         case WM_CLOSE:
             // Application observes the request first; shutdown owns the only destruction path.
             if (const auto event = detail::translateWindowMessage(message, 0, 0)) {
@@ -87,8 +111,11 @@ struct Win32WindowBackend::Impl {
             return 0;
         case WM_SIZE:
             if (const auto event = detail::translateWindowMessage(message, w_param, l_param)) {
-                current_size = std::get<ResizeEvent>(*event).size;
-                events.push(*event);
+                auto resize_event = std::get<ResizeEvent>(*event);
+                current_size = logicalSizeFromPhysical(resize_event.size);
+                resize_event.size = current_size;
+                presentation_requested = true;
+                events.push(Event{resize_event});
             }
             return 0;
         case WM_KEYDOWN:
@@ -127,7 +154,9 @@ struct Win32WindowBackend::Impl {
             }
             if (const auto event = detail::translatePointerMessage(
                     message, w_param, l_param, keyboardModifiers())) {
-                events.push(Event{*event});
+                PointerEvent logical = *event;
+                logical.position = logicalPointFromPhysical(logical.position);
+                events.push(Event{logical});
             }
             return message == WM_XBUTTONDOWN || message == WM_XBUTTONUP ? TRUE : 0;
         case WM_MOUSELEAVE:
@@ -146,9 +175,63 @@ struct Win32WindowBackend::Impl {
         }
     }
 
+    [[nodiscard]] Size logicalSizeFromPhysical(Size physical) const noexcept {
+        return {static_cast<Coordinate>((static_cast<std::int64_t>(physical.width) * 96) / dpi),
+                static_cast<Coordinate>((static_cast<std::int64_t>(physical.height) * 96) / dpi)};
+    }
+
+    [[nodiscard]] Point logicalPointFromPhysical(Point physical) const noexcept {
+        return {static_cast<Coordinate>((static_cast<std::int64_t>(physical.x) * 96) / dpi),
+                static_cast<Coordinate>((static_cast<std::int64_t>(physical.y) * 96) / dpi)};
+    }
+
+    void recreateFont() {
+        if (font != nullptr) {
+            DeleteObject(font);
+            font = nullptr;
+        }
+        LOGFONTW description{};
+        description.lfHeight = -MulDiv(static_cast<int>(std::lround(config.font_point_size)),
+                                       static_cast<int>(dpi), 72);
+        description.lfWeight = FW_NORMAL;
+        description.lfCharSet = DEFAULT_CHARSET;
+        wcscpy_s(description.lfFaceName, L"Segoe UI");
+        font = CreateFontIndirectW(&description);
+        if (font == nullptr) throw std::runtime_error{"CreateFontIndirectW failed"};
+        ++revision;
+    }
+
+    void paintInvalidatedSurface(HWND native_window) noexcept {
+        PAINTSTRUCT paint{};
+        HDC dc = BeginPaint(native_window, &paint);
+        if (dc != nullptr && !last_frame.empty() && font != nullptr) {
+            try {
+                detail::Win32RenderContext context{dc, font, dpi};
+                context.clear(config.background_color);
+                active_context = &context;
+                (void)::sasd::ui::rendered::DisplayListExecutor::execute(last_frame, *active_context);
+                active_context = nullptr;
+                presentation_requested = false;
+            } catch (...) {
+                active_context = nullptr;
+                presentation_requested = true;
+            }
+        }
+        EndPaint(native_window, &paint);
+    }
+
+    void requireRenderContext(const char* operation) const {
+        requireInitialized(operation);
+        if (active_context == nullptr) {
+            throw std::logic_error{std::string{"Win32WindowBackend::"} + operation +
+                                   " requires an active frame"};
+        }
+    }
+
     void initialize() {
         if (initialized()) throw std::logic_error{"Win32WindowBackend is already initialized"};
         owner_thread = std::this_thread::get_id();
+        dpi = 96U;
         const HINSTANCE instance = GetModuleHandleW(nullptr);
         if (class_users == 0) {
             WNDCLASSEXW klass{};
@@ -176,6 +259,12 @@ struct Win32WindowBackend::Impl {
             throw std::runtime_error{"CreateWindowExW failed"};
         }
         current_size = config.initial_size;
+        dpi = GetDpiForWindow(window);
+        if (dpi == 0) dpi = 96U;
+        recreateFont();
+        current_size = logicalSizeFromPhysical(current_size);
+        last_frame.clear();
+        presentation_requested = true;
         events.clear();
         if (!config.hidden) ShowWindow(window, SW_SHOW);
     }
@@ -187,6 +276,11 @@ struct Win32WindowBackend::Impl {
         if (window != nullptr) {
             DestroyWindow(window);
             window = nullptr;
+        }
+        active_context = nullptr;
+        if (font != nullptr) {
+            DeleteObject(font);
+            font = nullptr;
         }
         const HINSTANCE instance = GetModuleHandleW(nullptr);
         if (class_users > 0 && --class_users == 0) UnregisterClassW(window_class_name, instance);
@@ -208,6 +302,28 @@ struct Win32WindowBackend::Impl {
         return std::nullopt;
     }
 
+    std::size_t presentFrame(const ::sasd::ui::rendered::DisplayList& list) {
+        requireInitialized("presentFrame");
+        HDC dc = GetDC(window);
+        if (dc == nullptr) throw std::runtime_error{"GetDC failed"};
+        try {
+            detail::Win32RenderContext context{dc, font, dpi};
+            context.clear(config.background_color);
+            active_context = &context;
+            const std::size_t executed = ::sasd::ui::rendered::DisplayListExecutor::execute(list, *active_context);
+            active_context = nullptr;
+            ReleaseDC(window, dc);
+            last_frame = list;
+            presentation_requested = false;
+            return executed;
+        } catch (...) {
+            active_context = nullptr;
+            ReleaseDC(window, dc);
+            presentation_requested = true;
+            throw;
+        }
+    }
+
     Win32WindowBackendConfig config;
     std::wstring title;
     HWND window{nullptr};
@@ -216,6 +332,12 @@ struct Win32WindowBackend::Impl {
     std::thread::id owner_thread;
     bool destroying{false};
     bool mouse_tracking{false};
+    UINT dpi{96};
+    HFONT font{nullptr};
+    ::sasd::ui::rendered::DisplayList last_frame;
+    detail::Win32RenderContext* active_context{nullptr};
+    bool presentation_requested{false};
+    std::uint64_t revision{0};
 };
 
 Win32WindowBackend::Win32WindowBackend(Win32WindowBackendConfig config)
@@ -235,5 +357,61 @@ Size Win32WindowBackend::windowSize() const {
     impl_->requireInitialized("windowSize");
     return impl_->current_size;
 }
+
+bool Win32WindowBackend::presentationRequested() const noexcept {
+    return impl_->presentation_requested;
+}
+
+std::size_t Win32WindowBackend::presentFrame(const ::sasd::ui::rendered::DisplayList& list) {
+    return impl_->presentFrame(list);
+}
+
+void Win32WindowBackend::fillRect(const rendered::FillRectCommand& command) {
+    impl_->requireRenderContext("fillRect");
+    impl_->active_context->fillRect(command);
+}
+
+void Win32WindowBackend::strokeRect(const rendered::StrokeRectCommand& command) {
+    impl_->requireRenderContext("strokeRect");
+    impl_->active_context->strokeRect(command);
+}
+
+void Win32WindowBackend::drawText(const rendered::DrawTextCommand& command) {
+    impl_->requireRenderContext("drawText");
+    impl_->active_context->drawText(command);
+}
+
+Size Win32WindowBackend::measureText(std::string_view text) const {
+    impl_->requireInitialized("measureText");
+    HDC dc = GetDC(impl_->window);
+    if (dc == nullptr) throw std::runtime_error{"GetDC failed"};
+    detail::Win32RenderContext context{dc, impl_->font, impl_->dpi};
+    const Size result = context.measureText(text);
+    ReleaseDC(impl_->window, dc);
+    return result;
+}
+
+Coordinate Win32WindowBackend::lineHeight() const noexcept {
+    if (impl_->font == nullptr) return 0;
+    HDC dc = GetDC(impl_->window);
+    if (dc == nullptr) return 0;
+    detail::Win32RenderContext context{dc, impl_->font, impl_->dpi};
+    const Coordinate result = context.lineHeight();
+    ReleaseDC(impl_->window, dc);
+    return result;
+}
+
+std::optional<Coordinate> Win32WindowBackend::textAdvanceToScalar(
+    std::string_view text, std::size_t scalar_index) const {
+    impl_->requireInitialized("textAdvanceToScalar");
+    HDC dc = GetDC(impl_->window);
+    if (dc == nullptr) throw std::runtime_error{"GetDC failed"};
+    detail::Win32RenderContext context{dc, impl_->font, impl_->dpi};
+    const auto result = context.textAdvanceToScalar(text, scalar_index);
+    ReleaseDC(impl_->window, dc);
+    return result;
+}
+
+std::uint64_t Win32WindowBackend::revision() const noexcept { return impl_->revision; }
 
 } // namespace sasd::ui::native::win32

@@ -80,13 +80,27 @@ desktop validation remain later M3 slices.
 ### 3. Native Windows backend
 
 The first M6 implementation is the separately linkable `SASD::UI::Native::Win32` target. Its
-`Win32WindowBackend` owns one top-level HWND and translates Win32 messages into the existing Core
+`Win32WindowBackend` owns one top-level HWND, consumes the generic Rendered `DisplayList` through
+`RenderDevice`, supplies GDI-backed `RenderedMeasurementContext` metrics, and translates Win32 messages into the existing Core
 `Backend`/`Event` pipeline. It is intentionally a native host, not a second Button/TextField
 semantic system; the existing `EventDispatcher`, `FocusManager`, `PointerRouter`, Commands and
 Model/View contracts remain authoritative. HWND ownership is RAII-managed and UI-thread-affine,
 with `WM_NCCREATE`/`GWLP_USERDATA` used only inside the adapter. The host can later feed the existing
-Rendered presentation path or a concrete native peer sink. `WM_MOUSELEAVE` is translated to the
+Rendered presentation path without a second widget semantic system. `WM_MOUSELEAVE` is translated to the
 existing `PointerSurfaceEvent` contract so Core can retire hover/capture deterministically.
+
+Win32 Rendered coordinates are logical 96-DPI units. The adapter converts client pixels, pointer
+coordinates and its owned Segoe UI GDI font to/from the current window DPI. Resize and DPI changes
+request complete replay; `WM_PAINT` replays the last owned DisplayList. GDI is intentionally the
+small first text policy, not a generic font system or a DirectWrite commitment.
+
+Manual smoke test on Windows: run `tools/m3_smoke_windows.ps1` for the existing host checks, then
+start a small program that constructs a hidden/visible `Win32WindowBackend`, builds a frame with
+`RenderedPresentationSink` and `PresentationCoordinator::replay()`, calls `presentFrame()`, resizes
+the window, and verifies that the same semantic tree is replayed visibly after the resize and after
+moving the window between monitors. This remains intentionally manual; the automated test is
+headless and checks construction, DisplayList execution and GDI metrics without screenshot or GUI
+automation dependencies.
 
 Deferred by this slice: IME composition, native child controls, native menus, accessibility, drag and
 drop, advanced DPI policy and visible GUI automation. Unsupported native messages fail closed.
