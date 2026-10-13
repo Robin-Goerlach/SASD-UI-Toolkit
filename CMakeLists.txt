@@ -13,6 +13,7 @@ option(SASD_UI_BUILD_EXAMPLES "Build SASD UI Toolkit example applications" ON)
 option(SASD_UI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(SASD_UI_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer where supported" OFF)
 option(SASD_UI_BUILD_SDL3_ADAPTER "Build the experimental SDL3 rendered adapter" OFF)
+option(SASD_UI_BUILD_GTK_ADAPTER "Build the optional GTK4 rendered native adapter" OFF)
 option(SASD_UI_FETCH_SDL3 "Fetch pinned SDL3/SDL3_ttf sources for the experimental adapter" OFF)
 set(SASD_UI_SDL3_TEST_FONT "" CACHE FILEPATH
     "Font file used by SDL3 adapter tests; leave empty to skip those tests")
@@ -99,6 +100,41 @@ add_library(sasd_ui_rendered
 )
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
+
+# GTK4 is an optional second native host. Discovery is intentionally scoped to this target so the
+# normal Core/Terminal/Rendered build remains usable on systems without GTK development headers.
+if(SASD_UI_BUILD_GTK_ADAPTER)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4 pangocairo)
+
+    add_library(sasd_ui_native_gtk
+        src/native/gtk/gtk_input_translation.cpp
+        src/native/gtk/gtk_render_context.cpp
+        src/native/gtk/gtk_window_backend.cpp
+    )
+    add_library(SASD::UI::Native::GTK ALIAS sasd_ui_native_gtk)
+    target_link_libraries(sasd_ui_native_gtk
+        PUBLIC SASD::UI SASD::UI::Rendered
+        PRIVATE PkgConfig::GTK4
+    )
+    target_compile_features(sasd_ui_native_gtk PUBLIC cxx_std_20)
+    target_include_directories(sasd_ui_native_gtk
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+               $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/native/gtk
+    )
+    if(MSVC)
+        target_compile_options(sasd_ui_native_gtk PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_native_gtk PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(sasd_ui_native_gtk PRIVATE -Wall -Wextra -Wpedantic)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_native_gtk PRIVATE -Werror)
+        endif()
+    endif()
+endif()
 
 # M6 starts with the smallest real native consumer: a Win32 top-level host that translates native
 # messages into the existing Core Event pipeline. It intentionally does not add native widget logic
@@ -290,11 +326,16 @@ set_target_properties(sasd_ui_rendered PROPERTIES EXPORT_NAME "UI::Rendered")
 if(WIN32)
     set_target_properties(sasd_ui_native_win32 PROPERTIES EXPORT_NAME "UI::Native::Win32")
 endif()
+if(SASD_UI_BUILD_GTK_ADAPTER)
+    set_target_properties(sasd_ui_native_gtk PROPERTIES EXPORT_NAME "UI::Native::GTK")
+endif()
 
 set(SASD_UI_INSTALL_TARGETS sasd_ui_core sasd_ui_terminal sasd_ui_rendered)
 if(WIN32)
     list(APPEND SASD_UI_INSTALL_TARGETS sasd_ui_native_win32)
 endif()
+# The first GTK slice is deliberately build-tree-only. GTK's pkg-config export varies by distro;
+# avoid installing a target whose transitive dependency contract has not yet been made portable.
 
 target_compile_features(sasd_ui_core PUBLIC cxx_std_20)
 target_include_directories(sasd_ui_core

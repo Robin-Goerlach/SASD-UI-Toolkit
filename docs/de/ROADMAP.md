@@ -206,7 +206,7 @@ Erster-Schnitt-Folgearbeit:
 - [x] Core-Eventtypen bleiben der einzige semantische Eingabevertrag
 - [x] Host an eine vollständige Rendered-Presentation anbinden
 - [ ] konkreten Win32-Button-/TextField-Peer erst nach bewährtem Host-Vertrag prüfen
-- [ ] GTK-Host-Consumer
+- [x] GTK4-Host-Consumer mit Cairo/Pango-Rendered-Replay und Xvfb-Abdeckung
 - [ ] AppKit-Host-Consumer
 
 Reihenfolge und Umfang werden nach M3/M4 anhand realer Erfahrungen entschieden.

@@ -168,6 +168,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0149](0149-sdl3-tree-view-demo-consumer.md) | SDL3 demo consumes the backend-neutral TreeView pipeline | Accepted |
 | [0150](0150-m5-model-view-architecture-review.md) | M5 Model/View review keeps List, Table and Tree contracts explicit | Accepted |
 | [0151](0151-m6-native-host-peer-boundary.md) | M6 starts with a native host boundary and one Win32 consumer | Accepted |
+| [0152](0152-m6-gtk-native-rendered-host.md) | M6 GTK validates the native rendered-host boundary | Accepted |
 
 ## ADR policy
 

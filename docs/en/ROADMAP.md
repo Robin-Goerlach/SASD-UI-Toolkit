@@ -200,7 +200,7 @@ First-slice follow-up:
 - [x] Core event types remain the only semantic input contract
 - [x] connect the host to a complete Rendered presentation pass
 - [ ] validate a concrete Win32 Button/TextField peer only when host experience justifies it
-- [ ] GTK host consumer
+- [x] GTK4 host consumer with Cairo/Pango Rendered replay and Xvfb coverage
 - [ ] AppKit host consumer
 
 Order and exact scope will be chosen after lessons from M3/M4.
