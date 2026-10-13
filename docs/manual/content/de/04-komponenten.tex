@@ -80,7 +80,7 @@ Eingaben werden aus \term{TextInputEvent} verarbeitet,
 Tastaturbewegung und Löschen arbeiten mit
 Unicode-\emph{Scalars} statt rohen Bytes.
 Das ist ein wichtiger Unterschied: Ein mehrbyteiges UTF-8-Zeichen
-darf beim Rückwaertslöschen nicht zerstört werden.
+darf beim Rückwärtslöschen nicht zerstört werden.
 
 Die wichtigsten Methoden sind nach Aufgaben gruppiert:
 \begin{itemize}
@@ -126,7 +126,7 @@ RadioButtons referenzieren diese Gruppe explizit.
 Sie wird nicht aus benachbarten Widgets geraten.
 
 \begin{lstlisting}[language=SASDCpp]
-RadioGroup modeGroup; // Muss die Buttons ueberleben.
+RadioGroup modeGroup; // Muss die Buttons überleben.
 Window window;
 auto& form = window.emplace<VBox>();
 auto& read = form.emplace<RadioButton>(modeGroup,"Nur lesen");
