@@ -178,7 +178,7 @@ This milestone is particularly important for scientific, statistical and enginee
 
 ## M6 – Native desktop peers
 
-Status: started on 2026-10-12. The first M6 slice establishes a small native-host boundary rather
+Status: completed on 2026-10-13. The first M6 slice establishes a small native-host boundary rather
 than a universal native-control hierarchy. `SASD::UI::Native::Win32` owns one top-level Win32 window,
 translates its message queue into the existing Core event pipeline and is tested without GUI
 automation. The host deliberately reuses Core Button/TextField semantics and does not yet create

@@ -134,10 +134,6 @@ bleibt build-tree-only, bis ein installierter Framework-Consumer validiert ist. 
 [ADR 0153](../adr/0153-m6-appkit-native-rendered-host.md) und
 `tools/m6_smoke_appkit_macos.sh`; der sichtbare Test bleibt das offene M3-macOS-/Cocoa-Gate.
 
-### 5. Native macOS-Backend
-
-Für macOS ist ein AppKit-basiertes Backend vorgesehen. C++/Objective-C++ darf im Backend verwendet werden, ohne Objective-C++ in die öffentliche C++-API zu tragen.
-
 ## Auswahlstrategie
 
 Backends sollen zur Build-Zeit und, soweit sinnvoll, zur Laufzeit auswählbar sein.
