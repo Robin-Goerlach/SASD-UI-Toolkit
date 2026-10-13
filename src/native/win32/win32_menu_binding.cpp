@@ -77,14 +77,14 @@ void appendMenu(HMENU menu,
         if (next_command_id > static_cast<UINT_PTR>(std::numeric_limits<UINT>::max())) {
             throw std::overflow_error{"Win32 menu command identifier space exhausted"};
         }
-        const UINT_PTR command_id = next_command_id++;
+        const UINT command_id = static_cast<UINT>(next_command_id++);
         const bool enabled = item.isEnabled() && item.command() != nullptr;
         const UINT flags = MF_STRING | (enabled ? MF_ENABLED : MF_GRAYED);
         if (AppendMenuW(menu, flags, command_id, item_label.text.c_str()) == FALSE) {
             throw std::runtime_error{"AppendMenuW failed"};
         }
-        Entry entry{menu, static_cast<UINT>(GetMenuItemCount(menu) - 1), command_id, {},
-                    item_label.shortcut_suffix, item_label.text};
+        Win32MenuBinding::Entry entry{menu, static_cast<UINT>(GetMenuItemCount(menu) - 1),
+                                      command_id, {}, item_label.shortcut_suffix, item_label.text};
         if (Command* const command = item.command()) entry.command = command->reference();
         entries.push_back(std::move(entry));
     }
@@ -141,7 +141,9 @@ void Win32MenuBinding::refresh() noexcept {
     for (Entry& entry : entries_) {
         Command* const command = entry.command.get();
         const bool enabled = command != nullptr && command->isEnabled();
-        EnableMenuItem(entry.menu, entry.command_id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
+        const UINT native_command_id = entry.command_id;
+        EnableMenuItem(entry.menu, native_command_id,
+                       MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
 
         if (command != nullptr) {
             try {
@@ -155,13 +157,13 @@ void Win32MenuBinding::refresh() noexcept {
                 info.cbSize = sizeof(info);
                 info.fMask = MIIM_STRING;
                 info.dwTypeData = const_cast<wchar_t*>(wide.c_str());
-                if (SetMenuItemInfoW(entry.menu, entry.command_id, FALSE, &info) != FALSE) {
+                if (SetMenuItemInfoW(entry.menu, native_command_id, FALSE, &info) != FALSE) {
                     entry.label = wide;
                 }
             } catch (...) {
                 // Window/menu callbacks cannot report conversion failures across Win32. Disable the
                 // stale native item instead of presenting an apparently invokable command.
-                (void)EnableMenuItem(entry.menu, entry.command_id, MF_BYCOMMAND | MF_GRAYED);
+                (void)EnableMenuItem(entry.menu, native_command_id, MF_BYCOMMAND | MF_GRAYED);
             }
         }
     }
@@ -169,7 +171,7 @@ void Win32MenuBinding::refresh() noexcept {
 
 bool Win32MenuBinding::handleCommand(UINT_PTR command_id) noexcept {
     for (const Entry& entry : entries_) {
-        if (entry.command_id != command_id) continue;
+        if (static_cast<UINT_PTR>(entry.command_id) != command_id) continue;
         const Command::Reference command_reference = entry.command;
         Command* const command = command_reference.get();
         if (command == nullptr) return false;

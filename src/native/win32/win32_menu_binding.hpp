@@ -23,7 +23,7 @@ public:
     struct Entry {
         HMENU menu{nullptr};
         UINT position{0};
-        UINT_PTR command_id{0};
+        UINT command_id{0};
         Command::Reference command{};
         std::wstring shortcut_suffix{};
         std::wstring label{};
