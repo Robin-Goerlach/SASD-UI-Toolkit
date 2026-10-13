@@ -212,6 +212,24 @@ if(SASD_UI_BUILD_GTK_ADAPTER)
     set_tests_properties(sasd_ui_gtk_tests PROPERTIES TIMEOUT 15)
 endif()
 
+if(APPLE AND SASD_UI_BUILD_APPKIT_ADAPTER)
+    add_executable(sasd_ui_appkit_tests
+        test_main.cpp
+        native_appkit_tests.mm
+    )
+    set_source_files_properties(native_appkit_tests.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(sasd_ui_appkit_tests PRIVATE SASD::UI::Native::AppKit
+        "-framework AppKit" "-framework CoreGraphics" "-framework CoreText" "-framework Foundation")
+    target_compile_features(sasd_ui_appkit_tests PRIVATE cxx_std_20)
+    target_include_directories(sasd_ui_appkit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/native/appkit)
+    target_compile_options(sasd_ui_appkit_tests PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_appkit_tests PRIVATE -Werror)
+    endif()
+    add_test(NAME sasd_ui_appkit_tests COMMAND sasd_ui_appkit_tests)
+endif()
+
 if(WIN32)
     add_executable(sasd_ui_win32_tests
         test_main.cpp

@@ -130,6 +130,24 @@ GTK must not become part of the public core API.
 
 ### 5. Native macOS backend
 
+AppKit is the optional third M6 native host, exposed in the build tree as
+`SASD::UI::Native::AppKit` when `SASD_UI_BUILD_APPKIT_ADAPTER=ON` on macOS. `AppKitWindowBackend`
+directly implements `Backend`, `RenderDevice` and `RenderedMeasurementContext`. A private flipped
+`NSView` replays the complete owned `DisplayList` through CoreGraphics/CoreText; no NSButton or
+NSTextField peers are created. AppKit view points are the same logical units used by Rendered, so a
+backing-scale change requests repaint but never doubles layout or pointer coordinates.
+
+The adapter owns its `NSWindow`, view, delegate, queue and last frame, but uses the process-wide
+`NSApplication` service without terminating it. Lifecycle and callbacks are main-thread-affine.
+`pollEvent()` performs a bounded non-blocking AppKit pump. `NSTextInputClient` delivers committed UTF-8
+text separately from Core KeyEvents; marked/preedit IME is deferred. CoreText receives an explicit
+UTF-8-scalar to UTF-16 mapping for caret advances. The target is build-tree-only until an installed
+framework consumer is validated. See [ADR 0153](../adr/0153-m6-appkit-native-rendered-host.md) and
+`tools/m6_smoke_appkit_macos.sh` for the visible macOS procedure. This visible test remains the open
+M3 macOS/Cocoa gate.
+
+### 5. Native macOS backend
+
 An AppKit-based backend is planned for macOS. C++/Objective-C++ may be used inside the backend without leaking Objective-C++ into the public C++ API.
 
 ## Backend selection

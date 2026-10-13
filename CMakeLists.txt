@@ -14,6 +14,7 @@ option(SASD_UI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(SASD_UI_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer where supported" OFF)
 option(SASD_UI_BUILD_SDL3_ADAPTER "Build the experimental SDL3 rendered adapter" OFF)
 option(SASD_UI_BUILD_GTK_ADAPTER "Build the optional GTK4 rendered native adapter" OFF)
+option(SASD_UI_BUILD_APPKIT_ADAPTER "Build the optional AppKit rendered native adapter" OFF)
 option(SASD_UI_FETCH_SDL3 "Fetch pinned SDL3/SDL3_ttf sources for the experimental adapter" OFF)
 set(SASD_UI_SDL3_TEST_FONT "" CACHE FILEPATH
     "Font file used by SDL3 adapter tests; leave empty to skip those tests")
@@ -100,6 +101,36 @@ add_library(sasd_ui_rendered
 )
 add_library(SASD::UI::Rendered ALIAS sasd_ui_rendered)
 target_link_libraries(sasd_ui_rendered PUBLIC SASD::UI)
+
+# AppKit is an opt-in macOS-only host. Objective-C++ and Apple frameworks are scoped to this
+# target; the portable Core/Terminal/Rendered targets remain ordinary C++20 targets everywhere.
+if(APPLE AND SASD_UI_BUILD_APPKIT_ADAPTER)
+    enable_language(OBJCXX)
+    add_library(sasd_ui_native_appkit
+        src/native/appkit/appkit_input_translation.cpp
+        src/native/appkit/appkit_render_context.mm
+        src/native/appkit/appkit_window_backend.mm
+    )
+    set_source_files_properties(
+        src/native/appkit/appkit_render_context.mm
+        src/native/appkit/appkit_window_backend.mm
+        PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    add_library(SASD::UI::Native::AppKit ALIAS sasd_ui_native_appkit)
+    target_link_libraries(sasd_ui_native_appkit
+        PUBLIC SASD::UI SASD::UI::Rendered
+        PRIVATE "-framework AppKit" "-framework CoreGraphics" "-framework CoreText"
+                "-framework Foundation")
+    target_compile_features(sasd_ui_native_appkit PUBLIC cxx_std_20)
+    target_include_directories(sasd_ui_native_appkit
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+               $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/native/appkit)
+    target_compile_options(sasd_ui_native_appkit PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_native_appkit PRIVATE -Werror)
+    endif()
+    set_target_properties(sasd_ui_native_appkit PROPERTIES EXPORT_NAME "UI::Native::AppKit")
+endif()
 
 # GTK4 is an optional second native host. Discovery is intentionally scoped to this target so the
 # normal Core/Terminal/Rendered build remains usable on systems without GTK development headers.
@@ -334,6 +365,8 @@ set(SASD_UI_INSTALL_TARGETS sasd_ui_core sasd_ui_terminal sasd_ui_rendered)
 if(WIN32)
     list(APPEND SASD_UI_INSTALL_TARGETS sasd_ui_native_win32)
 endif()
+# AppKit remains build-tree-only until an installed macOS consumer contract is tested. The public
+# header is available to the build-tree target, while framework linkage stays adapter-local.
 # The first GTK slice is deliberately build-tree-only. GTK's pkg-config export varies by distro;
 # avoid installing a target whose transitive dependency contract has not yet been made portable.
 

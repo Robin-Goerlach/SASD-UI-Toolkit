@@ -117,6 +117,25 @@ Wichtig ist, dass GTK nicht Teil der öffentlichen Core-API wird.
 
 ### 5. Native macOS-Backend
 
+AppKit ist der optionale dritte M6-Native-Host und wird auf macOS bei
+`SASD_UI_BUILD_APPKIT_ADAPTER=ON` als `SASD::UI::Native::AppKit` im Build-Tree verfügbar. Der
+`AppKitWindowBackend` implementiert direkt `Backend`, `RenderDevice` und `RenderedMeasurementContext`.
+Eine private geflippte `NSView` spielt die vollständige besitzende `DisplayList` über
+CoreGraphics/CoreText ab; es werden keine NSButton- oder NSTextField-Peers erzeugt. AppKit-View-Points
+sind dieselben logischen Einheiten wie Rendered; ein Backing-Scale-Wechsel fordert Repaint an, verdoppelt
+aber niemals Layout- oder Pointer-Koordinaten.
+
+Der Adapter besitzt eigenes `NSWindow`, View, Delegate, Queue und den letzten Frame, verwendet aber
+`NSApplication` als prozessweiten Service und beendet ihn nicht. Lifecycle und Callbacks sind an den
+Main Thread gebunden. `pollEvent()` pumpt begrenzt und nichtblockierend AppKit-Events.
+`NSTextInputClient` liefert committed UTF-8 getrennt von Core-KeyEvents; markierter/preedit IME bleibt
+zurückgestellt. Für Caret-Advances gibt es eine explizite UTF-8-Scalar-zu-UTF-16-Abbildung. Das Target
+bleibt build-tree-only, bis ein installierter Framework-Consumer validiert ist. Siehe
+[ADR 0153](../adr/0153-m6-appkit-native-rendered-host.md) und
+`tools/m6_smoke_appkit_macos.sh`; der sichtbare Test bleibt das offene M3-macOS-/Cocoa-Gate.
+
+### 5. Native macOS-Backend
+
 Für macOS ist ein AppKit-basiertes Backend vorgesehen. C++/Objective-C++ darf im Backend verwendet werden, ohne Objective-C++ in die öffentliche C++-API zu tragen.
 
 ## Auswahlstrategie

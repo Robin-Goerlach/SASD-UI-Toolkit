@@ -201,7 +201,13 @@ First-slice follow-up:
 - [x] connect the host to a complete Rendered presentation pass
 - [ ] validate a concrete Win32 Button/TextField peer only when host experience justifies it
 - [x] GTK4 host consumer with Cairo/Pango Rendered replay and Xvfb coverage
-- [ ] AppKit host consumer
+- [x] AppKit host consumer with CoreGraphics/CoreText Rendered replay and dedicated macOS CI
+- [ ] visible macOS/Cocoa validation for the M3 gate (see `tools/m6_smoke_appkit_macos.sh`)
+
+M6 native desktop host integration is complete across Win32, GTK4 and AppKit. All three use the
+existing Core/Rendered contracts; native child-control peers remain deferred until a concrete
+platform requirement such as accessibility or native text services justifies them. AppKit remains
+build-tree-only because an installed framework consumer has not yet been validated.
 
 Order and exact scope will be chosen after lessons from M3/M4.
 
