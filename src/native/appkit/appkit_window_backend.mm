@@ -16,17 +16,15 @@
 #include <thread>
 #include <utility>
 
-namespace sasd::ui::native::appkit {
-
-struct AppKitWindowBackend::Impl;
-
 @interface SasdAppKitView : NSView <NSTextInputClient>
-@property(nonatomic, assign) AppKitWindowBackend::Impl* backend;
+@property(nonatomic, assign) sasd::ui::native::appkit::AppKitWindowBackend::Impl* backend;
 @end
 
 @interface SasdAppKitWindowDelegate : NSObject <NSWindowDelegate>
-@property(nonatomic, assign) AppKitWindowBackend::Impl* backend;
+@property(nonatomic, assign) sasd::ui::native::appkit::AppKitWindowBackend::Impl* backend;
 @end
+
+namespace sasd::ui::native::appkit {
 
 struct AppKitWindowBackend::Impl {
     explicit Impl(AppKitWindowBackendConfig value) : config{std::move(value)} {
@@ -75,7 +73,7 @@ struct AppKitWindowBackend::Impl {
             const NSPoint point = [view convertPoint:[event locationInWindow] fromView:nil];
             if (const auto translated = detail::translatePoint(point.x, point.y)) {
                 events.push(Event{PointerEvent{*translated, action, button,
-                    action == PointerAction::move ? 0 : static_cast<std::uint8_t>(event.clickCount),
+                    static_cast<std::uint8_t>(action == PointerAction::move ? 0 : event.clickCount),
                     detail::translateModifiers(event.modifierFlags)}});
             }
         }
@@ -187,6 +185,11 @@ struct AppKitWindowBackend::Impl {
     std::unique_ptr<detail::AppKitRenderContext> metric_context;
 };
 
+} // namespace sasd::ui::native::appkit
+
+using namespace sasd::ui;
+using namespace sasd::ui::native::appkit;
+
 @implementation SasdAppKitView
 @synthesize backend = _backend;
 - (BOOL)isFlipped { return YES; }
@@ -226,6 +229,8 @@ struct AppKitWindowBackend::Impl {
 @synthesize backend = _backend;
 - (BOOL)windowShouldClose:(id)sender { (void)sender; if (_backend) _backend->events.push(Event{QuitEvent{}}); return NO; }
 @end
+
+namespace sasd::ui::native::appkit {
 
 AppKitWindowBackend::AppKitWindowBackend(AppKitWindowBackendConfig config)
     : impl_{std::make_unique<Impl>(std::move(config))} {}
