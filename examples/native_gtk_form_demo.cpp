@@ -26,7 +26,7 @@ int main() {
 
     rendered::DisplayList frame;
     rendered::RenderedPresentationSink presentation{frame, backend, Color::black};
-    if (!presentation.synchronize(window).complete()) return 1;
+    if (presentation.synchronize(window) != PresentationUpdateResult::synchronized) return 1;
     (void)backend.presentFrame(frame);
 
     for (int ticks = 0; ticks != 600; ++ticks) {

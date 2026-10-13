@@ -191,7 +191,7 @@ if(SASD_UI_BUILD_GTK_ADAPTER)
         test_main.cpp
         native_gtk_tests.cpp
     )
-    target_link_libraries(sasd_ui_gtk_tests PRIVATE SASD::UI::Native::GTK)
+    target_link_libraries(sasd_ui_gtk_tests PRIVATE SASD::UI::Native::GTK PkgConfig::GTK4)
     target_compile_features(sasd_ui_gtk_tests PRIVATE cxx_std_20)
     target_include_directories(sasd_ui_gtk_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
