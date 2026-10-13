@@ -1,6 +1,7 @@
 #include <sasd/ui/native/win32_backend.hpp>
 
 #include "win32_input_translation.hpp"
+#include "win32_menu_binding.hpp"
 #include "win32_render_context.hpp"
 
 #include <windows.h>
@@ -108,6 +109,16 @@ struct Win32WindowBackend::Impl {
             if (const auto event = detail::translateWindowMessage(message, 0, 0)) {
                 events.push(*event);
             }
+            return 0;
+        case WM_COMMAND:
+            if (HIWORD(w_param) == 0U) {
+                menu_binding.handleCommand(LOWORD(w_param));
+                return 0;
+            }
+            return DefWindowProcW(native_window, message, w_param, l_param);
+        case WM_INITMENU:
+        case WM_INITMENUPOPUP:
+            menu_binding.refresh();
             return 0;
         case WM_SIZE:
             if (const auto event = detail::translateWindowMessage(message, w_param, l_param)) {
@@ -274,6 +285,10 @@ struct Win32WindowBackend::Impl {
         destroying = true;
         events.clear();
         if (window != nullptr) {
+            SetLastError(ERROR_SUCCESS);
+            (void)SetMenu(window, nullptr);
+            menu_binding.clear();
+            (void)DrawMenuBar(window);
             DestroyWindow(window);
             window = nullptr;
         }
@@ -338,6 +353,7 @@ struct Win32WindowBackend::Impl {
     detail::Win32RenderContext* active_context{nullptr};
     bool presentation_requested{false};
     std::uint64_t revision{0};
+    detail::Win32MenuBinding menu_binding;
 };
 
 Win32WindowBackend::Win32WindowBackend(Win32WindowBackendConfig config)
@@ -347,6 +363,7 @@ Win32WindowBackend::~Win32WindowBackend() { shutdown(); }
 BackendCapabilities Win32WindowBackend::capabilities() const noexcept {
     BackendCapabilities result;
     result.pointer_input = true;
+    result.native_menus = true;
     return result;
 }
 void Win32WindowBackend::initialize() { impl_->initialize(); }
@@ -360,6 +377,25 @@ Size Win32WindowBackend::windowSize() const {
 
 bool Win32WindowBackend::presentationRequested() const noexcept {
     return impl_->presentation_requested;
+}
+
+void Win32WindowBackend::syncMenuBar(const MenuBarModel& menu_bar) {
+    impl_->requireInitialized("syncMenuBar");
+    impl_->menu_binding.rebuild(menu_bar);
+    SetLastError(ERROR_SUCCESS);
+    (void)SetMenu(impl_->window, impl_->menu_binding.root());
+    if (GetLastError() != ERROR_SUCCESS) {
+        throw std::runtime_error{"SetMenu failed"};
+    }
+    if (DrawMenuBar(impl_->window) == FALSE) throw std::runtime_error{"DrawMenuBar failed"};
+}
+
+void Win32WindowBackend::clearMenuBar() noexcept {
+    if (!impl_->initialized()) return;
+    SetLastError(ERROR_SUCCESS);
+    (void)SetMenu(impl_->window, nullptr);
+    (void)DrawMenuBar(impl_->window);
+    impl_->menu_binding.clear();
 }
 
 std::size_t Win32WindowBackend::presentFrame(const ::sasd::ui::rendered::DisplayList& list) {

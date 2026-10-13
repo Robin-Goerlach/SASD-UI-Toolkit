@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/backend/backend.hpp>
+#include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
@@ -57,6 +58,18 @@ public:
 
     /** True when the window surface needs a complete replay of the last frame. */
     [[nodiscard]] bool presentationRequested() const noexcept;
+
+    /**
+     * Replaces the native menu tree with an owned projection of the current semantic MenuBarModel.
+     * Structural changes are explicit: callers must invoke this method again after changing the
+     * MenuBarModel. Windows owns transient popup interaction; MenuInteractionController is not used
+     * for this native presentation path. Command state is refreshed when Windows opens the menu, and
+     * WM_COMMAND returns to the same Core Command through a lifetime-safe reference.
+     */
+    void syncMenuBar(const MenuBarModel& menu_bar);
+
+    /** Removes the installed native menu, if any. */
+    void clearMenuBar() noexcept;
 
     /** Replays a complete logical frame into the real Win32 client surface. */
     [[nodiscard]] std::size_t presentFrame(const rendered::DisplayList& list);

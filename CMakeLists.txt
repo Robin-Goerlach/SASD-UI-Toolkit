@@ -174,6 +174,7 @@ endif()
 if(WIN32)
     add_library(sasd_ui_native_win32
         src/native/win32/win32_input_translation.cpp
+        src/native/win32/win32_menu_binding.cpp
         src/native/win32/win32_render_context.cpp
         src/native/win32/win32_window_backend.cpp
     )

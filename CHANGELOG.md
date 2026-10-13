@@ -9,6 +9,10 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
+  Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state
+  refresh and lifetime-safe `WM_COMMAND` activation. AppKit/GTK native menus remain deferred.
+
 - M3 Rendered Desktop Preview development started.
 - Separate `SASD::UI::Rendered` target with a deterministic, SDL-independent `rendered::DisplayList`.
 - Initial rendered command vocabulary for filled rectangles, stroked rectangles and owned UTF-8 text.

@@ -102,8 +102,22 @@ moving the window between monitors. This remains intentionally manual; the autom
 headless and checks construction, DisplayList execution and GDI metrics without screenshot or GUI
 automation dependencies.
 
-Deferred by this slice: IME composition, native child controls, native menus, accessibility, drag and
-drop, advanced DPI policy and visible GUI automation. Unsupported native messages fail closed.
+Deferred by this slice: IME composition, native child controls, accessibility, drag and drop, advanced
+DPI policy and visible GUI automation. Unsupported native messages fail closed.
+
+#### Win32 native menu consumer (M7 slice 1)
+
+`Win32WindowBackend::syncMenuBar()` explicitly projects the Core `MenuBarModel` into a private owned
+HMENU tree; `clearMenuBar()` removes it. The projection includes recursive submenus, separators,
+command labels, shortcut display text and enabled state. Structural changes require another explicit
+synchronization call, while `WM_INITMENU`/`WM_INITMENUPOPUP` refresh live command state.
+
+Windows owns popup navigation, highlighting, keyboard navigation, submenu opening and Escape behavior.
+The native path therefore does not use `MenuInteractionController`, which remains the transient
+interaction owner for SASD-rendered Terminal/Rendered menus. `WM_COMMAND` resolves a private
+lifetime-safe `Command::Reference` and executes the existing Core Command. No Win32-specific semantic
+menu model or public cross-platform native-menu base class is introduced. AppKit/GTK native menus and
+the other M7 areas remain deferred.
 
 Long-term goal: map suitable widgets to native Win32/Windows controls and services only where a real
 platform benefit justifies a separately specified peer contract.

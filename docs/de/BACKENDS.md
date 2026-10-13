@@ -88,9 +88,24 @@ innerhalb des Adapters. Der Host kann später die bestehende Rendered-Pipeline o
 Native-Peer-Sink speisen. `WM_MOUSELEAVE` wird in den bestehenden `PointerSurfaceEvent`-Vertrag
 übersetzt, sodass Core Hover/Capture deterministisch beenden kann.
 
-Bewusst zurückgestellt sind IME-Komposition, native Child-Controls, native Menüs, Accessibility,
-Drag & Drop, weitergehende DPI-Policy und GUI-Automation. Nicht unterstützte Nachrichten werden
-fail-closed ignoriert.
+Bewusst zurückgestellt sind IME-Komposition, native Child-Controls, Accessibility, Drag & Drop,
+weitergehende DPI-Policy und GUI-Automation. Nicht unterstützte Nachrichten werden fail-closed
+ignoriert.
+
+#### Nativer Win32-Menü-Consumer (M7 Slice 1)
+
+`Win32WindowBackend::syncMenuBar()` projiziert den Core-`MenuBarModel` explizit in einen privaten,
+besitzenden HMENU-Baum; `clearMenuBar()` entfernt ihn. Die Projektion umfasst rekursive Submenus,
+Separatoren, Command-Texte, Shortcut-Anzeige und Enabled-State. Strukturänderungen benötigen einen
+erneuten expliziten Synchronisationsaufruf; `WM_INITMENU`/`WM_INITMENUPOPUP` aktualisieren Live-Command-
+Zustand.
+
+Windows besitzt Popup-Navigation, Highlighting, Tastaturnavigation, Submenu-Öffnung und Escape-
+Verhalten. Der native Pfad verwendet deshalb nicht den `MenuInteractionController`; dieser bleibt
+Besitzer der transienten Interaktion für selbst dargestellte Terminal-/Rendered-Menüs. `WM_COMMAND`
+löst eine private lebenszeitsichere `Command::Reference` auf und führt den bestehenden Core-Command aus.
+Es gibt kein Win32-spezifisches semantisches Menümodell und keine öffentliche plattformübergreifende
+Native-Menü-Basisklasse. Native AppKit-/GTK-Menüs und die übrigen M7-Themen bleiben zurückgestellt.
 
 Langfristiges Ziel: geeignete Widgets nur dann auf Win32-/Windows-Controls und Plattformdienste
 abbilden, wenn ein realer Plattformvorteil einen eigenen Peer-Vertrag rechtfertigt.

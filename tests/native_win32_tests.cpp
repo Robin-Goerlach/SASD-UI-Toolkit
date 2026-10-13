@@ -1,10 +1,12 @@
 #include "test_framework.hpp"
 
 #include "win32_input_translation.hpp"
+#include "win32_menu_binding.hpp"
 
 #include <sasd/ui/native/win32_backend.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 
+#include <memory>
 #include <variant>
 
 using namespace sasd::ui;
@@ -90,9 +92,52 @@ TEST_CASE("Win32 host owns a hidden top-level window through deterministic lifec
     backend.initialize();
     CHECK(backend.isInitialized());
     CHECK(backend.windowSize() == Size{320, 200});
+    CHECK(backend.capabilities().native_menus);
     CHECK(!backend.pollEvent().has_value());
     backend.shutdown();
     CHECK(!backend.isInitialized());
+}
+
+TEST_CASE("Win32 native menu binding projects structure and activates the Core Command") {
+    MenuBarModel bar;
+    MenuModel& file = bar.appendMenu("File");
+    auto command = std::make_unique<Command>("Open");
+    bool executed = false;
+    command->setOnExecuted([&] { executed = true; });
+    file.appendCommand(*command, Shortcut{Key::o, KeyModifier::control});
+    file.appendSeparator();
+    MenuModel& recent = file.appendSubmenu("Recent");
+    Command close{"Close"};
+    recent.appendCommand(close);
+
+    detail::Win32MenuBinding binding;
+    binding.rebuild(bar);
+    CHECK(binding.root() != nullptr);
+
+    HMENU file_popup = GetSubMenu(binding.root(), 0);
+    CHECK(file_popup != nullptr);
+    CHECK(GetMenuItemCount(file_popup) == 3);
+    CHECK(GetMenuItemID(file_popup, 1) == static_cast<UINT>(-1));
+    const UINT open_id = GetMenuItemID(file_popup, 0);
+    CHECK(open_id != static_cast<UINT>(-1));
+    CHECK(binding.handleCommand(open_id));
+    CHECK(executed);
+    CHECK(!binding.handleCommand(open_id + 1000));
+}
+
+TEST_CASE("Win32 native menu command binding remains safe when execution destroys a Command") {
+    MenuBarModel bar;
+    MenuModel& menu = bar.appendMenu("Actions");
+    auto command = std::make_unique<Command>("Destroy");
+    command->setOnExecuted([&] { command.reset(); });
+    menu.appendCommand(*command);
+
+    detail::Win32MenuBinding binding;
+    binding.rebuild(bar);
+    const UINT command_id = GetMenuItemID(GetSubMenu(binding.root(), 0), 0);
+    CHECK(binding.handleCommand(command_id));
+    CHECK(command == nullptr);
+    CHECK(!binding.handleCommand(command_id));
 }
 
 TEST_CASE("Win32 host consumes the backend-neutral DisplayList and rendered metrics") {
