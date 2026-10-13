@@ -19,7 +19,7 @@ TEST_CASE("AppKit value translation preserves Core key and logical point contrac
     CHECK(!detail::translateLogicalLetter(0x00E4).has_value());
     CHECK(detail::translateModifiers((1ULL << 17U) | (1ULL << 20U)) ==
           (KeyModifier::shift | KeyModifier::meta));
-    CHECK(detail::translatePoint(12.5, 18.5) == Point{12, 18});
+    CHECK(detail::translatePoint(12.5, 18.5) == sasd::ui::Point{12, 18});
     CHECK(!detail::translatePoint(-1.0, 2.0).has_value());
     CHECK(detail::translatePointerButton(0, true, 4.0, 5.0, 0)->button == PointerButton::primary);
     CHECK(detail::translatePointerButton(2, false, 4.0, 5.0, 0)->action == PointerAction::release);
@@ -51,7 +51,7 @@ TEST_CASE("AppKit host retains a complete frame and shuts down idempotently") {
     CHECK(!backend.isInitialized());
     backend.initialize();
     CHECK(backend.isInitialized());
-    CHECK(backend.windowSize() == Size{320, 200});
+    CHECK(backend.windowSize() == sasd::ui::Size{320, 200});
     rendered::DisplayList frame;
     frame.fillRect({0, 0, 320, 200}, Color::black);
     frame.strokeRect({10, 10, 100, 30}, Color::bright_white);
