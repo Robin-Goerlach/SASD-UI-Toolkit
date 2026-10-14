@@ -27,7 +27,7 @@ int main() {
                 if (!std::holds_alternative<FileDialogResultEvent>(event)) return;
                 const auto& result = std::get<FileDialogResultEvent>(event);
                 if (result.status == FileDialogResultStatus::accepted) {
-                    std::cout << "Selected: " << result.path->wstring() << '\n';
+                    std::wcout << L"Selected: " << result.path->wstring() << L'\n';
                 } else if (result.status == FileDialogResultStatus::cancelled) {
                     std::cout << "Open cancelled\n";
                 } else {
