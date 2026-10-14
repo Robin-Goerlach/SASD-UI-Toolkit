@@ -19,6 +19,13 @@ they improve the architecture before compatibility commitments become expensive.
   `mainMenu` installation/restoration, menu validation for live command state, and queued
   `CommandActivationEvent` delivery without native shortcut activation. GTK remains the next
   validation consumer.
+- Third M7 native-menu consumer: `GtkWindowBackend::syncMenuBar()` projects the same Core semantics
+  into a window-local GTK4 `GMenu`/`GSimpleActionGroup`/`GtkPopoverMenuBar` tree. GTK activation queues
+  `CommandActivationEvent`, live command state is refreshed without structural resync, the existing
+  DrawingArea remains the Rendered surface, and native accelerator routing remains deferred.
+- Completed the three-consumer native-menu architecture review: the reusable portability boundary is
+  `MenuBarModel`/`Command`/`CommandActivationEvent` plus backend capability, not a public NativeMenu
+  hierarchy.
 
 - M3 Rendered Desktop Preview development started.
 - Separate `SASD::UI::Rendered` target with a deterministic, SDL-independent `rendered::DisplayList`.

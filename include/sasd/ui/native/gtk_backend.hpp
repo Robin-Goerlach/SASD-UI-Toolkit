@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/backend/backend.hpp>
+#include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
@@ -54,6 +55,19 @@ public:
     [[nodiscard]] Size windowSize() const;
     [[nodiscard]] bool presentationRequested() const noexcept;
     [[nodiscard]] std::size_t presentFrame(const rendered::DisplayList& list);
+
+    /**
+     * Installs a window-local GTK4 projection of the semantic menu bar.
+     *
+     * Structural changes become visible only after another call. The projection owns copied GTK
+     * state and Command::Reference values; it does not retain MenuBarModel/MenuModel/MenuItem.
+     * GTK activation queues CommandActivationEvent. The host/application must execute the command
+     * later, outside the native callback. Shortcut metadata is not registered as a GTK accelerator.
+     */
+    void syncMenuBar(const MenuBarModel& menu_bar);
+
+    /** Removes only the GTK menu projection; the drawing area and rendered frame remain intact. */
+    void clearMenuBar() noexcept;
 
     void fillRect(const rendered::FillRectCommand& command) override;
     void strokeRect(const rendered::StrokeRectCommand& command) override;

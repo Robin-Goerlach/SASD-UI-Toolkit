@@ -156,6 +156,25 @@ behalten. Druckbarer Commit-Text wird unterstützt, IME-Preedit bleibt offen.
 
 Wichtig ist, dass GTK nicht Teil der öffentlichen Core-API wird.
 
+#### Nativer GTK4-Menü-Consumer (M7 Slice 3)
+
+`GtkWindowBackend::syncMenuBar()` projiziert dasselbe Core-`MenuBarModel` in einen privaten,
+fensterlokalen `GMenu`-/`GMenuModel`-Baum, eine `GSimpleActionGroup` und eine
+`GtkPopoverMenuBar`. Der private GTK-Root ist eine vertikale `GtkBox`; die bestehende
+`GtkDrawingArea` bleibt darunter die Rendered-Fläche. Daher beziehen sich `windowSize()`, Resize-Events
+und Pointer-Koordinaten weiterhin auf die tatsächliche DrawingArea-Allokation. Menüinstallation und
+Entfernung erzeugen weder DrawingArea noch `DisplayList` neu.
+
+Die Projektion besitzt ihren strukturellen Snapshot: Modelländerungen werden erst nach explizitem
+Resync sichtbar; live `Command::text()` und `Command::isEnabled()` werden aus `pollEvent()` aktualisiert.
+GTK Actions verwenden intern aus numerischen IDs abgeleitete Namen und halten nur
+`Command::Reference`. Die Activation validiert die Reference und legt ein `CommandActivationEvent` in
+die Queue; `Command::execute()` läuft nicht im GLib-Callback. Abgelaufene, deaktivierte und fehlerhafte
+dynamische Texte schlagen geschlossen fehl. GTK-Labels sind striktes UTF-8 und erhalten literales `&`
+und `_`; Win32-Mnemonics werden nicht nachgebildet. Shortcut-Metadaten werden nicht als GTK-
+Accelerators registriert; `ShortcutMap` bleibt autoritativ. Siehe [ADR 0156](../adr/0156-m7-gtk4-native-menu-consumer.md)
+und [ADR 0157](../adr/0157-native-menu-portability-boundary.md).
+
 ### 5. Native macOS-Backend
 
 AppKit ist der optionale dritte M6-Native-Host und wird auf macOS bei

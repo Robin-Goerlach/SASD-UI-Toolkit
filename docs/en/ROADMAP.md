@@ -220,15 +220,19 @@ message handling has ended. Literal ampersands are escaped for Win32's label par
 replacement is transactional. Windows owns popup interaction. Slice 2 validates the same semantic
 boundary with AppKit's application-global `NSApplication.mainMenu`, explicit single-owner/restoration
 policy, recursive owned projection and queued `CommandActivationEvent`; native shortcut activation
-remains deferred. GTK is the next validation consumer. See [ADR 0154](../adr/0154-win32-native-menu-consumer.md)
-and [ADR 0155](../adr/0155-m7-appkit-native-menu-consumer.md).
+remains deferred. Slice 3 now validates the same Core boundary with GTK4's window-local
+`GMenu`/`GSimpleActionGroup`/`GtkPopoverMenuBar` projection and preserves the DrawingArea surface
+geometry. The three-consumer review keeps the portability boundary in Core semantics rather than a
+public NativeMenu hierarchy. See [ADR 0154](../adr/0154-win32-native-menu-consumer.md),
+[ADR 0155](../adr/0155-m7-appkit-native-menu-consumer.md), [ADR 0156](../adr/0156-m7-gtk4-native-menu-consumer.md)
+and [ADR 0157](../adr/0157-native-menu-portability-boundary.md).
 
 Native-menu slice progress:
 
 - [x] Win32 HMENU consumer
 - [x] AppKit NSMenu consumer
-- [ ] GTK4 native menu consumer
-- [ ] three-consumer architecture review
+- [x] GTK4 native menu consumer
+- [x] three-consumer architecture review
 
 Longer-term areas:
 

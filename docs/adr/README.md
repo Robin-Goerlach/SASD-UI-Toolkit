@@ -172,6 +172,8 @@ The table below is generated from every numbered ADR file currently present in t
 | [0153](0153-m6-appkit-native-rendered-host.md) | M6 AppKit validates the third native rendered-host consumer | Accepted |
 | [0154](0154-win32-native-menu-consumer.md) | First M7 consumer: Win32 native menus | Accepted |
 | [0155](0155-m7-appkit-native-menu-consumer.md) | M7 AppKit NSMenu validates application-global native-menu ownership | Accepted |
+| [0156](0156-m7-gtk4-native-menu-consumer.md) | M7 GTK4 validates window-local GMenu/GAction native-menu projection | Accepted |
+| [0157](0157-native-menu-portability-boundary.md) | Native-menu portability boundary stays in Core semantics, not a NativeMenu hierarchy | Accepted |
 
 ## ADR policy
 
