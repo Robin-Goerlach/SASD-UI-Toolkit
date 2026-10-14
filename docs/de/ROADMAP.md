@@ -227,16 +227,19 @@ referenzierten `Command` erst nach Ende der nativen Nachrichtenverarbeitung ausf
 Ampersands werden für Win32 escaped, und Menüersetzung ist transactional. Windows besitzt die
 Popup-Interaktion. Slice 2 prüft dieselbe semantische Grenze mit AppKits prozessweitem
 `NSApplication.mainMenu`, expliziter Single-Owner-/Restoration-Policy, rekursiver besitzender Projektion
-und queued `CommandActivationEvent`; native Shortcut-Aktivierung bleibt zurückgestellt. GTK ist der
-nächste Validierungs-Consumer. Siehe [ADR 0154](../adr/0154-win32-native-menu-consumer.md) und
-[ADR 0155](../adr/0155-m7-appkit-native-menu-consumer.md).
+und queued `CommandActivationEvent`; native Shortcut-Aktivierung bleibt zurückgestellt. Slice 3 validiert nun
+dieselbe Core-Grenze mit GTK4s fensterlokaler `GMenu`-/`GSimpleActionGroup`-/`GtkPopoverMenuBar`-
+Projektion und erhält die DrawingArea-Geometrie. Das Drei-Consumer-Review belässt die
+Portabilitätsgrenze in der Core-Semantik statt eine öffentliche NativeMenu-Hierarchie einzuführen.
+Siehe [ADR 0154](../adr/0154-win32-native-menu-consumer.md), [ADR 0155](../adr/0155-m7-appkit-native-menu-consumer.md),
+[ADR 0156](../adr/0156-m7-gtk4-native-menu-consumer.md) und [ADR 0157](../adr/0157-native-menu-portability-boundary.md).
 
 Fortschritt der Native-Menü-Slices:
 
 - [x] Win32-HMENU-Consumer
 - [x] AppKit-NSMenu-Consumer
-- [ ] GTK4-Native-Menü-Consumer
-- [ ] Architektur-Review mit drei Consumern
+- [x] GTK4-Native-Menü-Consumer
+- [x] Architektur-Review mit drei Consumern
 
 Langfristige Themen:
 

@@ -140,6 +140,7 @@ if(SASD_UI_BUILD_GTK_ADAPTER)
 
     add_library(sasd_ui_native_gtk
         src/native/gtk/gtk_input_translation.cpp
+        src/native/gtk/gtk_menu_binding.cpp
         src/native/gtk/gtk_render_context.cpp
         src/native/gtk/gtk_window_backend.cpp
     )

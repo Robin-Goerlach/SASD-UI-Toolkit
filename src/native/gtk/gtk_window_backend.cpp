@@ -1,6 +1,7 @@
 #include <sasd/ui/native/gtk_backend.hpp>
 
 #include "gtk_input_translation.hpp"
+#include "gtk_menu_binding.hpp"
 #include "gtk_render_context.hpp"
 
 #include <sasd/ui/events/event_queue.hpp>
@@ -146,8 +147,10 @@ struct GtkWindowBackend::Impl {
 
         GtkWindow* new_window = GTK_WINDOW(gtk_window_new());
         GtkWidget* new_area = gtk_drawing_area_new();
-        if (new_window == nullptr || new_area == nullptr) {
+        GtkWidget* new_root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+        if (new_window == nullptr || new_area == nullptr || new_root == nullptr) {
             if (new_window != nullptr) gtk_window_destroy(new_window);
+            if (new_root != nullptr) g_object_unref(new_root);
             throw std::runtime_error{"GTK window creation failed"};
         }
         gtk_window_set_title(new_window, config.title.c_str());
@@ -174,9 +177,13 @@ struct GtkWindowBackend::Impl {
         gtk_widget_add_controller(new_area, motion_controller);
 
         g_signal_connect(new_window, "close-request", G_CALLBACK(&Impl::closeRequest), this);
-        gtk_window_set_child(new_window, new_area);
+        gtk_widget_set_vexpand(new_area, TRUE);
+        gtk_box_append(GTK_BOX(new_root), new_area);
+        gtk_window_set_child(new_window, new_root);
         window = new_window;
+        root_box = new_root;
         area = new_area;
+        menu_binding.setHost(root_box, &events);
         last_size = config.initial_size;
         if (!config.hidden) gtk_window_present(window);
     }
@@ -185,9 +192,11 @@ struct GtkWindowBackend::Impl {
         if (window == nullptr) return;
         owner_thread = std::this_thread::get_id();
         active_context = nullptr;
+        menu_binding.clear();
         gtk_window_destroy(window);
         g_object_unref(window);
         window = nullptr;
+        root_box = nullptr;
         area = nullptr;
         last_frame.reset();
         presentation_requested = false;
@@ -195,6 +204,7 @@ struct GtkWindowBackend::Impl {
 
     GtkWindowBackendConfig config;
     GtkWindow* window{nullptr};
+    GtkWidget* root_box{nullptr};
     GtkWidget* area{nullptr};
     Size last_size{};
     std::thread::id owner_thread{};
@@ -205,6 +215,7 @@ struct GtkWindowBackend::Impl {
     cairo_surface_t* metric_surface{nullptr};
     cairo_t* metric_cairo{nullptr};
     std::unique_ptr<detail::GtkRenderContext> metric_context;
+    detail::GtkMenuBinding menu_binding;
 };
 
 GtkWindowBackend::GtkWindowBackend(GtkWindowBackendConfig config)
@@ -213,7 +224,10 @@ GtkWindowBackend::GtkWindowBackend(GtkWindowBackendConfig config)
 GtkWindowBackend::~GtkWindowBackend() = default;
 
 BackendCapabilities GtkWindowBackend::capabilities() const noexcept {
-    return BackendCapabilities{true, false, false, false, false, false, false, false, false, false, false};
+    BackendCapabilities result;
+    result.pointer_input = true;
+    result.native_menus = true;
+    return result;
 }
 
 void GtkWindowBackend::initialize() { impl_->initialize(); }
@@ -222,6 +236,7 @@ void GtkWindowBackend::shutdown() noexcept { impl_->shutdown(); }
 std::optional<Event> GtkWindowBackend::pollEvent() {
     impl_->requireInitialized("pollEvent");
     while (g_main_context_pending(nullptr)) (void)g_main_context_iteration(nullptr, FALSE);
+    impl_->menu_binding.refresh();
     const Size current{static_cast<Coordinate>(gtk_widget_get_width(impl_->area)),
                        static_cast<Coordinate>(gtk_widget_get_height(impl_->area))};
     if (current.width > 0 && current.height > 0 && current != impl_->last_size) {
@@ -230,6 +245,27 @@ std::optional<Event> GtkWindowBackend::pollEvent() {
         return Event{ResizeEvent{current}};
     }
     return impl_->events.tryPop();
+}
+
+void GtkWindowBackend::syncMenuBar(const MenuBarModel& menu_bar) {
+    impl_->requireInitialized("syncMenuBar");
+    if (menu_bar.menuCount() == 0) {
+        clearMenuBar();
+        return;
+    }
+
+    detail::GtkMenuBinding replacement;
+    replacement.setHost(impl_->root_box, &impl_->events);
+    replacement.rebuild(menu_bar);
+    replacement.install();
+    // The old projection remains installed until the new tree is fully built and appended. Swapping
+    // first lets the temporary binding's destructor detach exactly the old widget afterwards.
+    impl_->menu_binding.swap(replacement);
+}
+
+void GtkWindowBackend::clearMenuBar() noexcept {
+    if (impl_->window == nullptr) return;
+    impl_->menu_binding.clear();
 }
 
 bool GtkWindowBackend::isInitialized() const noexcept { return impl_->window != nullptr; }
