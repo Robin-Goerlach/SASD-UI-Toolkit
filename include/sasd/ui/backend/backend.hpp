@@ -2,6 +2,7 @@
 
 #include <sasd/ui/backend/capabilities.hpp>
 #include <sasd/ui/events/event.hpp>
+#include <sasd/ui/file_dialog.hpp>
 
 #include <optional>
 #include <string_view>
@@ -44,6 +45,14 @@ public:
      */
     [[nodiscard]] virtual Clipboard* clipboard() noexcept { return nullptr; }
     [[nodiscard]] virtual const Clipboard* clipboard() const noexcept { return nullptr; }
+
+    /**
+     * Returns the optional host file-dialog service while it is usable. The pointer is non-owning
+     * and must not outlive this Backend. A null pointer means this backend does not provide the
+     * current file-dialog slice.
+     */
+    [[nodiscard]] virtual FileDialogService* fileDialogs() noexcept { return nullptr; }
+    [[nodiscard]] virtual const FileDialogService* fileDialogs() const noexcept { return nullptr; }
 };
 
 } // namespace sasd::ui

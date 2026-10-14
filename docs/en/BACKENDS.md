@@ -123,6 +123,21 @@ model. Menu replacement builds a separate binding, checks the direct `SetMenu`/`
 values, rolls back when possible and only commits ownership after installation succeeds. Structural
 resynchronization remains explicit; command text/enabled refresh remains owned by `WM_INITMENU*`.
 No Win32-specific semantic menu model or public cross-platform native-menu base class is introduced.
+#### Win32 Open File dialog consumer (M7 file-dialog slice 1)
+
+`Backend::fileDialogs()` is an optional host-service accessor. The portable service accepts an
+`OpenFileDialogRequest` and returns a non-zero `FileDialogRequestId`; completion is always queued as
+the application-level `FileDialogResultEvent`, never returned as a path or delivered through a
+callback. A Win32 request may synchronously enter the native modal loop, but application code is not
+called inside it. Version 1 permits one pending request only.
+
+The Win32 service uses `IFileOpenDialog` with `FOS_FORCEFILESYSTEM`, `FOS_FILEMUSTEXIST`,
+`FOS_PATHMUSTEXIST` and `FOS_NOCHANGEDIR`, owned by the existing `Win32WindowBackend` HWND. Titles are
+strictly converted from UTF-8 to UTF-16. Accepted results retain the native path as a
+`std::filesystem::path` without canonicalization or lossy ACP conversion; cancel is a pathless
+`cancelled` result, and technical failures are pathless `failed` results. COM is initialized and
+balanced only for the calling UI-thread dialog operation. Filters, save, folder and multiple
+selection are intentionally not part of this first contract. See [ADR 0158](../adr/0158-m7-file-dialog-request-result-and-win32-open-file.md).
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

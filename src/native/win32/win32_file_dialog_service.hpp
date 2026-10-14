@@ -1,0 +1,46 @@
+#pragma once
+
+#include <sasd/ui/events/event_queue.hpp>
+#include <sasd/ui/file_dialog.hpp>
+
+#include <windows.h>
+
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <string_view>
+
+namespace sasd::ui::native::win32::detail {
+
+struct NativeOpenFileOutcome {
+    FileDialogResultStatus status{FileDialogResultStatus::failed};
+    std::wstring path{};
+};
+
+/** Private invocation seam: production uses IFileOpenDialog; tests use deterministic completion. */
+class NativeOpenFileInvoker {
+public:
+    virtual ~NativeOpenFileInvoker() = default;
+    [[nodiscard]] virtual NativeOpenFileOutcome show(HWND owner, std::wstring_view title) = 0;
+};
+
+/** Win32-only FileDialogService implementation; this header is never installed. */
+class Win32FileDialogService final : public FileDialogService {
+public:
+    Win32FileDialogService(HWND owner,
+                           EventQueue& events,
+                           std::unique_ptr<NativeOpenFileInvoker> invoker = nullptr);
+
+    [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
+
+    [[nodiscard]] bool pending() const noexcept { return pending_; }
+
+private:
+    HWND owner_;
+    EventQueue& events_;
+    std::unique_ptr<NativeOpenFileInvoker> invoker_;
+    FileDialogRequestId next_request_id_{1};
+    bool pending_{false};
+};
+
+} // namespace sasd::ui::native::win32::detail

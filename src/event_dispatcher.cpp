@@ -9,7 +9,8 @@ EventDispatchResult EventDispatcher::dispatch(Widget& target, const Event& event
     // dispatcher directly instead of using Application::processRoutedEvents(). In particular, a
     // queued native command activation must remain a host/application policy decision.
     if (std::holds_alternative<QuitEvent>(event) ||
-        std::holds_alternative<CommandActivationEvent>(event)) {
+        std::holds_alternative<CommandActivationEvent>(event) ||
+        std::holds_alternative<FileDialogResultEvent>(event)) {
         return {};
     }
 

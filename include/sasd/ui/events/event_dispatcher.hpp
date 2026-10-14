@@ -37,7 +37,9 @@ struct EventDispatchResult {
  *
  * EventDispatcher does not choose keyboard focus, perform hit testing, filter disabled/hidden
  * widgets or translate platform input. Those are separate responsibilities that can evolve without
- * changing the basic propagation contract.
+ * changing the basic propagation contract. QuitEvent, CommandActivationEvent and
+ * FileDialogResultEvent are application-level events and are defensively ignored here even if a
+ * caller supplies them directly instead of routing them through Application.
  */
 class EventDispatcher final {
 public:

@@ -21,6 +21,8 @@ struct BackendCapabilities {
     bool system_tray{false};
     bool notifications{false};
     bool printing{false};
+    // Keep newly added capabilities at the end: existing users may use positional aggregate setup.
+    bool file_dialogs{false};
 
     friend constexpr bool operator==(const BackendCapabilities&, const BackendCapabilities&) = default;
 };

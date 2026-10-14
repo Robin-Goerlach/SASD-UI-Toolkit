@@ -241,10 +241,21 @@ Fortschritt der Native-Menü-Slices:
 - [x] GTK4-Native-Menü-Consumer
 - [x] Architektur-Review mit drei Consumern
 
+Fortschritt der File-Dialog-Slices:
+
+- [x] Backendneutrale Request-/Result-Basis
+- [x] Win32-Open-File-Consumer (existierende einzelne Datei, Einzelauswahl)
+- [ ] AppKit-Open-File-Consumer
+- [ ] GTK4-Open-File-Consumer
+- [ ] File-Dialog-Vertragsreview mit drei Consumern
+- [ ] Save File
+- [ ] Ordnerauswahl
+- [ ] Filter / erweiterte Optionen
+
 Langfristige Themen:
 
 - native Menüs
-- File Dialogs
+- File Dialogs (die erste Request-/Result-Basis und der Win32-Open-File-Slice sind abgeschlossen)
 - Drag & Drop
 - Clipboard erweitert
 - System Tray

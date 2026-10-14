@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M7 File Dialog foundation: optional backend `FileDialogService` with request IDs and queued
+  application-level `FileDialogResultEvent` completion for accepted, cancelled and failed results.
+- First M7 File Dialog consumer: Win32 `IFileOpenDialog` for one existing filesystem file with the
+  existing HWND as owner, strict UTF-8/UTF-16 handling and no filters, save, folder or multiselect
+  semantics yet.
+
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state
   refresh and lifetime-safe queued `CommandActivationEvent` activation. Native callbacks do not
