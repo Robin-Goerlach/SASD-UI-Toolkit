@@ -174,15 +174,27 @@ TEST_CASE("Win32 WM_COMMAND queues activation and never executes inside the nati
     const UINT command_id = GetMenuItemID(GetSubMenu(root, 0), 0);
     CHECK(command_id != static_cast<UINT>(-1));
 
+    // Creation can leave unrelated native messages in the thread queue. Drain those first so the
+    // assertion below identifies the event produced by this WM_COMMAND specifically.
+    while (backend.pollEvent().has_value()) {
+    }
+
     // SendMessage returns only after WndProc has returned. The callback must still be untouched.
     (void)SendMessageW(window, WM_COMMAND, MAKEWPARAM(command_id, 0), 0);
     CHECK(!executed);
     CHECK(command != nullptr);
 
-    const auto event = backend.pollEvent();
-    CHECK(event.has_value());
-    CHECK(std::holds_alternative<CommandActivationEvent>(*event));
-    const Command::Reference reference = std::get<CommandActivationEvent>(*event).command;
+    Command::Reference reference;
+    bool saw_activation = false;
+    for (int attempt = 0; attempt < 8 && !saw_activation; ++attempt) {
+        const auto event = backend.pollEvent();
+        if (!event.has_value()) break;
+        if (std::holds_alternative<CommandActivationEvent>(*event)) {
+            reference = std::get<CommandActivationEvent>(*event).command;
+            saw_activation = true;
+        }
+    }
+    CHECK(saw_activation);
     CHECK(reference.get() == command.get());
     CHECK(reference.get()->execute());
     CHECK(executed);
