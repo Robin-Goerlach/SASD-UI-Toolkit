@@ -213,13 +213,22 @@ Order and exact scope will be chosen after lessons from M3/M4.
 
 ## M7 – Desktop integration
 
-Status: started on 2026-10-13. Slice 1 is the first real consumer: the Win32 native host projects the
+Status: active on 2026-10-14. Slice 1 is the first real consumer: the Win32 native host projects the
 existing Core menu semantics into an owned HMENU tree. `WM_COMMAND` queues an application-level,
 lifetime-safe `CommandActivationEvent`; the host may execute the referenced `Command` after native
 message handling has ended. Literal ampersands are escaped for Win32's label parser, and menu
-replacement is transactional. Windows owns popup interaction; AppKit/GTK menus and all other M7
-topics remain deferred.
-See [ADR 0154](../adr/0154-win32-native-menu-consumer.md).
+replacement is transactional. Windows owns popup interaction. Slice 2 validates the same semantic
+boundary with AppKit's application-global `NSApplication.mainMenu`, explicit single-owner/restoration
+policy, recursive owned projection and queued `CommandActivationEvent`; native shortcut activation
+remains deferred. GTK is the next validation consumer. See [ADR 0154](../adr/0154-win32-native-menu-consumer.md)
+and [ADR 0155](../adr/0155-m7-appkit-native-menu-consumer.md).
+
+Native-menu slice progress:
+
+- [x] Win32 HMENU consumer
+- [x] AppKit NSMenu consumer
+- [ ] GTK4 native menu consumer
+- [ ] three-consumer architecture review
 
 Longer-term areas:
 

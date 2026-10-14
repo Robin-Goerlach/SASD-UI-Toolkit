@@ -123,7 +123,22 @@ model. Menu replacement builds a separate binding, checks the direct `SetMenu`/`
 values, rolls back when possible and only commits ownership after installation succeeds. Structural
 resynchronization remains explicit; command text/enabled refresh remains owned by `WM_INITMENU*`.
 No Win32-specific semantic menu model or public cross-platform native-menu base class is introduced.
-AppKit/GTK native menus and the other M7 areas remain deferred.
+#### AppKit native menu consumer (M7 slice 2)
+
+`AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core
+`MenuBarModel` and installs it as the process-global `NSApplication.sharedApplication.mainMenu`.
+Only one SASD AppKit menu owner is supported: a second backend fails closed, while an existing
+process menu is saved as the restoration target and is replaced transactionally. `clearMenuBar()`
+restores that previous menu only while the SASD menu is still current; the previous menu remains owned
+by its original process owner.
+
+AppKit labels are strict UTF-8, including CJK and supplementary Unicode; malformed input aborts the
+complete replacement before the old menu changes. Structural changes require explicit resynchronization.
+`menuNeedsUpdate`/`validateMenuItem:` refresh copied command text and enabled state. Native actions copy
+only `Command::Reference` and queue `CommandActivationEvent`; no Command callback runs in the
+Objective-C action. `keyEquivalent` remains empty because ShortcutMap is authoritative, and AppKit
+mnemonics are not emulated. No universal NativeMenu abstraction is introduced yet. GTK remains the
+next validation consumer.
 
 Long-term goal: map suitable widgets to native Win32/Windows controls and services only where a real
 platform benefit justifies a separately specified peer contract.

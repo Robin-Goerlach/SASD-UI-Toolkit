@@ -171,6 +171,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0152](0152-m6-gtk-native-rendered-host.md) | M6 GTK validates the native rendered-host boundary | Accepted |
 | [0153](0153-m6-appkit-native-rendered-host.md) | M6 AppKit validates the third native rendered-host consumer | Accepted |
 | [0154](0154-win32-native-menu-consumer.md) | First M7 consumer: Win32 native menus | Accepted |
+| [0155](0155-m7-appkit-native-menu-consumer.md) | M7 AppKit NSMenu validates application-global native-menu ownership | Accepted |
 
 ## ADR policy
 
