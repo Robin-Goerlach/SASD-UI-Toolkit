@@ -99,7 +99,7 @@ TEST_CASE("GTK menu binding projects recursive Core structure with literal label
     CHECK(menuLabel(file_model, 0) == "Öffnen 😀");
     CHECK(menuLabel(file_model, 2) == "More & More");
     CHECK(menuLabel(file_model, 3) == "Research & Development");
-    CHECK(!g_action_group_get_action_enabled(binding.actionGroup(), "command-3"));
+    CHECK(!g_action_group_get_action_enabled(binding.actionGroup(), "command-2"));
 
     binding.clear();
     g_object_unref(host);
