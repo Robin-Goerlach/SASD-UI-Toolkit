@@ -49,7 +49,9 @@ int main() {
         const auto event = backend.pollEvent();
         if (event && std::holds_alternative<QuitEvent>(*event)) break;
         if (event && std::holds_alternative<CommandActivationEvent>(*event)) {
-            (void)std::get<CommandActivationEvent>(*event).command.execute();
+            if (Command* command = std::get<CommandActivationEvent>(*event).command.get()) {
+                (void)command->execute();
+            }
         }
         if (exit_requested) break;
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

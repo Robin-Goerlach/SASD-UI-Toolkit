@@ -92,19 +92,19 @@ TEST_CASE("AppKit native menu projects the Core tree and queues activation") {
     NSMenu* root = [NSApp mainMenu];
     CHECK(root != nil);
     CHECK(root.numberOfItems == 1);
-    NSMenu* file_menu = root.itemAtIndex(0).submenu;
+    NSMenu* file_menu = [[root itemAtIndex:0] submenu];
     CHECK(file_menu != nil);
     CHECK(file_menu.numberOfItems == 4);
-    CHECK([file_menu.itemAtIndex(0) title].UTF8String != nullptr);
-    CHECK(std::string{[file_menu.itemAtIndex(0) title].UTF8String} == "Öffnen 😀");
-    CHECK(file_menu.itemAtIndex(0).keyEquivalent.length == 0);
-    CHECK(std::string{[file_menu.itemAtIndex(2) title].UTF8String} == "More & More");
-    CHECK(!file_menu.itemAtIndex(2).submenu.itemAtIndex(0).submenu.itemAtIndex(0).isEnabled);
-    CHECK(std::string{[file_menu.itemAtIndex(3) title].UTF8String} == "Research & Development");
+    CHECK([[file_menu itemAtIndex:0].title UTF8String] != nullptr);
+    CHECK(std::string{[[file_menu itemAtIndex:0].title UTF8String]} == "Öffnen 😀");
+    CHECK([file_menu itemAtIndex:0].keyEquivalent.length == 0);
+    CHECK(std::string{[[file_menu itemAtIndex:2].title UTF8String]} == "More & More");
+    CHECK(![[[file_menu itemAtIndex:2].submenu itemAtIndex:0].submenu itemAtIndex:0].isEnabled);
+    CHECK(std::string{[[file_menu itemAtIndex:3].title UTF8String]} == "Research & Development");
 
-    [NSApp sendAction:file_menu.itemAtIndex(0).action
-                   to:file_menu.itemAtIndex(0).target
-                 from:file_menu.itemAtIndex(0)];
+    [NSApp sendAction:[file_menu itemAtIndex:0].action
+                   to:[file_menu itemAtIndex:0].target
+                 from:[file_menu itemAtIndex:0]];
     CHECK(!executed);
     bool saw_queued_activation = false;
     application.processEvents([&](const Event& event) {
@@ -167,7 +167,7 @@ TEST_CASE("AppKit expired command is disabled and cannot queue activation") {
     auto command = std::make_unique<Command>("Temporary");
     menu.appendCommand(*command);
     backend.syncMenuBar(bar);
-    NSMenuItem* item = [NSApp mainMenu].itemAtIndex(0).submenu.itemAtIndex(0);
+    NSMenuItem* item = [[[NSApp mainMenu] itemAtIndex:0].submenu itemAtIndex:0];
     command.reset();
     [[NSApp mainMenu] update];
     [NSApp sendAction:item.action to:item.target from:item];
@@ -186,7 +186,7 @@ TEST_CASE("AppKit native menu refreshes live command state without structural re
     MenuBarModel bar;
     bar.appendMenu("File").appendCommand(command);
     backend.syncMenuBar(bar);
-    NSMenuItem* item = [NSApp mainMenu].itemAtIndex(0).submenu.itemAtIndex(0);
+    NSMenuItem* item = [[[NSApp mainMenu] itemAtIndex:0].submenu itemAtIndex:0];
     CHECK(std::string{item.title.UTF8String} == "Open");
     CHECK(item.isEnabled);
 
@@ -216,18 +216,18 @@ TEST_CASE("AppKit native menu is an explicit structural snapshot and resync is t
     file.appendCommand(open);
     backend.syncMenuBar(bar);
     NSMenu* old_root = [NSApp mainMenu];
-    NSMenu* old_file = old_root.itemAtIndex(0).submenu;
+    NSMenu* old_file = [old_root itemAtIndex:0].submenu;
 
     bar.clear();
     MenuModel& changed = bar.appendMenu("Changed");
     changed.appendCommand(save);
     changed.appendCommand(exit);
     CHECK([NSApp mainMenu] == old_root);
-    CHECK(std::string{old_file.itemAtIndex(0).title.UTF8String} == "Open");
+    CHECK(std::string{[[old_file itemAtIndex:0].title UTF8String]} == "Open");
     backend.syncMenuBar(bar);
     CHECK([NSApp mainMenu] != old_root);
-    CHECK(std::string{[NSApp mainMenu].itemAtIndex(0).title.UTF8String} == "Changed");
-    CHECK([NSApp mainMenu].itemAtIndex(0).submenu.numberOfItems == 2);
+    CHECK(std::string{[[[NSApp mainMenu] itemAtIndex:0].title UTF8String]} == "Changed");
+    CHECK([[[NSApp mainMenu] itemAtIndex:0].submenu numberOfItems] == 2);
 
     std::string invalid{"bad\xFF", 4};
     changed.setTitle(invalid);
@@ -240,7 +240,7 @@ TEST_CASE("AppKit native menu is an explicit structural snapshot and resync is t
     }
     CHECK(rejected);
     CHECK([NSApp mainMenu] == stable_root);
-    CHECK(std::string{[NSApp mainMenu].itemAtIndex(0).title.UTF8String} == "Changed");
+    CHECK(std::string{[[[NSApp mainMenu] itemAtIndex:0].title UTF8String]} == "Changed");
 
     backend.shutdown();
     [NSApp setMainMenu:saved_menu];
