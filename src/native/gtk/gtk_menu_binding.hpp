@@ -66,7 +66,7 @@ private:
     };
 
     static void activate(GSimpleAction* action, GVariant* parameter, gpointer data) noexcept;
-    static void destroyCallbackState(gpointer data) noexcept;
+    static void destroyCallbackState(gpointer data, GClosure*) noexcept;
 
     void appendMenu(GMenu* parent, const MenuModel& model);
     void rebindCallbackState() noexcept;

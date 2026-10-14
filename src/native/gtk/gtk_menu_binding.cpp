@@ -72,7 +72,7 @@ void GtkMenuBinding::appendMenu(GMenu* parent, const MenuModel& model) {
             g_object_unref(action);
             throw std::runtime_error{"g_menu_item_new failed"};
         }
-        const gint position = g_menu_get_n_items(parent);
+        const gint position = g_menu_model_get_n_items(G_MENU_MODEL(parent));
         g_menu_append_item(parent, menu_item);
         g_object_unref(menu_item);
 
@@ -171,7 +171,7 @@ void GtkMenuBinding::activate(GSimpleAction* action, GVariant*, gpointer data) n
     }
 }
 
-void GtkMenuBinding::destroyCallbackState(gpointer data) noexcept {
+void GtkMenuBinding::destroyCallbackState(gpointer data, GClosure*) noexcept {
     delete static_cast<std::shared_ptr<CallbackState>*>(data);
 }
 
