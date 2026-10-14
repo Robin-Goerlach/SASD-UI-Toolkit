@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/command.hpp>
 #include <sasd/ui/geometry.hpp>
 
 #include <cstdint>
@@ -9,6 +10,17 @@
 namespace sasd::ui {
 
 struct QuitEvent {};
+
+/**
+ * Application-level notification that a backend observed activation of a semantic Command.
+ *
+ * The reference is deliberately non-owning and lifetime-safe. Backends enqueue this event after
+ * native callback/message handling has ended; Application offers it to its application handler but
+ * does not execute the command implicitly.
+ */
+struct CommandActivationEvent {
+    Command::Reference command{};
+};
 
 /**
  * Notification that a Widget gained or lost logical keyboard focus.
@@ -199,6 +211,7 @@ struct ResizeEvent {
 
 using Event =
     std::variant<QuitEvent,
+                 CommandActivationEvent,
                  FocusEvent,
                  KeyEvent,
                  TextInputEvent,

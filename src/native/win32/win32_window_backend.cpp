@@ -112,7 +112,13 @@ struct Win32WindowBackend::Impl {
             return 0;
         case WM_COMMAND:
             if (HIWORD(w_param) == 0U) {
-                menu_binding.handleCommand(LOWORD(w_param));
+                const Command::Reference command = menu_binding.resolveCommand(LOWORD(w_param));
+                if (command) {
+                    // Resolve and copy the lifetime-safe reference while native state is valid, then
+                    // return from WndProc. Command callbacks belong to the application pump, not the
+                    // Win32 message callback, so they may safely release backend/command ownership.
+                    events.push(Event{CommandActivationEvent{command}});
+                }
                 return 0;
             }
             return DefWindowProcW(native_window, message, w_param, l_param);
@@ -381,20 +387,42 @@ bool Win32WindowBackend::presentationRequested() const noexcept {
 
 void Win32WindowBackend::syncMenuBar(const MenuBarModel& menu_bar) {
     impl_->requireInitialized("syncMenuBar");
-    impl_->menu_binding.rebuild(menu_bar);
-    SetLastError(ERROR_SUCCESS);
-    (void)SetMenu(impl_->window, impl_->menu_binding.root());
-    if (GetLastError() != ERROR_SUCCESS) {
+    detail::Win32MenuBinding replacement;
+    replacement.rebuild(menu_bar);
+
+    // The old binding remains the owner of the installed tree until SetMenu and DrawMenuBar both
+    // succeed. A build failure therefore cannot disturb the live menu.
+    HMENU old_root = impl_->menu_binding.root();
+    if (SetMenu(impl_->window, replacement.root()) == FALSE) {
         throw std::runtime_error{"SetMenu failed"};
     }
-    if (DrawMenuBar(impl_->window) == FALSE) throw std::runtime_error{"DrawMenuBar failed"};
+
+    if (DrawMenuBar(impl_->window) == FALSE) {
+        // SetMenu has detached the old tree only after installing replacement. Restore it before
+        // replacement's destructor can run; never destroy an HMENU still installed on the HWND.
+        if (SetMenu(impl_->window, old_root) != FALSE) {
+            (void)DrawMenuBar(impl_->window);
+        } else {
+            // The replacement is still installed and must remain owned. Commit that ownership as a
+            // fail-safe; the caller still receives the presentation error and can retry a resync.
+            impl_->menu_binding.swap(replacement);
+        }
+        throw std::runtime_error{"DrawMenuBar failed"};
+    }
+
+    impl_->menu_binding.swap(replacement);
 }
 
 void Win32WindowBackend::clearMenuBar() noexcept {
     if (!impl_->initialized()) return;
-    SetLastError(ERROR_SUCCESS);
-    (void)SetMenu(impl_->window, nullptr);
-    (void)DrawMenuBar(impl_->window);
+    HMENU old_root = impl_->menu_binding.root();
+    if (SetMenu(impl_->window, nullptr) == FALSE) return;
+    if (DrawMenuBar(impl_->window) == FALSE) {
+        if (SetMenu(impl_->window, old_root) != FALSE) {
+            (void)DrawMenuBar(impl_->window);
+        }
+        return;
+    }
     impl_->menu_binding.clear();
 }
 

@@ -5,6 +5,14 @@
 namespace sasd::ui {
 
 EventDispatchResult EventDispatcher::dispatch(Widget& target, const Event& event) {
+    // Application-level events never enter the visual tree, even when a caller invokes the
+    // dispatcher directly instead of using Application::processRoutedEvents(). In particular, a
+    // queued native command activation must remain a host/application policy decision.
+    if (std::holds_alternative<QuitEvent>(event) ||
+        std::holds_alternative<CommandActivationEvent>(event)) {
+        return {};
+    }
+
     std::size_t visited = 0;
     Widget* current = &target;
 

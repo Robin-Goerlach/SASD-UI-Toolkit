@@ -23,9 +23,20 @@ command identifiers. It is not a second semantic menu model and no public cross-
 abstraction is introduced.
 
 Windows owns transient native menu interaction. `WM_INITMENU`/`WM_INITMENUPOPUP` refresh live command
-text and enabled state, while `WM_COMMAND` copies the matching reference and executes the same Core
-`Command`. Command callbacks may release their command; no binding state is accessed after execution
-begins. Invalid text, expired commands and unknown identifiers fail closed.
+text and enabled state. `WM_COMMAND` validates the native identifier, copies the matching
+lifetime-safe reference, and queues an application-level `CommandActivationEvent`; the native
+callback then ends. Application/host code may observe the event and explicitly execute the same Core
+`Command` later. The event is not bubbled through Widgets and is not implicitly executed by
+`Application`. Command callbacks may release their command; no binding state is accessed after the
+reference has been queued. Invalid text, expired commands and unknown identifiers fail closed.
+
+Native labels escape every literal SASD ampersand as `&&`; this slice has no mnemonic model and must
+not accidentally assign Win32 mnemonics. Structural menu replacement builds a separate complete
+binding, installs it with direct `SetMenu` return-value checking, redraws with direct
+`DrawMenuBar` return-value checking, and commits binding ownership only after success. Failure rolls
+back to the old menu where Win32 permits; an installed HMENU is never destroyed. Structural
+resynchronization remains explicit, while command text/enabled refresh remains owned by
+`WM_INITMENU`/`WM_INITMENUPOPUP`.
 
 The backend advertises `BackendCapabilities::native_menus`. AppKit/GTK menus and the other M7 areas
 remain deferred.
@@ -56,10 +67,21 @@ und native Command-IDs. Es ist kein zweites semantisches Menümodell, und es ent
 plattformübergreifende NativeMenu-Abstraktion.
 
 Windows besitzt den transienten nativen Menüzustand. `WM_INITMENU`/`WM_INITMENUPOPUP` aktualisieren
-Live-Command-Text und Enabled-State; `WM_COMMAND` kopiert die passende Reference und führt denselben
-Core-`Command` aus. Callback-Code darf seinen Command freigeben; nach Beginn der Ausführung wird kein
-Binding-Zustand mehr verwendet. Fehlerhafte Texte, abgelaufene Commands und unbekannte IDs schlagen
-geschlossen fehl.
+Live-Command-Text und Enabled-State. `WM_COMMAND` validiert die native ID, kopiert die passende
+lebenszeitsichere Reference und legt ein application-level `CommandActivationEvent` in die Queue;
+danach endet der native Callback. Application/Host kann das Event beobachten und denselben
+Core-`Command` später explizit ausführen. Das Event wird nicht durch Widgets gebubbelt und von
+`Application` nicht implizit ausgeführt. Callback-Code darf seinen Command freigeben; nach dem
+Einreihen wird kein Binding-Zustand mehr verwendet. Fehlerhafte Texte, abgelaufene Commands und
+unbekannte IDs schlagen geschlossen fehl.
+
+Literal-Ampersands aus SASD-Labels werden als `&&` escaped; dieses Slice besitzt kein Mnemonic-Modell
+und darf keine Win32-Mnemonics versehentlich erzeugen. Die strukturelle Menüersetzung baut zunächst
+ein vollständiges separates Binding, installiert es mit Prüfung des direkten `SetMenu`-Rückgabewerts,
+zeichnet mit Prüfung des direkten `DrawMenuBar`-Rückgabewerts und committed Ownership erst danach.
+Fehler rollen soweit der Win32-Vertrag es erlaubt auf das alte Menü zurück; ein installiertes HMENU
+wird nie zerstört. Strukturelle Resynchronisierung bleibt explizit, Command-Text/Enabled-Refresh
+bleibt bei `WM_INITMENU`/`WM_INITMENUPOPUP`.
 
 Das Backend meldet `BackendCapabilities::native_menus`. AppKit-/GTK-Menüs und die übrigen M7-Themen
 bleiben zurückgestellt.

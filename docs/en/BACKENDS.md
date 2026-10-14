@@ -115,9 +115,15 @@ synchronization call, while `WM_INITMENU`/`WM_INITMENUPOPUP` refresh live comman
 Windows owns popup navigation, highlighting, keyboard navigation, submenu opening and Escape behavior.
 The native path therefore does not use `MenuInteractionController`, which remains the transient
 interaction owner for SASD-rendered Terminal/Rendered menus. `WM_COMMAND` resolves a private
-lifetime-safe `Command::Reference` and executes the existing Core Command. No Win32-specific semantic
-menu model or public cross-platform native-menu base class is introduced. AppKit/GTK native menus and
-the other M7 areas remain deferred.
+lifetime-safe `Command::Reference` and queues an application-level `CommandActivationEvent`; the
+native callback then ends. `Application` exposes that event to its application handler without
+implicit execution, so the host can stabilize presentation state and explicitly execute the command
+later. Literal SASD ampersands are stored as `&&` in native labels because this slice has no mnemonic
+model. Menu replacement builds a separate binding, checks the direct `SetMenu`/`DrawMenuBar` return
+values, rolls back when possible and only commits ownership after installation succeeds. Structural
+resynchronization remains explicit; command text/enabled refresh remains owned by `WM_INITMENU*`.
+No Win32-specific semantic menu model or public cross-platform native-menu base class is introduced.
+AppKit/GTK native menus and the other M7 areas remain deferred.
 
 Long-term goal: map suitable widgets to native Win32/Windows controls and services only where a real
 platform benefit justifies a separately specified peer contract.

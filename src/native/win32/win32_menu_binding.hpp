@@ -8,6 +8,10 @@
 #include <string>
 #include <vector>
 
+namespace sasd::ui::native::win32 {
+class Win32WindowBackend;
+}
+
 namespace sasd::ui::native::win32::detail {
 
 /**
@@ -44,12 +48,17 @@ public:
     /** Releases the owned native tree. */
     void clear() noexcept;
 
-    /** Resolves and executes one native command identifier, if it belongs to this binding. */
-    bool handleCommand(UINT_PTR command_id) noexcept;
+    /** Resolves one native command identifier without executing application code. */
+    [[nodiscard]] Command::Reference resolveCommand(UINT_PTR command_id) const noexcept;
 
     [[nodiscard]] HMENU root() const noexcept { return root_; }
 
 private:
+    friend class ::sasd::ui::native::win32::Win32WindowBackend;
+
+    /** Transfers native-tree ownership/state without exposing it as Core API. */
+    void swap(Win32MenuBinding& other) noexcept;
+
     HMENU root_{nullptr};
     std::vector<Entry> entries_;
 };

@@ -60,9 +60,10 @@ public:
      * performs target-to-parent bubbling. If no target exists or the complete route ignores the
      * event, unhandled_handler receives it when supplied.
      *
-     * QuitEvent is intentionally application-level: it sets exitRequested() and bypasses widget
-     * routing so a widget cannot accidentally suppress application shutdown. It is still offered to
-     * unhandled_handler, which keeps logging/diagnostic code able to observe the complete pump.
+     * QuitEvent and CommandActivationEvent are intentionally application-level: they bypass widget
+     * routing. QuitEvent sets exitRequested(); CommandActivationEvent is only offered to
+     * unhandled_handler and is never executed implicitly. This lets a host stabilize presentation
+     * state before explicitly invoking the lifetime-safe Command::Reference.
      */
     std::size_t processRoutedEvents(const EventTargetResolver& target_resolver,
                                     const EventHandler& unhandled_handler = {});

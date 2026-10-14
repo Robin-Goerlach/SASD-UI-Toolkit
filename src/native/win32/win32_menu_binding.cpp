@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 
 namespace sasd::ui::native::win32::detail {
 namespace {
@@ -30,17 +31,28 @@ struct ItemLabel {
     std::wstring shortcut_suffix{};
 };
 
+[[nodiscard]] std::wstring escapeAmpersands(std::wstring value) {
+    std::wstring escaped;
+    escaped.reserve(value.size());
+    for (const wchar_t character : value) {
+        escaped += character;
+        if (character == L'&') escaped += L'&';
+    }
+    return escaped;
+}
+
 [[nodiscard]] ItemLabel itemLabel(const MenuItem& item) {
-    std::string label{item.text()};
     std::string shortcut;
     if (item.shortcut().has_value()) {
         shortcut = shortcutDisplayText(*item.shortcut());
-        if (!shortcut.empty()) {
-            label += '\t';
-            label += shortcut;
-        }
     }
-    return {utf8ToWide(label), utf8ToWide(shortcut)};
+    std::wstring label = escapeAmpersands(utf8ToWide(item.text()));
+    std::wstring shortcut_suffix = escapeAmpersands(utf8ToWide(shortcut));
+    if (!shortcut_suffix.empty()) {
+        label += L'\t';
+        label += shortcut_suffix;
+    }
+    return {std::move(label), std::move(shortcut_suffix)};
 }
 
 void appendMenu(HMENU menu,
@@ -104,7 +116,7 @@ void Win32MenuBinding::rebuild(const MenuBarModel& bar) {
     try {
         for (std::size_t index = 0; index < bar.menuCount(); ++index) {
             const MenuModel& model = bar.menuAt(index);
-            const std::wstring title = utf8ToWide(model.title());
+            const std::wstring title = escapeAmpersands(utf8ToWide(model.title()));
             HMENU popup = CreatePopupMenu();
             if (popup == nullptr) throw std::runtime_error{"CreatePopupMenu failed"};
             bool attached = false;
@@ -147,8 +159,7 @@ void Win32MenuBinding::refresh() noexcept {
 
         if (command != nullptr) {
             try {
-                std::string label{command->text()};
-                std::wstring wide = utf8ToWide(label);
+                std::wstring wide = escapeAmpersands(utf8ToWide(command->text()));
                 if (!entry.shortcut_suffix.empty()) {
                     wide += L'\t';
                     wide += entry.shortcut_suffix;
@@ -169,19 +180,19 @@ void Win32MenuBinding::refresh() noexcept {
     }
 }
 
-bool Win32MenuBinding::handleCommand(UINT_PTR command_id) noexcept {
+Command::Reference Win32MenuBinding::resolveCommand(UINT_PTR command_id) const noexcept {
     for (const Entry& entry : entries_) {
         if (static_cast<UINT_PTR>(entry.command_id) != command_id) continue;
-        const Command::Reference command_reference = entry.command;
-        Command* const command = command_reference.get();
-        if (command == nullptr) return false;
-        try {
-            return command->execute();
-        } catch (...) {
-            return false;
-        }
+        if (!entry.command) return {};
+        return entry.command;
     }
-    return false;
+    return {};
+}
+
+void Win32MenuBinding::swap(Win32MenuBinding& other) noexcept {
+    using std::swap;
+    swap(root_, other.root_);
+    swap(entries_, other.entries_);
 }
 
 } // namespace sasd::ui::native::win32::detail
