@@ -103,9 +103,17 @@ Zustand.
 Windows besitzt Popup-Navigation, Highlighting, Tastaturnavigation, Submenu-Öffnung und Escape-
 Verhalten. Der native Pfad verwendet deshalb nicht den `MenuInteractionController`; dieser bleibt
 Besitzer der transienten Interaktion für selbst dargestellte Terminal-/Rendered-Menüs. `WM_COMMAND`
-löst eine private lebenszeitsichere `Command::Reference` auf und führt den bestehenden Core-Command aus.
-Es gibt kein Win32-spezifisches semantisches Menümodell und keine öffentliche plattformübergreifende
-Native-Menü-Basisklasse. Native AppKit-/GTK-Menüs und die übrigen M7-Themen bleiben zurückgestellt.
+löst eine private lebenszeitsichere `Command::Reference` auf und legt ein application-level
+`CommandActivationEvent` in die Queue; danach endet der native Callback. `Application` reicht das
+Event nur an den Application-Handler weiter und führt den Command nicht implizit aus. So kann der
+Host zuerst den Präsentationszustand stabilisieren und den Command anschließend explizit ausführen.
+Literal-Ampersands aus SASD-Text werden wegen des fehlenden Mnemonic-Modells als `&&` in nativen
+Labels gespeichert. Menüersetzung baut ein separates Binding, prüft die direkten Rückgabewerte von
+`SetMenu`/`DrawMenuBar`, rollt soweit möglich zurück und committed Ownership erst nach erfolgreicher
+Installation. Strukturelle Resynchronisierung bleibt explizit; Command-Text/Enabled-Refresh bleibt
+bei `WM_INITMENU*`. Es gibt kein Win32-spezifisches semantisches Menümodell und keine öffentliche
+plattformübergreifende Native-Menü-Basisklasse. Native AppKit-/GTK-Menüs und die übrigen M7-Themen
+bleiben zurückgestellt.
 
 Langfristiges Ziel: geeignete Widgets nur dann auf Win32-/Windows-Controls und Plattformdienste
 abbilden, wenn ein realer Plattformvorteil einen eigenen Peer-Vertrag rechtfertigt.

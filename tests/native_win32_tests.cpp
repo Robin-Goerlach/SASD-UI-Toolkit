@@ -13,6 +13,16 @@ using namespace sasd::ui;
 using namespace sasd::ui::native::win32;
 using namespace sasd::ui::native::win32::detail;
 
+namespace {
+
+std::wstring menuText(HMENU menu, UINT item, UINT flags) {
+    wchar_t buffer[256]{};
+    const int length = GetMenuStringW(menu, item, buffer, static_cast<int>(std::size(buffer)), flags);
+    return length <= 0 ? std::wstring{} : std::wstring{buffer, static_cast<std::size_t>(length)};
+}
+
+} // namespace
+
 TEST_CASE("Win32 key translation preserves semantic identity and modifiers") {
     const auto event = translateKeyMessage(WM_KEYDOWN, 'C', KeyModifier::control);
     CHECK(event.has_value());
@@ -98,7 +108,7 @@ TEST_CASE("Win32 host owns a hidden top-level window through deterministic lifec
     CHECK(!backend.isInitialized());
 }
 
-TEST_CASE("Win32 native menu binding projects structure and activates the Core Command") {
+TEST_CASE("Win32 native menu binding projects structure and resolves a live Core Command") {
     MenuBarModel bar;
     MenuModel& file = bar.appendMenu("File");
     auto command = std::make_unique<Command>("Open");
@@ -120,12 +130,13 @@ TEST_CASE("Win32 native menu binding projects structure and activates the Core C
     CHECK((GetMenuState(file_popup, 1, MF_BYPOSITION) & MF_SEPARATOR) != 0U);
     const UINT open_id = GetMenuItemID(file_popup, 0);
     CHECK(open_id != static_cast<UINT>(-1));
-    CHECK(binding.handleCommand(open_id));
-    CHECK(executed);
-    CHECK(!binding.handleCommand(open_id + 1000));
+    const Command::Reference resolved = binding.resolveCommand(open_id);
+    CHECK(resolved.get() == command.get());
+    CHECK(!executed);
+    CHECK(!binding.resolveCommand(open_id + 1000));
 }
 
-TEST_CASE("Win32 native menu command binding remains safe when execution destroys a Command") {
+TEST_CASE("Win32 native menu resolution remains safe when later execution destroys a Command") {
     MenuBarModel bar;
     MenuModel& menu = bar.appendMenu("Actions");
     auto command = std::make_unique<Command>("Destroy");
@@ -135,9 +146,76 @@ TEST_CASE("Win32 native menu command binding remains safe when execution destroy
     detail::Win32MenuBinding binding;
     binding.rebuild(bar);
     const UINT command_id = GetMenuItemID(GetSubMenu(binding.root(), 0), 0);
-    CHECK(binding.handleCommand(command_id));
+    const Command::Reference resolved = binding.resolveCommand(command_id);
+    CHECK(resolved.get() == command.get());
+    CHECK(resolved.get()->execute());
     CHECK(command == nullptr);
-    CHECK(!binding.handleCommand(command_id));
+    CHECK(!binding.resolveCommand(command_id));
+}
+
+TEST_CASE("Win32 WM_COMMAND queues activation and never executes inside the native callback") {
+    Win32WindowBackend backend{{"SASD Win32 event test", {320, 200}, true, false}};
+    backend.initialize();
+
+    MenuBarModel bar;
+    MenuModel& menu = bar.appendMenu("Actions");
+    auto command = std::make_unique<Command>("Destroy");
+    bool executed = false;
+    command->setOnExecuted([&] {
+        executed = true;
+        command.reset();
+    });
+    menu.appendCommand(*command);
+    backend.syncMenuBar(bar);
+
+    HWND window = FindWindowW(nullptr, L"SASD Win32 event test");
+    CHECK(window != nullptr);
+    const HMENU root = GetMenu(window);
+    const UINT command_id = GetMenuItemID(GetSubMenu(root, 0), 0);
+    CHECK(command_id != static_cast<UINT>(-1));
+
+    // SendMessage returns only after WndProc has returned. The callback must still be untouched.
+    (void)SendMessageW(window, WM_COMMAND, MAKEWPARAM(command_id, 0), 0);
+    CHECK(!executed);
+    CHECK(command != nullptr);
+
+    const auto event = backend.pollEvent();
+    CHECK(event.has_value());
+    CHECK(std::holds_alternative<CommandActivationEvent>(*event));
+    const Command::Reference reference = std::get<CommandActivationEvent>(*event).command;
+    CHECK(reference.get() == command.get());
+    CHECK(reference.get()->execute());
+    CHECK(executed);
+    CHECK(command == nullptr);
+    CHECK(!backend.pollEvent().has_value());
+}
+
+TEST_CASE("Win32 native menu labels escape literal ampersands and refresh them safely") {
+    Win32WindowBackend backend{{"SASD Win32 ampersand test", {320, 200}, true, false}};
+    backend.initialize();
+
+    MenuBarModel bar;
+    MenuModel& top = bar.appendMenu("Tools & More");
+    MenuModel& submenu = top.appendSubmenu("Research & Development");
+    Command save{"Save & Close"};
+    submenu.appendCommand(save);
+    Command dynamic{"A & B"};
+    top.appendCommand(dynamic);
+    backend.syncMenuBar(bar);
+
+    HWND window = FindWindowW(nullptr, L"SASD Win32 ampersand test");
+    CHECK(window != nullptr);
+    const HMENU root = GetMenu(window);
+    const HMENU top_menu = GetSubMenu(root, 0);
+    CHECK(menuText(root, 0, MF_BYPOSITION) == L"Tools && More");
+    CHECK(menuText(top_menu, 0, MF_BYPOSITION) == L"Research && Development");
+    CHECK(menuText(GetSubMenu(top_menu, 0), 0, MF_BYPOSITION) == L"Save && Close");
+
+    const UINT dynamic_id = GetMenuItemID(top_menu, 1);
+    CHECK(menuText(top_menu, dynamic_id, MF_BYCOMMAND) == L"A && B");
+    dynamic.setText("C & D");
+    (void)SendMessageW(window, WM_INITMENU, reinterpret_cast<WPARAM>(root), 0);
+    CHECK(menuText(top_menu, dynamic_id, MF_BYCOMMAND) == L"C && D");
 }
 
 TEST_CASE("Win32 host consumes the backend-neutral DisplayList and rendered metrics") {

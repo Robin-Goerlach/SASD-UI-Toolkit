@@ -35,8 +35,11 @@ std::size_t Application::processRoutedEvents(const EventTargetResolver& target_r
          * before target resolution guarantees that a focused control cannot consume the event and
          * prevent the application from observing the shutdown request.
          */
-        if (std::holds_alternative<QuitEvent>(*event)) {
-            exit_requested_ = true;
+        if (std::holds_alternative<QuitEvent>(*event) ||
+            std::holds_alternative<CommandActivationEvent>(*event)) {
+            if (std::holds_alternative<QuitEvent>(*event)) {
+                exit_requested_ = true;
+            }
 
             if (unhandled_handler) {
                 unhandled_handler(*event);

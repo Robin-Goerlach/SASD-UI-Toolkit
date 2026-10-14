@@ -5,6 +5,7 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/focus_manager.hpp>
 #include <sasd/ui/focus_traversal.hpp>
+#include <sasd/ui/events/event_dispatcher.hpp>
 #include <sasd/ui/testing/mock_backend.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
@@ -152,6 +153,61 @@ TEST_CASE("Application reports routed events as unhandled when no target is reso
     CHECK(processed == 1);
     CHECK(resolver_calls == 1);
     CHECK(unhandled_calls == 1);
+}
+
+TEST_CASE("Command activation is application-level and is executed only by the host") {
+    MockBackend backend;
+    Application application{backend};
+    Container root;
+    auto& target = root.emplace<KeyHandlingWidget>();
+
+    auto command = std::make_unique<Command>("Deferred");
+    bool executed = false;
+    command->setOnExecuted([&] {
+        executed = true;
+        command.reset();
+    });
+    const Command::Reference reference = command->reference();
+    backend.postEvent(CommandActivationEvent{reference});
+
+    std::size_t resolver_calls = 0;
+    std::size_t application_events = 0;
+    const auto processed = application.processRoutedEvents(
+        [&](const Event&) -> Widget* {
+            ++resolver_calls;
+            return &target;
+        },
+        [&](const Event& event) {
+            ++application_events;
+            const auto& activation = std::get<CommandActivationEvent>(event);
+            CHECK(activation.command.get() == command.get());
+            CHECK(!executed);
+            CHECK(activation.command.get()->execute());
+        });
+
+    CHECK(processed == 1);
+    CHECK(resolver_calls == 0);
+    CHECK(application_events == 1);
+    CHECK(executed);
+    CHECK(command == nullptr);
+}
+
+TEST_CASE("Command references expire safely and EventDispatcher does not bubble activation") {
+    Command::Reference reference;
+    {
+        auto command = std::make_unique<Command>("Temporary");
+        reference = command->reference();
+        CHECK(reference.get() == command.get());
+    }
+    CHECK(reference.get() == nullptr);
+
+    Container root;
+    auto& target = root.emplace<KeyHandlingWidget>();
+    const Event event = CommandActivationEvent{reference};
+    const EventDispatchResult result = EventDispatcher::dispatch(target, event);
+    CHECK(result.visited == 0);
+    CHECK(!result.handled());
+    CHECK(target.deliveryCount() == 0);
 }
 
 
