@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/backend/backend.hpp>
+#include <sasd/ui/menu_model.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
 #include <sasd/ui/rendered/rendered_measurement_context.hpp>
@@ -53,6 +54,26 @@ public:
     [[nodiscard]] Size windowSize() const;
     [[nodiscard]] bool presentationRequested() const noexcept;
     [[nodiscard]] std::size_t presentFrame(const rendered::DisplayList& list);
+
+    /**
+     * Installs an application-global NSMenu projection of the current semantic menu bar.
+     *
+     * AppKit has one application-global NSApplication::mainMenu rather than a per-window menu slot.
+     * On the AppKit main thread, the first backend that synchronizes while mainMenu is empty becomes
+     * the sole SASD native-menu owner. A second backend is rejected, while an existing process menu
+     * is retained as the restoration target rather than silently discarded. Structural changes
+     * require another explicit call. The projection owns copied native labels and
+     * Command::Reference values only; it retains no MenuModel/MenuItem.
+     */
+    void syncMenuBar(const MenuBarModel& menu_bar);
+
+    /**
+     * Removes this backend's application-global mainMenu projection and restores the menu that
+     * preceded installation when it is still the currently installed menu. It is harmless after
+     * shutdown, from a non-AppKit thread, or when another owner has already replaced the process
+     * menu.
+     */
+    void clearMenuBar() noexcept;
 
     void fillRect(const rendered::FillRectCommand& command) override;
     void strokeRect(const rendered::StrokeRectCommand& command) override;

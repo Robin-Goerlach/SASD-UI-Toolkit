@@ -112,8 +112,26 @@ Labels gespeichert. Menüersetzung baut ein separates Binding, prüft die direkt
 `SetMenu`/`DrawMenuBar`, rollt soweit möglich zurück und committed Ownership erst nach erfolgreicher
 Installation. Strukturelle Resynchronisierung bleibt explizit; Command-Text/Enabled-Refresh bleibt
 bei `WM_INITMENU*`. Es gibt kein Win32-spezifisches semantisches Menümodell und keine öffentliche
-plattformübergreifende Native-Menü-Basisklasse. Native AppKit-/GTK-Menüs und die übrigen M7-Themen
-bleiben zurückgestellt.
+plattformübergreifende Native-Menü-Basisklasse.
+
+#### Nativer AppKit-Menü-Consumer (M7 Slice 2)
+
+`AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,
+besitzenden `NSMenu`-Baum und installiert ihn als prozessweites
+`NSApplication.sharedApplication.mainMenu`. Es gibt genau einen SASD-AppKit-Menübesitzer; eine
+konkurrierende Backend-Instanz schlägt geschlossen fehl. Ein bereits vorhandenes Prozessmenü wird
+als Restore-Ziel gespeichert und transactional ersetzt. `clearMenuBar()` stellt es nur wieder her,
+solange das SASD-Menü noch aktuell ist; das vorherige Menü bleibt beim ursprünglichen
+Prozessbesitzer.
+
+AppKit-Labels sind striktes UTF-8 einschließlich CJK und Supplementary Unicode; fehlerhafte Eingaben
+brechen den vollständigen Austausch vor einer Änderung des alten Menüs ab. Strukturänderungen werden
+explizit resynchronisiert. `menuNeedsUpdate`/`validateMenuItem:` aktualisieren kopierte Command-Texte
+und den Enabled-State. Native Actions kopieren nur `Command::Reference` und legen ein
+`CommandActivationEvent` in die Queue; im Objective-C-Action-Callback läuft kein Command-Callback.
+`keyEquivalent` bleibt leer, weil die ShortcutMap autoritativ ist; AppKit-Mnemonics werden nicht
+nachgebildet. Eine allgemeine NativeMenu-Abstraktion wird noch nicht eingeführt. GTK bleibt der
+nächste Validierungs-Consumer.
 
 Langfristiges Ziel: geeignete Widgets nur dann auf Win32-/Windows-Controls und Plattformdienste
 abbilden, wenn ein realer Plattformvorteil einen eigenen Peer-Vertrag rechtfertigt.

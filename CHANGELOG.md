@@ -14,6 +14,11 @@ they improve the architecture before compatibility commitments become expensive.
   refresh and lifetime-safe queued `CommandActivationEvent` activation. Native callbacks do not
   execute application code; literal ampersands are escaped and menu replacement is transactional.
   AppKit/GTK native menus remain deferred.
+- Second M7 native-menu consumer: `AppKitWindowBackend::syncMenuBar()` projects the same Core
+  `MenuBarModel` into an application-global, owned `NSMenu` tree. AppKit uses explicit single-owner
+  `mainMenu` installation/restoration, menu validation for live command state, and queued
+  `CommandActivationEvent` delivery without native shortcut activation. GTK remains the next
+  validation consumer.
 
 - M3 Rendered Desktop Preview development started.
 - Separate `SASD::UI::Rendered` target with a deterministic, SDL-independent `rendered::DisplayList`.
