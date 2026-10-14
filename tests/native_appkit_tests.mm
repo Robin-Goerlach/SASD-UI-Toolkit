@@ -169,7 +169,8 @@ TEST_CASE("AppKit expired command is disabled and cannot queue activation") {
     backend.syncMenuBar(bar);
     NSMenuItem* item = [[[NSApp mainMenu] itemAtIndex:0].submenu itemAtIndex:0];
     command.reset();
-    [[NSApp mainMenu] update];
+    id<NSMenuDelegate> delegate = [[NSApp mainMenu] delegate];
+    [delegate menuNeedsUpdate:[NSApp mainMenu]];
     [NSApp sendAction:item.action to:item.target from:item];
     CHECK(!item.isEnabled);
     CHECK(!backend.pollEvent().has_value());
@@ -192,11 +193,12 @@ TEST_CASE("AppKit native menu refreshes live command state without structural re
 
     command.setText("Open Recent");
     command.setEnabled(false);
-    [[NSApp mainMenu] update];
+    id<NSMenuDelegate> delegate = [[NSApp mainMenu] delegate];
+    [delegate menuNeedsUpdate:[NSApp mainMenu]];
     CHECK(std::string{item.title.UTF8String} == "Open Recent");
     CHECK(!item.isEnabled);
     command.setEnabled(true);
-    [[NSApp mainMenu] update];
+    [delegate menuNeedsUpdate:[NSApp mainMenu]];
     CHECK(item.isEnabled);
 
     backend.shutdown();
