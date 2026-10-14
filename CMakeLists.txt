@@ -31,6 +31,7 @@ add_library(sasd_ui_core
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp
+    src/file_dialog.cpp
     src/focus_manager.cpp
     src/focus_traversal.cpp
     src/form_layout.cpp
@@ -175,12 +176,14 @@ endif()
 if(WIN32)
     add_library(sasd_ui_native_win32
         src/native/win32/win32_input_translation.cpp
+        src/native/win32/win32_file_dialog_service.cpp
         src/native/win32/win32_menu_binding.cpp
         src/native/win32/win32_render_context.cpp
         src/native/win32/win32_window_backend.cpp
     )
     add_library(SASD::UI::Native::Win32 ALIAS sasd_ui_native_win32)
-    target_link_libraries(sasd_ui_native_win32 PUBLIC SASD::UI SASD::UI::Rendered PRIVATE user32 gdi32)
+    target_link_libraries(sasd_ui_native_win32 PUBLIC SASD::UI SASD::UI::Rendered
+        PRIVATE user32 gdi32 ole32 shell32)
     target_compile_features(sasd_ui_native_win32 PUBLIC cxx_std_20)
     target_include_directories(sasd_ui_native_win32
         PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

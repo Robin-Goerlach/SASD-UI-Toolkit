@@ -1,19 +1,46 @@
 #include "test_framework.hpp"
 
 #include "win32_input_translation.hpp"
+#include "win32_file_dialog_service.hpp"
 #include "win32_menu_binding.hpp"
 
 #include <sasd/ui/native/win32_backend.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 
 #include <memory>
+#include <stdexcept>
 #include <variant>
+#include <utility>
 
 using namespace sasd::ui;
 using namespace sasd::ui::native::win32;
 using namespace sasd::ui::native::win32::detail;
 
 namespace {
+
+class FakeOpenFileInvoker final : public NativeOpenFileInvoker {
+public:
+    explicit FakeOpenFileInvoker(NativeOpenFileOutcome outcome) : outcome_{std::move(outcome)} {}
+
+    NativeOpenFileOutcome show(HWND, std::wstring_view title) override {
+        title_ = title;
+        ++invocations;
+        if (service != nullptr) {
+            try {
+                (void)service->requestOpenFile(OpenFileDialogRequest{"nested"});
+            } catch (const std::logic_error&) {
+                nested_request_rejected = true;
+            }
+        }
+        return outcome_;
+    }
+
+    NativeOpenFileOutcome outcome_;
+    std::wstring title_;
+    Win32FileDialogService* service{nullptr};
+    int invocations{0};
+    bool nested_request_rejected{false};
+};
 
 std::wstring menuText(HMENU menu, UINT item, UINT flags) {
     wchar_t buffer[256]{};
@@ -103,9 +130,85 @@ TEST_CASE("Win32 host owns a hidden top-level window through deterministic lifec
     CHECK(backend.isInitialized());
     CHECK(backend.windowSize() == Size{320, 200});
     CHECK(backend.capabilities().native_menus);
+    CHECK(backend.capabilities().file_dialogs);
+    CHECK(backend.fileDialogs() != nullptr);
     CHECK(!backend.pollEvent().has_value());
     backend.shutdown();
     CHECK(!backend.isInitialized());
+    CHECK(backend.fileDialogs() == nullptr);
+}
+
+TEST_CASE("Win32 file dialog service queues accepted result with exact UTF-16 path") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::accepted, L"C:\\Unicode\\Gr\u00FC\u00DFe.txt"});
+    FakeOpenFileInvoker* fake_ptr = fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(fake)};
+    const auto id = service.requestOpenFile(OpenFileDialogRequest{"\xF0\x9F\x93\x82 Open"});
+    CHECK(id != 0);
+    CHECK(fake_ptr->title_ == L"\U0001F4C2 Open");
+    CHECK(fake_ptr->invocations == 1);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == id);
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{L"C:\\Unicode\\Gr\u00FC\u00DFe.txt"});
+    CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 file dialog service maps cancel and failure to one pathless completion") {
+    for (const auto status : {FileDialogResultStatus::cancelled, FileDialogResultStatus::failed}) {
+        EventQueue events;
+        auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{status, L""});
+        Win32FileDialogService service{nullptr, events, std::move(fake)};
+        const auto id = service.requestOpenFile({});
+        const auto event = events.tryPop();
+        CHECK(event.has_value());
+        const auto& result = std::get<FileDialogResultEvent>(*event);
+        CHECK(result.request_id == id);
+        CHECK(result.status == status);
+        CHECK(!result.path.has_value());
+        CHECK(!events.tryPop().has_value());
+    }
+}
+
+TEST_CASE("Win32 file dialog service allocates distinct sequential request IDs") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    Win32FileDialogService service{nullptr, events, std::move(fake)};
+    const auto first = service.requestOpenFile({});
+    const auto second = service.requestOpenFile({});
+    CHECK(first != 0);
+    CHECK(second != 0);
+    CHECK(first != second);
+    CHECK(events.tryPop().has_value());
+    CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 file dialog service rejects a nested pending request and preserves long paths") {
+    EventQueue events;
+    std::wstring long_path = L"C:\\";
+    long_path.append(4096, L'x');
+    long_path += L".txt";
+    auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::accepted, long_path});
+    FakeOpenFileInvoker* fake_ptr = fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(fake)};
+    fake_ptr->service = &service;
+    const auto first = service.requestOpenFile({});
+    CHECK(fake_ptr->nested_request_rejected);
+    bool malformed_title_rejected = false;
+    try {
+        (void)service.requestOpenFile({"\xFF"});
+    } catch (const std::invalid_argument&) {
+        malformed_title_rejected = true;
+    }
+    CHECK(malformed_title_rejected);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == first);
+    CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{long_path});
 }
 
 TEST_CASE("Win32 native menu binding projects structure and resolves a live Core Command") {

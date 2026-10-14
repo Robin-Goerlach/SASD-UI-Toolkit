@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/command.hpp>
+#include <sasd/ui/file_dialog.hpp>
 #include <sasd/ui/geometry.hpp>
 
 #include <cstdint>
@@ -212,6 +213,7 @@ struct ResizeEvent {
 using Event =
     std::variant<QuitEvent,
                  CommandActivationEvent,
+                 FileDialogResultEvent,
                  FocusEvent,
                  KeyEvent,
                  TextInputEvent,

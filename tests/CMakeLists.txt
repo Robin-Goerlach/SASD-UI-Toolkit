@@ -41,6 +41,7 @@ add_executable(sasd_ui_tests
     visual_invalidation_tests.cpp
     presentation_coordinator_tests.cpp
     application_tests.cpp
+    file_dialog_tests.cpp
     mock_backend_tests.cpp
 )
 

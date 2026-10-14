@@ -2,6 +2,7 @@
 
 #include "win32_input_translation.hpp"
 #include "win32_menu_binding.hpp"
+#include "win32_file_dialog_service.hpp"
 #include "win32_render_context.hpp"
 
 #include <windows.h>
@@ -275,6 +276,7 @@ struct Win32WindowBackend::Impl {
             owner_thread = {};
             throw std::runtime_error{"CreateWindowExW failed"};
         }
+        file_dialogs = std::make_unique<detail::Win32FileDialogService>(window, events);
         current_size = config.initial_size;
         dpi = GetDpiForWindow(window);
         if (dpi == 0) dpi = 96U;
@@ -290,6 +292,7 @@ struct Win32WindowBackend::Impl {
         if (owner_thread != std::thread::id{} && std::this_thread::get_id() != owner_thread) return;
         destroying = true;
         events.clear();
+        file_dialogs.reset();
         if (window != nullptr) {
             SetLastError(ERROR_SUCCESS);
             (void)SetMenu(window, nullptr);
@@ -360,6 +363,7 @@ struct Win32WindowBackend::Impl {
     bool presentation_requested{false};
     std::uint64_t revision{0};
     detail::Win32MenuBinding menu_binding;
+    std::unique_ptr<detail::Win32FileDialogService> file_dialogs;
 };
 
 Win32WindowBackend::Win32WindowBackend(Win32WindowBackendConfig config)
@@ -370,10 +374,17 @@ BackendCapabilities Win32WindowBackend::capabilities() const noexcept {
     BackendCapabilities result;
     result.pointer_input = true;
     result.native_menus = true;
+    result.file_dialogs = true;
     return result;
 }
 void Win32WindowBackend::initialize() { impl_->initialize(); }
 void Win32WindowBackend::shutdown() noexcept { impl_->shutdown(); }
+FileDialogService* Win32WindowBackend::fileDialogs() noexcept {
+    return impl_->initialized() ? impl_->file_dialogs.get() : nullptr;
+}
+const FileDialogService* Win32WindowBackend::fileDialogs() const noexcept {
+    return impl_->initialized() ? impl_->file_dialogs.get() : nullptr;
+}
 std::optional<Event> Win32WindowBackend::pollEvent() { return impl_->pollEvent(); }
 bool Win32WindowBackend::isInitialized() const noexcept { return impl_->initialized(); }
 Size Win32WindowBackend::windowSize() const {

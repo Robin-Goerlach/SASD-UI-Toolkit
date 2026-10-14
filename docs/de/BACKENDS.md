@@ -114,6 +114,23 @@ Installation. Strukturelle Resynchronisierung bleibt explizit; Command-Text/Enab
 bei `WM_INITMENU*`. Es gibt kein Win32-spezifisches semantisches Menümodell und keine öffentliche
 plattformübergreifende Native-Menü-Basisklasse.
 
+#### Win32-Open-File-Dialog-Consumer (M7-File-Dialog-Slice 1)
+
+`Backend::fileDialogs()` ist ein optionaler Host-Service-Accessor. Der portable Service nimmt einen
+`OpenFileDialogRequest` an und liefert eine nicht-null `FileDialogRequestId`; der Abschluss wird immer
+als application-level `FileDialogResultEvent` in die Queue gelegt, niemals als Pfad zurückgegeben und
+niemals per Callback zugestellt. Ein Win32-Request darf synchron in die native modale Schleife gehen,
+aber innerhalb davon läuft kein Application-Code. Version 1 erlaubt höchstens einen Pending-Request.
+
+Der Win32-Service verwendet `IFileOpenDialog` mit `FOS_FORCEFILESYSTEM`, `FOS_FILEMUSTEXIST`,
+`FOS_PATHMUSTEXIST` und `FOS_NOCHANGEDIR` und besitzt als Owner das vorhandene HWND des
+`Win32WindowBackend`. Titel werden strikt von UTF-8 nach UTF-16 konvertiert. Akzeptierte Ergebnisse
+bewahren den nativen Pfad als `std::filesystem::path` ohne Canonicalization oder verlustbehaftete ACP-
+Konvertierung; Cancel ist ein pfadloses `cancelled`-Result, technische Fehler sind pfadlose
+`failed`-Results. COM wird nur für die Dialogoperation auf dem aufrufenden UI-Thread initialisiert und
+ausgeglichen. Filter, Save, Ordner und Mehrfachauswahl gehören bewusst noch nicht zu diesem ersten
+Vertrag. Siehe [ADR 0158](../adr/0158-m7-file-dialog-request-result-and-win32-open-file.md).
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

@@ -36,7 +36,8 @@ std::size_t Application::processRoutedEvents(const EventTargetResolver& target_r
          * prevent the application from observing the shutdown request.
          */
         if (std::holds_alternative<QuitEvent>(*event) ||
-            std::holds_alternative<CommandActivationEvent>(*event)) {
+            std::holds_alternative<CommandActivationEvent>(*event) ||
+            std::holds_alternative<FileDialogResultEvent>(*event)) {
             if (std::holds_alternative<QuitEvent>(*event)) {
                 exit_requested_ = true;
             }

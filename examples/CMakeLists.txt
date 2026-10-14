@@ -17,6 +17,20 @@ else()
     endif()
 endif()
 
+if(WIN32)
+    add_executable(sasd_ui_win32_file_dialog_demo native_win32_file_dialog_demo.cpp)
+    target_link_libraries(sasd_ui_win32_file_dialog_demo PRIVATE SASD::UI::Native::Win32)
+    target_compile_features(sasd_ui_win32_file_dialog_demo PRIVATE cxx_std_20)
+    target_compile_definitions(sasd_ui_win32_file_dialog_demo PRIVATE UNICODE _UNICODE NOMINMAX
+        WIN32_LEAN_AND_MEAN)
+    if(MSVC)
+        target_compile_options(sasd_ui_win32_file_dialog_demo PRIVATE /W4 /permissive-)
+        if(SASD_UI_WARNINGS_AS_ERRORS)
+            target_compile_options(sasd_ui_win32_file_dialog_demo PRIVATE /WX)
+        endif()
+    endif()
+endif()
+
 if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
     target_compile_options(sasd_ui_terminal_demo
         PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
