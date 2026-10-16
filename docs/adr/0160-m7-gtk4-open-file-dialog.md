@@ -40,6 +40,24 @@ filesystem representation. Cancel maps to `cancelled`; unexpected/error, non-loc
 map to `failed`. Save, folder, multiple selection, filters, preview and accessory UI remain deferred.
 No `GtkApplication` is required.
 
+## Implementation and validation
+
+The decision is implemented by the private `GtkFileDialogService` in
+`src/native/gtk/gtk_file_dialog_service.cpp`, exposed only through the existing
+`GtkWindowBackend::fileDialogs()` overrides. `BackendCapabilities::file_dialogs` is true while the
+backend is usable; the accessor is null before initialization and after shutdown. The GTK demo now
+connects `File -> Open File` through `CommandActivationEvent` and prints the later
+`FileDialogResultEvent` without running application code in a native callback.
+
+The deterministic GTK tests cover service/capability lifecycle, request-before-result ordering,
+pending rejection and reuse, accepted local paths, cancellation, non-local failure, malformed UTF-8,
+double completion, stale generations, shutdown and destruction while pending. The normal local strict
+GCC build and all four configured non-GTK CTest targets passed. GTK was not installed in the WSL
+workspace, so the local GTK/Xvfb build was not run; GTK Native CI compiled and linked the production
+adapter and passed its Xvfb tests. PR #45 was merged into `main` at `03e8ea5`; the PR's Linux GCC,
+Clang, ASan/UBSan, SDL3, Windows, macOS, GTK Native, AppKit Native and Release checks passed. No
+manual visible GTK smoke test was run.
+
 ## Deutsch
 
 ## Status
@@ -81,3 +99,22 @@ Referenzen freigegeben. URI-Labels, Canonicalization, Normalisierung und Existen
 die native Dateisystemrepräsentation. Cancel wird `cancelled`, unerwartete Fehler sowie nicht-lokale
 und leere Ergebnisse werden `failed`. Save, Ordner, Mehrfachauswahl, Filter, Preview und Accessory UI
 bleiben zurückgestellt. Eine `GtkApplication` ist nicht erforderlich.
+
+## Umsetzung und Validierung
+
+Die Entscheidung ist im privaten `GtkFileDialogService` unter
+`src/native/gtk/gtk_file_dialog_service.cpp` umgesetzt und ausschließlich über die bestehenden
+`GtkWindowBackend::fileDialogs()`-Overrides erreichbar. `BackendCapabilities::file_dialogs` ist aktiv,
+solange das Backend nutzbar ist; vor der Initialisierung und nach dem Shutdown liefert der Accessor
+`nullptr`. Die GTK-Demo führt `File -> Open File` über `CommandActivationEvent` und gibt das spätere
+`FileDialogResultEvent` aus, ohne Application-Code im nativen Callback auszuführen.
+
+Die deterministischen GTK-Tests prüfen Service-/Capability-Lifecycle, Rückkehr vor Result-Event,
+Pending-Ablehnung und Wiederverwendung, lokale Accepted-Pfade, Cancel, nicht-lokales Failed-Ergebnis,
+fehlerhaftes UTF-8, doppelte Completion, alte Generationen sowie Shutdown und Zerstörung während
+Pending. Der normale lokale strikte GCC-Build und alle vier konfigurierten Nicht-GTK-CTest-Ziele waren
+erfolgreich. GTK war im WSL-Arbeitsbereich nicht installiert; der lokale GTK-/Xvfb-Build wurde daher
+nicht ausgeführt. Die GTK Native CI kompilierte und linkte den produktiven Adapter und bestand die
+Xvfb-Tests. PR #45 wurde mit `03e8ea5` in `main` gemergt; die Linux-GCC-, Clang-, ASan/UBSan-, SDL3-,
+Windows-, macOS-, GTK-Native-, AppKit-Native- und Release-Checks des PRs waren erfolgreich. Ein
+manueller sichtbarer GTK-Smoke-Test wurde nicht ausgeführt.

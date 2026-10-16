@@ -35,6 +35,16 @@ The EventQueue is intentionally the async boundary. A callback, future, promise,
 synchronous modal call. No public `NativeFileDialog` hierarchy, `DialogManager` or platform-specific
 request type is introduced. Save, folder, filters and multiple selection remain deferred.
 
+## Review and validation record
+
+The review was completed after the GTK implementation in PR #45. GTK added no Core API, dependency,
+callback/future abstraction or lifecycle rule that was not already represented by the Win32 and
+AppKit consumers. The decision therefore remains Accepted and M7 continues with Save, folder,
+filters and multiple selection deferred. The implementation was merged into `main` at `03e8ea5` after
+the complete PR check set passed, including GTK Native CI and AppKit Native CI. The local workspace
+had no GTK development package, so only the normal strict GCC build and the four non-GTK CTest targets
+were run locally; no manual native GTK dialog was opened.
+
 ## Deutsch
 
 ## Status
@@ -70,3 +80,13 @@ Die EventQueue ist bewusst die asynchrone Grenze. Callback, Future, Promise, Cor
 Win32-Dialog nicht vereinheitlichen. Es gibt keine öffentliche `NativeFileDialog`-Hierarchie, keinen
 `DialogManager` und keinen plattformspezifischen Request-Typ. Save, Ordner, Filter und Mehrfachauswahl
 bleiben spätere Vertragsentscheidungen.
+
+## Review- und Validierungsnachweis
+
+Der Review wurde nach der GTK-Implementierung in PR #45 abgeschlossen. GTK hat keine Core-API, neue
+Abhängigkeit, Callback-/Future-Abstraktion oder Lifecycle-Regel eingeführt, die nicht bereits durch
+Win32 und AppKit abgedeckt war. Die Entscheidung bleibt daher `Accepted`; Save, Ordner, Filter und
+Mehrfachauswahl bleiben zurückgestellt. Die Implementierung wurde nach erfolgreichem vollständigem
+PR-Checkset einschließlich GTK Native CI und AppKit Native CI mit `03e8ea5` in `main` gemergt. Im
+lokalen Arbeitsbereich fehlte das GTK-Entwicklungspaket; lokal liefen nur der normale strikte GCC-Build
+und die vier Nicht-GTK-CTest-Ziele. Es wurde kein nativer GTK-Dialog manuell geöffnet.
