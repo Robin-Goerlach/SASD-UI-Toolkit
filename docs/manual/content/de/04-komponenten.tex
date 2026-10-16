@@ -1,0 +1,182 @@
+% SPDX-License-Identifier: MIT
+\chapter{Komponenten, Widgets und Formulare}\label{chap:widgets}
+\ChapterSummary{Dieses Kapitel führt durch die gebrauchsfertigen
+Grund-Controls, ihre Zustandseigenschaften und ihre Lebensdauer.
+Sie erfahren, wann ein Widget genügt und wann eine nichtvisuelle
+Komponente oder ein Modell die bessere Wahl ist.}
+
+\section{Ein Besitzbaum, zwei Sichtweisen}
+\term{Component} ist die Grundlage für Objekte, die eine
+einheitliche Eigentums- und Lebensdauerbeziehung benötigen.
+\term{Widget} erweitert dieses Konzept um Sichtbarkeit,
+Aktivierbarkeit, Fokusfähigkeit, Größe, Position und Ereignisse.
+\term{Container} besitzt Komponenten über eindeutiges
+\texttt{std::unique\_ptr}-Eigentum. Nur Widgets bilden dabei
+sichtbare Kinder; eine Command-Komponente im gleichen
+Container erscheint nicht im Layout.
+
+\begin{lstlisting}[language=SASDCpp,caption={Eigentum ausdrücklich übergeben}]
+Window window;
+auto& form = window.emplace<VBox>();
+auto& caption = form.emplace<Label>("Einstellungen");
+auto& save = form.emplace<Button>("Speichern");
+\end{lstlisting}
+Der \texttt{Window}-Destruktor entsorgt die verschachtelten
+Komponenten. Für dynamische Strukturen existieren
+\texttt{adopt(std::unique\_ptr<Component>)} und
+\texttt{release(Component\&)}, womit die Lebensdauer bewusst
+übertragen werden kann. Ein nach \texttt{release} entfernter
+Teilbaum muss im Anwendungscode entweder weiterbesessen oder
+zerstört werden.
+
+\Important{C++-Referenzen auf Widgets sind nicht selbst
+lebensdauersicher. Wenn Sie einen Container auflösen oder
+ein Kind entfernen, dürfen spätere Callbacks nicht
+mehr über alte Referenzen zugreifen.}
+
+\section{Gemeinsame Widget-Eigenschaften}
+Die wichtigsten Methoden aus \filepath{include/sasd/ui/widget.hpp}:
+
+\noindent\begin{tabularx}{\linewidth}{@{}p{39mm}X@{}}
+\toprule
+Methode & Bedeutung\\\midrule
+\texttt{setVisible(bool)} & Beeinflusst Darstellung und Teilnahme am Layout.\\
+\texttt{setEnabled(bool)} & Sperrt oder erlaubt normale Benutzeraktionen.\\
+\texttt{setFocusable(bool)} & Definiert grundsätzliche Fokusfähigkeit.\\
+\texttt{hasFocus()} & Zeigt aktuellen logischen Fokus an.\\
+\texttt{setSizeConstraints(...)} & Begrenzt die gewünschte Größe.\\
+\texttt{measure(...)} & Berechnet die benötigte Größe.\\
+\texttt{arrange(Rect)} & Setzt endgültige Grenzen.\\
+\bottomrule
+\end{tabularx}
+\texttt{canReceiveFocus()} berücksichtigt
+\emph{focusable, visible und enabled} gleichzeitig.
+Ein deaktivierter Button sollte daher weder als erreichbares
+Tab-Ziel noch als ausführbare Aktion behandelt werden.
+
+\section{Label und Button}
+Ein \term{Label} transportiert UTF-8-Text, aber keine
+eingebaute Editierfunktion. Ein \term{Button} bietet
+\texttt{setText}, \texttt{setOnActivated} und
+\texttt{activate}. Ein aktivierbarer Button kann per
+Tastatur oder Zeigegerät ausgelöst werden. Das eigene
+Pressed-Feedback wird getrennt vom dauerhaften Enabled-Zustand
+geführt.
+
+\begin{lstlisting}[language=SASDCpp]
+auto& status = form.emplace<Label>("Noch nichts gespeichert");
+auto& save = form.emplace<Button>("Speichern");
+save.setOnActivated([&status] {
+    status.setText("Speichern angefordert");
+});
+\end{lstlisting}
+Soll derselbe Vorgang auch aus Menü und Shortcut erreichbar sein,
+ist ein \term{Command} meist sinnvoller; Kapitel
+\ref{chap:commands} zeigt die Bindung.
+
+\section{TextField: Unicode und Auswahl}
+\term{TextField} ist ein einzelzeiliger UTF-8-Editor.
+Eingaben werden aus \term{TextInputEvent} verarbeitet,
+Tastaturbewegung und Löschen arbeiten mit
+Unicode-\emph{Scalars} statt rohen Bytes.
+Das ist ein wichtiger Unterschied: Ein mehrbyteiges UTF-8-Zeichen
+darf beim Rückwärtslöschen nicht zerstört werden.
+
+Die wichtigsten Methoden sind nach Aufgaben gruppiert:
+\begin{itemize}
+\item Textinhalt: \texttt{text()} und \texttt{setText()}.
+\item Cursor: \texttt{cursorPosition()} und \texttt{setCursorPosition()}.
+\item Auswahl: \texttt{setSelection()}, \texttt{selectAll()}
+und \texttt{selectedText()}.
+\item Zwischenablage: Kopieren, Ausschneiden und
+Einfügen über ein explizites \term{Clipboard}-Objekt.
+\end{itemize}
+Die Auswahl hat getrennte Anker- und Cursorpositionen.
+Die zugehörigen API-Funktionen heißen:
+\begin{lstlisting}[language={},numbers=none]
+copySelectionToClipboard(clipboard)
+cutSelectionToClipboard(clipboard)
+pasteFromClipboard(clipboard)
+\end{lstlisting}
+
+\begin{lstlisting}[language=SASDCpp]
+auto& entry = form.emplace<TextField>("Beispiel");
+entry.selectAll();
+const std::string selected = entry.selectedText();
+entry.setCursorPosition(0);
+\end{lstlisting}
+Die Cursorposition wird in Unicode-Scalars gemessen,
+nicht in Bytes und nicht in Terminalzellen. Komplexe
+Graphemcluster können mehrere Scalars umfassen.
+Breite Zeichen können im Terminal mehr als eine Zelle
+belegen. Diese Größen müssen getrennt bleiben.
+
+\section{CheckBox, RadioButton und RadioGroup}
+\term{CheckBox} bildet einen booleschen Zustand ab:
+\begin{lstlisting}[language=SASDCpp]
+auto& logging = form.emplace<CheckBox>("Protokoll", true);
+logging.setOnCheckedChanged([](bool checked) {
+    // Anwendungseinstellungen aktualisieren.
+});
+logging.setChecked(false);
+\end{lstlisting}
+Ein \term{RadioGroup} ist eine \emph{nichtvisuelle}
+Komponente für gegenseitig ausschließende Optionen.
+RadioButtons referenzieren diese Gruppe explizit.
+Sie wird nicht aus benachbarten Widgets geraten.
+
+\begin{lstlisting}[language=SASDCpp]
+RadioGroup modeGroup; // Muss die Buttons überleben.
+Window window;
+auto& form = window.emplace<VBox>();
+auto& read = form.emplace<RadioButton>(modeGroup,"Nur lesen");
+auto& edit = form.emplace<RadioButton>(modeGroup,"Bearbeiten");
+read.setSelected(true);
+\end{lstlisting}
+Die Deklarationsreihenfolge sorgt hier dafür,
+dass beim Verlassen des Scopes zuerst das Fenster
+und seine Buttons, danach die Gruppe zerstört werden.
+
+\section{ComboBox: Auswahl ist nicht Vorschau}
+\term{ComboBox} besitzt eine lokale Liste von Strings
+und einen optionalen gewählten Index. Sie ist derzeit
+\emph{nicht editierbar}. Methoden wie
+\texttt{setSelectedIndex}, \texttt{selectedText},
+\texttt{appendItem} und \texttt{setItems} steuern
+die festgeschriebene Auswahl.
+Bei Austausch der gesamten Liste wird eine alte
+Auswahl bewusst gelöscht, damit derselbe Zahlenindex
+nicht unbemerkt eine andere Bedeutung bekommt.
+
+Ein geöffnetes Dropdown hat einen zweiten,
+vorläufigen \term{Preview-Index}. Navigation verändert
+zunächst nur die Vorschau. \textbf{Enter} übernimmt,
+\textbf{Escape} verwirft, \textbf{F4} steuert die
+Dropdown-Absicht. Das ist für Formulare wichtig,
+deren teure oder gefährliche Folgeaktionen erst
+nach einer bestätigten Wahl laufen sollen.
+\begin{lstlisting}[language=SASDCpp]
+auto& target = form.emplace<ComboBox>(
+    std::vector<std::string>{"Test", "Produktion"});
+target.setSelectedIndex(0);
+target.setOnSelectionChanged([](auto index) {
+    // Nur bestätigte Auswahl verarbeiten.
+});
+\end{lstlisting}
+
+\section{Textstil statt plattformspezifischer Farbe}
+\term{TextStyle} ermöglicht eine reduzierte, portable
+Textgestaltung mit Farbangaben und Attributen.
+\begin{lstlisting}[language=SASDCpp]
+TextStyle style;
+style.foreground = Color::bright_cyan;
+style.bold = true;
+caption.setTextStyle(style);
+\end{lstlisting}
+Die Wirkung ist von den Fähigkeiten des Backends
+abhängig. Verwenden Sie Farbe als Unterstützung,
+nicht als einziges Trägermedium für Bedeutung.
+\PracticalTip{Trennen Sie Statusdaten, sichtbaren Text und
+Benutzerinteraktion. Ein TextField ist kein Datenmodell;
+ein Label ist keine Protokollhistorie; ein Command ist
+keine künstlich verborgene Schaltfläche.}

@@ -1,0 +1,166 @@
+% SPDX-License-Identifier: MIT
+\chapter{Fehlersuche und bewusste Grenzen}\label{chap:trouble}
+\ChapterSummary{Dieses Kapitel liefert eine symptomorientierte
+Diagnose für die häufigsten Probleme bei Build,
+Terminalbetrieb, Layout, Eingabe und Modellbindung.
+Es zeigt ausserdem, welche Eigenschaften derzeit
+noch keine garantierte Produktfunktion sind.}
+
+\section{CMake findet das Toolkit nicht}
+\textbf{Symptom:} \texttt{find\_package} meldet
+kein \texttt{SASDUIToolkitConfig.cmake}.
+
+\textbf{Prüfen:} Wurde die Library wirklich
+installiert? Zeigt \filepath{CMAKE_PREFIX_PATH}
+auf den \emph{Installationspräfix}, nicht
+auf eine beliebige Quelldatei?
+Fordert der Konsument eine zum
+installierten Paket passende Version?
+Sind Quell-Build und bereits
+installierte alte Versionen verwechselt?
+Ein sauberer Consumer-Build in einem
+neuen Verzeichnis beseitigt viele
+Caches mit falschen Fundstellen.
+
+\section{Unter Visual Studio wird nichts gestartet}
+\textbf{Symptom:} Sie haben kompiliert,
+finden aber das Beispiel nicht.
+
+\textbf{Prüfen:} Der Visual-Studio-
+Generator nutzt Konfigurationsordner
+wie \filepath{Debug} und
+\filepath{Release}. Wurde die
+richtige Architektur gewählt?
+Passen \filepath{--config Debug}
+bei Build und \filepath{-C Debug}
+bei CTest zusammen?
+Bei einem abweichenden Generator
+kann der Pfad anders aussehen.
+
+\section{Terminal bleibt leer oder zeigt Zeichenmüll}
+\textbf{Symptom:} Beim Demo-Start
+erscheint kein sinnvoller Bildschirm.
+
+\textbf{Prüfen:} Läuft die Anwendung
+in einem interaktiven, ANSI/VT-fähigen
+Terminal? Werden Ein-/Ausgabe eventuell
+in eine Datei oder fremde Prozesskonsole
+umgelenkt? Ist das Terminal sehr klein?
+Unterstützt das Terminal die
+benötigten Escape-Sequenzen?
+Testen Sie die Referenz-Demo, bevor
+Sie den eigenen Host untersuchen.
+Der Core allein sendet keine Frames;
+die Kombination aus PresentationSink,
+Frame-Encoder und Backend ist notwendig.
+
+\section{Button reagiert nicht}
+\textbf{Prüfen:} Ist er sichtbar,
+aktiviert und für die gewünschte
+Bedienung fokussierbar?
+Erhält der Host die KeyEvents
+und leitet er sie an das korrekte
+Fokusziel weiter?
+Ist ein Command gebunden und
+möglicherweise deaktiviert?
+Hat ein geöffnetes Menü oder
+Popup den Eingabefokus?
+Bei Mausaktionen ist zusätzlich
+Pointer-Routing/Capture zu prüfen.
+
+\section{Nach Textänderung sieht man nichts}
+\textbf{Prüfen:} Verändert
+\texttt{setText()} wirklich den
+Wert? Fordert die Host-Schleife
+nach Invalidierung einen
+Präsentations-Refresh an?
+Wurde die Größe bei längerem
+Text erneut gemessen und
+arrangiert?
+Handelt es sich um ein
+verdecktes oder geclipptes Widget?
+Die Kernobjekte sind kein
+automatisches Desktop-Fenstersystem.
+
+\section{Tab-Reihenfolge oder Eingabe stimmt nicht}
+\textbf{Prüfen:} Wurde
+\term{FocusTraversal} mit
+dem aktuellen sichtbaren Baum
+benutzt? Können die betreffenden
+Widgets Fokus erhalten?
+Sind TextInputEvents von
+KeyEvents getrennt?
+Leitet ein globaler Shortcut
+irrtümlich dieselbe Taste weiter?
+Wurde ein altes Popup oder
+Pointer-Capture nicht geschlossen?
+
+\section{Das Model zeigt alte oder falsche Zeilen}
+\textbf{Prüfen:} Wurde ein
+mitgeliefertes StringModel über
+seine Mutationsmethoden
+aktualisiert? Meldet ein
+eigenes Model seine Änderungen
+und Revisionen korrekt?
+Sind bei der Table alle Zeilen
+rechteckig? Wurde
+die Auswahl nach strukturellen
+Änderungen neu validiert?
+Ist der Viewport noch passend?
+Wurden die Lebensdauern von Model,
+SelectionModel und View bedacht?
+
+\section{Unterschiedliche Darstellung unter SDL3}
+\textbf{Prüfen:} Ist der
+optionale Adapter wirklich aktiviert?
+Sind SDL3 und SDL\_ttf in der
+geforderten Version vorhanden?
+Ist ein gültiger Fontpfad
+für entsprechende Tests gesetzt?
+Arbeitet die normale Rendered-
+Schicht im Headless-Test korrekt?
+SDL3 ist gegenwärtig
+experimentell und nicht mit
+voller Terminal-/Native-Parität
+gleichzusetzen.
+
+\section{Was noch nicht zum Vertrag gehört}
+Das Toolkit hat derzeit keinen
+abgeschlossenen visuellen RAD-Designer,
+keinen garantierten universellen
+\texttt{Application::run()}-Host,
+keine fertigen nativen Win32-/GTK-/AppKit-
+Peers und keine Zusage, dass jedes
+Core-Widget auf allen Backends
+identisch bedienbar ist.
+Auch große Daten-Views und
+komplexe Popup-Interaktion sollten
+im Zielbackend stets mit den
+tatsächlichen Demos und Tests
+abgeglichen werden.
+
+\section{Wie Sie einen hilfreichen Fehlerbericht schreiben}
+Ein guter Bericht nennt den exakten
+Commit/Tag, Compiler, Plattform,
+Terminal oder SDL-Konfiguration,
+CMake-Flags und die kleinste
+Reproduktionsfolge. Fügen Sie
+einen kurzen, vollständigen
+Codeausschnitt und die
+\emph{erste} entscheidende
+Fehlerausgabe bei.
+Beschreiben Sie erwartet und
+beobachtet getrennt.
+Vor einem Pull Request sollten
+die passenden CTest-Suiten laufen.
+Technische Diskussionen finden
+unter \url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit/issues} statt.
+
+\PracticalTip{Bei einer unklaren Störung
+zuerst das mitgelieferte Beispiel
+auf genau demselben System starten,
+dann Ihr Programm schrittweise
+auf denselben Komponentenpfad
+reduzieren. Der Unterschied zeigt
+oft bereits die fehlende Host-
+oder Lifecycle-Verbindung.}
