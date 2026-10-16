@@ -201,7 +201,7 @@ TEST_CASE("AppKit open extension filters validate before ID and preserve order")
     EventQueue events;
     auto fake = std::make_unique<FakeOpenFileInvoker>(std::make_shared<FakeOpenFileState>());
     FakeOpenFileInvoker* fake_ptr = fake.get();
-    AppKitFileDialogService service{testOwner(), events, std::move(fake)};
+    detail::AppKitFileDialogService service{testOwner(), events, std::move(fake)};
     bool rejected = false;
     try { (void)service.requestOpenFile({"Open", {"*.txt"}}); }
     catch (const std::invalid_argument&) { rejected = true; }
@@ -209,7 +209,7 @@ TEST_CASE("AppKit open extension filters validate before ID and preserve order")
     CHECK(fake_ptr->state_->begins == 0);
     const auto id = service.requestOpenFile({"Open", {"txt", "md", "cpp"}});
     CHECK(id == 1);
-    CHECK(fake_ptr->begins == 1);
+    CHECK(fake_ptr->state_->begins == 1);
     CHECK(fake_ptr->extensions_ == std::vector<std::string>{"txt", "md", "cpp"});
 }
 
