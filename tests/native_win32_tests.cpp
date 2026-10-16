@@ -42,6 +42,30 @@ public:
     bool nested_request_rejected{false};
 };
 
+class FakeSaveFileInvoker final : public NativeSaveFileInvoker {
+public:
+    explicit FakeSaveFileInvoker(NativeSaveFileOutcome outcome) : outcome_{std::move(outcome)} {}
+
+    NativeSaveFileOutcome show(HWND, std::wstring_view title) override {
+        title_ = title;
+        ++invocations;
+        if (service != nullptr) {
+            try {
+                (void)service->requestOpenFile(OpenFileDialogRequest{"nested"});
+            } catch (const std::logic_error&) {
+                nested_request_rejected = true;
+            }
+        }
+        return outcome_;
+    }
+
+    NativeSaveFileOutcome outcome_;
+    std::wstring title_;
+    Win32FileDialogService* service{nullptr};
+    int invocations{0};
+    bool nested_request_rejected{false};
+};
+
 std::wstring menuText(HMENU menu, UINT item, UINT flags) {
     wchar_t buffer[256]{};
     const int length = GetMenuStringW(menu, item, buffer, static_cast<int>(std::size(buffer)), flags);
@@ -209,6 +233,49 @@ TEST_CASE("Win32 file dialog service rejects a nested pending request and preser
     CHECK(event.has_value());
     CHECK(std::get<FileDialogResultEvent>(*event).request_id == first);
     CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{long_path});
+}
+
+TEST_CASE("Win32 save file uses the shared contract without touching the filesystem") {
+    EventQueue events;
+    auto open_fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    auto save_fake = std::make_unique<FakeSaveFileInvoker>(NativeSaveFileOutcome{
+        FileDialogResultStatus::accepted, L"C:\\New Folder\\Gr\u00FC\u00DFe \U0001F4C4.txt"});
+    FakeSaveFileInvoker* save_ptr = save_fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(open_fake), std::move(save_fake)};
+
+    const auto id = service.requestSaveFile(SaveFileDialogRequest{"\xF0\x9F\x92\BE Save"});
+    CHECK(id != 0);
+    CHECK(save_ptr->title_ == L"\U0001F4BE Save");
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    const auto& result = std::get<FileDialogResultEvent>(*event);
+    CHECK(result.request_id == id);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.path == std::filesystem::path{L"C:\\New Folder\\Gr\u00FC\u00DFe \U0001F4C4.txt"});
+    CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 open and save share IDs and the pending boundary") {
+    EventQueue events;
+    auto open_fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    auto save_fake = std::make_unique<FakeSaveFileInvoker>(NativeSaveFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    FakeOpenFileInvoker* open_ptr = open_fake.get();
+    FakeSaveFileInvoker* save_ptr = save_fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(open_fake), std::move(save_fake)};
+    open_ptr->service = &service;
+    save_ptr->service = &service;
+
+    const auto open_id = service.requestOpenFile({});
+    CHECK(open_ptr->nested_request_rejected);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == open_id);
+    const auto save_id = service.requestSaveFile({});
+    CHECK(save_ptr->nested_request_rejected);
+    CHECK(save_id > open_id);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == save_id);
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("Win32 native menu binding projects structure and resolves a live Core Command") {

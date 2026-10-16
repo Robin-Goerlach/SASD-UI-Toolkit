@@ -64,6 +64,17 @@ TEST_CASE("FileDialogResultEvent is an application event and never bubbles to wi
     CHECK(widget.deliveryCount() == 0);
 }
 
+TEST_CASE("Save dialog acceptance uses the same result event and permits a new target path") {
+    const SaveFileDialogRequest request{"Save File"};
+    CHECK(request.title == "Save File");
+    const Event event = FileDialogResultEvent{
+        8, FileDialogResultStatus::accepted, std::filesystem::path{"/tmp/not-created-yet.txt"}};
+    CHECK(std::holds_alternative<FileDialogResultEvent>(event));
+    const auto& result = std::get<FileDialogResultEvent>(event);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.path == std::filesystem::path{"/tmp/not-created-yet.txt"});
+}
+
 TEST_CASE("Backends default to no file-dialog service and no capability") {
     MockBackend backend;
     CHECK(!backend.capabilities().file_dialogs);

@@ -20,8 +20,14 @@ int main() {
     bool exit_requested = false;
     exit_command.setOnExecuted([&] { exit_requested = true; });
     Command open_file_command{"Open File"};
+    FileDialogRequestId open_id = 0;
+    FileDialogRequestId save_id = 0;
     open_file_command.setOnExecuted([&] {
-        if (auto* dialogs = backend.fileDialogs()) (void)dialogs->requestOpenFile({"Open File"});
+        if (auto* dialogs = backend.fileDialogs()) open_id = dialogs->requestOpenFile({"Open File"});
+    });
+    Command save_file_command{"Save File"};
+    save_file_command.setOnExecuted([&] {
+        if (auto* dialogs = backend.fileDialogs()) save_id = dialogs->requestSaveFile({"Save File"});
     });
     Command copy_command{"Copy"};
     Command paste_command{"Paste"};
@@ -31,6 +37,7 @@ int main() {
     MenuBarModel menu_bar;
     MenuModel& file_menu = menu_bar.appendMenu("File");
     file_menu.appendCommand(open_file_command);
+    file_menu.appendCommand(save_file_command);
     MenuModel& action_menu = file_menu.appendSubmenu("Action");
     action_menu.appendCommand(disabled_command);
     file_menu.appendSeparator();
@@ -61,12 +68,14 @@ int main() {
         }
         if (event && std::holds_alternative<FileDialogResultEvent>(*event)) {
             const auto& result = std::get<FileDialogResultEvent>(*event);
+            const bool is_save = result.request_id == save_id;
+            const char* operation = is_save ? "Save" : "Open";
             if (result.status == FileDialogResultStatus::accepted) {
-                std::cout << "Opened: " << result.path->string() << '\n';
+                std::cout << operation << " target: " << result.path->string() << '\n';
             } else if (result.status == FileDialogResultStatus::cancelled) {
-                std::cout << "Open cancelled\n";
+                std::cout << operation << " cancelled\n";
             } else {
-                std::cout << "Open failed\n";
+                std::cout << operation << " failed\n";
             }
         }
         if (exit_requested) break;

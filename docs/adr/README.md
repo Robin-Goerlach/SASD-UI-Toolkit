@@ -178,6 +178,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0159](0159-m7-appkit-nsopenpanel-asynchronous-file-dialog.md) | M7 AppKit NSOpenPanel validates asynchronous file-dialog completion | Accepted |
 | [0160](0160-m7-gtk4-open-file-dialog.md) | M7 GTK4 Open File validates the third file-dialog consumer | Accepted |
 | [0161](0161-m7-file-dialog-three-consumer-contract-review.md) | M7 file-dialog three-consumer contract review | Accepted |
+| [0162](0162-m7-save-file-extends-file-dialog-contract.md) | M7 Save File extends the validated file-dialog contract | Accepted |
 
 ## ADR policy
 
