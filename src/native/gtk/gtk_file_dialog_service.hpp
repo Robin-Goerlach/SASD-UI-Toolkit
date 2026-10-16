@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace sasd::ui::native::gtk::detail {
 
@@ -22,7 +23,8 @@ using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
-    virtual void begin(GtkWindow* owner, std::string title, NativeOpenFileCompletion completion) = 0;
+    virtual void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+                       NativeOpenFileCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 

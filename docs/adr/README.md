@@ -180,6 +180,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0161](0161-m7-file-dialog-three-consumer-contract-review.md) | M7 file-dialog three-consumer contract review | Accepted |
 | [0162](0162-m7-save-file-extends-file-dialog-contract.md) | M7 Save File extends the validated file-dialog contract | Accepted |
 | [0163](0163-m7-folder-selection-extends-file-dialog-contract.md) | M7 Folder Selection extends the FileDialogService contract | Accepted |
+| [0164](0164-m7-open-file-extension-filters.md) | M7 Open File extension filters | Accepted |
 
 ## ADR policy
 

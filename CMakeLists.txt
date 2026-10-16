@@ -122,7 +122,7 @@ if(APPLE AND SASD_UI_BUILD_APPKIT_ADAPTER)
     target_link_libraries(sasd_ui_native_appkit
         PUBLIC SASD::UI SASD::UI::Rendered
         PRIVATE "-framework AppKit" "-framework CoreGraphics" "-framework CoreText"
-                "-framework Foundation")
+                "-framework Foundation" "-weak_framework UniformTypeIdentifiers")
     target_compile_features(sasd_ui_native_appkit PUBLIC cxx_std_20)
     target_include_directories(sasd_ui_native_appkit
         PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

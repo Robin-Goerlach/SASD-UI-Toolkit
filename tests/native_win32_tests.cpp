@@ -22,8 +22,10 @@ class FakeOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
     explicit FakeOpenFileInvoker(NativeOpenFileOutcome outcome) : outcome_{std::move(outcome)} {}
 
-    NativeOpenFileOutcome show(HWND, std::wstring_view title) override {
+    NativeOpenFileOutcome show(HWND, std::wstring_view title,
+                               const std::vector<std::wstring>& extensions) override {
         title_ = title;
+        extensions_ = extensions;
         ++invocations;
         if (service != nullptr) {
             try {
@@ -37,6 +39,7 @@ public:
 
     NativeOpenFileOutcome outcome_;
     std::wstring title_;
+    std::vector<std::wstring> extensions_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool nested_request_rejected{false};
@@ -205,6 +208,28 @@ TEST_CASE("Win32 file dialog service queues accepted result with exact UTF-16 pa
     CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
     CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{L"C:\\Unicode\\Gr\u00FC\u00DFe.txt"});
     CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 open extension filters validate before IDs and preserve native order") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::accepted, L"C:\\report.bin"});
+    FakeOpenFileInvoker* fake_ptr = fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(fake)};
+    for (const std::vector<std::string> invalid : {{""}, {".txt"}, {"*.txt"}, {"foo/bar"},
+                                                    {"foo\\bar"}, {"foo;bar"}, {"tar.gz"},
+                                                    {"txt", "txt"}, {std::string{"bad\xFF", 4}}}) {
+        bool rejected = false;
+        try { (void)service.requestOpenFile({"Open", invalid}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+        CHECK(fake_ptr->invocations == 0);
+    }
+    const auto id = service.requestOpenFile({"Open", {"txt", "md", "cpp"}});
+    CHECK(id == 1);
+    CHECK(fake_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md", L"cpp"});
+    CHECK(win32FilterPattern(fake_ptr->extensions_) == L"*.txt;*.md;*.cpp");
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).status == FileDialogResultStatus::accepted);
 }
 
 TEST_CASE("Win32 file dialog service maps cancel and failure to one pathless completion") {

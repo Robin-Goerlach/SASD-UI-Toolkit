@@ -17,7 +17,8 @@ int main() {
         std::cerr << "File dialogs are unavailable\n";
         return 1;
     }
-    const auto open_id = dialogs->requestOpenFile(OpenFileDialogRequest{"Open an existing file"});
+    const auto open_id = dialogs->requestOpenFile(
+        OpenFileDialogRequest{"Open a text or source file", {"txt", "md", "cpp", "hpp"}});
 
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;

@@ -11,7 +11,9 @@
 #import <AppKit/AppKit.h>
 
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace sasd::ui;
@@ -26,14 +28,17 @@ struct FakeOpenFileState {
 class FakeOpenFileInvoker final : public detail::NativeOpenFileInvoker {
 public:
     explicit FakeOpenFileInvoker(std::shared_ptr<FakeOpenFileState> state) : state_{std::move(state)} {}
-    void begin(NSWindow*, NSString* title, detail::NativeOpenFileCompletion completion) override {
+    void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
+               detail::NativeOpenFileCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        extensions_ = std::move(extensions);
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
     void cancel() noexcept override { ++cancels; }
     std::shared_ptr<FakeOpenFileState> state_;
     std::string title_;
+    std::vector<std::string> extensions_;
     int cancels{0};
 };
 
@@ -190,6 +195,22 @@ TEST_CASE("AppKit file dialog is asynchronous, exact-once and reusable after que
     CHECK(std::get<FileDialogResultEvent>(*failed).request_id == third);
     CHECK(std::get<FileDialogResultEvent>(*failed).status == FileDialogResultStatus::failed);
     CHECK(!std::get<FileDialogResultEvent>(*failed).path.has_value());
+}
+
+TEST_CASE("AppKit open extension filters validate before ID and preserve order") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFileInvoker>(std::make_shared<FakeOpenFileState>());
+    FakeOpenFileInvoker* fake_ptr = fake.get();
+    AppKitFileDialogService service{testOwner(), events, std::move(fake)};
+    bool rejected = false;
+    try { (void)service.requestOpenFile({"Open", {"*.txt"}}); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    CHECK(rejected);
+    CHECK(fake_ptr->state_->begins == 0);
+    const auto id = service.requestOpenFile({"Open", {"txt", "md", "cpp"}});
+    CHECK(id == 1);
+    CHECK(fake_ptr->begins == 1);
+    CHECK(fake_ptr->extensions_ == std::vector<std::string>{"txt", "md", "cpp"});
 }
 
 TEST_CASE("AppKit file dialog rejects malformed title before native invocation") {

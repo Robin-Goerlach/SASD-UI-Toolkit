@@ -227,6 +227,25 @@ Cancel and repeat with spaces/non-ASCII characters. Verify the queued result sho
 the window remains usable, Open and Save still work, and the process working directory is unchanged.
 This visible smoke test is not claimed as run by CI.
 
+#### M7 Open File extension filters (slice 6)
+
+`OpenFileDialogRequest` optionally carries one ordered vector of literal UTF-8 extension tokens,
+for example `{"txt", "md", "cpp"}`. Empty means unfiltered. Tokens must be non-empty, valid UTF-8
+and contain no dot, wildcard, path separator, NUL or semicolon; `tar.gz` and glob syntax are not V1
+semantics. Exact byte-identical duplicates are rejected before request-ID allocation. There are no
+named groups, MIME types, public UTType values or result changes.
+
+Win32 projects the set into one language-neutral `COMDLG_FILTERSPEC`, such as `*.txt;*.md;*.cpp`,
+with backing UTF-16 strings alive through `SetFileTypes` and `Show`. AppKit uses `UTType` values from
+filename extensions and `allowedContentTypes` on macOS 11+, with a weak-linked, locally isolated
+`allowedFileTypes` fallback preserving the existing runtime floor. GTK creates one `GtkFileFilter`
+with `*.token` rules; GTK 4.10+ installs it through a one-item `GListModel`, while older supported
+GTK4 uses the existing `GtkFileChooserNative` path. No automatic “All Files” filter is added.
+
+This is picker/presentation guidance, not security or content validation. A native accepted path is
+forwarded unchanged, even if its suffix differs; the application validates content itself. Save and
+Folder remain unchanged. Manual visible native smoke testing is documented but was not run in WSL.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

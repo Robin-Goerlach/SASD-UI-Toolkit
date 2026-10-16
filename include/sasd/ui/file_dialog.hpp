@@ -4,14 +4,20 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace sasd::ui {
 
 using FileDialogRequestId = std::uint64_t;
 
-/** The deliberately small open-file request: title only, with no portable filter policy. */
+/**
+ * Open one existing local file. Each extension is one literal UTF-8 token such as `txt` or
+ * `cpp`; it is not a glob, path, MIME type or security validation. An empty list leaves the native
+ * picker unfiltered. The native picker remains authoritative for the accepted result.
+ */
 struct OpenFileDialogRequest {
     std::string title{};
+    std::vector<std::string> extensions{};
 };
 
 /** The deliberately small save-file request: title only, with no portable option policy. */
