@@ -244,7 +244,7 @@ TEST_CASE("Win32 save file uses the shared contract without touching the filesys
     FakeSaveFileInvoker* save_ptr = save_fake.get();
     Win32FileDialogService service{nullptr, events, std::move(open_fake), std::move(save_fake)};
 
-    const auto id = service.requestSaveFile(SaveFileDialogRequest{"\xF0\x9F\x92\BE Save"});
+    const auto id = service.requestSaveFile(SaveFileDialogRequest{"\xF0\x9F\x92\xBE Save"});
     CHECK(id != 0);
     CHECK(save_ptr->title_ == L"\U0001F4BE Save");
     const auto event = events.tryPop();
