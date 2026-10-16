@@ -43,6 +43,32 @@ Open and Save cannot own simultaneous native operations. Folder selection, filte
 default extensions and multiple selection remain deferred. No public native-dialog hierarchy is
 needed.
 
+## Implementation and validation record
+
+This decision was implemented as the M7 Save File vertical slice across Core, Win32, AppKit and
+GTK4. The change also added deterministic backend tests, updated the native file-dialog examples,
+and aligned the backend documentation, roadmap and changelog. The examples only display the
+accepted target path; they do not create or write a file.
+
+The implementation was delivered in PR #47 from `codex/m7-save-file-dialog`. The task branch was
+based on `03e8ea5b99ca8e2beade9525091640ff45056b39`, and the final implementation commit was
+`94797e7`. A portability warning in the Win32 Unicode test was corrected before the final CI run.
+PR #47 was merged into `main` as `c8394ba383d43d9195f12242c0d0e3551a9fa418`; the task branch was
+then removed locally and remotely.
+
+The exact final PR head passed the Linux GCC, Linux Clang, Clang ASan/UBSan, SDL3 adapter, Windows
+MSVC, macOS AppleClang, Linux Release, Windows Release, macOS Release, GTK Native and AppKit Native
+checks. The exact merge commit subsequently passed Main CI, GTK Native CI and AppKit Native CI.
+A fresh strict GCC build and the configured local CTest suite also passed (4/4 tests). GTK was not
+installed in the WSL environment, and Win32/AppKit production builds were therefore validated by
+their authoritative CI jobs rather than locally. No visible native smoke test was run, so this ADR
+does not claim manual platform verification. The historical visible M3 macOS/Cocoa gate remains a
+separate status and is not closed by this slice. No release or tag was created.
+
+PR #30 and PR #32 were inspected only as read-only repository context and remain unchanged. The
+next M7 work remains explicitly deferred: folder selection, filters, suggested filenames, default
+extensions and multiple selection.
+
 ## Deutsch
 
 ## Status
@@ -82,3 +108,30 @@ asynchrones Sheet am bestehenden `NSWindow` und GTK ab 4.10 `gtk_file_dialog_sav
 Exactly-once- und Shutdown-Schutzmechanismen bleiben backendlokal gemeinsam mit Open. Ordner,
 Filter, vorgeschlagene Namen, Standardendungen und Mehrfachauswahl bleiben zurückgestellt; eine
 öffentliche Native-Dialog-Hierarchie ist nicht erforderlich.
+
+## Umsetzungs- und Validierungsnachtrag
+
+Diese Entscheidung wurde als vollständiger M7-Save-File-Vertical-Slice für Core, Win32, AppKit und
+GTK4 umgesetzt. Dazu kamen deterministische Backend-Tests, Erweiterungen der nativen File-Dialog-
+Beispiele sowie die Aktualisierung von Backend-Dokumentation, Roadmap und Changelog. Die Beispiele
+zeigen den akzeptierten Zielpfad nur an; sie erzeugen und schreiben keine Datei.
+
+Die Umsetzung wurde als PR #47 aus `codex/m7-save-file-dialog` geliefert. Ausgangspunkt war
+`03e8ea5b99ca8e2beade9525091640ff45056b39`; der finale Implementierungs-Commit war `94797e7`. Vor
+dem finalen CI-Lauf wurde eine MSVC-Portabilitätswarnung im Win32-Unicode-Test korrigiert. PR #47
+wurde als `c8394ba383d43d9195f12242c0d0e3551a9fa418` nach `main` gemergt; der Task-Branch wurde
+anschließend lokal und remote entfernt.
+
+Der exakte finale PR-Head war in Linux GCC, Linux Clang, Clang ASan/UBSan, SDL3-Adapter, Windows
+MSVC, macOS AppleClang, Linux Release, Windows Release, macOS Release, GTK Native und AppKit Native
+grün. Der exakte Merge-Commit war anschließend in Main CI, GTK Native CI und AppKit Native CI grün.
+Ein frischer strikter GCC-Build und die konfigurierte lokale CTest-Suite waren ebenfalls erfolgreich
+(4/4 Tests). GTK war in der WSL-Umgebung nicht installiert; Win32- und AppKit-Produktions-Builds
+wurden daher durch die maßgeblichen CI-Jobs statt lokal validiert. Es wurde kein sichtbarer nativer
+Smoke-Test ausgeführt; manuelle Plattformvalidierung wird hier deshalb nicht behauptet. Das
+historische sichtbare M3-macOS/Cocoa-Gate bleibt ein unabhängiger Status und wird durch diesen Slice
+nicht geschlossen. Es wurde kein Release und kein Tag erstellt.
+
+PR #30 und PR #32 wurden nur read-only als Repository-Kontext geprüft und bleiben unverändert. Als
+nächste M7-Schritte bleiben Ordnerauswahl, Filter, vorgeschlagene Dateinamen, Standardendungen und
+Mehrfachauswahl ausdrücklich zurückgestellt.
