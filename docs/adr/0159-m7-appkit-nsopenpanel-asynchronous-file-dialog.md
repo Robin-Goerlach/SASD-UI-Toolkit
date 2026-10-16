@@ -36,6 +36,23 @@ deferred. GTK4 is the next validation consumer, followed by a three-consumer con
 Win32 now demonstrates synchronous/modal completion queued before return, while AppKit demonstrates
 asynchronous sheet completion after return. Both validate the same Core request/result contract.
 
+### Implementation and validation
+
+The decision is implemented by the private AppKit service in
+`src/native/appkit/appkit_file_dialog_service.mm`, exposed only through the existing
+`AppKitWindowBackend::fileDialogs()` overrides. The backend reports `file_dialogs` only while
+initialized and invalidates the completion state before shutdown tears down the event queue and
+window. The native `NSOpenPanel` path is compiled and linked by AppKit Native CI; tests use only the
+private invoker seam and therefore never display a panel.
+
+The deterministic AppKit tests cover capability and service lifetime, asynchronous return-before-event
+ordering, rejection of a second pending request, request reuse after queueing, accepted/cancelled/
+failed mapping, strict malformed-title rejection, native filesystem-representation preservation,
+double completion, stale generation, and completion after shutdown or service destruction. The demo
+exercises the complete `File -> Open File` menu, command activation, queued result event, and result
+printing without introducing an application callback API. PR #43 was merged at `f1b9236`; its final
+AppKit Native, GTK Native, and main CI checks passed for the validated merge state.
+
 ## Deutsch
 
 ### Entscheidung
@@ -68,3 +85,21 @@ zurückgestellt. GTK4 ist der nächste Validierungs-Consumer, danach folgt ein D
 
 Win32 zeigt weiterhin den synchron/modal vor der Rückkehr gequeueten Abschluss; AppKit zeigt den
 asynchronen Sheet-Abschluss nach der Rückkehr. Beide validieren denselben Core-Request-/Result-Vertrag.
+
+### Umsetzung und Validierung
+
+Die Entscheidung ist im privaten AppKit-Service unter
+`src/native/appkit/appkit_file_dialog_service.mm` umgesetzt und ausschließlich über die bestehenden
+`AppKitWindowBackend::fileDialogs()`-Overrides erreichbar. Das Backend meldet `file_dialogs` nur im
+initialisierten Zustand und invalidiert den Completion-State, bevor EventQueue und Window beim
+Shutdown abgebaut werden. Der native `NSOpenPanel`-Pfad wird in der AppKit Native CI kompiliert und
+gelinkt; die Tests verwenden ausschließlich die private Invoker-Seam und zeigen daher kein Panel an.
+
+Die deterministischen AppKit-Tests decken Capability- und Service-Lifetime, die asynchrone
+Rückkehr-vor-Event-Reihenfolge, die Ablehnung eines zweiten Pending-Requests, Wiederverwendung nach
+dem Queueing, Accepted/Cancelled/Failed-Mapping, strikte Ablehnung fehlerhafter Titel, Erhalt der
+nativen Dateisystemrepräsentation, doppelte Completion, veraltete Generation sowie Completion nach
+Shutdown oder Service-Zerstörung ab. Die Demo durchläuft den vollständigen Ablauf `File -> Open File`,
+Command-Aktivierung, gequeuetes Result-Event und Result-Ausgabe, ohne eine Application-Callback-API
+einzuführen. PR #43 wurde mit `f1b9236` gemergt; die finalen AppKit-Native-, GTK-Native- und Main-CI-
+Checks für den validierten Merge-Stand waren erfolgreich.

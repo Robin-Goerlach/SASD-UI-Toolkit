@@ -41,7 +41,9 @@ event for the same failure.
 
 The Win32 implementation uses a private native-invocation seam for deterministic service tests; the
 production `IFileOpenDialog` path is still compiled and linked in Windows CI. Filters, initial
-directory, Save File, folder selection, multiple selection, AppKit and GTK consumers remain deferred.
+directory, Save File, folder selection, and multiple selection remain deferred. AppKit is validated as
+the second consumer by [ADR 0159](0159-m7-appkit-nsopenpanel-asynchronous-file-dialog.md); GTK remains
+deferred.
 
 ## Deutsch
 
@@ -83,5 +85,6 @@ Event.
 
 Die Win32-Implementierung verwendet für deterministische Service-Tests eine private Native-
 Invocation-Seam; der produktive `IFileOpenDialog`-Pfad wird in der Windows-CI weiterhin kompiliert und
-gelinkt. Filter, Initial Directory, Save File, Ordnerauswahl, Mehrfachauswahl sowie AppKit- und GTK-
-Consumer bleiben zurückgestellt.
+gelinkt. Filter, Initial Directory, Save File, Ordnerauswahl und Mehrfachauswahl bleiben zurückgestellt.
+AppKit ist durch [ADR 0159](0159-m7-appkit-nsopenpanel-asynchronous-file-dialog.md) als zweiter Consumer
+validiert; GTK bleibt zurückgestellt.
