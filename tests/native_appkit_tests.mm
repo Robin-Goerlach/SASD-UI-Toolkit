@@ -56,6 +56,26 @@ public:
     int cancels{0};
 };
 
+struct FakeSelectFolderState {
+    std::vector<detail::NativeSelectFolderCompletion> completions;
+    int begins{0};
+};
+
+class FakeSelectFolderInvoker final : public detail::NativeSelectFolderInvoker {
+public:
+    explicit FakeSelectFolderInvoker(std::shared_ptr<FakeSelectFolderState> state)
+        : state_{std::move(state)} {}
+    void begin(NSWindow*, NSString* title, detail::NativeSelectFolderCompletion completion) override {
+        title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        ++state_->begins;
+        state_->completions.push_back(std::move(completion));
+    }
+    void cancel() noexcept override { ++cancels; }
+    std::shared_ptr<FakeSelectFolderState> state_;
+    std::string title_;
+    int cancels{0};
+};
+
 NSWindow* testOwner() {
     return [[NSWindow alloc] initWithContentRect:NSZeroRect styleMask:0
                                           backing:NSBackingStoreBuffered defer:YES];
@@ -250,6 +270,50 @@ TEST_CASE("AppKit save file maps cancellation, failure and stale completion safe
     state->completions[2](NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/late.txt"]);
     CHECK(!events.tryPop().has_value());
     CHECK(next_id != 0);
+}
+
+TEST_CASE("AppKit folder selection is directories-only, shared and shutdown-safe") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeOpenFileState>();
+    auto save_state = std::make_shared<FakeSaveFileState>();
+    auto folder_state = std::make_shared<FakeSelectFolderState>();
+    detail::AppKitFileDialogService service{
+        testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(open_state),
+        std::make_unique<FakeSaveFileInvoker>(save_state),
+        std::make_unique<FakeSelectFolderInvoker>(folder_state)};
+
+    const auto folder_id = service.requestSelectFolder({"Select Folder 😀"});
+    CHECK(folder_id == 1);
+    CHECK(service.pending());
+    CHECK(folder_state->begins == 1);
+    bool open_rejected = false;
+    bool save_rejected = false;
+    bool folder_rejected = false;
+    try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { open_rejected = true; }
+    try { (void)service.requestSaveFile({}); } catch (const std::logic_error&) { save_rejected = true; }
+    try { (void)service.requestSelectFolder({}); } catch (const std::logic_error&) { folder_rejected = true; }
+    CHECK(open_rejected);
+    CHECK(save_rejected);
+    CHECK(folder_rejected);
+
+    NSURL* selected = [NSURL fileURLWithPath:@"/tmp/Existing Folder/Grüße 📁"];
+    folder_state->completions[0](NSModalResponseOK, selected);
+    folder_state->completions[0](NSModalResponseOK, selected);
+    CHECK(!service.pending());
+    auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == folder_id);
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path ==
+          std::filesystem::path{selected.fileSystemRepresentation});
+    CHECK(!events.tryPop().has_value());
+
+    const auto open_id = service.requestOpenFile({});
+    CHECK(open_id > folder_id);
+    service.shutdown();
+    open_state->completions[0](NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/late"]);
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("AppKit file dialog ignores completion after shutdown and destruction") {

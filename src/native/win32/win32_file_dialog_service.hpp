@@ -18,6 +18,7 @@ struct NativeOpenFileOutcome {
 };
 
 using NativeSaveFileOutcome = NativeOpenFileOutcome;
+using NativeSelectFolderOutcome = NativeOpenFileOutcome;
 
 /** Private invocation seam: production uses IFileOpenDialog; tests use deterministic completion. */
 class NativeOpenFileInvoker {
@@ -33,16 +34,26 @@ public:
     [[nodiscard]] virtual NativeSaveFileOutcome show(HWND owner, std::wstring_view title) = 0;
 };
 
+/** Private invocation seam: production uses IFileOpenDialog with FOS_PICKFOLDERS. */
+class NativeSelectFolderInvoker {
+public:
+    virtual ~NativeSelectFolderInvoker() = default;
+    [[nodiscard]] virtual NativeSelectFolderOutcome show(HWND owner, std::wstring_view title) = 0;
+};
+
 /** Win32-only FileDialogService implementation; this header is never installed. */
 class Win32FileDialogService final : public FileDialogService {
 public:
     Win32FileDialogService(HWND owner,
                            EventQueue& events,
                            std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
-                           std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr);
+                           std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
+                           std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestSelectFolder(
+        SelectFolderDialogRequest request) override;
 
     [[nodiscard]] bool pending() const noexcept { return pending_; }
 
@@ -51,6 +62,7 @@ private:
     EventQueue& events_;
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
+    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     FileDialogRequestId next_request_id_{1};
     bool pending_{false};
 };

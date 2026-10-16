@@ -20,6 +20,7 @@ int main() {
     const auto open_id = dialogs->requestOpenFile(OpenFileDialogRequest{"Open an existing file"});
 
     FileDialogRequestId save_id = 0;
+    FileDialogRequestId folder_id = 0;
     bool finished = false;
     while (!finished && !application.exitRequested()) {
         (void)application.processRoutedEvents(
@@ -29,8 +30,9 @@ int main() {
                 const auto& result = std::get<FileDialogResultEvent>(event);
                 const bool is_open = result.request_id == open_id;
                 const bool is_save = result.request_id == save_id;
-                if (!is_open && !is_save) return;
-                const char* operation = is_save ? "Save" : "Open";
+                const bool is_folder = result.request_id == folder_id;
+                if (!is_open && !is_save && !is_folder) return;
+                const char* operation = is_folder ? "Folder" : (is_save ? "Save" : "Open");
                 if (result.status == FileDialogResultStatus::accepted) {
                     std::cout << operation << " target: " << result.path->string() << '\n';
                 } else if (result.status == FileDialogResultStatus::cancelled) {
@@ -41,6 +43,9 @@ int main() {
                 if (is_open) {
                     // The demo displays the target only; it never creates or writes a file.
                     save_id = dialogs->requestSaveFile(SaveFileDialogRequest{"Save to a target path"});
+                } else if (is_save) {
+                    // Folder selection only displays the selected existing directory.
+                    folder_id = dialogs->requestSelectFolder(SelectFolderDialogRequest{"Select a folder"});
                 } else {
                     finished = true;
                 }

@@ -66,6 +66,33 @@ public:
     bool nested_request_rejected{false};
 };
 
+class FakeSelectFolderInvoker final : public NativeSelectFolderInvoker {
+public:
+    explicit FakeSelectFolderInvoker(NativeSelectFolderOutcome outcome) : outcome_{std::move(outcome)} {}
+
+    NativeSelectFolderOutcome show(HWND, std::wstring_view title) override {
+        title_ = title;
+        ++invocations;
+        if (service != nullptr) {
+            try { (void)service->requestOpenFile(OpenFileDialogRequest{"nested open"}); }
+            catch (const std::logic_error&) { open_rejected = true; }
+            try { (void)service->requestSaveFile(SaveFileDialogRequest{"nested save"}); }
+            catch (const std::logic_error&) { save_rejected = true; }
+            try { (void)service->requestSelectFolder(SelectFolderDialogRequest{"nested folder"}); }
+            catch (const std::logic_error&) { folder_rejected = true; }
+        }
+        return outcome_;
+    }
+
+    NativeSelectFolderOutcome outcome_;
+    std::wstring title_;
+    Win32FileDialogService* service{nullptr};
+    int invocations{0};
+    bool open_rejected{false};
+    bool save_rejected{false};
+    bool folder_rejected{false};
+};
+
 std::wstring menuText(HMENU menu, UINT item, UINT flags) {
     wchar_t buffer[256]{};
     const int length = GetMenuStringW(menu, item, buffer, static_cast<int>(std::size(buffer)), flags);
@@ -276,6 +303,28 @@ TEST_CASE("Win32 open and save share IDs and the pending boundary") {
     CHECK(save_id > open_id);
     CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == save_id);
     CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 folder selection uses one local path and the shared operation contract") {
+    EventQueue events;
+    auto folder_fake = std::make_unique<FakeSelectFolderInvoker>(NativeSelectFolderOutcome{
+        FileDialogResultStatus::accepted, L"C:\\Existing Folder\\Gr\u00FC\u00DFe \U0001F4C1"});
+    FakeSelectFolderInvoker* folder_ptr = folder_fake.get();
+    Win32FileDialogService service{nullptr, events, nullptr, nullptr, std::move(folder_fake)};
+    folder_ptr->service = &service;
+
+    const auto id = service.requestSelectFolder(SelectFolderDialogRequest{"Select \xF0\x9F\x93\x81"});
+    CHECK(id == 1);
+    CHECK(folder_ptr->open_rejected);
+    CHECK(folder_ptr->save_rejected);
+    CHECK(folder_ptr->folder_rejected);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    const auto& result = std::get<FileDialogResultEvent>(*event);
+    CHECK(result.request_id == id);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.path == std::filesystem::path{L"C:\\Existing Folder\\Gr\u00FC\u00DFe \U0001F4C1"});
+    CHECK(!service.pending());
 }
 
 TEST_CASE("Win32 native menu binding projects structure and resolves a live Core Command") {

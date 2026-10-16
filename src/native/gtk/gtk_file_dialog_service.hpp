@@ -16,6 +16,7 @@ namespace sasd::ui::native::gtk::detail {
 // GFile returned by GTK and releases it immediately after the service has copied its local path.
 using NativeOpenFileCompletion = std::function<void(FileDialogResultStatus, GFile*)>;
 using NativeSaveFileCompletion = NativeOpenFileCompletion;
+using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 
 /** Private seam: production invokes the selected GTK4 native API; tests never show a chooser. */
 class NativeOpenFileInvoker {
@@ -33,12 +34,22 @@ public:
     virtual void cancel() noexcept = 0;
 };
 
+/** Private seam: production invokes GTK4's existing-folder selection API. */
+class NativeSelectFolderInvoker {
+public:
+    virtual ~NativeSelectFolderInvoker() = default;
+    virtual void begin(GtkWindow* owner, std::string title,
+                       NativeSelectFolderCompletion completion) = 0;
+    virtual void cancel() noexcept = 0;
+};
+
 /** Private GTK consumer of the backend-neutral FileDialogService contract. */
 class GtkFileDialogService final : public FileDialogService {
 public:
     GtkFileDialogService(GtkWindow* owner, EventQueue& events, std::thread::id owner_thread,
                          std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
-                         std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr);
+                         std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
+                         std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
     ~GtkFileDialogService() override;
 
     GtkFileDialogService(const GtkFileDialogService&) = delete;
@@ -46,6 +57,8 @@ public:
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestSelectFolder(
+        SelectFolderDialogRequest request) override;
     [[nodiscard]] bool pending() const noexcept;
     void shutdown() noexcept;
 
@@ -57,6 +70,7 @@ private:
     std::thread::id owner_thread_{};
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
+    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     std::shared_ptr<CompletionState> state_;
     FileDialogRequestId next_request_id_{1};
 };

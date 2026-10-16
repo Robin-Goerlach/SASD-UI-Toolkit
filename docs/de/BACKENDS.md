@@ -200,6 +200,31 @@ und legen die Completion über die bestehende EventQueue ab. Beim manuellen Smok
 existierende Ziele wählen, die native Überschreibbestätigung beobachten, Cancel prüfen und sicherstellen,
 dass die Demo keine Datei erzeugt; dieser sichtbare Test wird durch CI nicht als ausgeführt behauptet.
 
+#### M7 Ordnerauswahl über die nativen Consumer (Slice 5)
+
+`FileDialogService::requestSelectFolder(SelectFolderDialogRequest)` wählt genau ein bestehendes
+lokales Dateisystemverzeichnis und verwendet `FileDialogResultEvent` weiter. Open, Save und Folder
+teilen Request-IDs, die gemeinsame Pending-Grenze, die EventQueue-Grenze sowie Lifecycle-, Generation-
+und Exactly-once-Schutz. Die Operation erzeugt kein Verzeichnis, schreibt keinen Pfad und ändert das
+Working Directory nicht. Filter, Startverzeichnis und Mehrfachauswahl bleiben zurückgestellt.
+
+Win32 verwendet am bestehenden `HWND` `IFileOpenDialog` mit `FOS_PICKFOLDERS`,
+`FOS_FORCEFILESYSTEM`, `FOS_PATHMUSTEXIST` und `FOS_NOCHANGEDIR` und kopiert das UTF-16-
+`SIGDN_FILESYSPATH` direkt nach `std::filesystem::path`. AppKit verwendet ein asynchrones
+`NSOpenPanel`-Sheet am vorhandenen `NSWindow`, konfiguriert nur für Verzeichnisse und Einzelauswahl.
+GTK ab 4.10 verwendet `gtk_file_dialog_select_folder()`/`select_folder_finish()`; ältere
+unterstützte GTK4-Versionen verwenden den asynchronen `GtkFileChooserNative`-Fallback mit
+`ACTION_SELECT_FOLDER`. GTK akzeptiert nur ein lokales, nichtleeres Ergebnis von `g_file_get_path()`.
+Die native Auswahl garantiert die Verzeichnis-Semantik; eine zweite Existenzprüfung oder
+Canonicalization findet nicht statt.
+
+Manueller Ordner-Smoke-Test: Eine native Demo starten, `File -> Select Folder` wählen, die Bindung
+an das Hauptfenster und die Unmöglichkeit einer Datei als Ergebnis prüfen, ein bestehendes
+Verzeichnis auswählen und anschließend Cancel sowie eine Wiederholung mit Leerzeichen/Nicht-ASCII
+testen. Prüfen, dass das gequeuete Ergebnis den Verzeichnispfad zeigt, das Fenster nutzbar bleibt,
+Open und Save weiter funktionieren und sich das Working Directory nicht ändert. Dieser sichtbare
+Smoke-Test wird durch CI nicht als ausgeführt behauptet.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

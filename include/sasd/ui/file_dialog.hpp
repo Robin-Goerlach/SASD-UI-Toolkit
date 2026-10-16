@@ -19,6 +19,11 @@ struct SaveFileDialogRequest {
     std::string title{};
 };
 
+/** The deliberately small folder-selection request: title only, with no portable option policy. */
+struct SelectFolderDialogRequest {
+    std::string title{};
+};
+
 enum class FileDialogResultStatus : std::uint8_t {
     accepted,
     cancelled,
@@ -45,15 +50,18 @@ struct FileDialogResultEvent {
 };
 
 /**
- * Optional host service for choosing one filesystem file for opening or saving.
+ * Optional host service for choosing one filesystem file for opening or saving, or one existing
+ * local filesystem directory.
  *
  * requestOpenFile() starts a request and returns its non-zero identity; it never returns the chosen
  * path. requestSaveFile() uses the same contract for a destination path; an accepted save path may
  * already exist or may not exist yet. The toolkit never creates, opens, truncates or writes that
- * path. Completion is always delivered later through FileDialogResultEvent on the backend event
- * queue, even when the native platform operation uses a synchronous modal loop. A backend may enter
- * that loop during this call. Open and save share one request-ID sequence and one pending boundary:
- * version 1 permits at most one pending request of either kind. Pending lasts from successful
+ * path. Folder selection never creates a directory or changes the process working directory.
+ * Completion is always delivered later through FileDialogResultEvent on the backend event queue,
+ * even when the native platform operation uses a synchronous modal loop. A backend may enter that
+ * loop during this call. Open, save and folder selection share one request-ID sequence and one
+ * pending boundary: version 1 permits at most one pending request of any kind. Pending lasts from
+ * successful
  * request-ID allocation until exactly one completion event has been queued, not until application
  * code consumes that event. A second request while the first is pending fails closed with
  * std::logic_error. Native dialogs own their normal overwrite confirmation; the service does not
@@ -73,6 +81,8 @@ public:
 
     [[nodiscard]] virtual FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) = 0;
     [[nodiscard]] virtual FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) = 0;
+    [[nodiscard]] virtual FileDialogRequestId requestSelectFolder(
+        SelectFolderDialogRequest request) = 0;
 
 protected:
     FileDialogService() = default;

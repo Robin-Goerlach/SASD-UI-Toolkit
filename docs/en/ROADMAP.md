@@ -242,14 +242,14 @@ File-dialog slice progress:
 - [x] GTK4 Open File consumer (GtkFileDialog/GtkFileChooserNative async completion, single selection)
 - [x] three-consumer file-dialog contract review
 - [x] Save File
-- [ ] Folder selection
+- [x] Folder selection
 - [ ] Filters / richer options
 
 Longer-term areas:
 
 - native menus
-- file dialogs (backend-neutral request/result, Win32/AppKit/GTK Open and Save File slices and the
-  three-consumer contract review are complete)
+- file dialogs (backend-neutral request/result, Win32/AppKit/GTK Open, Save and Folder slices and
+  the three-consumer contract review are complete)
 - drag and drop
 - advanced clipboard
 - system tray
