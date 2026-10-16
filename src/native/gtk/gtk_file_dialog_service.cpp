@@ -30,6 +30,7 @@ struct CallbackContext {
     return result;
 }
 
+#if !GTK_CHECK_VERSION(4, 10, 0)
 void addOpenFilter(GtkFileChooser* chooser, const std::vector<std::string>& extensions) {
     if (extensions.empty()) return;
     GtkFileFilter* filter = gtk_file_filter_new();
@@ -47,6 +48,7 @@ void addOpenFilter(GtkFileChooser* chooser, const std::vector<std::string>& exte
     gtk_file_chooser_add_filter(chooser, filter);
 #pragma GCC diagnostic pop
 }
+#endif
 
 #if GTK_CHECK_VERSION(4, 10, 0)
 void setOpenFilter(GtkFileDialog* dialog, const std::vector<std::string>& extensions) {
