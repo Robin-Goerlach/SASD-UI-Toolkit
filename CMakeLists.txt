@@ -142,6 +142,7 @@ if(SASD_UI_BUILD_GTK_ADAPTER)
     pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4 pangocairo)
 
     add_library(sasd_ui_native_gtk
+        src/native/gtk/gtk_file_dialog_service.cpp
         src/native/gtk/gtk_input_translation.cpp
         src/native/gtk/gtk_menu_binding.cpp
         src/native/gtk/gtk_render_context.cpp

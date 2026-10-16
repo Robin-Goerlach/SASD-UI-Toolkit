@@ -18,6 +18,12 @@ they improve the architecture before compatibility commitments become expensive.
   existing `NSWindow`, with lifetime-safe completion state, generation/double-completion protection,
   strict UTF-8 titles and native filesystem-representation paths. Save, folder and richer selection
   options remain deferred.
+- Third M7 File Dialog consumer: GTK4 Open File owned by the existing `GtkWindow`, using the
+  discovered GTK API level's asynchronous `GtkFileDialog` or compatible `GtkFileChooserNative`
+  response path, queued local `GFile` filesystem paths and deterministic lifetime-safe tests.
+- Completed the M7 three-consumer file-dialog contract review: Win32, AppKit and GTK retain private
+  native projections over the same Core request/result, pending, lifecycle and capability contract;
+  Save, folder, filters and multiple selection remain deferred.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

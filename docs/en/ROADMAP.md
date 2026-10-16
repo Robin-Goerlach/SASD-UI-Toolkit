@@ -239,8 +239,8 @@ File-dialog slice progress:
 - [x] backend-neutral request/result foundation
 - [x] Win32 Open File consumer (existing single filesystem file, single selection)
 - [x] AppKit Open File consumer (NSOpenPanel asynchronous sheet, single selection)
-- [ ] GTK4 Open File consumer
-- [ ] three-consumer file-dialog contract review
+- [x] GTK4 Open File consumer (GtkFileDialog/GtkFileChooserNative async completion, single selection)
+- [x] three-consumer file-dialog contract review
 - [ ] Save File
 - [ ] Folder selection
 - [ ] Filters / richer options
@@ -248,7 +248,8 @@ File-dialog slice progress:
 Longer-term areas:
 
 - native menus
-- file dialogs (backend-neutral request/result, Win32 and AppKit Open File slices are complete)
+- file dialogs (backend-neutral request/result, Win32/AppKit/GTK Open File slices and the
+  three-consumer contract review are complete)
 - drag and drop
 - advanced clipboard
 - system tray

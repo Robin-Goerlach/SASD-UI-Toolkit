@@ -176,6 +176,8 @@ The table below is generated from every numbered ADR file currently present in t
 | [0157](0157-native-menu-portability-boundary.md) | Native-menu portability boundary stays in Core semantics, not a NativeMenu hierarchy | Accepted |
 | [0158](0158-m7-file-dialog-request-result-and-win32-open-file.md) | M7 file dialogs start with an application-level request/result service and Win32 Open File | Accepted |
 | [0159](0159-m7-appkit-nsopenpanel-asynchronous-file-dialog.md) | M7 AppKit NSOpenPanel validates asynchronous file-dialog completion | Accepted |
+| [0160](0160-m7-gtk4-open-file-dialog.md) | M7 GTK4 Open File validates the third file-dialog consumer | Accepted |
+| [0161](0161-m7-file-dialog-three-consumer-contract-review.md) | M7 file-dialog three-consumer contract review | Accepted |
 
 ## ADR policy
 

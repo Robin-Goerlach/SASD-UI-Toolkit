@@ -9,6 +9,7 @@
 #include <sasd/ui/window.hpp>
 
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 int main() {
@@ -20,6 +21,12 @@ int main() {
     bool exit_requested = false;
     bool option_enabled = false;
     Command action{"Action"};
+    Command open_file{"Open File"};
+    open_file.setOnExecuted([&] {
+        if (auto* dialogs = backend.fileDialogs()) {
+            (void)dialogs->requestOpenFile({"Open an existing file"});
+        }
+    });
     Command exit_command{"Exit"};
     exit_command.setOnExecuted([&] { exit_requested = true; });
     Command copy{"Copy"};
@@ -33,6 +40,7 @@ int main() {
     Command about{"About"};
     MenuBarModel menu_bar;
     MenuModel& file = menu_bar.appendMenu("File");
+    file.appendCommand(open_file);
     file.appendCommand(action);
     file.appendSeparator();
     file.appendCommand(exit_command);
@@ -59,10 +67,20 @@ int main() {
     (void)backend.presentFrame(frame);
 
     for (int ticks = 0; ticks != 600 && !exit_requested; ++ticks) {
-        if (const auto event = backend.pollEvent(); event.has_value() &&
-            std::holds_alternative<CommandActivationEvent>(*event)) {
-            const Command::Reference command = std::get<CommandActivationEvent>(*event).command;
-            if (Command* const live = command.get()) (void)live->execute();
+        if (const auto event = backend.pollEvent(); event.has_value()) {
+            if (std::holds_alternative<CommandActivationEvent>(*event)) {
+                const Command::Reference command = std::get<CommandActivationEvent>(*event).command;
+                if (Command* const live = command.get()) (void)live->execute();
+            } else if (std::holds_alternative<FileDialogResultEvent>(*event)) {
+                const auto& result = std::get<FileDialogResultEvent>(*event);
+                if (result.status == FileDialogResultStatus::accepted) {
+                    std::cout << "Opened: " << result.path->string() << '\n';
+                } else if (result.status == FileDialogResultStatus::cancelled) {
+                    std::cout << "Open cancelled\n";
+                } else {
+                    std::cout << "Open failed\n";
+                }
+            }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});
     }

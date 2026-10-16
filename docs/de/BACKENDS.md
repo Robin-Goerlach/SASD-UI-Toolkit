@@ -154,6 +154,33 @@ Zugehörigkeit zum SASD-Fenster, reine Dateiauswahl und Einzelauswahl prüfen, d
 öffnen. Eine Unicode-Datei wählen und prüfen, dass die Ausgabe erst nach dem Completion-Event erscheint
 und das Fenster nutzbar bleibt. Dieser sichtbare Test wird unter Linux nicht ausgeführt.
 
+#### GTK4-Open-File-Dialog-Consumer (M7 File-Dialog-Slice 3)
+
+`GtkWindowBackend::fileDialogs()` stellt denselben optionalen `FileDialogService` bereit, solange das
+vorhandene `GtkWindow` initialisiert ist. Der Adapter verwendet bei GTK-Headern ab 4.10 `GtkFileDialog`,
+ansonsten die kompatible asynchrone `response`-API `GtkFileChooserNative`. Damit wird das bestehende,
+nicht auf eine GTK4-Minorversion angehobene Minimum erhalten; es gibt keine zweite `GtkApplication`,
+Main Loop, Window-Instanz oder EventQueue.
+
+Der Dialog gehört zum vorhandenen `GtkWindow`, erlaubt genau eine existierende Datei und liefert weder
+Verzeichnisse noch Mehrfachauswahl. Die Completion wird als `FileDialogResultEvent` über dieselbe
+EventQueue gelegt, die `pollEvent()` durch Pumpen des GLib-Default-Kontexts leert. Generation-/Exactly-
+once-Prüfungen verwerfen alte und doppelte Callbacks; Shutdown invalidiert den State vor Abbruch und
+Freigabe der GTK-Objekte. Native Callbacks führen weder Commands noch Application-Callbacks aus.
+
+Akzeptierte `GFile`-Ergebnisse werden mit `g_file_get_path()` sofort in `std::filesystem::path` kopiert;
+nicht-lokale URIs, leere Pfade und technische Fehler werden `failed`. Canonicalization, Normalisierung,
+Existenzprüfung, Save, Ordner, Mehrfachauswahl, Filter und eine öffentliche GTK-Dialogklasse bleiben
+außen vor. Tests verwenden eine private Invoker-Seam und zeigen niemals einen Chooser. Siehe [ADR
+0160](../adr/0160-m7-gtk4-open-file-dialog.md) und den Drei-Consumer-Review in [ADR
+0161](../adr/0161-m7-file-dialog-three-consumer-contract-review.md).
+
+Manueller GTK-Smoke-Test: `native_gtk_form_demo` starten, `File -> Open File` wählen, Einzelauswahl
+und die Nichtverwendbarkeit eines Verzeichnisses als Ergebnis prüfen, abbrechen und erneut öffnen.
+Eine Datei mit Leerzeichen oder Nicht-ASCII-Zeichen auswählen und prüfen, dass die Ausgabe erst nach
+dem gequeueten Result-Event erscheint und das Hauptfenster nutzbar bleibt. Dieser sichtbare Test wird
+durch Linux/Xvfb-CI nicht als ausgeführt behauptet.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,
