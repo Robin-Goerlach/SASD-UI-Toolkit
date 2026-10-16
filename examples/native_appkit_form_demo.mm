@@ -24,7 +24,9 @@ int main() {
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;
     open_file_command.setOnExecuted([&] {
-        if (auto* dialogs = backend.fileDialogs()) open_id = dialogs->requestOpenFile({"Open File"});
+        if (auto* dialogs = backend.fileDialogs()) {
+            open_id = dialogs->requestOpenFile({"Open Text or Source File", {"txt", "md", "cpp", "hpp"}});
+        }
     });
     Command save_file_command{"Save File"};
     save_file_command.setOnExecuted([&] {

@@ -33,6 +33,10 @@ they improve the architecture before compatibility commitments become expensive.
   selection. Open, Save and Folder share IDs, one pending-operation boundary, native lifecycle
   protection and queued `FileDialogResultEvent` completion; the toolkit never mutates the filesystem
   or working directory.
+- M7 Open File extension-filter slice: added one portable literal UTF-8 extension set for Open File,
+  projected to Win32 `SetFileTypes`, AppKit content types and one GTK `GtkFileFilter`. Empty means
+  unfiltered; malformed tokens and exact duplicates are rejected before request-ID allocation. The
+  filter is presentation guidance only and does not change accepted results or validate file content.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

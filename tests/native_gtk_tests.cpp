@@ -41,15 +41,17 @@ struct FakeGtkInvokerState {
     };
     std::vector<Invocation> invocations{};
     bool cancelled{false};
+    std::vector<std::string> extensions{};
 };
 
 class FakeGtkInvoker final : public detail::NativeOpenFileInvoker {
 public:
     explicit FakeGtkInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
 
-    void begin(GtkWindow* owner, std::string title,
+    void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                detail::NativeOpenFileCompletion completion) override {
         state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+        state_->extensions = std::move(extensions);
     }
 
     void cancel() noexcept override { state_->cancelled = true; }
@@ -222,6 +224,26 @@ TEST_CASE("GTK file-dialog rejects malformed titles and non-local results") {
     CHECK(std::get<FileDialogResultEvent>(*event).request_id == id);
     CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::failed);
     CHECK(!std::get<FileDialogResultEvent>(*event).path.has_value());
+}
+
+TEST_CASE("GTK open extension filters validate before ID and preserve literal order") {
+    EventQueue events;
+    auto state = std::make_shared<FakeGtkInvokerState>();
+    auto fake = std::make_unique<FakeGtkInvoker>(state);
+    detail::GtkFileDialogService service{reinterpret_cast<GtkWindow*>(0x1), events,
+                                         std::this_thread::get_id(), std::move(fake)};
+    bool rejected = false;
+    try { (void)service.requestOpenFile({"Open", {"foo/bar"}}); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    CHECK(rejected);
+    CHECK(state->invocations.empty());
+    const auto id = service.requestOpenFile({"Open", {"txt", "md", "cpp"}});
+    CHECK(id == 1);
+    CHECK(state->extensions == std::vector<std::string>{"txt", "md", "cpp"});
+    GFile* mismatching = g_file_new_for_path("/tmp/report.bin");
+    completeFake(state, 0, FileDialogResultStatus::accepted, mismatching);
+    g_object_unref(mismatching);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).status == FileDialogResultStatus::accepted);
 }
 
 TEST_CASE("GTK save file uses one shared pending boundary and preserves new targets") {

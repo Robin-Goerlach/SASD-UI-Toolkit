@@ -27,7 +27,8 @@ int main() {
     FileDialogRequestId folder_id = 0;
     open_file.setOnExecuted([&] {
         if (auto* dialogs = backend.fileDialogs()) {
-            open_id = dialogs->requestOpenFile({"Open an existing file"});
+            open_id = dialogs->requestOpenFile(
+                {"Open Text or Source File", {"txt", "md", "cpp", "hpp"}});
         }
     });
     Command save_file{"Save File"};

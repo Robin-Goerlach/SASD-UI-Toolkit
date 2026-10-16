@@ -1,10 +1,13 @@
 #include "appkit_file_dialog_service.hpp"
 
+#include "../file_dialog_extension_filter.hpp"
+
 #include <sasd/ui/text/utf8.hpp>
 
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 namespace sasd::ui::native::appkit::detail {
 namespace {
@@ -15,7 +18,8 @@ struct PanelState {
 
 class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
-    void begin(NSWindow* owner, NSString* title, NativeOpenFileCompletion completion) override {
+    void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+               NativeOpenFileCompletion completion) override {
         @autoreleasepool {
             @try {
                 auto panel_state = std::make_shared<PanelState>();
@@ -25,6 +29,38 @@ public:
                 panel.canChooseDirectories = NO;
                 panel.allowsMultipleSelection = NO;
                 if (title != nil) panel.title = title;
+                if (!extensions.empty()) {
+                    if (@available(macOS 11.0, *)) {
+                        NSMutableArray* content_types =
+                            [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            if (value == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension must be valid UTF-8"};
+                            UTType* type = [UTType typeWithFilenameExtension:value];
+                            if (type == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension could not become a UTType"};
+                            [content_types addObject:type];
+                        }
+                        panel.allowedContentTypes = content_types;
+                    } else {
+                        // Keep the previously supported runtime floor. This deprecated API is
+                        // isolated to old systems; modern macOS uses UTType above.
+                        NSMutableArray* legacy_types = [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            [legacy_types addObject:value];
+                        }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                        panel.allowedFileTypes = legacy_types;
+#pragma clang diagnostic pop
+                    }
+                }
 
                 // The block owns only PanelState and the supplied completion. The completion itself
                 // captures a weak CompletionState, never this service, its backend Impl or its queue.
@@ -239,6 +275,8 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
         throw std::logic_error{"AppKit file dialog requires initialize()"};
     }
     NSString* title = strictTitle(request.title); // setup validation precedes ID allocation
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateOpenFileExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -276,7 +314,7 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     };
 
     try {
-        open_invoker_->begin(owner_, title, completion);
+        open_invoker_->begin(owner_, title, extensions, completion);
     } catch (...) {
         // There is no public "other" response constant on all supported SDKs; any value other
         // than OK/Cancel is deliberately mapped to failed by the completion contract.

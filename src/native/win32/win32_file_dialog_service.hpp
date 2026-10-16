@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace sasd::ui::native::win32::detail {
 
@@ -24,8 +25,20 @@ using NativeSelectFolderOutcome = NativeOpenFileOutcome;
 class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
-    [[nodiscard]] virtual NativeOpenFileOutcome show(HWND owner, std::wstring_view title) = 0;
+    [[nodiscard]] virtual NativeOpenFileOutcome show(
+        HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions) = 0;
 };
+
+[[nodiscard]] inline std::wstring win32FilterPattern(
+    const std::vector<std::wstring>& extensions) {
+    std::wstring pattern;
+    for (std::size_t index = 0; index < extensions.size(); ++index) {
+        if (index != 0) pattern += L';';
+        pattern += L"*.";
+        pattern += extensions[index];
+    }
+    return pattern;
+}
 
 /** Private invocation seam: production uses IFileSaveDialog; tests use deterministic completion. */
 class NativeSaveFileInvoker {

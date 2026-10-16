@@ -64,6 +64,16 @@ TEST_CASE("FileDialogResultEvent is an application event and never bubbles to wi
     CHECK(widget.deliveryCount() == 0);
 }
 
+TEST_CASE("Open file requests keep the small literal extension contract") {
+    const OpenFileDialogRequest unfiltered{"Open File"};
+    CHECK(unfiltered.title == "Open File");
+    CHECK(unfiltered.extensions.empty());
+    const OpenFileDialogRequest filtered{"Open Source", {"txt", "md", "cpp"}};
+    CHECK(filtered.extensions == std::vector<std::string>{"txt", "md", "cpp"});
+    const SaveFileDialogRequest save{"Save File"};
+    CHECK(save.title == "Save File");
+}
+
 TEST_CASE("Save dialog acceptance uses the same result event and permits a new target path") {
     const SaveFileDialogRequest request{"Save File"};
     CHECK(request.title == "Save File");

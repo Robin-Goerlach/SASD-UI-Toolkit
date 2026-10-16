@@ -1,10 +1,13 @@
 #include "win32_file_dialog_service.hpp"
 
+#include "../file_dialog_extension_filter.hpp"
+
 #include <shobjidl.h>
 
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace sasd::ui::native::win32::detail {
 namespace {
@@ -27,7 +30,9 @@ namespace {
 
 class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
-    [[nodiscard]] NativeOpenFileOutcome show(HWND owner, std::wstring_view title) override {
+    [[nodiscard]] NativeOpenFileOutcome show(
+        HWND owner, std::wstring_view title,
+        const std::vector<std::wstring>& extensions) override {
         HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
 
@@ -51,6 +56,17 @@ public:
         if (FAILED(dialog->SetOptions(options))) return {FileDialogResultStatus::failed, {}};
         if (!title.empty() && FAILED(dialog->SetTitle(std::wstring{title}.c_str()))) {
             return {FileDialogResultStatus::failed, {}};
+        }
+
+        if (!extensions.empty()) {
+            // COMDLG_FILTERSPEC stores pointers rather than owning strings. Keep both local backing
+            // strings alive until SetFileTypes and Show have returned.
+            const std::wstring pattern = win32FilterPattern(extensions);
+            const std::wstring display_name = pattern;
+            const COMDLG_FILTERSPEC filter{display_name.c_str(), pattern.c_str()};
+            if (FAILED(dialog->SetFileTypes(1, &filter))) {
+                return {FileDialogResultStatus::failed, {}};
+            }
         }
 
         result = dialog->Show(owner);
@@ -203,6 +219,13 @@ FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogReques
     // Validate text before allocating an ID: malformed input is a caller setup error and no
     // request has started yet, so it is reported synchronously rather than as a fake completion.
     const std::wstring title = utf8ToWide(request.title);
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateOpenFileExtensions(request.extensions);
+    std::vector<std::wstring> wide_extensions;
+    wide_extensions.reserve(extensions.size());
+    for (const std::string& extension : extensions) {
+        wide_extensions.push_back(utf8ToWide(extension));
+    }
     if (pending_) throw std::logic_error{"Win32 file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"Win32 file-dialog request ID space exhausted"};
@@ -211,7 +234,7 @@ FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogReques
     const FileDialogRequestId request_id = next_request_id_++;
     pending_ = true;
     try {
-        const NativeOpenFileOutcome outcome = open_invoker_->show(owner_, title);
+        const NativeOpenFileOutcome outcome = open_invoker_->show(owner_, title, wide_extensions);
         if (outcome.status == FileDialogResultStatus::accepted) {
             if (outcome.path.empty()) throw std::runtime_error{"Win32 file dialog returned no path"};
             events_.push(Event{FileDialogResultEvent{

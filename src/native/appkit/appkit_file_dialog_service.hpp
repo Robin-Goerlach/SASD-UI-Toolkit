@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace sasd::ui::native::appkit::detail {
 
@@ -22,7 +23,8 @@ using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
-    virtual void begin(NSWindow* owner, NSString* title, NativeOpenFileCompletion completion) = 0;
+    virtual void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+                       NativeOpenFileCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 

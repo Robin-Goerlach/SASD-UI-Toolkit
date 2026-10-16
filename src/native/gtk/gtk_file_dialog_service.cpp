@@ -1,5 +1,7 @@
 #include "gtk_file_dialog_service.hpp"
 
+#include "../file_dialog_extension_filter.hpp"
+
 #include <sasd/ui/text/utf8.hpp>
 
 #include <cstdint>
@@ -17,6 +19,62 @@ namespace {
 struct CallbackContext {
     NativeOpenFileCompletion completion;
 };
+
+[[nodiscard]] std::string filterPatternList(const std::vector<std::string>& extensions) {
+    std::string result;
+    for (std::size_t index = 0; index < extensions.size(); ++index) {
+        if (index != 0) result += "; ";
+        result += "*.";
+        result += extensions[index];
+    }
+    return result;
+}
+
+#if !GTK_CHECK_VERSION(4, 10, 0)
+void addOpenFilter(GtkFileChooser* chooser, const std::vector<std::string>& extensions) {
+    if (extensions.empty()) return;
+    GtkFileFilter* filter = gtk_file_filter_new();
+    if (filter == nullptr) throw std::runtime_error{"GTK file filter creation failed"};
+    const std::string name = filterPatternList(extensions);
+    gtk_file_filter_set_name(filter, name.c_str());
+    for (const std::string& extension : extensions) {
+        const std::string pattern = "*." + extension;
+        gtk_file_filter_add_pattern(filter, pattern.c_str());
+    }
+    // GtkFileChooser takes ownership of this newly-created filter reference. This is the
+    // compatibility-only API for GTK4 headers older than 4.10; keep its deprecation warning local.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    gtk_file_chooser_add_filter(chooser, filter);
+#pragma GCC diagnostic pop
+}
+#endif
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+void setOpenFilter(GtkFileDialog* dialog, const std::vector<std::string>& extensions) {
+    if (extensions.empty()) return;
+    GtkFileFilter* filter = gtk_file_filter_new();
+    if (filter == nullptr) throw std::runtime_error{"GTK file filter creation failed"};
+    const std::string name = filterPatternList(extensions);
+    gtk_file_filter_set_name(filter, name.c_str());
+    for (const std::string& extension : extensions) {
+        const std::string pattern = "*." + extension;
+        gtk_file_filter_add_pattern(filter, pattern.c_str());
+    }
+    GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+    if (filters == nullptr) {
+        g_object_unref(filter);
+        throw std::runtime_error{"GTK file filter list creation failed"};
+    }
+    // The list model and default filter retain their own references; release both local full
+    // references after the setters. GtkFileDialog keeps the model for the async operation.
+    g_list_store_append(filters, filter);
+    gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+    gtk_file_dialog_set_default_filter(dialog, filter);
+    g_object_unref(filters);
+    g_object_unref(filter);
+}
+#endif
 
 [[nodiscard]] std::optional<std::filesystem::path> localPath(GFile* file) {
     if (file == nullptr) return std::nullopt;
@@ -52,7 +110,8 @@ class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
     ~ProductionOpenFileInvoker() override { cancel(); }
 
-    void begin(GtkWindow* owner, std::string title, NativeOpenFileCompletion completion) override {
+    void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               NativeOpenFileCompletion completion) override {
         cancel();
         if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
 
@@ -60,6 +119,7 @@ public:
         GtkFileDialog* dialog = gtk_file_dialog_new();
         if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
         if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
+        setOpenFilter(dialog, extensions);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         active_cancellable_ = g_cancellable_new();
@@ -73,6 +133,7 @@ public:
             "_Open", "_Cancel");
         if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
         gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), FALSE);
+        addOpenFilter(GTK_FILE_CHOOSER(dialog), extensions);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         g_signal_connect_data(dialog, "response", G_CALLBACK(&completeChooser), context,
@@ -391,6 +452,8 @@ FileDialogRequestId GtkFileDialogService::requestOpenFile(OpenFileDialogRequest 
         throw std::runtime_error{"GTK file dialogs must start on their owner thread"};
     }
     const std::string title = strictTitle(request.title); // before ID allocation
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateOpenFileExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"GTK file-dialog request ID space exhausted"};
@@ -443,7 +506,7 @@ FileDialogRequestId GtkFileDialogService::requestOpenFile(OpenFileDialogRequest 
     };
 
     try {
-        open_invoker_->begin(owner_, title, completion);
+        open_invoker_->begin(owner_, title, extensions, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
     }

@@ -225,6 +225,27 @@ testen. Prüfen, dass das gequeuete Ergebnis den Verzeichnispfad zeigt, das Fens
 Open und Save weiter funktionieren und sich das Working Directory nicht ändert. Dieser sichtbare
 Smoke-Test wird durch CI nicht als ausgeführt behauptet.
 
+#### M7 Open-File-Extension-Filter (Slice 6)
+
+`OpenFileDialogRequest` kann einen geordneten Vektor literaler UTF-8-Extension-Tokens tragen, etwa
+`{"txt", "md", "cpp"}`. Leer bedeutet ungefiltert. Tokens müssen nichtleer und gültiges UTF-8 sein
+und dürfen keinen Punkt, Wildcards, Pfadtrenner, NUL oder Semikolon enthalten; `tar.gz` und Glob-
+Syntax sind in V1 nicht definiert. Byte-identische Duplikate werden vor der Request-ID abgelehnt.
+Benannte Gruppen, MIME-Typen, öffentliche UTType-Werte und Result-Änderungen gibt es nicht.
+
+Win32 projiziert die Menge in genau eine sprachneutrale `COMDLG_FILTERSPEC`, etwa
+`*.txt;*.md;*.cpp`; die UTF-16-Backings leben bis nach `SetFileTypes` und `Show`. AppKit verwendet
+aus Extensions erzeugte `UTType`-Werte und ab macOS 11 `allowedContentTypes`, mit einer schwach
+gelinkten, lokal begrenzten `allowedFileTypes`-Kompatibilität für ältere Laufzeiten. GTK erzeugt
+einen `GtkFileFilter` mit `*.Token`-Regeln; ab GTK 4.10 wird er über ein ein-elementiges `GListModel`
+gesetzt, ältere unterstützte GTK4-Versionen behalten den `GtkFileChooserNative`-Pfad. Kein
+automatischer „All Files“-Filter wird ergänzt.
+
+Der Filter ist Auswahlhilfe, keine Sicherheits- oder Inhaltsvalidierung. Ein nativer akzeptierter
+Pfad wird unverändert weitergereicht, auch bei anderer Endung; die Anwendung validiert den Inhalt.
+Save und Folder bleiben unverändert. Der sichtbare native Smoke-Test ist dokumentiert, wurde unter
+WSL aber nicht ausgeführt.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,
