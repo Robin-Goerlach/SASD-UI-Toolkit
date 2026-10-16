@@ -45,6 +45,8 @@ public:
 
     [[nodiscard]] std::string_view name() const noexcept override { return "native-appkit"; }
     [[nodiscard]] BackendCapabilities capabilities() const noexcept override;
+    [[nodiscard]] FileDialogService* fileDialogs() noexcept override;
+    [[nodiscard]] const FileDialogService* fileDialogs() const noexcept override;
 
     void initialize() override;
     void shutdown() noexcept override;

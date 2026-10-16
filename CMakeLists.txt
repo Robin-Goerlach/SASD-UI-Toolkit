@@ -109,11 +109,13 @@ if(APPLE AND SASD_UI_BUILD_APPKIT_ADAPTER)
     enable_language(OBJCXX)
     add_library(sasd_ui_native_appkit
         src/native/appkit/appkit_input_translation.cpp
+        src/native/appkit/appkit_file_dialog_service.mm
         src/native/appkit/appkit_render_context.mm
         src/native/appkit/appkit_window_backend.mm
     )
     set_source_files_properties(
         src/native/appkit/appkit_render_context.mm
+        src/native/appkit/appkit_file_dialog_service.mm
         src/native/appkit/appkit_window_backend.mm
         PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     add_library(SASD::UI::Native::AppKit ALIAS sasd_ui_native_appkit)

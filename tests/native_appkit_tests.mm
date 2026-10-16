@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include "appkit_input_translation.hpp"
+#include "appkit_file_dialog_service.hpp"
 #include "appkit_render_context.hpp"
 
 #include <sasd/ui/native/appkit_backend.hpp>
@@ -9,8 +10,38 @@
 
 #import <AppKit/AppKit.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 using namespace sasd::ui;
 using namespace sasd::ui::native::appkit;
+
+namespace {
+struct FakeOpenFileState {
+    std::vector<detail::NativeOpenFileCompletion> completions;
+    int begins{0};
+};
+
+class FakeOpenFileInvoker final : public detail::NativeOpenFileInvoker {
+public:
+    explicit FakeOpenFileInvoker(std::shared_ptr<FakeOpenFileState> state) : state_{std::move(state)} {}
+    void begin(NSWindow*, NSString* title, detail::NativeOpenFileCompletion completion) override {
+        title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        ++state_->begins;
+        state_->completions.push_back(std::move(completion));
+    }
+    void cancel() noexcept override { ++cancels; }
+    std::shared_ptr<FakeOpenFileState> state_;
+    std::string title_;
+    int cancels{0};
+};
+
+NSWindow* testOwner() {
+    return [[NSWindow alloc] initWithContentRect:NSZeroRect styleMask:0
+                                          backing:NSBackingStoreBuffered defer:YES];
+}
+} // namespace
 
 TEST_CASE("AppKit value translation preserves Core key and logical point contracts") {
     CHECK(detail::translateKey(36) == Key::enter);
@@ -65,6 +96,86 @@ TEST_CASE("AppKit host retains a complete frame and shuts down idempotently") {
     backend.shutdown();
     backend.shutdown();
     CHECK(!backend.isInitialized());
+}
+
+TEST_CASE("AppKit file dialog advertises lifecycle and native capabilities") {
+    AppKitWindowBackend backend{{"SASD AppKit dialog capability test", {320, 200}, true, false}};
+    CHECK(backend.capabilities().pointer_input);
+    CHECK(backend.capabilities().native_menus);
+    CHECK(backend.capabilities().file_dialogs);
+    CHECK(backend.fileDialogs() == nullptr);
+    backend.initialize();
+    CHECK(backend.fileDialogs() != nullptr);
+    backend.shutdown();
+    CHECK(backend.fileDialogs() == nullptr);
+}
+
+TEST_CASE("AppKit file dialog is asynchronous, exact-once and reusable after queued completion") {
+    EventQueue events;
+    auto fake_state = std::make_shared<FakeOpenFileState>();
+    detail::AppKitFileDialogService service{testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(fake_state)};
+    const auto first = service.requestOpenFile({"Open 😀"});
+    CHECK(first != 0);
+    CHECK(service.pending());
+    CHECK(fake_state->begins == 1);
+    CHECK(!events.tryPop().has_value());
+    bool second_rejected = false;
+    try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { second_rejected = true; }
+    CHECK(second_rejected);
+
+    NSURL* selected = [NSURL fileURLWithPath:@"/tmp/Grüße long file name.txt"];
+    fake_state->completions[0](NSModalResponseOK, selected);
+    fake_state->completions[0](NSModalResponseOK, selected);
+    CHECK(!service.pending());
+    auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == first);
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path ==
+          std::filesystem::path{selected.fileSystemRepresentation});
+    CHECK(!events.tryPop().has_value());
+
+    const auto second = service.requestOpenFile({});
+    CHECK(second != first);
+    fake_state->completions[1](NSModalResponseCancel, nil);
+    const auto cancelled = events.tryPop();
+    CHECK(cancelled.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).request_id == second);
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).status == FileDialogResultStatus::cancelled);
+
+    const auto third = service.requestOpenFile({});
+    fake_state->completions[2](static_cast<NSModalResponse>(-1), nil);
+    const auto failed = events.tryPop();
+    CHECK(failed.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*failed).request_id == third);
+    CHECK(std::get<FileDialogResultEvent>(*failed).status == FileDialogResultStatus::failed);
+    CHECK(!std::get<FileDialogResultEvent>(*failed).path.has_value());
+}
+
+TEST_CASE("AppKit file dialog rejects malformed title before native invocation") {
+    EventQueue events;
+    auto state = std::make_shared<FakeOpenFileState>();
+    detail::AppKitFileDialogService service{testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(state)};
+    bool rejected = false;
+    try { (void)service.requestOpenFile({"\xFF"}); } catch (const std::invalid_argument&) { rejected = true; }
+    CHECK(rejected);
+    CHECK(state->begins == 0);
+}
+
+TEST_CASE("AppKit file dialog ignores completion after shutdown and destruction") {
+    EventQueue events;
+    auto state = std::make_shared<FakeOpenFileState>();
+    {
+        detail::AppKitFileDialogService service{testOwner(), events,
+            std::make_unique<FakeOpenFileInvoker>(state)};
+        (void)service.requestOpenFile({});
+        service.shutdown();
+        CHECK(!service.pending());
+    }
+    state->completions[0](NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/late.txt"]);
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("AppKit native menu projects the Core tree and queues activation") {

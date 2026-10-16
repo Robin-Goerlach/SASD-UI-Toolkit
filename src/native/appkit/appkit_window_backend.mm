@@ -1,6 +1,7 @@
 #include <sasd/ui/native/appkit_backend.hpp>
 
 #include "appkit_input_translation.hpp"
+#include "appkit_file_dialog_service.hpp"
 #include "appkit_render_context.hpp"
 
 #include <sasd/ui/events/event_queue.hpp>
@@ -318,6 +319,11 @@ struct AppKitWindowBackend::Impl {
 
     void shutdown() noexcept {
         if (![NSThread isMainThread]) return;
+        // Invalidate first: AppKit may synchronously deliver sheet cancellation while canceling.
+        if (file_dialogs != nullptr) {
+            file_dialogs->shutdown();
+            file_dialogs.reset();
+        }
         clearMenuBar();
         active_context = nullptr;
         if (view != nil) [view setBackend:nullptr];
@@ -354,6 +360,7 @@ struct AppKitWindowBackend::Impl {
         [view setBackend:this]; [delegate setBackend:this];
         [window setTitle:[NSString stringWithUTF8String:config.title.c_str()]];
         [window setContentView:view]; [window setDelegate:delegate];
+        file_dialogs = std::make_unique<detail::AppKitFileDialogService>(window, events);
         [window setReleasedWhenClosed:NO]; [window makeFirstResponder:view];
         [window setAcceptsMouseMovedEvents:YES];
         last_size = currentSize();
@@ -402,6 +409,7 @@ struct AppKitWindowBackend::Impl {
     std::thread::id owner_thread{};
     EventQueue events;
     detail::AppKitMenuProjection menu_projection{};
+    std::unique_ptr<detail::AppKitFileDialogService> file_dialogs;
     rendered::DisplayList last_frame;
     bool presentation_requested{false};
     detail::AppKitRenderContext* active_context{nullptr};
@@ -476,7 +484,9 @@ namespace sasd::ui::native::appkit {
 AppKitWindowBackend::AppKitWindowBackend(AppKitWindowBackendConfig config)
     : impl_{std::make_unique<Impl>(std::move(config))} {}
 AppKitWindowBackend::~AppKitWindowBackend() { shutdown(); }
-BackendCapabilities AppKitWindowBackend::capabilities() const noexcept { BackendCapabilities result; result.pointer_input = true; result.native_menus = true; return result; }
+BackendCapabilities AppKitWindowBackend::capabilities() const noexcept { BackendCapabilities result; result.pointer_input = true; result.native_menus = true; result.file_dialogs = true; return result; }
+FileDialogService* AppKitWindowBackend::fileDialogs() noexcept { return impl_->file_dialogs.get(); }
+const FileDialogService* AppKitWindowBackend::fileDialogs() const noexcept { return impl_->file_dialogs.get(); }
 void AppKitWindowBackend::initialize() { impl_->initialize(); }
 void AppKitWindowBackend::shutdown() noexcept { impl_->shutdown(); }
 std::optional<Event> AppKitWindowBackend::pollEvent() { return impl_->pollEvent(); }

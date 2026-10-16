@@ -18,7 +18,8 @@ boundary and could destroy the Application or Backend at an unsafe point.
 Core exposes the optional `FileDialogService`. Slice 1 contains only
 `requestOpenFile(OpenFileDialogRequest)` for one existing filesystem file and single selection.
 Every request receives a non-zero monotonically allocated `FileDialogRequestId`; version 1 allows one
-pending request per backend and rejects a second pending request with `std::logic_error`. Overflow
+pending request per backend. Pending ends when exactly one completion event is queued, not when the
+application consumes it; a second pending request is rejected with `std::logic_error`. Overflow
 fails closed. Completion is always the application-level `FileDialogResultEvent`: accepted has exactly
 one `std::filesystem::path`, while cancelled and failed have no path. Request initiation may enter a
 platform modal loop and may block, but it never returns the selected path and invokes no application
@@ -57,7 +58,8 @@ zerstören können.
 Der Core stellt den optionalen `FileDialogService` bereit. Slice 1 enthält nur
 `requestOpenFile(OpenFileDialogRequest)` für genau eine existierende Datei mit Einzelauswahl. Jede
 Anfrage erhält eine nicht-null, monoton vergebene `FileDialogRequestId`; Version 1 erlaubt je Backend
-höchstens eine Pending-Anfrage und weist eine zweite mit `std::logic_error` zurück. Overflow schlägt
+höchstens eine Pending-Anfrage. Pending endet mit dem Queueing genau eines Completion-Events, nicht
+erst mit dessen Konsum; eine zweite Pending-Anfrage wird mit `std::logic_error` zurückgewiesen. Overflow schlägt
 geschlossen fehl. Der Abschluss ist immer das application-level `FileDialogResultEvent`: accepted hat
 genau einen `std::filesystem::path`, cancelled und failed haben keinen Pfad. Die Initiierung darf in
 eine native modale Schleife gehen und blockieren, gibt aber niemals den Pfad zurück und ruft keinen

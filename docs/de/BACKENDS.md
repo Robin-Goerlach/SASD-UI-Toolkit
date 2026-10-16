@@ -131,6 +131,29 @@ Konvertierung; Cancel ist ein pfadloses `cancelled`-Result, technische Fehler si
 ausgeglichen. Filter, Save, Ordner und Mehrfachauswahl gehören bewusst noch nicht zu diesem ersten
 Vertrag. Siehe [ADR 0158](../adr/0158-m7-file-dialog-request-result-and-win32-open-file.md).
 
+#### AppKit-Open-File-Consumer (M7 File-Dialog-Slice 2)
+
+`AppKitWindowBackend::fileDialogs()` stellt denselben optionalen Core-Service wie Win32 bereit. AppKit
+startet `NSOpenPanel` mit aktivierter Dateiauswahl, deaktivierter Ordnerauswahl und deaktivierter
+Mehrfachauswahl über `beginSheetModalForWindow:completionHandler:` am privaten `NSWindow` des
+Backends. Die Request-ID wird vor dem Abschluss zurückgegeben; später wird genau ein application-level
+Result in die bestehende Queue gelegt. Pending endet mit dem Queueing, nicht erst mit dem Konsum durch
+die Anwendung, sodass danach sofort ein neuer Request beginnen kann.
+
+Die private Invoker-Seam hält Tests headless. Ein geteilter, invalidierbarer Completion-State enthält
+nur Queue und Request-Identität; native Blocks halten den State schwach und damit weder Backend,
+Service noch Queue fest. Generation- und Exactly-once-Prüfungen verwerfen verspätete und doppelte
+Completions; beim Shutdown wird der State vor dem Abbruch des Panels invalidiert. Titel werden strikt
+als UTF-8 konvertiert; akzeptierte Ergebnisse verwenden die native Dateisystemrepräsentation der
+`NSURL`, ohne Canonicalization, Normalisierung oder nachträgliche Existenzprüfung. Die native
+Completion legt ausschließlich `FileDialogResultEvent` ab; Application-Callbacks laufen später über
+den normalen Event-Polling-Pfad.
+
+Manueller macOS-Smoke-Test: `native_appkit_form_demo` starten, `File -> Open File` wählen, Sheet-
+Zugehörigkeit zum SASD-Fenster, reine Dateiauswahl und Einzelauswahl prüfen, dann Cancel und erneut
+öffnen. Eine Unicode-Datei wählen und prüfen, dass die Ausgabe erst nach dem Completion-Event erscheint
+und das Fenster nutzbar bleibt. Dieser sichtbare Test wird unter Linux nicht ausgeführt.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

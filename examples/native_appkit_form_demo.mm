@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 int main() {
     using namespace sasd::ui;
@@ -18,6 +19,10 @@ int main() {
     Command exit_command{"Exit"};
     bool exit_requested = false;
     exit_command.setOnExecuted([&] { exit_requested = true; });
+    Command open_file_command{"Open File"};
+    open_file_command.setOnExecuted([&] {
+        if (auto* dialogs = backend.fileDialogs()) (void)dialogs->requestOpenFile({"Open File"});
+    });
     Command copy_command{"Copy"};
     Command paste_command{"Paste"};
     Command about_command{"About"};
@@ -25,6 +30,7 @@ int main() {
     disabled_command.setEnabled(false);
     MenuBarModel menu_bar;
     MenuModel& file_menu = menu_bar.appendMenu("File");
+    file_menu.appendCommand(open_file_command);
     MenuModel& action_menu = file_menu.appendSubmenu("Action");
     action_menu.appendCommand(disabled_command);
     file_menu.appendSeparator();
@@ -51,6 +57,16 @@ int main() {
         if (event && std::holds_alternative<CommandActivationEvent>(*event)) {
             if (Command* command = std::get<CommandActivationEvent>(*event).command.get()) {
                 (void)command->execute();
+            }
+        }
+        if (event && std::holds_alternative<FileDialogResultEvent>(*event)) {
+            const auto& result = std::get<FileDialogResultEvent>(*event);
+            if (result.status == FileDialogResultStatus::accepted) {
+                std::cout << "Opened: " << result.path->string() << '\n';
+            } else if (result.status == FileDialogResultStatus::cancelled) {
+                std::cout << "Open cancelled\n";
+            } else {
+                std::cout << "Open failed\n";
             }
         }
         if (exit_requested) break;

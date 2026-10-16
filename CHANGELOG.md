@@ -14,6 +14,10 @@ they improve the architecture before compatibility commitments become expensive.
 - First M7 File Dialog consumer: Win32 `IFileOpenDialog` for one existing filesystem file with the
   existing HWND as owner, strict UTF-8/UTF-16 handling and no filters, save, folder or multiselect
   semantics yet.
+- Second M7 File Dialog consumer: AppKit `NSOpenPanel` as an asynchronous sheet owned by the
+  existing `NSWindow`, with lifetime-safe completion state, generation/double-completion protection,
+  strict UTF-8 titles and native filesystem-representation paths. Save, folder and richer selection
+  options remain deferred.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state
