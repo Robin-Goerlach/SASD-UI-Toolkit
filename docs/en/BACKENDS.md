@@ -160,6 +160,32 @@ sheet belongs to the SASD window, permits files only and single selection, then 
 Select a Unicode-named file and verify that output appears only after the completion event and that the
 window remains usable. This visible test is not run on Linux CI.
 
+#### GTK4 Open File dialog consumer (M7 file-dialog slice 3)
+
+`GtkWindowBackend::fileDialogs()` exposes the same optional `FileDialogService` while the existing
+`GtkWindow` is initialized. The production adapter uses `GtkFileDialog` when the discovered GTK
+headers provide GTK 4.10 or newer, and otherwise uses the compatible asynchronous
+`GtkFileChooserNative` response API. This conditional choice preserves the repository's existing
+unpinned GTK4 minimum; no second `GtkApplication`, main loop, window or event queue is introduced.
+
+The dialog belongs to the existing `GtkWindow`, selects exactly one existing file, and never returns a
+directory or multiple selection. Completion is copied into a `FileDialogResultEvent` and queued through
+the same `EventQueue` that `pollEvent()` drains by pumping the GLib default context. At most one native
+operation is pending; generation/exactly-once checks reject stale and duplicate callbacks, and
+shutdown invalidates state before canceling and releasing GTK objects. Native callbacks do not execute
+commands or application callbacks.
+
+Accepted `GFile` results use `g_file_get_path()` and an immediately owned `std::filesystem::path`;
+non-local URIs, empty paths and technical errors become `failed`. No canonicalization, normalization,
+existence check, save/folder/multiple/filter policy or public GTK dialog type is added. Tests use a
+private invoker seam and never display a chooser. See [ADR 0160](../adr/0160-m7-gtk4-open-file-dialog.md)
+and the three-consumer review in [ADR 0161](../adr/0161-m7-file-dialog-three-consumer-contract-review.md).
+
+Manual GTK smoke test: start `native_gtk_form_demo`, choose `File -> Open File`, select a file while
+checking single selection and that directories cannot be returned, then cancel and open again. Select
+a filename containing spaces or non-ASCII text and verify output appears only after the queued result
+event and the main window remains usable. This visible test is not claimed as run by Linux/Xvfb CI.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 
 #include "gtk_menu_binding.hpp"
+#include "gtk_file_dialog_service.hpp"
 #include "gtk_render_context.hpp"
 
 #include <sasd/ui/native/gtk_backend.hpp>
@@ -8,7 +9,10 @@
 #include <sasd/ui/application.hpp>
 
 #include <memory>
+#include <filesystem>
 #include <string>
+#include <thread>
+#include <vector>
 
 using namespace sasd::ui;
 using namespace sasd::ui::native::gtk;
@@ -23,6 +27,41 @@ namespace {
     const std::string result = text == nullptr ? std::string{} : std::string{text};
     g_variant_unref(value);
     return result;
+}
+
+} // namespace
+
+namespace {
+
+struct FakeGtkInvokerState {
+    struct Invocation {
+        GtkWindow* owner{};
+        std::string title{};
+        detail::NativeOpenFileCompletion completion{};
+    };
+    std::vector<Invocation> invocations{};
+    bool cancelled{false};
+};
+
+class FakeGtkInvoker final : public detail::NativeOpenFileInvoker {
+public:
+    explicit FakeGtkInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
+
+    void begin(GtkWindow* owner, std::string title,
+               detail::NativeOpenFileCompletion completion) override {
+        state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+    }
+
+    void cancel() noexcept override { state_->cancelled = true; }
+
+private:
+    std::shared_ptr<FakeGtkInvokerState> state_;
+};
+
+void completeFake(const std::shared_ptr<FakeGtkInvokerState>& state, std::size_t index,
+                  FileDialogResultStatus status, GFile* file = nullptr) {
+    auto completion = state->invocations.at(index).completion;
+    completion(status, file);
 }
 
 } // namespace
@@ -66,6 +105,117 @@ TEST_CASE("GTK native host owns a complete frame and can shut down repeatedly") 
     backend.shutdown();
     backend.shutdown();
     CHECK(!backend.isInitialized());
+}
+
+TEST_CASE("GTK file-dialog service is asynchronous and has the shared lifecycle contract") {
+    GtkWindowBackend backend{{"SASD GTK file test", {320, 200}, true, true, 12.0, Color::black}};
+    CHECK(backend.capabilities().pointer_input);
+    CHECK(backend.capabilities().native_menus);
+    CHECK(backend.capabilities().file_dialogs);
+    CHECK(backend.fileDialogs() == nullptr);
+    backend.initialize();
+    CHECK(backend.fileDialogs() != nullptr);
+
+    backend.shutdown();
+    CHECK(backend.fileDialogs() == nullptr);
+}
+
+TEST_CASE("GTK file-dialog fake covers async completion, exactly-once, stale generation and paths") {
+    EventQueue events;
+    auto fake_state = std::make_shared<FakeGtkInvokerState>();
+    auto fake = std::make_unique<FakeGtkInvoker>(fake_state);
+    detail::GtkFileDialogService service{reinterpret_cast<GtkWindow*>(0x1), events,
+                                         std::this_thread::get_id(), std::move(fake)};
+
+    const auto first = service.requestOpenFile({"Open 😀"});
+    CHECK(first != 0);
+    CHECK(service.pending());
+    CHECK(fake_state->invocations.size() == 1);
+    CHECK(fake_state->invocations[0].title == "Open 😀");
+    bool second_rejected = false;
+    try {
+        (void)service.requestOpenFile({});
+    } catch (const std::logic_error&) {
+        second_rejected = true;
+    }
+    CHECK(second_rejected);
+    CHECK(!events.tryPop().has_value());
+
+    GFile* selected = g_file_new_for_path("/tmp/GTK file Grüße.txt");
+    completeFake(fake_state, 0, FileDialogResultStatus::accepted, selected);
+    completeFake(fake_state, 0, FileDialogResultStatus::accepted, selected);
+    g_object_unref(selected);
+    CHECK(!service.pending());
+    const auto accepted = events.tryPop();
+    CHECK(accepted.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*accepted).request_id == first);
+    CHECK(std::get<FileDialogResultEvent>(*accepted).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*accepted).path ==
+          std::filesystem::path{"/tmp/GTK file Grüße.txt"});
+    CHECK(!events.tryPop().has_value());
+
+    const auto second = service.requestOpenFile({});
+    CHECK(second != first);
+    completeFake(fake_state, 0, FileDialogResultStatus::accepted, nullptr);
+    CHECK(service.pending());
+    CHECK(!events.tryPop().has_value());
+    completeFake(fake_state, 1, FileDialogResultStatus::cancelled);
+    CHECK(!service.pending());
+    const auto cancelled = events.tryPop();
+    CHECK(cancelled.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).request_id == second);
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).status == FileDialogResultStatus::cancelled);
+}
+
+TEST_CASE("GTK file-dialog rejects malformed titles and non-local results") {
+    EventQueue events;
+    auto fake_state = std::make_shared<FakeGtkInvokerState>();
+    auto fake = std::make_unique<FakeGtkInvoker>(fake_state);
+    detail::GtkFileDialogService service{reinterpret_cast<GtkWindow*>(0x1), events,
+                                         std::this_thread::get_id(), std::move(fake)};
+    bool rejected = false;
+    try {
+        (void)service.requestOpenFile({std::string{"bad\xFF", 4}});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    CHECK(rejected);
+    CHECK(fake_state->invocations.empty());
+
+    const auto id = service.requestOpenFile({});
+    GFile* remote = g_file_new_for_uri("https://example.invalid/file.txt");
+    completeFake(fake_state, 0, FileDialogResultStatus::accepted, remote);
+    g_object_unref(remote);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == id);
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::failed);
+    CHECK(!std::get<FileDialogResultEvent>(*event).path.has_value());
+}
+
+TEST_CASE("GTK file-dialog ignores completion after shutdown and destruction") {
+    EventQueue events;
+    auto fake_state = std::make_shared<FakeGtkInvokerState>();
+    {
+        auto fake = std::make_unique<FakeGtkInvoker>(fake_state);
+        detail::GtkFileDialogService service{reinterpret_cast<GtkWindow*>(0x1), events,
+                                             std::this_thread::get_id(), std::move(fake)};
+        (void)service.requestOpenFile({});
+        service.shutdown();
+        CHECK(fake_state->cancelled);
+        completeFake(fake_state, 0, FileDialogResultStatus::cancelled);
+    }
+    CHECK(!events.tryPop().has_value());
+
+    auto destruction_state = std::make_shared<FakeGtkInvokerState>();
+    {
+        auto fake = std::make_unique<FakeGtkInvoker>(destruction_state);
+        auto service = std::make_unique<detail::GtkFileDialogService>(
+            reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(), std::move(fake));
+        (void)service->requestOpenFile({});
+    }
+    completeFake(destruction_state, 0, FileDialogResultStatus::cancelled);
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("GTK menu binding projects recursive Core structure with literal labels") {

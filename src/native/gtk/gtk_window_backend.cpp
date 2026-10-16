@@ -1,6 +1,7 @@
 #include <sasd/ui/native/gtk_backend.hpp>
 
 #include "gtk_input_translation.hpp"
+#include "gtk_file_dialog_service.hpp"
 #include "gtk_menu_binding.hpp"
 #include "gtk_render_context.hpp"
 
@@ -184,12 +185,19 @@ struct GtkWindowBackend::Impl {
         root_box = new_root;
         area = new_area;
         menu_binding.setHost(root_box, &events);
+        file_dialogs = std::make_unique<detail::GtkFileDialogService>(
+            window, events, owner_thread);
         last_size = config.initial_size;
         if (!config.hidden) gtk_window_present(window);
     }
 
     void shutdown() noexcept {
         if (window == nullptr) return;
+        // Invalidate the dialog completion state before the GtkWindow and EventQueue leave scope.
+        if (file_dialogs != nullptr) {
+            file_dialogs->shutdown();
+            file_dialogs.reset();
+        }
         owner_thread = std::this_thread::get_id();
         active_context = nullptr;
         menu_binding.clear();
@@ -216,6 +224,7 @@ struct GtkWindowBackend::Impl {
     cairo_t* metric_cairo{nullptr};
     std::unique_ptr<detail::GtkRenderContext> metric_context;
     detail::GtkMenuBinding menu_binding;
+    std::unique_ptr<detail::GtkFileDialogService> file_dialogs;
 };
 
 GtkWindowBackend::GtkWindowBackend(GtkWindowBackendConfig config)
@@ -227,7 +236,16 @@ BackendCapabilities GtkWindowBackend::capabilities() const noexcept {
     BackendCapabilities result;
     result.pointer_input = true;
     result.native_menus = true;
+    result.file_dialogs = true;
     return result;
+}
+
+FileDialogService* GtkWindowBackend::fileDialogs() noexcept {
+    return impl_->window != nullptr ? impl_->file_dialogs.get() : nullptr;
+}
+
+const FileDialogService* GtkWindowBackend::fileDialogs() const noexcept {
+    return impl_->window != nullptr ? impl_->file_dialogs.get() : nullptr;
 }
 
 void GtkWindowBackend::initialize() { impl_->initialize(); }

@@ -246,8 +246,8 @@ Fortschritt der File-Dialog-Slices:
 - [x] Backendneutrale Request-/Result-Basis
 - [x] Win32-Open-File-Consumer (existierende einzelne Datei, Einzelauswahl)
 - [x] AppKit-Open-File-Consumer (asynchrones NSOpenPanel-Sheet, Einzelauswahl)
-- [ ] GTK4-Open-File-Consumer
-- [ ] File-Dialog-Vertragsreview mit drei Consumern
+- [x] GTK4-Open-File-Consumer (asynchrone GtkFileDialog/GtkFileChooserNative-Completion, Einzelauswahl)
+- [x] File-Dialog-Vertragsreview mit drei Consumern
 - [ ] Save File
 - [ ] Ordnerauswahl
 - [ ] Filter / erweiterte Optionen
@@ -255,7 +255,8 @@ Fortschritt der File-Dialog-Slices:
 Langfristige Themen:
 
 - native Menüs
-- File Dialogs (Request-/Result-Basis sowie Win32- und AppKit-Open-File-Slices sind abgeschlossen)
+- File Dialogs (Request-/Result-Basis, Win32-/AppKit-/GTK-Open-File-Slices und Drei-Consumer-Review
+  sind abgeschlossen)
 - Drag & Drop
 - Clipboard erweitert
 - System Tray
