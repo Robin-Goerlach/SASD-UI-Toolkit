@@ -75,6 +75,16 @@ TEST_CASE("Save dialog acceptance uses the same result event and permits a new t
     CHECK(result.path == std::filesystem::path{"/tmp/not-created-yet.txt"});
 }
 
+TEST_CASE("Select-folder requests reuse the result event for one existing directory path") {
+    const SelectFolderDialogRequest request{"Select Folder"};
+    CHECK(request.title == "Select Folder");
+    const Event event = FileDialogResultEvent{
+        9, FileDialogResultStatus::accepted, std::filesystem::path{"/tmp/Existing Folder"}};
+    const auto& result = std::get<FileDialogResultEvent>(event);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.path == std::filesystem::path{"/tmp/Existing Folder"});
+}
+
 TEST_CASE("Backends default to no file-dialog service and no capability") {
     MockBackend backend;
     CHECK(!backend.capabilities().file_dialogs);

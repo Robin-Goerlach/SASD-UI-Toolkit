@@ -249,14 +249,14 @@ Fortschritt der File-Dialog-Slices:
 - [x] GTK4-Open-File-Consumer (asynchrone GtkFileDialog/GtkFileChooserNative-Completion, Einzelauswahl)
 - [x] File-Dialog-Vertragsreview mit drei Consumern
 - [x] Save File
-- [ ] Ordnerauswahl
+- [x] Ordnerauswahl
 - [ ] Filter / erweiterte Optionen
 
 Langfristige Themen:
 
 - native Menüs
-- File Dialogs (Request-/Result-Basis, Win32-/AppKit-/GTK-Open-/Save-File-Slices und Drei-Consumer-
-  Review sind abgeschlossen)
+- File Dialogs (Request-/Result-Basis, Win32-/AppKit-/GTK-Open-, Save- und Ordner-Slices sowie der
+  Drei-Consumer-Review sind abgeschlossen)
 - Drag & Drop
 - Clipboard erweitert
 - System Tray

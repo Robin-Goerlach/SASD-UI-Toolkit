@@ -65,6 +65,54 @@ private:
     std::shared_ptr<PanelState> active_panel_;
 };
 
+class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
+public:
+    void begin(NSWindow* owner, NSString* title, NativeSelectFolderCompletion completion) override {
+        @autoreleasepool {
+            @try {
+                auto panel_state = std::make_shared<PanelState>();
+                NSOpenPanel* panel = [NSOpenPanel openPanel];
+                panel_state->panel = panel;
+                panel.canChooseFiles = NO;
+                panel.canChooseDirectories = YES;
+                panel.allowsMultipleSelection = NO;
+                if (title != nil) panel.title = title;
+                [panel beginSheetModalForWindow:owner completionHandler:
+                    ^(NSModalResponse response) {
+                        NSURL* selected = panel_state->panel.URL;
+                        completion(response, selected);
+                        panel_state->panel = nil;
+                    }];
+                active_panel_ = std::move(panel_state);
+            } @catch (NSException* exception) {
+                const char* reason = exception.reason.UTF8String;
+                throw std::runtime_error{std::string{"NSOpenPanel folder start failed"} +
+                                          (reason != nullptr ? std::string{": "} + reason : std::string{})};
+            }
+        }
+    }
+
+    void cancel() noexcept override {
+        @autoreleasepool {
+            if (active_panel_ != nullptr && active_panel_->panel != nil) {
+                @try {
+                    NSWindow* sheet_parent = active_panel_->panel.sheetParent;
+                    if (sheet_parent != nil) {
+                        [sheet_parent endSheet:active_panel_->panel returnCode:NSModalResponseCancel];
+                    } else {
+                        [active_panel_->panel close];
+                    }
+                } @catch (NSException*) {}
+                active_panel_->panel = nil;
+            }
+            active_panel_.reset();
+        }
+    }
+
+private:
+    std::shared_ptr<PanelState> active_panel_;
+};
+
 class ProductionSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     void begin(NSWindow* owner, NSString* title, NativeSaveFileCompletion completion) override {
@@ -149,14 +197,19 @@ struct AppKitFileDialogService::CompletionState {
 
 AppKitFileDialogService::AppKitFileDialogService(NSWindow* owner, EventQueue& events,
                                                  std::unique_ptr<NativeOpenFileInvoker> open_invoker,
-                                                 std::unique_ptr<NativeSaveFileInvoker> save_invoker)
+                                                 std::unique_ptr<NativeSaveFileInvoker> save_invoker,
+                                                 std::unique_ptr<NativeSelectFolderInvoker> folder_invoker)
     : owner_{owner},
       open_invoker_{std::move(open_invoker)},
       save_invoker_{std::move(save_invoker)},
+      folder_invoker_{std::move(folder_invoker)},
       state_{std::make_shared<CompletionState>()} {
     state_->queue = &events;
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
     if (save_invoker_ == nullptr) save_invoker_ = std::make_unique<ProductionSaveFileInvoker>();
+    if (folder_invoker_ == nullptr) {
+        folder_invoker_ = std::make_unique<ProductionSelectFolderInvoker>();
+    }
 }
 
 AppKitFileDialogService::~AppKitFileDialogService() { shutdown(); }
@@ -174,6 +227,7 @@ void AppKitFileDialogService::shutdown() noexcept {
     ++state_->generation;
     if (open_invoker_ != nullptr) open_invoker_->cancel();
     if (save_invoker_ != nullptr) save_invoker_->cancel();
+    if (folder_invoker_ != nullptr) folder_invoker_->cancel();
     owner_ = nullptr;
 }
 
@@ -276,6 +330,56 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
 
     try {
         save_invoker_->begin(owner_, title, completion);
+    } catch (...) {
+        completion(static_cast<NSModalResponse>(-1), nil);
+    }
+    return id;
+}
+
+FileDialogRequestId AppKitFileDialogService::requestSelectFolder(SelectFolderDialogRequest request) {
+    if (![NSThread isMainThread]) {
+        throw std::runtime_error{"AppKit file dialogs must start on the AppKit main thread"};
+    }
+    if (state_->queue == nullptr || owner_ == nil) {
+        throw std::logic_error{"AppKit file dialog requires initialize()"};
+    }
+    NSString* title = strictTitle(request.title);
+    if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
+    if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
+
+    const FileDialogRequestId id = next_request_id_++;
+    const std::uint64_t generation = ++state_->generation;
+    state_->request_id = id;
+    state_->pending = true;
+    state_->completed = false;
+    const std::weak_ptr<CompletionState> weak_state = state_;
+    const NativeSelectFolderCompletion completion = [weak_state, id, generation](
+                                                        NSModalResponse response, NSURL* url) noexcept {
+        try {
+            const std::shared_ptr<CompletionState> state = weak_state.lock();
+            if (state == nullptr || !state->active || !state->pending || state->completed ||
+                state->request_id != id || state->generation != generation || state->queue == nullptr) return;
+            FileDialogResultStatus status = FileDialogResultStatus::failed;
+            std::optional<std::filesystem::path> path;
+            if (response == NSModalResponseCancel) {
+                status = FileDialogResultStatus::cancelled;
+            } else if (response == NSModalResponseOK) {
+                path = nativeFilePath(url);
+                if (path && !path->empty()) status = FileDialogResultStatus::accepted;
+            }
+            state->completed = true;
+            state->queue->push(Event{FileDialogResultEvent{id, status, std::move(path)}});
+            state->pending = false;
+        } catch (...) {
+            if (const std::shared_ptr<CompletionState> state = weak_state.lock()) {
+                state->completed = true;
+                state->pending = false;
+            }
+        }
+    };
+
+    try {
+        folder_invoker_->begin(owner_, title, completion);
     } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }

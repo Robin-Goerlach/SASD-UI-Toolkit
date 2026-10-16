@@ -16,6 +16,7 @@ namespace sasd::ui::native::appkit::detail {
 
 using NativeOpenFileCompletion = std::function<void(NSModalResponse, NSURL*)>;
 using NativeSaveFileCompletion = NativeOpenFileCompletion;
+using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 
 /** Private seam: production starts an NSOpenPanel sheet; tests retain this completion. */
 class NativeOpenFileInvoker {
@@ -33,12 +34,21 @@ public:
     virtual void cancel() noexcept = 0;
 };
 
+/** Private seam: production starts an NSOpenPanel sheet configured for directories only. */
+class NativeSelectFolderInvoker {
+public:
+    virtual ~NativeSelectFolderInvoker() = default;
+    virtual void begin(NSWindow* owner, NSString* title, NativeSelectFolderCompletion completion) = 0;
+    virtual void cancel() noexcept = 0;
+};
+
 /** Private AppKit consumer of the backend-neutral FileDialogService contract. */
 class AppKitFileDialogService final : public FileDialogService {
 public:
     AppKitFileDialogService(NSWindow* owner, EventQueue& events,
                             std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
-                            std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr);
+                            std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
+                            std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
     ~AppKitFileDialogService() override;
 
     AppKitFileDialogService(const AppKitFileDialogService&) = delete;
@@ -46,6 +56,8 @@ public:
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestSelectFolder(
+        SelectFolderDialogRequest request) override;
     [[nodiscard]] bool pending() const noexcept;
     void shutdown() noexcept;
 
@@ -54,6 +66,7 @@ private:
     NSWindow* owner_{}; // non-owning: the AppKitWindowBackend owns the window
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
+    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     std::shared_ptr<CompletionState> state_;
     FileDialogRequestId next_request_id_{1};
 };

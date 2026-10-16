@@ -204,6 +204,29 @@ and deliver completion through the existing EventQueue. Manual smoke testing sho
 and an existing target, observe native overwrite UX, cancel, and verify that no file was created by
 the demo; this visible test is not claimed as run by CI.
 
+#### M7 Folder Selection across the native consumers (slice 5)
+
+`FileDialogService::requestSelectFolder(SelectFolderDialogRequest)` selects exactly one existing
+local filesystem directory and reuses `FileDialogResultEvent`. Open, Save and Folder share request
+IDs, one pending boundary, the EventQueue completion boundary and lifecycle/generation/
+exactly-once protection. The operation never creates a directory, writes a path or changes the
+process working directory. Filters, initial directories and multiselect remain deferred.
+
+Win32 uses `IFileOpenDialog` with `FOS_PICKFOLDERS`, `FOS_FORCEFILESYSTEM`, `FOS_PATHMUSTEXIST` and
+`FOS_NOCHANGEDIR`, owned by the existing `HWND`, and copies the UTF-16 `SIGDN_FILESYSPATH` result
+directly to `std::filesystem::path`. AppKit uses an asynchronous `NSOpenPanel` sheet owned by the
+existing `NSWindow`, configured for directories only and single selection. GTK 4.10+ uses
+`gtk_file_dialog_select_folder()`/`select_folder_finish()`; older supported GTK4 uses the
+asynchronous `GtkFileChooserNative` `ACTION_SELECT_FOLDER` fallback. GTK accepts only a local,
+non-empty `g_file_get_path()` result. Native selection semantics establish directory existence; no
+second filesystem existence check or canonicalization is performed.
+
+Manual folder smoke test: start a native demo, choose `File -> Select Folder`, verify the dialog is
+owned by the main window and files cannot be returned, select an existing directory, then test
+Cancel and repeat with spaces/non-ASCII characters. Verify the queued result shows the directory,
+the window remains usable, Open and Save still work, and the process working directory is unchanged.
+This visible smoke test is not claimed as run by CI.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

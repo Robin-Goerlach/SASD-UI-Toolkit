@@ -28,6 +28,11 @@ they improve the architecture before compatibility commitments become expensive.
   Win32 `IFileSaveDialog`, AppKit `NSSavePanel` and GTK save consumers. Open and Save share request
   IDs, one pending-operation boundary and queued `FileDialogResultEvent` completion; the toolkit only
   returns a destination path and never creates or writes the file.
+- M7 File Dialog Folder Selection slice: added `SelectFolderDialogRequest`/`requestSelectFolder()`
+  with Win32 `IFileOpenDialog` folder picking, AppKit directories-only `NSOpenPanel` and GTK4 folder
+  selection. Open, Save and Folder share IDs, one pending-operation boundary, native lifecycle
+  protection and queued `FileDialogResultEvent` completion; the toolkit never mutates the filesystem
+  or working directory.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

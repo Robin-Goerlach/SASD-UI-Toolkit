@@ -129,19 +129,74 @@ public:
     }
 };
 
+class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
+public:
+    [[nodiscard]] NativeSelectFolderOutcome show(HWND owner, std::wstring_view title) override {
+        HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
+        struct ComApartment final { ~ComApartment() { CoUninitialize(); } } apartment;
+
+        IFileOpenDialog* dialog = nullptr;
+        HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                          IID_PPV_ARGS(&dialog));
+        if (FAILED(result)) return {FileDialogResultStatus::failed, {}};
+        struct DialogRelease final {
+            IFileOpenDialog* value;
+            ~DialogRelease() { value->Release(); }
+        } release{dialog};
+
+        DWORD options = 0;
+        if (FAILED(dialog->GetOptions(&options))) return {FileDialogResultStatus::failed, {}};
+        // FOS_PICKFOLDERS makes the shell offer existing directories. FILEMUSTEXIST is deliberately
+        // absent: it describes file selection and is not needed for the folder picker.
+        options |= FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR;
+        if (FAILED(dialog->SetOptions(options))) return {FileDialogResultStatus::failed, {}};
+        if (!title.empty() && FAILED(dialog->SetTitle(std::wstring{title}.c_str()))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+
+        result = dialog->Show(owner);
+        if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+            return {FileDialogResultStatus::cancelled, {}};
+        }
+        if (FAILED(result)) return {FileDialogResultStatus::failed, {}};
+
+        IShellItem* item = nullptr;
+        if (FAILED(dialog->GetResult(&item))) return {FileDialogResultStatus::failed, {}};
+        struct ItemRelease final {
+            IShellItem* value;
+            ~ItemRelease() { value->Release(); }
+        } item_release{item};
+        PWSTR native_path = nullptr;
+        if (FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &native_path))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+        std::wstring path{native_path};
+        CoTaskMemFree(native_path);
+        return path.empty() ? NativeSelectFolderOutcome{FileDialogResultStatus::failed, {}}
+                            : NativeSelectFolderOutcome{FileDialogResultStatus::accepted,
+                                                        std::move(path)};
+    }
+};
+
 } // namespace
 
 Win32FileDialogService::Win32FileDialogService(
     HWND owner,
     EventQueue& events,
     std::unique_ptr<NativeOpenFileInvoker> open_invoker,
-    std::unique_ptr<NativeSaveFileInvoker> save_invoker)
+    std::unique_ptr<NativeSaveFileInvoker> save_invoker,
+    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker)
     : owner_{owner},
       events_{events},
       open_invoker_{std::move(open_invoker)},
-      save_invoker_{std::move(save_invoker)} {
+      save_invoker_{std::move(save_invoker)},
+      folder_invoker_{std::move(folder_invoker)} {
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
     if (save_invoker_ == nullptr) save_invoker_ = std::make_unique<ProductionSaveFileInvoker>();
+    if (folder_invoker_ == nullptr) {
+        folder_invoker_ = std::make_unique<ProductionSelectFolderInvoker>();
+    }
 }
 
 FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogRequest request) {
@@ -192,6 +247,32 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
             if (outcome.path.empty()) throw std::runtime_error{"Win32 file dialog returned no path"};
             // The returned path is the application's destination. Do not inspect or mutate the
             // filesystem: it is valid for a Save dialog to choose a not-yet-existing path.
+            events_.push(Event{FileDialogResultEvent{
+                request_id, FileDialogResultStatus::accepted, std::filesystem::path{outcome.path}}});
+        } else if (outcome.status == FileDialogResultStatus::cancelled) {
+            events_.push(Event{FileDialogResultEvent{request_id, FileDialogResultStatus::cancelled}});
+        } else {
+            events_.push(Event{FileDialogResultEvent{request_id, FileDialogResultStatus::failed}});
+        }
+    } catch (...) {
+        events_.push(Event{FileDialogResultEvent{request_id, FileDialogResultStatus::failed}});
+    }
+    pending_ = false;
+    return request_id;
+}
+
+FileDialogRequestId Win32FileDialogService::requestSelectFolder(SelectFolderDialogRequest request) {
+    const std::wstring title = utf8ToWide(request.title);
+    if (pending_) throw std::logic_error{"Win32 file dialog already has a pending request"};
+    if (next_request_id_ == 0) {
+        throw std::overflow_error{"Win32 file-dialog request ID space exhausted"};
+    }
+
+    const FileDialogRequestId request_id = next_request_id_++;
+    pending_ = true;
+    try {
+        const NativeSelectFolderOutcome outcome = folder_invoker_->show(owner_, title);
+        if (outcome.status == FileDialogResultStatus::accepted && !outcome.path.empty()) {
             events_.push(Event{FileDialogResultEvent{
                 request_id, FileDialogResultStatus::accepted, std::filesystem::path{outcome.path}}});
         } else if (outcome.status == FileDialogResultStatus::cancelled) {
