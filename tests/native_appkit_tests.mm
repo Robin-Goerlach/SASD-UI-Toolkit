@@ -144,7 +144,7 @@ TEST_CASE("AppKit file dialog is asynchronous, exact-once and reusable after que
     CHECK(std::get<FileDialogResultEvent>(*cancelled).status == FileDialogResultStatus::cancelled);
 
     const auto third = service.requestOpenFile({});
-    fake_state->completions[2](NSModalResponseOther, nil);
+    fake_state->completions[2](static_cast<NSModalResponse>(-1), nil);
     const auto failed = events.tryPop();
     CHECK(failed.has_value());
     CHECK(std::get<FileDialogResultEvent>(*failed).request_id == third);

@@ -51,8 +51,7 @@ public:
                     if (sheet_parent != nil) {
                         [sheet_parent endSheet:active_panel_->panel returnCode:NSModalResponseCancel];
                     } else {
-                        [active_panel_->panel abortModal];
-                        [active_panel_->panel orderOut:nil];
+                        [active_panel_->panel close];
                     }
                 }
                 @catch (NSException*) {}
@@ -170,7 +169,9 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     try {
         invoker_->begin(owner_, title, completion);
     } catch (...) {
-        completion(NSModalResponseOther, nil);
+        // There is no public "other" response constant on all supported SDKs; any value other
+        // than OK/Cancel is deliberately mapped to failed by the completion contract.
+        completion(static_cast<NSModalResponse>(-1), nil);
     }
     return id;
 }
