@@ -132,7 +132,8 @@ TEST_CASE("AppKit file dialog is asynchronous, exact-once and reusable after que
     CHECK(event.has_value());
     CHECK(std::get<FileDialogResultEvent>(*event).request_id == first);
     CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
-    CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{"/tmp/Grüße long file name.txt"});
+    CHECK(std::get<FileDialogResultEvent>(*event).path ==
+          std::filesystem::path{selected.fileSystemRepresentation});
     CHECK(!events.tryPop().has_value());
 
     const auto second = service.requestOpenFile({});
