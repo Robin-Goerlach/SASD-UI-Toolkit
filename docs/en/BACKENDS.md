@@ -138,6 +138,28 @@ strictly converted from UTF-8 to UTF-16. Accepted results retain the native path
 `cancelled` result, and technical failures are pathless `failed` results. COM is initialized and
 balanced only for the calling UI-thread dialog operation. Filters, save, folder and multiple
 selection are intentionally not part of this first contract. See [ADR 0158](../adr/0158-m7-file-dialog-request-result-and-win32-open-file.md).
+#### AppKit Open File dialog consumer (M7 file-dialog slice 2)
+
+`AppKitWindowBackend::fileDialogs()` exposes the same optional Core service as Win32. AppKit starts
+`NSOpenPanel` with `canChooseFiles` enabled, directories and multiple selection disabled, and uses
+`beginSheetModalForWindow:completionHandler:` against the backend's private `NSWindow`. The request
+ID returns before the sheet completes; exactly one application-level result is queued later. Pending
+ends when that result has been queued, not when the application consumes it, so another request can
+start immediately afterward.
+
+The private invoker seam keeps tests headless. A shared, invalidatable completion state holds only the
+queue and request identity; native blocks capture a weak state and therefore cannot retain the
+backend, service or queue. Generation and exactly-once checks reject stale and duplicate completions,
+and shutdown invalidates the state before canceling the panel. Titles use strict UTF-8 conversion;
+accepted results use the `NSURL` file-system representation without canonicalization, normalization or
+post-selection existence checks. The native completion only queues `FileDialogResultEvent`; application
+callbacks run later through the normal event-polling path.
+
+Manual macOS smoke test: start `native_appkit_form_demo`, choose `File -> Open File`, verify that the
+sheet belongs to the SASD window, permits files only and single selection, then cancel and open again.
+Select a Unicode-named file and verify that output appears only after the completion event and that the
+window remains usable. This visible test is not run on Linux CI.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

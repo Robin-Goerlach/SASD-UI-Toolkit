@@ -175,6 +175,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0156](0156-m7-gtk4-native-menu-consumer.md) | M7 GTK4 validates window-local GMenu/GAction native-menu projection | Accepted |
 | [0157](0157-native-menu-portability-boundary.md) | Native-menu portability boundary stays in Core semantics, not a NativeMenu hierarchy | Accepted |
 | [0158](0158-m7-file-dialog-request-result-and-win32-open-file.md) | M7 file dialogs start with an application-level request/result service and Win32 Open File | Accepted |
+| [0159](0159-m7-appkit-nsopenpanel-asynchronous-file-dialog.md) | M7 AppKit NSOpenPanel validates asynchronous file-dialog completion | Accepted |
 
 ## ADR policy
 
