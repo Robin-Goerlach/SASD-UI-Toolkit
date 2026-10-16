@@ -186,6 +186,24 @@ checking single selection and that directories cannot be returned, then cancel a
 a filename containing spaces or non-ASCII text and verify output appears only after the queued result
 event and the main window remains usable. This visible test is not claimed as run by Linux/Xvfb CI.
 
+#### M7 Save File across the native consumers (slice 4)
+
+The same `FileDialogService` now also accepts `SaveFileDialogRequest` through `requestSaveFile()`. Open
+and Save share request IDs, one pending-operation boundary and queued `FileDialogResultEvent`
+completion. An accepted result is a local filesystem destination that may already exist or may be new;
+the toolkit does not create, open, truncate, write, canonicalize or existence-check it. The native
+dialog owns overwrite confirmation, and no filters or suggested filename are exposed yet.
+
+Win32 uses `IFileSaveDialog` owned by the existing `HWND`, synchronously like Open File, with
+`FOS_FORCEFILESYSTEM`, `FOS_PATHMUSTEXIST`, `FOS_NOCHANGEDIR` and `FOS_OVERWRITEPROMPT`; it deliberately
+does not set `FOS_FILEMUSTEXIST`. AppKit uses an asynchronous `NSSavePanel` sheet owned by the existing
+`NSWindow`. GTK uses `gtk_file_dialog_save()`/`save_finish()` with GTK 4.10+ and the asynchronous
+`GtkFileChooserNative` `ACTION_SAVE` fallback for older supported GTK4 headers. All three copy the
+native filesystem representation into `std::filesystem::path`, preserve Unicode/space characters,
+and deliver completion through the existing EventQueue. Manual smoke testing should select both a new
+and an existing target, observe native overwrite UX, cancel, and verify that no file was created by
+the demo; this visible test is not claimed as run by CI.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

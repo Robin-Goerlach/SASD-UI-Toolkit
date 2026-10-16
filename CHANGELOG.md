@@ -24,6 +24,10 @@ they improve the architecture before compatibility commitments become expensive.
 - Completed the M7 three-consumer file-dialog contract review: Win32, AppKit and GTK retain private
   native projections over the same Core request/result, pending, lifecycle and capability contract;
   Save, folder, filters and multiple selection remain deferred.
+- M7 File Dialog Save File slice: added the small `SaveFileDialogRequest`/`requestSaveFile()` contract,
+  Win32 `IFileSaveDialog`, AppKit `NSSavePanel` and GTK save consumers. Open and Save share request
+  IDs, one pending-operation boundary and queued `FileDialogResultEvent` completion; the toolkit only
+  returns a destination path and never creates or writes the file.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

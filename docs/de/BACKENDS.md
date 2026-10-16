@@ -181,6 +181,25 @@ Eine Datei mit Leerzeichen oder Nicht-ASCII-Zeichen auswählen und prüfen, dass
 dem gequeueten Result-Event erscheint und das Hauptfenster nutzbar bleibt. Dieser sichtbare Test wird
 durch Linux/Xvfb-CI nicht als ausgeführt behauptet.
 
+#### M7 Save File über die nativen Consumer (Slice 4)
+
+Der gleiche `FileDialogService` unterstützt nun zusätzlich `SaveFileDialogRequest` über
+`requestSaveFile()`. Open und Save teilen Request-IDs, die gemeinsame Grenze von genau einer Pending-
+Operation und das gequeuete `FileDialogResultEvent`. Ein akzeptiertes Ergebnis ist ein lokales
+Dateisystemziel, das bereits existieren darf oder neu sein kann. Das Toolkit erzeugt, öffnet, truncatet,
+schreibt, canonicalisiert oder prüft die Datei nicht; die native Oberfläche übernimmt die
+Überschreibbestätigung. Filter und vorgeschlagene Dateinamen bleiben außen vor.
+
+Win32 verwendet am bestehenden `HWND` synchron `IFileSaveDialog` mit `FOS_FORCEFILESYSTEM`,
+`FOS_PATHMUSTEXIST`, `FOS_NOCHANGEDIR` und `FOS_OVERWRITEPROMPT`, ausdrücklich ohne
+`FOS_FILEMUSTEXIST`. AppKit verwendet ein asynchrones `NSSavePanel`-Sheet am vorhandenen `NSWindow`.
+GTK verwendet ab 4.10 `gtk_file_dialog_save()`/`save_finish()` und bei älteren unterstützten GTK4-
+Headern den asynchronen `GtkFileChooserNative`-Fallback mit `ACTION_SAVE`. Die drei Adapter kopieren
+die native Dateisystemrepräsentation einschließlich Unicode und Leerzeichen in `std::filesystem::path`
+und legen die Completion über die bestehende EventQueue ab. Beim manuellen Smoke-Test neue und bereits
+existierende Ziele wählen, die native Überschreibbestätigung beobachten, Cancel prüfen und sicherstellen,
+dass die Demo keine Datei erzeugt; dieser sichtbare Test wird durch CI nicht als ausgeführt behauptet.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

@@ -58,6 +58,21 @@ private:
     std::shared_ptr<FakeGtkInvokerState> state_;
 };
 
+class FakeGtkSaveInvoker final : public detail::NativeSaveFileInvoker {
+public:
+    explicit FakeGtkSaveInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
+
+    void begin(GtkWindow* owner, std::string title,
+               detail::NativeSaveFileCompletion completion) override {
+        state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+    }
+
+    void cancel() noexcept override { state_->cancelled = true; }
+
+private:
+    std::shared_ptr<FakeGtkInvokerState> state_;
+};
+
 void completeFake(const std::shared_ptr<FakeGtkInvokerState>& state, std::size_t index,
                   FileDialogResultStatus status, GFile* file = nullptr) {
     auto completion = state->invocations.at(index).completion;
@@ -191,6 +206,61 @@ TEST_CASE("GTK file-dialog rejects malformed titles and non-local results") {
     CHECK(std::get<FileDialogResultEvent>(*event).request_id == id);
     CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::failed);
     CHECK(!std::get<FileDialogResultEvent>(*event).path.has_value());
+}
+
+TEST_CASE("GTK save file uses one shared pending boundary and preserves new targets") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeGtkInvokerState>();
+    auto save_state = std::make_shared<FakeGtkInvokerState>();
+    detail::GtkFileDialogService service{
+        reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(),
+        std::make_unique<FakeGtkInvoker>(open_state),
+        std::make_unique<FakeGtkSaveInvoker>(save_state)};
+
+    const auto save_id = service.requestSaveFile({"Save 😀"});
+    CHECK(save_id != 0);
+    CHECK(service.pending());
+    CHECK(save_state->invocations.size() == 1);
+    bool open_rejected = false;
+    try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { open_rejected = true; }
+    CHECK(open_rejected);
+
+    GFile* new_target = g_file_new_for_path("/tmp/SASD UI Toolkit new GTK save file.txt");
+    completeFake(save_state, 0, FileDialogResultStatus::accepted, new_target);
+    g_object_unref(new_target);
+    CHECK(!service.pending());
+    auto accepted = events.tryPop();
+    CHECK(accepted.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*accepted).request_id == save_id);
+    CHECK(std::get<FileDialogResultEvent>(*accepted).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*accepted).path ==
+          std::filesystem::path{"/tmp/SASD UI Toolkit new GTK save file.txt"});
+    CHECK(!events.tryPop().has_value());
+
+    const auto open_id = service.requestOpenFile({});
+    CHECK(open_id > save_id);
+    completeFake(open_state, 0, FileDialogResultStatus::cancelled);
+    CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("GTK save file maps cancel and failure and ignores double completion") {
+    EventQueue events;
+    auto save_state = std::make_shared<FakeGtkInvokerState>();
+    detail::GtkFileDialogService service{
+        reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(),
+        std::make_unique<FakeGtkInvoker>(std::make_shared<FakeGtkInvokerState>()),
+        std::make_unique<FakeGtkSaveInvoker>(save_state)};
+    const auto cancelled_id = service.requestSaveFile({});
+    completeFake(save_state, 0, FileDialogResultStatus::cancelled);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == cancelled_id);
+
+    const auto failed_id = service.requestSaveFile({});
+    completeFake(save_state, 1, FileDialogResultStatus::failed);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == failed_id);
+    CHECK(!service.pending());
+
+    completeFake(save_state, 1, FileDialogResultStatus::accepted, nullptr);
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("GTK file-dialog ignores completion after shutdown and destruction") {

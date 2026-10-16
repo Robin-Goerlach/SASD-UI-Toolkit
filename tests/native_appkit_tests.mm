@@ -37,6 +37,25 @@ public:
     int cancels{0};
 };
 
+struct FakeSaveFileState {
+    std::vector<detail::NativeSaveFileCompletion> completions;
+    int begins{0};
+};
+
+class FakeSaveFileInvoker final : public detail::NativeSaveFileInvoker {
+public:
+    explicit FakeSaveFileInvoker(std::shared_ptr<FakeSaveFileState> state) : state_{std::move(state)} {}
+    void begin(NSWindow*, NSString* title, detail::NativeSaveFileCompletion completion) override {
+        title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        ++state_->begins;
+        state_->completions.push_back(std::move(completion));
+    }
+    void cancel() noexcept override { ++cancels; }
+    std::shared_ptr<FakeSaveFileState> state_;
+    std::string title_;
+    int cancels{0};
+};
+
 NSWindow* testOwner() {
     return [[NSWindow alloc] initWithContentRect:NSZeroRect styleMask:0
                                           backing:NSBackingStoreBuffered defer:YES];
@@ -162,6 +181,75 @@ TEST_CASE("AppKit file dialog rejects malformed title before native invocation")
     try { (void)service.requestOpenFile({"\xFF"}); } catch (const std::invalid_argument&) { rejected = true; }
     CHECK(rejected);
     CHECK(state->begins == 0);
+}
+
+TEST_CASE("AppKit save file reuses the async result contract and shared pending state") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeOpenFileState>();
+    auto save_state = std::make_shared<FakeSaveFileState>();
+    detail::AppKitFileDialogService service{
+        testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(open_state),
+        std::make_unique<FakeSaveFileInvoker>(save_state)};
+
+    const auto save_id = service.requestSaveFile({"Save 😀"});
+    CHECK(save_id != 0);
+    CHECK(service.pending());
+    CHECK(save_state->begins == 1);
+    CHECK(save_state->completions.size() == 1);
+    CHECK(save_state->completions[0]);
+    CHECK(save_state->completions[0] != nullptr);
+    CHECK(!events.tryPop().has_value());
+
+    bool open_rejected = false;
+    try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { open_rejected = true; }
+    CHECK(open_rejected);
+
+    NSURL* new_target = [NSURL fileURLWithPath:@"/tmp/SASD UI Toolkit new save file.txt"];
+    save_state->completions[0](NSModalResponseOK, new_target);
+    CHECK(!service.pending());
+    auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).request_id == save_id);
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path ==
+          std::filesystem::path{new_target.fileSystemRepresentation});
+    CHECK(!events.tryPop().has_value());
+
+    const auto open_id = service.requestOpenFile({});
+    CHECK(open_id > save_id);
+    open_state->completions[0](NSModalResponseCancel, nil);
+    CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("AppKit save file maps cancellation, failure and stale completion safely") {
+    EventQueue events;
+    auto state = std::make_shared<FakeSaveFileState>();
+    detail::AppKitFileDialogService service{
+        testOwner(), events, std::make_unique<FakeOpenFileInvoker>(std::make_shared<FakeOpenFileState>()),
+        std::make_unique<FakeSaveFileInvoker>(state)};
+    const auto cancelled_id = service.requestSaveFile({});
+    state->completions[0](NSModalResponseCancel, nil);
+    auto cancelled = events.tryPop();
+    CHECK(cancelled.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).request_id == cancelled_id);
+    CHECK(std::get<FileDialogResultEvent>(*cancelled).status == FileDialogResultStatus::cancelled);
+
+    const auto failed_id = service.requestSaveFile({});
+    state->completions[1](static_cast<NSModalResponse>(-1), nil);
+    auto failed = events.tryPop();
+    CHECK(failed.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*failed).request_id == failed_id);
+    CHECK(std::get<FileDialogResultEvent>(*failed).status == FileDialogResultStatus::failed);
+
+    const auto stale = state->completions[1];
+    const auto next_id = service.requestSaveFile({});
+    stale(NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/stale.txt"]);
+    CHECK(!events.tryPop().has_value());
+    service.shutdown();
+    state->completions[2](NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/late.txt"]);
+    CHECK(!events.tryPop().has_value());
+    CHECK(next_id != 0);
 }
 
 TEST_CASE("AppKit file dialog ignores completion after shutdown and destruction") {
