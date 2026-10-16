@@ -88,6 +88,22 @@ jobs:
       - name: Test installed-package consumer
         run: ctest --test-dir build-consumer -C Debug --output-on-failure
 
+      # Keep AI-facing consumer guidance honest as the public API evolves.
+      - name: Validate AI consumer skill metadata and references
+        run: python .agents/skills/sasd-ui-toolkit/scripts/validate.py
+
+      - name: Configure skill example using installed SASD package
+        run: >-
+          cmake -S .agents/skills/sasd-ui-toolkit/examples/core-consumer -B build-skill-consumer
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/build/install"
+
+      - name: Build AI skill consumer example
+        run: cmake --build build-skill-consumer --config Debug --parallel
+
+      - name: Test AI skill consumer example
+        run: ctest --test-dir build-skill-consumer -C Debug --output-on-failure
+
   release-validation:
     name: ${{ matrix.name }}
     needs: build-and-test
