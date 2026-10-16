@@ -216,9 +216,10 @@ TEST_CASE("Win32 open extension filters validate before IDs and preserve native 
         FileDialogResultStatus::accepted, L"C:\\report.bin"});
     FakeOpenFileInvoker* fake_ptr = fake.get();
     Win32FileDialogService service{nullptr, events, std::move(fake)};
-    for (const std::vector<std::string> invalid : {{""}, {".txt"}, {"*.txt"}, {"foo/bar"},
-                                                    {"foo\\bar"}, {"foo;bar"}, {"tar.gz"},
-                                                    {"txt", "txt"}, {std::string{"bad\xFF", 4}}}) {
+    const std::vector<std::vector<std::string>> invalid_extensions{
+        {""}, {".txt"}, {"*.txt"}, {"foo/bar"}, {"foo\\bar"}, {"foo;bar"},
+        {"tar.gz"}, {"txt", "txt"}, {std::string{"bad\xFF", 4}}};
+    for (const auto& invalid : invalid_extensions) {
         bool rejected = false;
         try { (void)service.requestOpenFile({"Open", invalid}); }
         catch (const std::invalid_argument&) { rejected = true; }
