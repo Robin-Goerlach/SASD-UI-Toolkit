@@ -58,6 +58,35 @@ native preference mechanisms, while GTK correctly exposes only its native filter
 manufacturing a cross-platform promise. Applications must treat the returned path as authoritative
 and must implement any content policy after the dialog.
 
+## Implementation and validation record
+
+This decision was implemented as the M7 Save File Extension Filters slice on top of the merged Open
+File filter main commit `17c18e0e4e5dcc747d12bacb697518a5fbd00ee8`. The implementation adds the
+minimal Save request field, generalizes the private extension validator for Open and Save, projects
+the ordered extensions into all three native Save consumers, extends deterministic Core/backend tests,
+updates the native demos and records the bilingual backend and roadmap documentation. Result events,
+capabilities, request-ID/pending behavior and the Open/Folder contracts remain unchanged.
+
+PR #53 (`codex/m7-save-file-extension-filters`) reached final head
+`d2dabd4105bc775a50debf3caa1c80cc1593ddf7` and merged as
+`347e7f967f3a4384321ec4535228bd72becb3dba`. The exact PR head passed Linux GCC, Linux Clang,
+Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, Linux/Windows/macOS Release,
+GTK Native and AppKit Native CI. The exact merge commit subsequently passed Main CI, GTK Native CI
+and AppKit Native CI.
+
+A fresh strict local GCC build with tests and examples enabled and warnings-as-errors enabled passed;
+the configured CTest suite completed with all four tests successful. GTK and Xvfb were unavailable in
+WSL, and Windows MSVC/AppKit were not run locally; their native CI jobs are authoritative. No visible
+manual native smoke test was performed, so it is not claimed as executed. No release or tag was
+created.
+
+PR #52, the preceding Open File validation record, was merged before this feature branch. PR #30 and
+PR #32 were inspected read-only and remain unchanged. The feature branch was removed locally and on
+the remote after merge. The architecture review confirms that the ordered `SaveFileDialogRequest::extensions`
+field plus the first-extension native-preference rule is sufficient; no public filter hierarchy or
+`default_extension` field is needed. Initial directory, suggested filename and multiple selection
+remain the next separate file-dialog slices.
+
 ## Deutsch
 
 ### Kontext
@@ -108,3 +137,34 @@ Capability, ID-Sequenz, Pending-Grenze, Generation und Shutdown-Verhalten bleibe
 Vorgeschlagener Dateiname, Startverzeichnis, Mehrfachauswahl, MIME-Typen, öffentliche UTType-Werte
 und benannte Filterhierarchien bleiben zurückgestellt. Es wird kein öffentliches Filterobjekt
 eingeführt.
+
+## Umsetzungs- und Validierungsnachtrag
+
+Diese Entscheidung wurde als M7-Slice „Save File Extension Filters“ auf Basis des gemergten
+Open-File-Filter-Main-Commits `17c18e0e4e5dcc747d12bacb697518a5fbd00ee8` umgesetzt. Die Umsetzung
+ergänzt das minimale Save-Request-Feld, generalisiert den privaten Extension-Validator für Open und
+Save, projiziert die geordneten Extensions in alle drei nativen Save-Consumer, erweitert die
+deterministischen Core-/Backend-Tests, aktualisiert die nativen Demos und hält Backend- sowie
+Roadmap-Dokumentation zweisprachig fest. Result-Events, Capabilities, Request-ID-/Pending-Verhalten
+und die Open-/Folder-Verträge bleiben unverändert.
+
+PR #53 (`codex/m7-save-file-extension-filters`) erreichte den finalen Head
+`d2dabd4105bc775a50debf3caa1c80cc1593ddf7` und wurde als
+`347e7f967f3a4384321ec4535228bd72becb3dba` gemergt. Für exakt diesen PR-Head waren Linux GCC,
+Linux Clang, Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang sowie Linux-,
+Windows- und macOS-Release, GTK Native und AppKit Native grün. Der exakte Merge-Commit bestand
+anschließend Main CI, GTK Native CI und AppKit Native CI.
+
+Ein frischer strikter lokaler GCC-Build mit aktivierten Tests und Beispielen sowie Warnings-as-Errors
+war erfolgreich; die konfigurierte CTest-Suite bestand alle vier Tests. GTK und Xvfb waren unter WSL
+nicht verfügbar; Windows MSVC und AppKit wurden nicht lokal ausgeführt, dafür sind die nativen CI-Jobs
+maßgeblich. Ein sichtbarer manueller nativer Smoke-Test wurde nicht durchgeführt und wird daher nicht
+als ausgeführt behauptet. Es wurde kein Release und kein Tag erstellt.
+
+PR #52, der vorherige Validierungsnachtrag zu Open File, wurde vor dem Feature-Branch gemergt. PR #30
+und PR #32 wurden ausschließlich lesend geprüft und bleiben unverändert. Der Feature-Branch wurde
+lokal und remote nach dem Merge entfernt. Der Architekturcheck bestätigt, dass
+`SaveFileDialogRequest::extensions` plus die Regel „erste Extension als native Präferenz“ ausreicht;
+eine öffentliche Filterhierarchie oder ein `default_extension`-Feld ist nicht erforderlich.
+Startverzeichnis, vorgeschlagener Dateiname und Mehrfachauswahl bleiben separate nächste
+File-Dialog-Slices.
