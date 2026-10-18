@@ -44,7 +44,8 @@ public:
 class NativeSaveFileInvoker {
 public:
     virtual ~NativeSaveFileInvoker() = default;
-    [[nodiscard]] virtual NativeSaveFileOutcome show(HWND owner, std::wstring_view title) = 0;
+    [[nodiscard]] virtual NativeSaveFileOutcome show(
+        HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions) = 0;
 };
 
 /** Private invocation seam: production uses IFileOpenDialog with FOS_PICKFOLDERS. */

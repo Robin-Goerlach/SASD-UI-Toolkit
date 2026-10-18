@@ -243,8 +243,39 @@ with `*.token` rules; GTK 4.10+ installs it through a one-item `GListModel`, whi
 GTK4 uses the existing `GtkFileChooserNative` path. No automatic “All Files” filter is added.
 
 This is picker/presentation guidance, not security or content validation. A native accepted path is
-forwarded unchanged, even if its suffix differs; the application validates content itself. Save and
-Folder remain unchanged. Manual visible native smoke testing is documented but was not run in WSL.
+forwarded unchanged, even if its suffix differs; the application validates content itself. Folder
+remains unchanged. Manual visible native smoke testing is documented but was not run in WSL.
+
+#### M7 Save File extension filters and native default-extension policy (slice 7)
+
+`SaveFileDialogRequest` now accepts the same ordered literal UTF-8 `extensions` vector as Open File.
+Empty remains unfiltered. A non-empty vector is one native filter set, not named alternatives; its
+first token is the preferred native extension where the platform has a matching Save-panel policy.
+This is not a portable result postcondition: the native accepted path is authoritative, even when it
+has another suffix. No path is rewritten or rejected afterward, and no filesystem existence check or
+second overwrite confirmation is performed.
+
+Win32 passes one `COMDLG_FILTERSPEC` through `IFileSaveDialog::SetFileTypes()` and calls
+`SetDefaultExtension()` with the first token before `Show()`. Backing strings remain alive through
+the native call, while the shell retains native overwrite confirmation. AppKit projects the ordered
+tokens to `allowedContentTypes` (or the existing locally scoped `allowedFileTypes` fallback); the
+first content type is the native preference and the panel's URL is returned unchanged. The existing
+`allowsOtherFileTypes` behavior is not overridden, so the slice does not invent a new global AppKit
+policy. GTK installs
+one `GtkFileFilter` through `gtk_file_dialog_set_filters()`/`set_default_filter()` on GTK 4.10+ or
+the existing `GtkFileChooserNative` compatibility route. GTK has no equivalent separate default-
+extension operation, so it does not synthesize or append an extension.
+
+The shared private validator keeps the Open and Save token contract identical. Result events,
+capabilities, IDs, pending/lifecycle protection and overwrite semantics remain unchanged. The filter
+is naming/picker guidance, not a security boundary or content validation. Suggested filename,
+initial directory, multiple selection, MIME/UTType APIs and named filter groups remain deferred.
+
+Manual native smoke test: start each native demo, open Save File, observe the native filter, try a
+name without an extension, a matching extension and a different extension, then test an existing
+target and its native overwrite UI. Cancel, repeat Open and Folder, and verify the accepted result
+is printed exactly as supplied by the native picker. Platform differences in automatic extension
+completion are expected and are not errors under this contract. This visible test was not run in WSL.
 
 #### AppKit native menu consumer (M7 slice 2)
 

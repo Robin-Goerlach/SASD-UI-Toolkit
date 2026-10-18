@@ -37,6 +37,11 @@ they improve the architecture before compatibility commitments become expensive.
   projected to Win32 `SetFileTypes`, AppKit content types and one GTK `GtkFileFilter`. Empty means
   unfiltered; malformed tokens and exact duplicates are rejected before request-ID allocation. The
   filter is presentation guidance only and does not change accepted results or validate file content.
+- M7 Save File extension-filter/default-extension slice: Save reuses the ordered literal extension
+  contract; the first token is a native preference where supported. Win32 uses `SetFileTypes` plus
+  `SetDefaultExtension`, AppKit projects ordered content types, and GTK installs one filter without
+  synthetic extension appending. Native accepted paths, overwrite confirmation, result events and
+  capabilities remain authoritative and unchanged.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

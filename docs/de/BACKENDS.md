@@ -243,8 +243,42 @@ automatischer „All Files“-Filter wird ergänzt.
 
 Der Filter ist Auswahlhilfe, keine Sicherheits- oder Inhaltsvalidierung. Ein nativer akzeptierter
 Pfad wird unverändert weitergereicht, auch bei anderer Endung; die Anwendung validiert den Inhalt.
-Save und Folder bleiben unverändert. Der sichtbare native Smoke-Test ist dokumentiert, wurde unter
-WSL aber nicht ausgeführt.
+Folder bleibt unverändert. Der sichtbare native Smoke-Test ist dokumentiert, wurde unter WSL aber
+nicht ausgeführt.
+
+#### M7 Save-File-Extension-Filter und native Default-Extension-Regel (Slice 7)
+
+`SaveFileDialogRequest` akzeptiert nun denselben geordneten Vektor literaler UTF-8-`extensions` wie
+Open File. Leer bleibt ungefiltert. Ein nichtleerer Vektor ist genau ein nativer Filter und keine
+Auswahl benannter Alternativen; das erste Token ist die bevorzugte native Extension, sofern die
+jeweilige Save-Oberfläche diese Semantik besitzt. Das ist keine portable Result-Postcondition: Der
+native akzeptierte Pfad bleibt autoritativ, auch bei einer anderen Endung. Danach wird kein Pfad
+umgeschrieben oder abgelehnt, und es gibt weder eine zweite Existenzprüfung noch eine eigene
+Überschreibbestätigung.
+
+Win32 setzt einen `COMDLG_FILTERSPEC` über `IFileSaveDialog::SetFileTypes()` und ruft vor `Show()`
+`SetDefaultExtension()` mit dem ersten Token auf. Die Backing-Strings bleiben während des nativen
+Aufrufs gültig; die Shell behält ihre native Überschreibbestätigung. AppKit projiziert die geordneten
+Tokens auf `allowedContentTypes` (oder die bestehende lokal begrenzte `allowedFileTypes`-Kompatibilität);
+der erste Content-Type ist die native Präferenz und die Panel-URL wird unverändert zurückgegeben.
+Die bestehende `allowsOtherFileTypes`-Semantik wird nicht überschrieben; dieser Slice erfindet keine
+neue globale AppKit-Policy. GTK installiert einen `GtkFileFilter` über
+`gtk_file_dialog_set_filters()`/`set_default_filter()` ab
+GTK 4.10 oder über den bestehenden `GtkFileChooserNative`-Kompatibilitätspfad. GTK besitzt keine
+gleichwertige separate Default-Extension-Operation; daher wird keine Extension erfunden oder angehängt.
+
+Der gemeinsame private Validator hält den Open-/Save-Token-Vertrag identisch. Result-Events,
+Capabilities, IDs, Pending-/Lifecycle-Schutz und Überschreibsemantik bleiben unverändert. Der Filter
+ist Auswahl-/Benennungshilfe, keine Sicherheitsgrenze oder Inhaltsvalidierung. Vorgeschlagener
+Dateiname, Startverzeichnis, Mehrfachauswahl, MIME-/UTType-APIs und benannte Filtergruppen bleiben
+zurückgestellt.
+
+Manueller nativer Smoke-Test: Jede native Demo starten, Save File öffnen, den nativen Filter prüfen,
+einen Namen ohne Endung, mit passender und mit anderer Endung testen sowie ein vorhandenes Ziel und
+die native Überschreiboberfläche prüfen. Cancel ausführen, Open und Folder wiederholen und das
+Ergebnis exakt so ausgeben, wie der native Picker es liefert. Plattformunterschiede beim automatischen
+Anhängen einer Endung sind innerhalb dieses Vertrags erwartbar und kein Fehler. Dieser sichtbare Test
+wurde unter WSL nicht ausgeführt.
 
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 

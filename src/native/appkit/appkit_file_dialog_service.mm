@@ -151,13 +151,51 @@ private:
 
 class ProductionSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
-    void begin(NSWindow* owner, NSString* title, NativeSaveFileCompletion completion) override {
+    void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+               NativeSaveFileCompletion completion) override {
         @autoreleasepool {
             @try {
                 auto panel_state = std::make_shared<PanelState>();
                 NSSavePanel* panel = [NSSavePanel savePanel];
                 panel_state->panel = panel;
                 if (title != nil) panel.title = title;
+                if (!extensions.empty()) {
+                    if (@available(macOS 11.0, *)) {
+                        NSMutableArray* content_types =
+                            [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            if (value == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension must be valid UTF-8"};
+                            UTType* type = [UTType typeWithFilenameExtension:value];
+                            if (type == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension could not become a UTType"};
+                            // Preserve order: the first content type is the portable preferred
+                            // native extension. The panel, not this service, decides the result name.
+                            [content_types addObject:type];
+                        }
+                        panel.allowedContentTypes = content_types;
+                    } else {
+                        // Keep the existing deployment floor. This deprecated fallback is local
+                        // to old runtimes; modern macOS uses the ordered UTType projection above.
+                        NSMutableArray* legacy_types =
+                            [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            if (value == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension must be valid UTF-8"};
+                            [legacy_types addObject:value];
+                        }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                        panel.allowedFileTypes = legacy_types;
+#pragma clang diagnostic pop
+                    }
+                }
 
                 // NSSavePanel owns the platform's normal existing-file replacement confirmation.
                 // The toolkit only transports the selected destination and never writes it.
@@ -276,7 +314,7 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     }
     NSString* title = strictTitle(request.title); // setup validation precedes ID allocation
     const std::vector<std::string> extensions =
-        sasd::ui::native::detail::validateOpenFileExtensions(request.extensions);
+        sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -331,6 +369,8 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
         throw std::logic_error{"AppKit file dialog requires initialize()"};
     }
     NSString* title = strictTitle(request.title);
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -367,7 +407,7 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
     };
 
     try {
-        save_invoker_->begin(owner_, title, completion);
+        save_invoker_->begin(owner_, title, extensions, completion);
     } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }

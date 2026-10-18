@@ -33,7 +33,9 @@ int main() {
     });
     Command save_file{"Save File"};
     save_file.setOnExecuted([&] {
-        if (auto* dialogs = backend.fileDialogs()) save_id = dialogs->requestSaveFile({"Save to a target path"});
+        if (auto* dialogs = backend.fileDialogs()) {
+            save_id = dialogs->requestSaveFile({"Save Text or Source File", {"txt", "md"}});
+        }
     });
     Command select_folder{"Select Folder"};
     select_folder.setOnExecuted([&] {
