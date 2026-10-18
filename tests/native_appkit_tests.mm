@@ -45,6 +45,7 @@ public:
 struct FakeSaveFileState {
     std::vector<detail::NativeSaveFileCompletion> completions;
     std::vector<std::string> extensions;
+    std::string suggested_filename;
     int begins{0};
 };
 
@@ -52,9 +53,12 @@ class FakeSaveFileInvoker final : public detail::NativeSaveFileInvoker {
 public:
     explicit FakeSaveFileInvoker(std::shared_ptr<FakeSaveFileState> state) : state_{std::move(state)} {}
     void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
+               NSString* suggested_filename,
                detail::NativeSaveFileCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
         state_->extensions = std::move(extensions);
+        state_->suggested_filename = suggested_filename == nil ? std::string{} :
+            std::string{suggested_filename.UTF8String};
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
@@ -236,7 +240,7 @@ TEST_CASE("AppKit save file reuses the async result contract and shared pending 
         std::make_unique<FakeOpenFileInvoker>(open_state),
         std::make_unique<FakeSaveFileInvoker>(save_state)};
 
-    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}});
+    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}, "report.md"});
     CHECK(save_id != 0);
     CHECK(service.pending());
     CHECK(save_state->begins == 1);
@@ -244,6 +248,7 @@ TEST_CASE("AppKit save file reuses the async result contract and shared pending 
     CHECK(save_state->completions[0]);
     CHECK(save_state->completions[0] != nullptr);
     CHECK(save_state->extensions == std::vector<std::string>{"txt", "md"});
+    CHECK(save_state->suggested_filename == "report.md");
     CHECK(!events.tryPop().has_value());
 
     bool open_rejected = false;
@@ -274,6 +279,11 @@ TEST_CASE("AppKit save filters validate before native begin and preserve order")
     detail::AppKitFileDialogService service{
         testOwner(), events, std::make_unique<FakeOpenFileInvoker>(std::make_shared<FakeOpenFileState>()),
         std::move(fake)};
+    bool suggested_rejected = false;
+    try { (void)service.requestSaveFile({"Save", {}, "foo/bar"}); }
+    catch (const std::invalid_argument&) { suggested_rejected = true; }
+    CHECK(suggested_rejected);
+    CHECK(state->begins == 0);
     bool rejected = false;
     try { (void)service.requestSaveFile({"Save", {"*.txt"}}); }
     catch (const std::invalid_argument&) { rejected = true; }

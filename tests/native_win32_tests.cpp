@@ -50,9 +50,11 @@ public:
     explicit FakeSaveFileInvoker(NativeSaveFileOutcome outcome) : outcome_{std::move(outcome)} {}
 
     NativeSaveFileOutcome show(HWND, std::wstring_view title,
-                               const std::vector<std::wstring>& extensions) override {
+                               const std::vector<std::wstring>& extensions,
+                               std::wstring_view suggested_filename) override {
         title_ = title;
         extensions_ = extensions;
+        suggested_filename_ = suggested_filename;
         ++invocations;
         if (service != nullptr) {
             try {
@@ -67,6 +69,7 @@ public:
     NativeSaveFileOutcome outcome_;
     std::wstring title_;
     std::vector<std::wstring> extensions_;
+    std::wstring suggested_filename_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool nested_request_rejected{false};
@@ -301,10 +304,11 @@ TEST_CASE("Win32 save file uses the shared contract without touching the filesys
     Win32FileDialogService service{nullptr, events, std::move(open_fake), std::move(save_fake)};
 
     const auto id = service.requestSaveFile(
-        SaveFileDialogRequest{"\xF0\x9F\x92\xBE Save", {"txt", "md"}});
+        SaveFileDialogRequest{"\xF0\x9F\x92\xBE Save", {"txt", "md"}, "report.md"});
     CHECK(id != 0);
     CHECK(save_ptr->title_ == L"\U0001F4BE Save");
     CHECK(save_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md"});
+    CHECK(save_ptr->suggested_filename_ == L"report.md");
     const auto event = events.tryPop();
     CHECK(event.has_value());
     const auto& result = std::get<FileDialogResultEvent>(*event);
@@ -321,6 +325,15 @@ TEST_CASE("Win32 save filters validate before IDs and preserve native default pr
     FakeSaveFileInvoker* save_ptr = save_fake.get();
     Win32FileDialogService service{nullptr, events, nullptr, std::move(save_fake)};
 
+    for (const std::string& invalid : {std::string{"foo/bar"}, std::string{"foo\\bar"},
+                                        std::string{"bad\xFF", 4}, std::string{"."},
+                                        std::string{".."}}) {
+        bool rejected = false;
+        try { (void)service.requestSaveFile({"Save", {}, invalid}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+    }
+
     for (const auto& invalid : std::vector<std::vector<std::string>>{
              {""}, {".txt"}, {"*.txt"}, {"foo/bar"}, {"foo\\bar"}, {"foo;bar"},
              {"tar.gz"}, {"txt", "txt"}, {std::string{"bad\xFF", 4}}}) {
@@ -330,9 +343,10 @@ TEST_CASE("Win32 save filters validate before IDs and preserve native default pr
         CHECK(rejected);
         CHECK(save_ptr->invocations == 0);
     }
-    const auto id = service.requestSaveFile({"Save", {"txt", "md"}});
+    const auto id = service.requestSaveFile({"Save", {"txt", "md"}, "report.v2.md"});
     CHECK(id == 1);
     CHECK(save_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md"});
+    CHECK(save_ptr->suggested_filename_ == L"report.v2.md");
     CHECK(win32FilterPattern(save_ptr->extensions_) == L"*.txt;*.md");
     CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).path ==
           std::filesystem::path{L"C:\\report"});

@@ -42,6 +42,11 @@ they improve the architecture before compatibility commitments become expensive.
   `SetDefaultExtension`, AppKit projects ordered content types, and GTK installs one filter without
   synthetic extension appending. Native accepted paths, overwrite confirmation, result events and
   capabilities remain authoritative and unchanged.
+- M7 Save File suggested-filename slice: `SaveFileDialogRequest` now carries an optional editable
+  filename-component hint. Win32 uses `SetFileName`, AppKit `nameFieldStringValue`, and GTK uses
+  `set_initial_name` or its older `set_current_name` fallback. UTF-8, NUL and separator validation
+  happens before request-ID allocation; filters and suggested names remain independent, and native
+  accepted paths are returned unchanged without filesystem mutation.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

@@ -24,11 +24,14 @@ struct OpenFileDialogRequest {
  * Save one destination path. Extensions use the same literal UTF-8 token contract as
  * OpenFileDialogRequest. An empty list leaves the native picker unfiltered; otherwise the
  * ordered list is one native filter set and its first token is the preferred native extension
- * where the platform provides that naming policy. The accepted native path remains authoritative.
+ * where the platform provides that naming policy. The optional suggested_filename is an editable
+ * initial filename component, not a path or result requirement; an empty value means no suggestion.
+ * The accepted native path remains authoritative.
  */
 struct SaveFileDialogRequest {
     std::string title{};
     std::vector<std::string> extensions{};
+    std::string suggested_filename{};
 };
 
 /** The deliberately small folder-selection request: title only, with no portable option policy. */

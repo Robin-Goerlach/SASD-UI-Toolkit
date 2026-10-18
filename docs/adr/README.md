@@ -182,6 +182,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0163](0163-m7-folder-selection-extends-file-dialog-contract.md) | M7 Folder Selection extends the FileDialogService contract | Accepted |
 | [0164](0164-m7-open-file-extension-filters.md) | M7 Open File extension filters | Accepted |
 | [0165](0165-m7-save-file-extension-filters.md) | M7 Save File extension filters and native default-extension policy | Accepted |
+| [0166](0166-m7-save-file-suggested-filename.md) | M7 Save File suggested filename | Accepted |
 
 ## ADR policy
 

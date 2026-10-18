@@ -1,6 +1,7 @@
 #include "win32_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_suggested_filename.hpp"
 
 #include <shobjidl.h>
 
@@ -96,7 +97,8 @@ class ProductionSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     [[nodiscard]] NativeSaveFileOutcome show(
         HWND owner, std::wstring_view title,
-        const std::vector<std::wstring>& extensions) override {
+        const std::vector<std::wstring>& extensions,
+        std::wstring_view suggested_filename) override {
         HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
 
@@ -137,6 +139,10 @@ public:
             if (FAILED(dialog->SetDefaultExtension(extensions.front().c_str()))) {
                 return {FileDialogResultStatus::failed, {}};
             }
+        }
+        if (!suggested_filename.empty() &&
+            FAILED(dialog->SetFileName(std::wstring{suggested_filename}.c_str()))) {
+            return {FileDialogResultStatus::failed, {}};
         }
 
         result = dialog->Show(owner);
@@ -274,6 +280,9 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
     // Validate before allocating the shared ID. After allocation, even native setup failures are
     // represented by exactly one queued failed result, matching Open File.
     const std::wstring title = utf8ToWide(request.title);
+    const std::string suggested_filename =
+        sasd::ui::native::detail::validateSuggestedFilename(request.suggested_filename);
+    const std::wstring wide_suggested_filename = utf8ToWide(suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
     std::vector<std::wstring> wide_extensions;
@@ -289,7 +298,8 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
     const FileDialogRequestId request_id = next_request_id_++;
     pending_ = true;
     try {
-        const NativeSaveFileOutcome outcome = save_invoker_->show(owner_, title, wide_extensions);
+        const NativeSaveFileOutcome outcome = save_invoker_->show(
+            owner_, title, wide_extensions, wide_suggested_filename);
         if (outcome.status == FileDialogResultStatus::accepted) {
             if (outcome.path.empty()) throw std::runtime_error{"Win32 file dialog returned no path"};
             // The returned path is the application's destination. Do not inspect or mutate the

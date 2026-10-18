@@ -1,6 +1,7 @@
 #include "gtk_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_suggested_filename.hpp"
 
 #include <sasd/ui/text/utf8.hpp>
 
@@ -104,6 +105,10 @@ void setFileFilter(GtkFileDialog* dialog, const std::vector<std::string>& extens
         offset += decoded.consumed;
     }
     return std::string{title};
+}
+
+[[nodiscard]] std::string strictSuggestedFilename(std::string_view filename) {
+    return sasd::ui::native::detail::validateSuggestedFilename(filename);
 }
 
 class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
@@ -304,6 +309,7 @@ public:
     ~ProductionSaveFileInvoker() override { cancel(); }
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               std::string suggested_filename,
                NativeSaveFileCompletion completion) override {
         cancel();
         if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
@@ -313,6 +319,9 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
         if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
         setFileFilter(dialog, extensions);
+        if (!suggested_filename.empty()) {
+            gtk_file_dialog_set_initial_name(dialog, suggested_filename.c_str());
+        }
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         active_cancellable_ = g_cancellable_new();
@@ -324,6 +333,12 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
         gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), FALSE);
         addFileFilter(GTK_FILE_CHOOSER(dialog), extensions);
+        if (!suggested_filename.empty()) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+            gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), suggested_filename.c_str());
+#pragma GCC diagnostic pop
+        }
         // GTK4's save chooser owns its stock overwrite confirmation. The removed GTK3
         // do-overwrite-confirmation property must not be guessed at or emulated here.
         auto* context = new CallbackContext{std::move(completion)};
@@ -524,6 +539,7 @@ FileDialogRequestId GtkFileDialogService::requestSaveFile(SaveFileDialogRequest 
         throw std::runtime_error{"GTK file dialogs must start on their owner thread"};
     }
     const std::string title = strictTitle(request.title);
+    const std::string suggested_filename = strictSuggestedFilename(request.suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
@@ -573,7 +589,7 @@ FileDialogRequestId GtkFileDialogService::requestSaveFile(SaveFileDialogRequest 
     };
 
     try {
-        save_invoker_->begin(owner_, title, extensions, completion);
+        save_invoker_->begin(owner_, title, extensions, suggested_filename, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
     }
