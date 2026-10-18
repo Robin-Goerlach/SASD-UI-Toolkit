@@ -10,12 +10,12 @@
 namespace sasd::ui::native::detail {
 
 /**
- * Validates the deliberately small portable Open File extension contract.
+ * Validates the deliberately small portable Open/Save File extension contract.
  *
  * The returned copy is stable backend input. Validation is intentionally shared by all native
  * consumers so malformed UTF-8, path/glob syntax and duplicate policy cannot diverge by platform.
  */
-[[nodiscard]] inline std::vector<std::string> validateOpenFileExtensions(
+[[nodiscard]] inline std::vector<std::string> validateFileDialogExtensions(
     const std::vector<std::string>& extensions) {
     std::vector<std::string> validated;
     validated.reserve(extensions.size());

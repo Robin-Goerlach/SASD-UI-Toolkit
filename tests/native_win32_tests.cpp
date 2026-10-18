@@ -49,8 +49,10 @@ class FakeSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     explicit FakeSaveFileInvoker(NativeSaveFileOutcome outcome) : outcome_{std::move(outcome)} {}
 
-    NativeSaveFileOutcome show(HWND, std::wstring_view title) override {
+    NativeSaveFileOutcome show(HWND, std::wstring_view title,
+                               const std::vector<std::wstring>& extensions) override {
         title_ = title;
+        extensions_ = extensions;
         ++invocations;
         if (service != nullptr) {
             try {
@@ -64,6 +66,7 @@ public:
 
     NativeSaveFileOutcome outcome_;
     std::wstring title_;
+    std::vector<std::wstring> extensions_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool nested_request_rejected{false};
@@ -297,9 +300,11 @@ TEST_CASE("Win32 save file uses the shared contract without touching the filesys
     FakeSaveFileInvoker* save_ptr = save_fake.get();
     Win32FileDialogService service{nullptr, events, std::move(open_fake), std::move(save_fake)};
 
-    const auto id = service.requestSaveFile(SaveFileDialogRequest{"\xF0\x9F\x92\xBE Save"});
+    const auto id = service.requestSaveFile(
+        SaveFileDialogRequest{"\xF0\x9F\x92\xBE Save", {"txt", "md"}});
     CHECK(id != 0);
     CHECK(save_ptr->title_ == L"\U0001F4BE Save");
+    CHECK(save_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md"});
     const auto event = events.tryPop();
     CHECK(event.has_value());
     const auto& result = std::get<FileDialogResultEvent>(*event);
@@ -307,6 +312,30 @@ TEST_CASE("Win32 save file uses the shared contract without touching the filesys
     CHECK(result.status == FileDialogResultStatus::accepted);
     CHECK(result.path == std::filesystem::path{L"C:\\New Folder\\Gr\u00FC\u00DFe \U0001F4C4.txt"});
     CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 save filters validate before IDs and preserve native default preference") {
+    EventQueue events;
+    auto save_fake = std::make_unique<FakeSaveFileInvoker>(NativeSaveFileOutcome{
+        FileDialogResultStatus::accepted, L"C:\\report"});
+    FakeSaveFileInvoker* save_ptr = save_fake.get();
+    Win32FileDialogService service{nullptr, events, nullptr, std::move(save_fake)};
+
+    for (const auto& invalid : std::vector<std::vector<std::string>>{
+             {""}, {".txt"}, {"*.txt"}, {"foo/bar"}, {"foo\\bar"}, {"foo;bar"},
+             {"tar.gz"}, {"txt", "txt"}, {std::string{"bad\xFF", 4}}}) {
+        bool rejected = false;
+        try { (void)service.requestSaveFile({"Save", invalid}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+        CHECK(save_ptr->invocations == 0);
+    }
+    const auto id = service.requestSaveFile({"Save", {"txt", "md"}});
+    CHECK(id == 1);
+    CHECK(save_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md"});
+    CHECK(win32FilterPattern(save_ptr->extensions_) == L"*.txt;*.md");
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).path ==
+          std::filesystem::path{L"C:\\report"});
 }
 
 TEST_CASE("Win32 open and save share IDs and the pending boundary") {

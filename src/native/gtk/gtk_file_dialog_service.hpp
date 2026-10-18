@@ -32,7 +32,8 @@ public:
 class NativeSaveFileInvoker {
 public:
     virtual ~NativeSaveFileInvoker() = default;
-    virtual void begin(GtkWindow* owner, std::string title, NativeSaveFileCompletion completion) = 0;
+    virtual void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+                       NativeSaveFileCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 

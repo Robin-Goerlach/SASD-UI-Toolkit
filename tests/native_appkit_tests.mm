@@ -44,14 +44,17 @@ public:
 
 struct FakeSaveFileState {
     std::vector<detail::NativeSaveFileCompletion> completions;
+    std::vector<std::string> extensions;
     int begins{0};
 };
 
 class FakeSaveFileInvoker final : public detail::NativeSaveFileInvoker {
 public:
     explicit FakeSaveFileInvoker(std::shared_ptr<FakeSaveFileState> state) : state_{std::move(state)} {}
-    void begin(NSWindow*, NSString* title, detail::NativeSaveFileCompletion completion) override {
+    void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
+               detail::NativeSaveFileCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        state_->extensions = std::move(extensions);
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
@@ -233,13 +236,14 @@ TEST_CASE("AppKit save file reuses the async result contract and shared pending 
         std::make_unique<FakeOpenFileInvoker>(open_state),
         std::make_unique<FakeSaveFileInvoker>(save_state)};
 
-    const auto save_id = service.requestSaveFile({"Save 😀"});
+    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}});
     CHECK(save_id != 0);
     CHECK(service.pending());
     CHECK(save_state->begins == 1);
     CHECK(save_state->completions.size() == 1);
     CHECK(save_state->completions[0]);
     CHECK(save_state->completions[0] != nullptr);
+    CHECK(save_state->extensions == std::vector<std::string>{"txt", "md"});
     CHECK(!events.tryPop().has_value());
 
     bool open_rejected = false;
@@ -261,6 +265,29 @@ TEST_CASE("AppKit save file reuses the async result contract and shared pending 
     CHECK(open_id > save_id);
     open_state->completions[0](NSModalResponseCancel, nil);
     CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("AppKit save filters validate before native begin and preserve order") {
+    EventQueue events;
+    auto state = std::make_shared<FakeSaveFileState>();
+    auto fake = std::make_unique<FakeSaveFileInvoker>(state);
+    detail::AppKitFileDialogService service{
+        testOwner(), events, std::make_unique<FakeOpenFileInvoker>(std::make_shared<FakeOpenFileState>()),
+        std::move(fake)};
+    bool rejected = false;
+    try { (void)service.requestSaveFile({"Save", {"*.txt"}}); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    CHECK(rejected);
+    CHECK(state->begins == 0);
+    const auto id = service.requestSaveFile({"Save", {"txt", "md", "cpp"}});
+    CHECK(id == 1);
+    CHECK(state->extensions == std::vector<std::string>{"txt", "md", "cpp"});
+    state->completions[0](NSModalResponseOK, [NSURL fileURLWithPath:@"/tmp/report.bin"]);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path ==
+          std::filesystem::path{"/tmp/report.bin"});
 }
 
 TEST_CASE("AppKit save file maps cancellation, failure and stale completion safely") {

@@ -43,7 +43,8 @@ int main() {
                 }
                 if (is_open) {
                     // The demo displays the target only; it never creates or writes a file.
-                    save_id = dialogs->requestSaveFile(SaveFileDialogRequest{"Save to a target path"});
+                    save_id = dialogs->requestSaveFile(
+                        SaveFileDialogRequest{"Save Text or Source File", {"txt", "md"}});
                 } else if (is_save) {
                     // Folder selection only displays the selected existing directory.
                     folder_id = dialogs->requestSelectFolder(SelectFolderDialogRequest{"Select a folder"});

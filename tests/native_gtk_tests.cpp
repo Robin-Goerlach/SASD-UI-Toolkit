@@ -64,9 +64,10 @@ class FakeGtkSaveInvoker final : public detail::NativeSaveFileInvoker {
 public:
     explicit FakeGtkSaveInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
 
-    void begin(GtkWindow* owner, std::string title,
+    void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                detail::NativeSaveFileCompletion completion) override {
         state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+        state_->extensions = std::move(extensions);
     }
 
     void cancel() noexcept override { state_->cancelled = true; }
@@ -255,10 +256,11 @@ TEST_CASE("GTK save file uses one shared pending boundary and preserves new targ
         std::make_unique<FakeGtkInvoker>(open_state),
         std::make_unique<FakeGtkSaveInvoker>(save_state)};
 
-    const auto save_id = service.requestSaveFile({"Save 😀"});
+    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}});
     CHECK(save_id != 0);
     CHECK(service.pending());
     CHECK(save_state->invocations.size() == 1);
+    CHECK(save_state->extensions == std::vector<std::string>{"txt", "md"});
     bool open_rejected = false;
     try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { open_rejected = true; }
     CHECK(open_rejected);
@@ -279,6 +281,31 @@ TEST_CASE("GTK save file uses one shared pending boundary and preserves new targ
     CHECK(open_id > save_id);
     completeFake(open_state, 0, FileDialogResultStatus::cancelled);
     CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("GTK save filters validate before ID and preserve order without rewriting results") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeGtkInvokerState>();
+    auto save_state = std::make_shared<FakeGtkInvokerState>();
+    detail::GtkFileDialogService service{
+        reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(),
+        std::make_unique<FakeGtkInvoker>(open_state),
+        std::make_unique<FakeGtkSaveInvoker>(save_state)};
+    bool rejected = false;
+    try { (void)service.requestSaveFile({"Save", {"foo/bar"}}); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    CHECK(rejected);
+    CHECK(save_state->invocations.empty());
+    const auto id = service.requestSaveFile({"Save", {"txt", "md", "cpp"}});
+    CHECK(id == 1);
+    CHECK(save_state->extensions == std::vector<std::string>{"txt", "md", "cpp"});
+    GFile* mismatching = g_file_new_for_path("/tmp/report.bin");
+    completeFake(save_state, 0, FileDialogResultStatus::accepted, mismatching);
+    g_object_unref(mismatching);
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    CHECK(std::get<FileDialogResultEvent>(*event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*event).path == std::filesystem::path{"/tmp/report.bin"});
 }
 
 TEST_CASE("GTK save file maps cancel and failure and ignores double completion") {
