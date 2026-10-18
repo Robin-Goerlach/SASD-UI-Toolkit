@@ -37,6 +37,7 @@ struct FakeGtkInvokerState {
     struct Invocation {
         GtkWindow* owner{};
         std::string title{};
+        std::string suggested_filename{};
         detail::NativeOpenFileCompletion completion{};
     };
     std::vector<Invocation> invocations{};
@@ -50,7 +51,7 @@ public:
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                detail::NativeOpenFileCompletion completion) override {
-        state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+        state_->invocations.push_back({owner, std::move(title), {}, std::move(completion)});
         state_->extensions = std::move(extensions);
     }
 
@@ -65,8 +66,10 @@ public:
     explicit FakeGtkSaveInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               std::string suggested_filename,
                detail::NativeSaveFileCompletion completion) override {
-        state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+        state_->invocations.push_back({owner, std::move(title), std::move(suggested_filename),
+                                       std::move(completion)});
         state_->extensions = std::move(extensions);
     }
 
@@ -83,7 +86,7 @@ public:
 
     void begin(GtkWindow* owner, std::string title,
                detail::NativeSelectFolderCompletion completion) override {
-        state_->invocations.push_back({owner, std::move(title), std::move(completion)});
+        state_->invocations.push_back({owner, std::move(title), {}, std::move(completion)});
     }
 
     void cancel() noexcept override { state_->cancelled = true; }
@@ -256,11 +259,12 @@ TEST_CASE("GTK save file uses one shared pending boundary and preserves new targ
         std::make_unique<FakeGtkInvoker>(open_state),
         std::make_unique<FakeGtkSaveInvoker>(save_state)};
 
-    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}});
+    const auto save_id = service.requestSaveFile({"Save 😀", {"txt", "md"}, "report.md"});
     CHECK(save_id != 0);
     CHECK(service.pending());
     CHECK(save_state->invocations.size() == 1);
     CHECK(save_state->extensions == std::vector<std::string>{"txt", "md"});
+    CHECK(save_state->invocations[0].suggested_filename == "report.md");
     bool open_rejected = false;
     try { (void)service.requestOpenFile({}); } catch (const std::logic_error&) { open_rejected = true; }
     CHECK(open_rejected);
@@ -291,6 +295,11 @@ TEST_CASE("GTK save filters validate before ID and preserve order without rewrit
         reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(),
         std::make_unique<FakeGtkInvoker>(open_state),
         std::make_unique<FakeGtkSaveInvoker>(save_state)};
+    bool suggested_rejected = false;
+    try { (void)service.requestSaveFile({"Save", {}, "foo/bar"}); }
+    catch (const std::invalid_argument&) { suggested_rejected = true; }
+    CHECK(suggested_rejected);
+    CHECK(save_state->invocations.empty());
     bool rejected = false;
     try { (void)service.requestSaveFile({"Save", {"foo/bar"}}); }
     catch (const std::invalid_argument&) { rejected = true; }

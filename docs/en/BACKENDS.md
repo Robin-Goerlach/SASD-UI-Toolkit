@@ -277,6 +277,26 @@ target and its native overwrite UI. Cancel, repeat Open and Folder, and verify t
 is printed exactly as supplied by the native picker. Platform differences in automatic extension
 completion are expected and are not errors under this contract. This visible test was not run in WSL.
 
+#### M7 Save File suggested filename (slice 8)
+
+`SaveFileDialogRequest::suggested_filename` is an optional editable initial filename. Empty means no
+suggestion. A non-empty value is one UTF-8 filename component: NUL, `/`, `\\`, `.` and `..` are
+rejected before request-ID allocation, while spaces, Unicode, dots and extensionless names are
+allowed. It is not a path or initial directory, and is passed independently from extension filters;
+a suffix mismatch is allowed. The native accepted path is authoritative and returned unchanged.
+There is no path rewriting, existence check or filesystem mutation.
+
+Win32 calls `IFileSaveDialog::SetFileName()` before `Show()`. AppKit sets
+`NSSavePanel.nameFieldStringValue` only for a non-empty suggestion. GTK 4.10+ calls
+`gtk_file_dialog_set_initial_name()`; older supported GTK4 builds use
+`gtk_file_chooser_set_current_name()` in the compatibility path. GTK deliberately does not use
+`set_initial_file()`, because that would couple the filename to an initial directory. Result events,
+capabilities, IDs, pending and lifecycle semantics remain unchanged.
+
+Manual smoke test: start a native demo, open Save File and verify that `untitled.txt` is visible and
+editable, replace it completely, accept or cancel, then repeat with filters and Open/Folder. The
+accepted output must be the exact native path. A visible native smoke test was not run in WSL.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

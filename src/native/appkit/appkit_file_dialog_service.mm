@@ -1,6 +1,7 @@
 #include "appkit_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_suggested_filename.hpp"
 
 #include <sasd/ui/text/utf8.hpp>
 
@@ -152,6 +153,7 @@ private:
 class ProductionSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+               NSString* suggested_filename,
                NativeSaveFileCompletion completion) override {
         @autoreleasepool {
             @try {
@@ -159,6 +161,7 @@ public:
                 NSSavePanel* panel = [NSSavePanel savePanel];
                 panel_state->panel = panel;
                 if (title != nil) panel.title = title;
+                if (suggested_filename != nil) panel.nameFieldStringValue = suggested_filename;
                 if (!extensions.empty()) {
                     if (@available(macOS 11.0, *)) {
                         NSMutableArray* content_types =
@@ -248,6 +251,17 @@ private:
     NSString* result = [[NSString alloc] initWithBytes:title.data() length:title.size()
                                                   encoding:NSUTF8StringEncoding];
     if (result == nil) throw std::invalid_argument{"AppKit file-dialog title must be valid UTF-8"};
+    return result;
+}
+
+[[nodiscard]] NSString* strictSuggestedFilename(const std::string& filename) {
+    const std::string validated = sasd::ui::native::detail::validateSuggestedFilename(filename);
+    if (validated.empty()) return nil;
+    NSString* result = [[NSString alloc] initWithBytes:validated.data() length:validated.size()
+                                                  encoding:NSUTF8StringEncoding];
+    if (result == nil) {
+        throw std::invalid_argument{"AppKit suggested filename must be valid UTF-8"};
+    }
     return result;
 }
 
@@ -369,6 +383,7 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
         throw std::logic_error{"AppKit file dialog requires initialize()"};
     }
     NSString* title = strictTitle(request.title);
+    NSString* suggested_filename = strictSuggestedFilename(request.suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
@@ -407,7 +422,7 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
     };
 
     try {
-        save_invoker_->begin(owner_, title, extensions, completion);
+        save_invoker_->begin(owner_, title, extensions, suggested_filename, completion);
     } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }

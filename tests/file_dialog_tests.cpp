@@ -73,6 +73,8 @@ TEST_CASE("Open file requests keep the small literal extension contract") {
     const SaveFileDialogRequest save{"Save File", {"txt", "md"}};
     CHECK(save.title == "Save File");
     CHECK(save.extensions == std::vector<std::string>{"txt", "md"});
+    const SaveFileDialogRequest suggested{"Save File", {"txt", "md"}, "report.v2.md"};
+    CHECK(suggested.suggested_filename == "report.v2.md");
 }
 
 TEST_CASE("Save dialog acceptance uses the same result event and permits a new target path") {

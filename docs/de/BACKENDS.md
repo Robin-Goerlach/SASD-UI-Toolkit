@@ -280,6 +280,28 @@ Ergebnis exakt so ausgeben, wie der native Picker es liefert. Plattformunterschi
 Anhängen einer Endung sind innerhalb dieses Vertrags erwartbar und kein Fehler. Dieser sichtbare Test
 wurde unter WSL nicht ausgeführt.
 
+#### M7 Save File: vorgeschlagener Dateiname (Slice 8)
+
+`SaveFileDialogRequest::suggested_filename` ist ein optionaler, editierbarer initialer Dateiname.
+Leer bedeutet kein Vorschlag. Ein nichtleerer Wert ist genau eine UTF-8-Dateinamenskomponente: NUL,
+`/`, `\\`, `.` und `..` werden vor der Request-ID abgelehnt; Leerzeichen, Unicode, Punkte und Namen
+ohne Extension sind erlaubt. Der Wert ist kein Pfad und kein Startverzeichnis und wird unabhängig
+von Extension-Filtern übergeben; ein widersprüchlicher Suffix ist erlaubt. Der native Zielpfad ist
+maßgeblich und wird unverändert zurückgegeben. Es gibt kein Pfad-Rewriting, keine Existenzprüfung
+und keine Dateisystemmutation.
+
+Win32 ruft vor `Show()` `IFileSaveDialog::SetFileName()` auf. AppKit setzt
+`NSSavePanel.nameFieldStringValue` nur bei einem nichtleeren Vorschlag. GTK ab 4.10 verwendet
+`gtk_file_dialog_set_initial_name()`; ältere unterstützte GTK4-Versionen verwenden im
+Kompatibilitätspfad `gtk_file_chooser_set_current_name()`. GTK verwendet bewusst nicht
+`set_initial_file()`, weil dies Dateiname und Startverzeichnis koppeln würde. Result-Events,
+Capabilities, IDs, Pending- und Lifetime-Semantik bleiben unverändert.
+
+Manueller Smoke-Test: Eine native Demo starten, Save File öffnen und prüfen, dass `untitled.txt`
+sichtbar und editierbar ist, den Namen vollständig ersetzen, akzeptieren oder abbrechen und danach
+Filter sowie Open/Folder wiederholen. Die Ausgabe muss der exakte native Pfad sein. Ein sichtbarer
+nativer Smoke-Test wurde in WSL nicht durchgeführt.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

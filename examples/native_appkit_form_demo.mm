@@ -31,7 +31,7 @@ int main() {
     Command save_file_command{"Save File"};
     save_file_command.setOnExecuted([&] {
         if (auto* dialogs = backend.fileDialogs()) {
-            save_id = dialogs->requestSaveFile({"Save Text or Source File", {"txt", "md"}});
+            save_id = dialogs->requestSaveFile({"Save Text or Source File", {"txt", "md"}, "untitled.txt"});
         }
     });
     Command select_folder_command{"Select Folder"};
