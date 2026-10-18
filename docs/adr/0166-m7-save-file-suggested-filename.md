@@ -64,3 +64,61 @@ The single string property is sufficient for all three current consumers; no `Fi
 
 Die einzelne String-Property reicht für alle drei aktuellen Consumer; es wird keine
 `FilenameSuggestion`-, `DocumentName`- oder `SaveOptions`-Abstraktion eingeführt.
+
+## Implementation and validation record / Implementierungs- und Validierungsnachweis
+
+### English
+
+This decision was implemented as M7 File Dialogs, slice 8, on feature base
+`4dfc2910b601278ebbc3483318e7605aa4934260`. The additive
+`SaveFileDialogRequest::suggested_filename` field, private filename-component validator and the
+Win32, AppKit and GTK projections were added without changing Open File, Folder, result events,
+capabilities, request IDs, pending semantics or lifecycle protection. Native demos, deterministic
+backend tests, bilingual backend documentation, the roadmap and changelog were updated.
+
+PR #55 (`codex/m7-save-suggested-filename`) reached final head
+`7c0eb6a7242a595f31272307a8a9831c0c32b249`. Its exact head passed Linux GCC, Linux Clang, Linux
+Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, Linux/Windows/macOS Release, GTK
+Native and AppKit Native CI. It merged as
+`f9de0ae20588fdc403da3a551a671b35becacb7d`; the exact merge commit subsequently passed Main CI,
+GTK Native CI and AppKit Native CI.
+
+A fresh strict local GCC Debug build with tests and examples enabled and warnings-as-errors enabled
+passed; the configured CTest suite completed with all four tests successful. GTK4 and `xvfb-run`
+were unavailable in WSL, and Windows MSVC/AppKit were not run locally; native CI is authoritative.
+No visible native manual smoke test was performed, so it is not claimed as executed. PR #30 and PR
+#32 were inspected read-only and remain open and unchanged. The feature branch was removed locally
+and remotely after merge. No release or tag was created.
+
+The post-slice architecture review confirms that the single string property is sufficient for all
+three consumers. No `FilenameSuggestion`, `DocumentName` or `SaveOptions` abstraction is needed.
+Initial directory and multiple selection remain the next separate file-dialog slices.
+
+### Deutsch
+
+Diese Entscheidung wurde als M7 File Dialogs, Slice 8, auf der Feature-Basis
+`4dfc2910b601278ebbc3483318e7605aa4934260` umgesetzt. Das additive Feld
+`SaveFileDialogRequest::suggested_filename`, der private Dateinamenskomponenten-Validator und die
+Projektionen für Win32, AppKit und GTK wurden ergänzt, ohne Open File, Folder, Result-Events,
+Capabilities, Request-IDs, Pending-Semantik oder Lifetime-Schutz zu verändern. Native Demos,
+deterministische Backendtests, die zweisprachige Backend-Dokumentation, Roadmap und Changelog wurden
+aktualisiert.
+
+PR #55 (`codex/m7-save-suggested-filename`) erreichte den finalen Head
+`7c0eb6a7242a595f31272307a8a9831c0c32b249`. Dieser exakte Head bestand Linux GCC, Linux Clang,
+Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, Linux-/Windows-/macOS-Release,
+GTK Native und AppKit Native CI. Der PR wurde als
+`f9de0ae20588fdc403da3a551a671b35becacb7d` gemergt; für diesen exakten Merge-SHA waren danach Main
+CI, GTK Native CI und AppKit Native CI erfolgreich.
+
+Ein frischer strikter lokaler GCC-Debug-Build mit aktivierten Tests und Beispielen sowie
+Warnings-as-Errors war erfolgreich; die konfigurierte CTest-Suite bestand mit allen vier Tests.
+GTK4 und `xvfb-run` waren in WSL nicht verfügbar; Windows MSVC und AppKit wurden nicht lokal
+ausgeführt, dafür ist die native CI maßgeblich. Ein sichtbarer nativer manueller Smoke-Test wurde
+nicht durchgeführt und wird daher nicht behauptet. PR #30 und PR #32 wurden ausschließlich lesend
+geprüft und bleiben offen und unverändert. Der Feature-Branch wurde lokal und remote nach dem Merge
+entfernt. Es wurde kein Release und kein Tag erstellt.
+
+Die Architekturprüfung nach dem Slice bestätigt, dass die einzelne String-Property für alle drei
+Consumer genügt. Eine `FilenameSuggestion`-, `DocumentName`- oder `SaveOptions`-Abstraktion ist nicht
+erforderlich. Startverzeichnis und Mehrfachauswahl bleiben die nächsten separaten File-Dialog-Slices.
