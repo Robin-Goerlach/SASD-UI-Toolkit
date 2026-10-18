@@ -50,6 +50,32 @@ The public API stays backend-neutral and small, while all three consumers can ex
 literal-extension subset. A richer public filter hierarchy is intentionally not introduced until a
 real consumer demonstrates that this set is insufficient.
 
+## Implementation and validation record
+
+This decision was implemented as the M7 Open File Extension Filters slice on top of the merged
+folder-selection main commit `5cd21585af02e9efc7784063a41fa65d57391ec2`. The implementation adds the
+small Core field, one private shared validator, native Win32/AppKit/GTK4 projections, deterministic
+backend tests, demo coverage and the corresponding bilingual documentation. Save File and Folder
+remain unchanged.
+
+PR #51 (`codex/m7-open-file-extension-filters`) reached final head
+`a313aeb1e0bdcfeaa9b9e282083a5f4e835136ef` and merged as
+`6f23e140858db32563a4535af579e9c9282ad6ad`. The exact PR head passed Linux GCC, Linux Clang,
+Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, Linux/Windows/macOS Release,
+GTK Native and AppKit Native CI. The exact merge commit subsequently passed Main CI, GTK Native CI
+and AppKit Native CI, including the release matrix.
+
+A fresh strict local GCC build with tests and examples enabled and warnings-as-errors enabled passed;
+the configured CTest suite completed with all four tests successful. A standalone warnings-as-errors
+compile also covered the private shared extension validator. GTK and Xvfb were unavailable in WSL,
+and Windows MSVC/AppKit were not run locally; their native CI jobs are authoritative. No visible
+manual native smoke test was performed, so it is not claimed as executed. No release or tag was
+created.
+
+PR #50, the documentation-only folder-selection validation record, was checked and merged before
+this feature branch. PR #30 and PR #32 were inspected read-only and remain unchanged. The remote and
+local feature branch were removed after merge.
+
 ## Deutsch
 
 ## Status
@@ -104,3 +130,30 @@ Startverzeichnis, MIME-Typen, reichere benannte Gruppen und Mehrfachauswahl blei
 Die öffentliche API bleibt backendneutral und klein; alle drei Consumer können die gemeinsame
 Literal-Extension-Menge ausdrücken. Eine reichere Filterhierarchie wird erst eingeführt, wenn ein
 konkreter Consumer diese Menge nachweislich nicht mehr abdeckt.
+
+## Umsetzungs- und Validierungsnachtrag
+
+Diese Entscheidung wurde als M7-Slice „Open File Extension Filters“ auf Basis des gemergten
+Folder-Selection-Main-Commits `5cd21585af02e9efc7784063a41fa65d57391ec2` umgesetzt. Die Umsetzung
+ergänzt das kleine Core-Feld, einen privaten gemeinsamen Validator, native Win32-/AppKit-/GTK4-
+Projektionen, deterministische Backend-Tests, Demo-Abdeckung und die zweisprachige Dokumentation.
+Save File und Folder bleiben unverändert.
+
+PR #51 (`codex/m7-open-file-extension-filters`) erreichte den finalen Head
+`a313aeb1e0bdcfeaa9b9e282083a5f4e835136ef` und wurde als
+`6f23e140858db32563a4535af579e9c9282ad6ad` gemergt. Für exakt diesen PR-Head waren Linux GCC,
+Linux Clang, Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang sowie Linux-,
+Windows- und macOS-Release, GTK Native und AppKit Native grün. Der exakte Merge-Commit bestand anschließend
+Main CI, GTK Native CI und AppKit Native CI einschließlich der Release-Matrix.
+
+Ein frischer strikter lokaler GCC-Build mit aktivierten Tests und Beispielen sowie Warnings-as-Errors
+war erfolgreich; die konfigurierte CTest-Suite bestand alle vier Tests. Ein eigenständiger
+Warnings-as-Errors-Kompilierungstest deckte zusätzlich den privaten gemeinsamen Extension-Validator
+ab. GTK und Xvfb waren unter WSL nicht verfügbar; Windows MSVC und AppKit wurden nicht lokal
+ausgeführt, dafür sind die nativen CI-Jobs maßgeblich. Ein sichtbarer manueller nativer Smoke-Test
+wurde nicht durchgeführt und wird daher nicht als ausgeführt behauptet. Es wurde kein Release und
+kein Tag erstellt.
+
+PR #50, der ausschließlich dokumentarische Validierungsnachtrag zur Folder Selection, wurde vor
+dem Feature-Branch geprüft und gemergt. PR #30 und PR #32 wurden ausschließlich lesend geprüft und
+bleiben unverändert. Der Remote- und der lokale Feature-Branch wurden nach dem Merge entfernt.
