@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,7 +27,8 @@ class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
     [[nodiscard]] virtual NativeOpenFileOutcome show(
-        HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions) = 0;
+        HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions,
+        const std::optional<std::filesystem::path>& initial_directory) = 0;
 };
 
 [[nodiscard]] inline std::wstring win32FilterPattern(
@@ -46,14 +48,17 @@ public:
     virtual ~NativeSaveFileInvoker() = default;
     [[nodiscard]] virtual NativeSaveFileOutcome show(
         HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions,
-        std::wstring_view suggested_filename) = 0;
+        std::wstring_view suggested_filename,
+        const std::optional<std::filesystem::path>& initial_directory) = 0;
 };
 
 /** Private invocation seam: production uses IFileOpenDialog with FOS_PICKFOLDERS. */
 class NativeSelectFolderInvoker {
 public:
     virtual ~NativeSelectFolderInvoker() = default;
-    [[nodiscard]] virtual NativeSelectFolderOutcome show(HWND owner, std::wstring_view title) = 0;
+    [[nodiscard]] virtual NativeSelectFolderOutcome show(
+        HWND owner, std::wstring_view title,
+        const std::optional<std::filesystem::path>& initial_directory) = 0;
 };
 
 /** Win32-only FileDialogService implementation; this header is never installed. */

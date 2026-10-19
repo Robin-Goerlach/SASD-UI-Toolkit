@@ -38,6 +38,7 @@ struct FakeGtkInvokerState {
         GtkWindow* owner{};
         std::string title{};
         std::string suggested_filename{};
+        std::optional<std::filesystem::path> initial_directory{};
         detail::NativeOpenFileCompletion completion{};
     };
     std::vector<Invocation> invocations{};
@@ -50,8 +51,10 @@ public:
     explicit FakeGtkInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
                detail::NativeOpenFileCompletion completion) override {
-        state_->invocations.push_back({owner, std::move(title), {}, std::move(completion)});
+        state_->invocations.push_back(
+            {owner, std::move(title), {}, initial_directory, std::move(completion)});
         state_->extensions = std::move(extensions);
     }
 
@@ -67,9 +70,10 @@ public:
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                std::string suggested_filename,
+               const std::optional<std::filesystem::path>& initial_directory,
                detail::NativeSaveFileCompletion completion) override {
         state_->invocations.push_back({owner, std::move(title), std::move(suggested_filename),
-                                       std::move(completion)});
+                                       initial_directory, std::move(completion)});
         state_->extensions = std::move(extensions);
     }
 
@@ -85,8 +89,10 @@ public:
         : state_{std::move(state)} {}
 
     void begin(GtkWindow* owner, std::string title,
+               const std::optional<std::filesystem::path>& initial_directory,
                detail::NativeSelectFolderCompletion completion) override {
-        state_->invocations.push_back({owner, std::move(title), {}, std::move(completion)});
+        state_->invocations.push_back(
+            {owner, std::move(title), {}, initial_directory, std::move(completion)});
     }
 
     void cancel() noexcept override { state_->cancelled = true; }
@@ -285,6 +291,54 @@ TEST_CASE("GTK save file uses one shared pending boundary and preserves new targ
     CHECK(open_id > save_id);
     completeFake(open_state, 0, FileDialogResultStatus::cancelled);
     CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("GTK initial directories propagate independently to open save and folder") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeGtkInvokerState>();
+    auto save_state = std::make_shared<FakeGtkInvokerState>();
+    auto folder_state = std::make_shared<FakeGtkInvokerState>();
+    detail::GtkFileDialogService service{
+        reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(),
+        std::make_unique<FakeGtkInvoker>(open_state),
+        std::make_unique<FakeGtkSaveInvoker>(save_state),
+        std::make_unique<FakeGtkSelectFolderInvoker>(folder_state)};
+    const std::filesystem::path directory{"/home/robin/Documents/Grüße"};
+
+    const auto open_id = service.requestOpenFile({"Open", {}, directory});
+    GFile* selected_elsewhere = g_file_new_for_path("/home/other/selected.txt");
+    completeFake(open_state, 0, FileDialogResultStatus::accepted, selected_elsewhere);
+    g_object_unref(selected_elsewhere);
+    const auto save_id = service.requestSaveFile({"Save", {}, "notes.md", directory});
+    completeFake(save_state, 0, FileDialogResultStatus::cancelled);
+    const auto folder_id = service.requestSelectFolder({"Folder", directory});
+    completeFake(folder_state, 0, FileDialogResultStatus::cancelled);
+
+    CHECK(open_state->invocations[0].initial_directory == directory);
+    CHECK(save_state->invocations[0].initial_directory == directory);
+    CHECK(folder_state->invocations[0].initial_directory == directory);
+    const auto open_event = events.tryPop();
+    CHECK(std::get<FileDialogResultEvent>(*open_event).request_id == open_id);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).path ==
+          std::filesystem::path{"/home/other/selected.txt"});
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == save_id);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == folder_id);
+}
+
+TEST_CASE("GTK initial-directory validation rejects invalid paths before native begin") {
+    EventQueue events;
+    auto state = std::make_shared<FakeGtkInvokerState>();
+    detail::GtkFileDialogService service{reinterpret_cast<GtkWindow*>(0x1), events,
+                                         std::this_thread::get_id(),
+                                         std::make_unique<FakeGtkInvoker>(state)};
+    for (const auto& directory : {std::filesystem::path{}, std::filesystem::path{"relative"}}) {
+        bool rejected = false;
+        try { (void)service.requestOpenFile({"Open", {}, directory}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+    }
+    CHECK(state->invocations.empty());
 }
 
 TEST_CASE("GTK save filters validate before ID and preserve order without rewriting results") {

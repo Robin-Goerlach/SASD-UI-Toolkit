@@ -302,6 +302,35 @@ sichtbar und editierbar ist, den Namen vollständig ersetzen, akzeptieren oder a
 Filter sowie Open/Folder wiederholen. Die Ausgabe muss der exakte native Pfad sein. Ein sichtbarer
 nativer Smoke-Test wurde in WSL nicht durchgeführt.
 
+#### M7 Startverzeichnis für File Dialogs (Slice 9)
+
+`OpenFileDialogRequest`, `SaveFileDialogRequest` und `SelectFolderDialogRequest` besitzen jeweils
+ein optionales `std::filesystem::path initial_directory`. `std::nullopt` bedeutet keine Präferenz.
+Ein gesetzter Wert muss nichtleer, absolut und frei von eingebettetem NUL sein; seine native
+Dateisystemrepräsentation bleibt erhalten. Relative Pfade werden vor der Request-ID abgelehnt. Das
+Toolkit ruft weder `exists()`, `is_directory()`, `canonical()` noch `lexically_normal()` auf und
+ändert das Working Directory nicht. Der Hinweis ist nur eine bevorzugte Startposition: Der Benutzer
+darf weg navigieren, und ein akzeptiertes Ergebnis außerhalb bleibt akzeptiert. Es ist keine Sandbox
+und keine Sicherheitsgrenze.
+
+Win32 erzeugt mit `SHCreateItemFromParsingName` ein `IShellItem` und ruft vor `Show()`
+`IFileDialog::SetDefaultFolder()` auf. `SetDefaultFolder` erhält bewusst die native MRU-Position,
+falls eine passende vorhanden ist; `SetFolder` wird nicht verwendet, weil es diese native
+Navigationssemantik überschreibt. `FOS_NOCHANGEDIR` bleibt aktiv. AppKit setzt
+`NSOpenPanel`/`NSSavePanel.directoryURL` über die Foundation-API für die native
+Dateisystemrepräsentation, ohne String-URL-Konstruktion oder Normalisierung. GTK ab 4.10 erzeugt
+mit `g_file_new_for_path()` ein lokales `GFile` und verwendet
+`gtk_file_dialog_set_initial_folder()`; ältere unterstützte GTK4-Versionen verwenden den
+GFile-basierten Kompatibilitätspfad `gtk_file_chooser_set_current_folder()`. Die temporäre
+GFile-Referenz wird nach dem Setter freigegeben.
+
+Bei Save bleiben `initial_directory` und `suggested_filename` unabhängige Properties; GTK verwendet
+nicht `set_initial_file()`, weil diese Convenience-API Verzeichnis und Dateiname koppelt. Result-
+Events, Capabilities, IDs, Pending-/Lifetime-Schutz und die Autorität des nativen Ergebnisses bleiben
+unverändert. Der manuelle Smoke-Test soll Open, Save und Folder mit einem Pfad mit Leerzeichen und
+Nicht-ASCII öffnen, weg navigieren und das native Ergebnis prüfen; dieser sichtbare Test wurde in
+WSL nicht durchgeführt.
+
 #### Nativer AppKit-Menü-Consumer (M7 Slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` baut aus demselben Core-`MenuBarModel` einen vollständigen,

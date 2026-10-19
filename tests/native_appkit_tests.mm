@@ -11,6 +11,8 @@
 #import <AppKit/AppKit.h>
 
 #include <memory>
+#include <filesystem>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -22,6 +24,7 @@ using namespace sasd::ui::native::appkit;
 namespace {
 struct FakeOpenFileState {
     std::vector<detail::NativeOpenFileCompletion> completions;
+    std::optional<std::filesystem::path> initial_directory;
     int begins{0};
 };
 
@@ -29,9 +32,12 @@ class FakeOpenFileInvoker final : public detail::NativeOpenFileInvoker {
 public:
     explicit FakeOpenFileInvoker(std::shared_ptr<FakeOpenFileState> state) : state_{std::move(state)} {}
     void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
                detail::NativeOpenFileCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
         extensions_ = std::move(extensions);
+        initial_directory_ = initial_directory;
+        state_->initial_directory = initial_directory;
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
@@ -39,6 +45,7 @@ public:
     std::shared_ptr<FakeOpenFileState> state_;
     std::string title_;
     std::vector<std::string> extensions_;
+    std::optional<std::filesystem::path> initial_directory_;
     int cancels{0};
 };
 
@@ -46,6 +53,7 @@ struct FakeSaveFileState {
     std::vector<detail::NativeSaveFileCompletion> completions;
     std::vector<std::string> extensions;
     std::string suggested_filename;
+    std::optional<std::filesystem::path> initial_directory;
     int begins{0};
 };
 
@@ -54,11 +62,13 @@ public:
     explicit FakeSaveFileInvoker(std::shared_ptr<FakeSaveFileState> state) : state_{std::move(state)} {}
     void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
                NSString* suggested_filename,
+               const std::optional<std::filesystem::path>& initial_directory,
                detail::NativeSaveFileCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
         state_->extensions = std::move(extensions);
         state_->suggested_filename = suggested_filename == nil ? std::string{} :
             std::string{suggested_filename.UTF8String};
+        state_->initial_directory = initial_directory;
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
@@ -70,6 +80,7 @@ public:
 
 struct FakeSelectFolderState {
     std::vector<detail::NativeSelectFolderCompletion> completions;
+    std::optional<std::filesystem::path> initial_directory;
     int begins{0};
 };
 
@@ -77,14 +88,19 @@ class FakeSelectFolderInvoker final : public detail::NativeSelectFolderInvoker {
 public:
     explicit FakeSelectFolderInvoker(std::shared_ptr<FakeSelectFolderState> state)
         : state_{std::move(state)} {}
-    void begin(NSWindow*, NSString* title, detail::NativeSelectFolderCompletion completion) override {
+    void begin(NSWindow*, NSString* title,
+               const std::optional<std::filesystem::path>& initial_directory,
+               detail::NativeSelectFolderCompletion completion) override {
         title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        initial_directory_ = initial_directory;
+        state_->initial_directory = initial_directory;
         ++state_->begins;
         state_->completions.push_back(std::move(completion));
     }
     void cancel() noexcept override { ++cancels; }
     std::shared_ptr<FakeSelectFolderState> state_;
     std::string title_;
+    std::optional<std::filesystem::path> initial_directory_;
     int cancels{0};
 };
 
@@ -270,6 +286,51 @@ TEST_CASE("AppKit save file reuses the async result contract and shared pending 
     CHECK(open_id > save_id);
     open_state->completions[0](NSModalResponseCancel, nil);
     CHECK(events.tryPop().has_value());
+}
+
+TEST_CASE("AppKit initial directories propagate independently to all panels") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeOpenFileState>();
+    auto save_state = std::make_shared<FakeSaveFileState>();
+    auto folder_state = std::make_shared<FakeSelectFolderState>();
+    detail::AppKitFileDialogService service{
+        testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(open_state),
+        std::make_unique<FakeSaveFileInvoker>(save_state),
+        std::make_unique<FakeSelectFolderInvoker>(folder_state)};
+    const std::filesystem::path directory{"/Users/Robin/Documents/Grüße"};
+
+    const auto open_id = service.requestOpenFile({"Open", {}, directory});
+    open_state->completions[0](NSModalResponseOK, [NSURL fileURLWithPath:@"/Users/Other/selected.txt"]);
+    const auto save_id = service.requestSaveFile({"Save", {}, "notes.md", directory});
+    save_state->completions[0](NSModalResponseCancel, nil);
+    const auto folder_id = service.requestSelectFolder({"Folder", directory});
+    folder_state->completions[0](NSModalResponseCancel, nil);
+
+    CHECK(open_state->initial_directory_ == directory);
+    CHECK(save_state->initial_directory == directory);
+    CHECK(folder_state->initial_directory_ == directory);
+    const auto open_event = events.tryPop();
+    CHECK(std::get<FileDialogResultEvent>(*open_event).request_id == open_id);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).path ==
+          std::filesystem::path{"/Users/Other/selected.txt"});
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == save_id);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == folder_id);
+}
+
+TEST_CASE("AppKit initial-directory validation rejects relative and empty paths before native begin") {
+    EventQueue events;
+    auto state = std::make_shared<FakeOpenFileState>();
+    detail::AppKitFileDialogService service{
+        testOwner(), events, std::make_unique<FakeOpenFileInvoker>(state)};
+    for (const auto& directory : {std::filesystem::path{}, std::filesystem::path{"relative"}}) {
+        bool rejected = false;
+        try { (void)service.requestOpenFile({"Open", {}, directory}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+    }
+    CHECK(state->begins == 0);
 }
 
 TEST_CASE("AppKit save filters validate before native begin and preserve order") {

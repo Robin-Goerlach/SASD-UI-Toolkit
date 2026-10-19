@@ -47,6 +47,11 @@ they improve the architecture before compatibility commitments become expensive.
   `set_initial_name` or its older `set_current_name` fallback. UTF-8, NUL and separator validation
   happens before request-ID allocation; filters and suggested names remain independent, and native
   accepted paths are returned unchanged without filesystem mutation.
+- M7 File Dialog initial-directory slice: Open, Save and Folder requests now accept an optional
+  absolute native `std::filesystem::path` start-location preference. Relative, empty and embedded-NUL
+  paths are rejected before request-ID allocation; no existence check, normalization, working-directory
+  mutation or result containment is performed. Win32 uses `SetDefaultFolder`, AppKit `directoryURL`,
+  and GTK `set_initial_folder` or the GFile-based legacy `set_current_folder` route.
 
 - First M7 Win32 native-menu consumer: explicit `Win32WindowBackend::syncMenuBar()` projection of the
   Core `MenuBarModel` into an owned HMENU tree, Windows-owned popup interaction, live command-state

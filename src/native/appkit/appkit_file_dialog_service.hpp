@@ -24,6 +24,7 @@ class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
     virtual void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+                       const std::optional<std::filesystem::path>& initial_directory,
                        NativeOpenFileCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
@@ -34,6 +35,7 @@ public:
     virtual ~NativeSaveFileInvoker() = default;
     virtual void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
                        NSString* suggested_filename,
+                       const std::optional<std::filesystem::path>& initial_directory,
                        NativeSaveFileCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
@@ -42,7 +44,9 @@ public:
 class NativeSelectFolderInvoker {
 public:
     virtual ~NativeSelectFolderInvoker() = default;
-    virtual void begin(NSWindow* owner, NSString* title, NativeSelectFolderCompletion completion) = 0;
+    virtual void begin(NSWindow* owner, NSString* title,
+                       const std::optional<std::filesystem::path>& initial_directory,
+                       NativeSelectFolderCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 

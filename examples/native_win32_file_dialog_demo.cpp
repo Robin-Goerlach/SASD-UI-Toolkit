@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <chrono>
+#include <filesystem>
+#include <optional>
 #include <thread>
 
 using namespace sasd::ui;
@@ -17,8 +19,13 @@ int main() {
         std::cerr << "File dialogs are unavailable\n";
         return 1;
     }
+    std::error_code directory_error;
+    const std::filesystem::path demo_directory = std::filesystem::current_path(directory_error);
+    const std::optional<std::filesystem::path> initial_directory =
+        directory_error ? std::nullopt : std::optional<std::filesystem::path>{demo_directory};
     const auto open_id = dialogs->requestOpenFile(
-        OpenFileDialogRequest{"Open a text or source file", {"txt", "md", "cpp", "hpp"}});
+        OpenFileDialogRequest{"Open a text or source file", {"txt", "md", "cpp", "hpp"},
+                              initial_directory});
 
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;
@@ -44,10 +51,12 @@ int main() {
                 if (is_open) {
                     // The demo displays the target only; it never creates or writes a file.
                     save_id = dialogs->requestSaveFile(
-                        SaveFileDialogRequest{"Save Text or Source File", {"txt", "md"}, "untitled.txt"});
+                        SaveFileDialogRequest{"Save Text or Source File", {"txt", "md"},
+                                              "untitled.txt", initial_directory});
                 } else if (is_save) {
                     // Folder selection only displays the selected existing directory.
-                    folder_id = dialogs->requestSelectFolder(SelectFolderDialogRequest{"Select a folder"});
+                    folder_id = dialogs->requestSelectFolder(
+                        SelectFolderDialogRequest{"Select a folder", initial_directory});
                 } else {
                     finished = true;
                 }

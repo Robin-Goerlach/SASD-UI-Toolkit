@@ -75,6 +75,15 @@ TEST_CASE("Open file requests keep the small literal extension contract") {
     CHECK(save.extensions == std::vector<std::string>{"txt", "md"});
     const SaveFileDialogRequest suggested{"Save File", {"txt", "md"}, "report.v2.md"};
     CHECK(suggested.suggested_filename == "report.v2.md");
+    CHECK(!unfiltered.initial_directory.has_value());
+    CHECK(!suggested.initial_directory.has_value());
+    const std::filesystem::path directory{"/tmp/Documents"};
+    const OpenFileDialogRequest located_open{"Open File", {}, directory};
+    const SaveFileDialogRequest located_save{"Save File", {}, {}, directory};
+    const SelectFolderDialogRequest located_folder{"Select Folder", directory};
+    CHECK(located_open.initial_directory == directory);
+    CHECK(located_save.initial_directory == directory);
+    CHECK(located_folder.initial_directory == directory);
 }
 
 TEST_CASE("Save dialog acceptance uses the same result event and permits a new target path") {
