@@ -307,9 +307,9 @@ TEST_CASE("AppKit initial directories propagate independently to all panels") {
     const auto folder_id = service.requestSelectFolder({"Folder", directory});
     folder_state->completions[0](NSModalResponseCancel, nil);
 
-    CHECK(open_state->initial_directory_ == directory);
+    CHECK(open_state->initial_directory == directory);
     CHECK(save_state->initial_directory == directory);
-    CHECK(folder_state->initial_directory_ == directory);
+    CHECK(folder_state->initial_directory == directory);
     const auto open_event = events.tryPop();
     CHECK(std::get<FileDialogResultEvent>(*open_event).request_id == open_id);
     CHECK(std::get<FileDialogResultEvent>(*open_event).status == FileDialogResultStatus::accepted);
