@@ -246,7 +246,7 @@ File-dialog slice progress:
 - [ ] Filters / richer options
   - [x] Open File literal extension filters
   - [x] Save File extension filters / native default-extension policy
-  - [ ] Initial directory
+  - [x] Initial directory
   - [x] Suggested filename
   - [ ] Multiple selection
 

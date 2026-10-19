@@ -13,11 +13,15 @@ using FileDialogRequestId = std::uint64_t;
 /**
  * Open one existing local file. Each extension is one literal UTF-8 token such as `txt` or
  * `cpp`; it is not a glob, path, MIME type or security validation. An empty list leaves the native
- * picker unfiltered. The native picker remains authoritative for the accepted result.
+ * picker unfiltered. initial_directory is an optional absolute native filesystem path used only as
+ * a start-location preference; it is not a sandbox or result-containment rule. The native picker
+ * remains authoritative for the accepted result.
  */
 struct OpenFileDialogRequest {
     std::string title{};
     std::vector<std::string> extensions{};
+    /** Optional absolute native directory preference for the initial dialog location. */
+    std::optional<std::filesystem::path> initial_directory{};
 };
 
 /**
@@ -26,17 +30,22 @@ struct OpenFileDialogRequest {
  * ordered list is one native filter set and its first token is the preferred native extension
  * where the platform provides that naming policy. The optional suggested_filename is an editable
  * initial filename component, not a path or result requirement; an empty value means no suggestion.
- * The accepted native path remains authoritative.
+ * The accepted native path remains authoritative. initial_directory is an optional absolute native
+ * filesystem path preference, independent of the suggested filename and without result restriction.
  */
 struct SaveFileDialogRequest {
     std::string title{};
     std::vector<std::string> extensions{};
     std::string suggested_filename{};
+    /** Optional absolute native directory preference, independent of suggested_filename. */
+    std::optional<std::filesystem::path> initial_directory{};
 };
 
-/** The deliberately small folder-selection request: title only, with no portable option policy. */
+/** Select one existing directory, optionally preferring an absolute initial native directory. */
 struct SelectFolderDialogRequest {
     std::string title{};
+    /** Optional absolute native directory preference for the initial folder location. */
+    std::optional<std::filesystem::path> initial_directory{};
 };
 
 enum class FileDialogResultStatus : std::uint8_t {

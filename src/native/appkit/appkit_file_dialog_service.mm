@@ -1,6 +1,7 @@
 #include "appkit_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_initial_directory.hpp"
 #include "../file_dialog_suggested_filename.hpp"
 
 #include <sasd/ui/text/utf8.hpp>
@@ -17,9 +18,12 @@ struct PanelState {
     NSSavePanel* __strong panel{nil};
 };
 
+[[nodiscard]] NSURL* nativeDirectoryURL(const std::filesystem::path& directory);
+
 class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
     void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
                NativeOpenFileCompletion completion) override {
         @autoreleasepool {
             @try {
@@ -30,6 +34,12 @@ public:
                 panel.canChooseDirectories = NO;
                 panel.allowsMultipleSelection = NO;
                 if (title != nil) panel.title = title;
+                if (initial_directory.has_value()) {
+                    panel.directoryURL = nativeDirectoryURL(*initial_directory);
+                    if (panel.directoryURL == nil) {
+                        throw std::runtime_error{"AppKit initial directory cannot be represented"};
+                    }
+                }
                 if (!extensions.empty()) {
                     if (@available(macOS 11.0, *)) {
                         NSMutableArray* content_types =
@@ -104,7 +114,9 @@ private:
 
 class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
-    void begin(NSWindow* owner, NSString* title, NativeSelectFolderCompletion completion) override {
+    void begin(NSWindow* owner, NSString* title,
+               const std::optional<std::filesystem::path>& initial_directory,
+               NativeSelectFolderCompletion completion) override {
         @autoreleasepool {
             @try {
                 auto panel_state = std::make_shared<PanelState>();
@@ -114,6 +126,12 @@ public:
                 panel.canChooseDirectories = YES;
                 panel.allowsMultipleSelection = NO;
                 if (title != nil) panel.title = title;
+                if (initial_directory.has_value()) {
+                    panel.directoryURL = nativeDirectoryURL(*initial_directory);
+                    if (panel.directoryURL == nil) {
+                        throw std::runtime_error{"AppKit initial directory cannot be represented"};
+                    }
+                }
                 [panel beginSheetModalForWindow:owner completionHandler:
                     ^(NSModalResponse response) {
                         NSURL* selected = panel_state->panel.URL;
@@ -154,6 +172,7 @@ class ProductionSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
                NSString* suggested_filename,
+               const std::optional<std::filesystem::path>& initial_directory,
                NativeSaveFileCompletion completion) override {
         @autoreleasepool {
             @try {
@@ -161,6 +180,12 @@ public:
                 NSSavePanel* panel = [NSSavePanel savePanel];
                 panel_state->panel = panel;
                 if (title != nil) panel.title = title;
+                if (initial_directory.has_value()) {
+                    panel.directoryURL = nativeDirectoryURL(*initial_directory);
+                    if (panel.directoryURL == nil) {
+                        throw std::runtime_error{"AppKit initial directory cannot be represented"};
+                    }
+                }
                 if (suggested_filename != nil) panel.nameFieldStringValue = suggested_filename;
                 if (!extensions.empty()) {
                     if (@available(macOS 11.0, *)) {
@@ -265,6 +290,13 @@ private:
     return result;
 }
 
+[[nodiscard]] NSURL* nativeDirectoryURL(const std::filesystem::path& directory) {
+    const auto native = directory.native();
+    return [NSURL fileURLWithFileSystemRepresentation:native.c_str()
+                                           isDirectory:YES
+                                         relativeToURL:nil];
+}
+
 [[nodiscard]] std::optional<std::filesystem::path> nativeFilePath(NSURL* url) {
     if (url == nil || !url.isFileURL) return std::nullopt;
     const char* representation = url.fileSystemRepresentation;
@@ -329,6 +361,8 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     NSString* title = strictTitle(request.title); // setup validation precedes ID allocation
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -366,7 +400,7 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     };
 
     try {
-        open_invoker_->begin(owner_, title, extensions, completion);
+        open_invoker_->begin(owner_, title, extensions, initial_directory, completion);
     } catch (...) {
         // There is no public "other" response constant on all supported SDKs; any value other
         // than OK/Cancel is deliberately mapped to failed by the completion contract.
@@ -386,6 +420,8 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
     NSString* suggested_filename = strictSuggestedFilename(request.suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -422,7 +458,7 @@ FileDialogRequestId AppKitFileDialogService::requestSaveFile(SaveFileDialogReque
     };
 
     try {
-        save_invoker_->begin(owner_, title, extensions, suggested_filename, completion);
+        save_invoker_->begin(owner_, title, extensions, suggested_filename, initial_directory, completion);
     } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }
@@ -437,6 +473,8 @@ FileDialogRequestId AppKitFileDialogService::requestSelectFolder(SelectFolderDia
         throw std::logic_error{"AppKit file dialog requires initialize()"};
     }
     NSString* title = strictTitle(request.title);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
     if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
 
@@ -472,7 +510,7 @@ FileDialogRequestId AppKitFileDialogService::requestSelectFolder(SelectFolderDia
     };
 
     try {
-        folder_invoker_->begin(owner_, title, completion);
+        folder_invoker_->begin(owner_, title, initial_directory, completion);
     } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }

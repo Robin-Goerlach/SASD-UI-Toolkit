@@ -297,6 +297,33 @@ Manual smoke test: start a native demo, open Save File and verify that `untitled
 editable, replace it completely, accept or cancel, then repeat with filters and Open/Folder. The
 accepted output must be the exact native path. A visible native smoke test was not run in WSL.
 
+#### M7 File Dialog initial directory (slice 9)
+
+`OpenFileDialogRequest`, `SaveFileDialogRequest` and `SelectFolderDialogRequest` each carry an
+optional `std::filesystem::path initial_directory`. `std::nullopt` means no preference. A supplied
+value must be non-empty, absolute and free of embedded NUL; it remains in native filesystem
+representation. Relative paths are rejected before request-ID allocation. The toolkit does not
+call `exists()`, `is_directory()`, `canonical()` or `lexically_normal()`, and does not change the
+process working directory. The hint is only a preferred starting location: users may navigate away,
+and an accepted result outside it remains accepted. It is not a sandbox or security boundary.
+
+Win32 creates an `IShellItem` with `SHCreateItemFromParsingName` and calls
+`IFileDialog::SetDefaultFolder()` before `Show()`. `SetDefaultFolder` intentionally preserves the
+native most-recently-used location when one exists; `SetFolder` is not used because it overrides
+that native navigation policy. `FOS_NOCHANGEDIR` remains enabled. AppKit sets `NSOpenPanel`/
+`NSSavePanel.directoryURL` using Foundation's filesystem-representation URL API, without string URL
+construction or normalization. GTK 4.10+ creates a local `GFile` with `g_file_new_for_path()` and
+uses `gtk_file_dialog_set_initial_folder()`; older supported GTK4 uses the GFile-based
+`gtk_file_chooser_set_current_folder()` compatibility route. The temporary GFile reference is
+released after the setter call.
+
+For Save, `initial_directory` and `suggested_filename` remain independent properties; GTK does not
+use `set_initial_file()`, because that convenience API couples folder and filename. Result events,
+capabilities, IDs, pending/lifecycle protection and native result authority remain unchanged.
+Manual smoke testing should open Open, Save and Folder with a path containing spaces and non-ASCII
+characters, navigate elsewhere, and verify the accepted native result; this visible test was not
+run in WSL.
+
 #### AppKit native menu consumer (M7 slice 2)
 
 `AppKitWindowBackend::syncMenuBar()` builds a complete owned `NSMenu` tree from the same Core

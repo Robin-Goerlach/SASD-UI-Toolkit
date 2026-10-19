@@ -1,6 +1,7 @@
 #include "gtk_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_initial_directory.hpp"
 #include "../file_dialog_suggested_filename.hpp"
 
 #include <sasd/ui/text/utf8.hpp>
@@ -20,6 +21,40 @@ namespace {
 struct CallbackContext {
     NativeOpenFileCompletion completion;
 };
+
+[[nodiscard]] GFile* makeInitialFolder(const std::filesystem::path& directory) {
+    // The full GFile reference is released by the caller after the native setter has retained
+    // or copied the folder. No URI conversion or filesystem query is performed.
+    return g_file_new_for_path(directory.c_str());
+}
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+void setInitialFolder(GtkFileDialog* dialog,
+                      const std::optional<std::filesystem::path>& initial_directory) {
+    if (!initial_directory.has_value()) return;
+    GFile* folder = makeInitialFolder(*initial_directory);
+    if (folder == nullptr) throw std::runtime_error{"GTK initial directory creation failed"};
+    gtk_file_dialog_set_initial_folder(dialog, folder);
+    g_object_unref(folder);
+}
+#else
+void setInitialFolder(GtkFileChooser* chooser,
+                      const std::optional<std::filesystem::path>& initial_directory) {
+    if (!initial_directory.has_value()) return;
+    GFile* folder = makeInitialFolder(*initial_directory);
+    if (folder == nullptr) throw std::runtime_error{"GTK initial directory creation failed"};
+    GError* error = nullptr;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    const gboolean accepted = gtk_file_chooser_set_current_folder(chooser, folder, &error);
+#pragma GCC diagnostic pop
+    g_object_unref(folder);
+    if (!accepted || error != nullptr) {
+        if (error != nullptr) g_error_free(error);
+        throw std::runtime_error{"GTK initial directory setup failed"};
+    }
+}
+#endif
 
 [[nodiscard]] std::string filterPatternList(const std::vector<std::string>& extensions) {
     std::string result;
@@ -116,6 +151,7 @@ public:
     ~ProductionOpenFileInvoker() override { cancel(); }
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
                NativeOpenFileCompletion completion) override {
         cancel();
         if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
@@ -125,6 +161,7 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
         if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
         setFileFilter(dialog, extensions);
+        setInitialFolder(dialog, initial_directory);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         active_cancellable_ = g_cancellable_new();
@@ -139,6 +176,7 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
         gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), FALSE);
         addFileFilter(GTK_FILE_CHOOSER(dialog), extensions);
+        setInitialFolder(GTK_FILE_CHOOSER(dialog), initial_directory);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         g_signal_connect_data(dialog, "response", G_CALLBACK(&completeChooser), context,
@@ -221,13 +259,16 @@ class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
     ~ProductionSelectFolderInvoker() override { cancel(); }
 
-    void begin(GtkWindow* owner, std::string title, NativeSelectFolderCompletion completion) override {
+    void begin(GtkWindow* owner, std::string title,
+               const std::optional<std::filesystem::path>& initial_directory,
+               NativeSelectFolderCompletion completion) override {
         cancel();
         if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
 #if GTK_CHECK_VERSION(4, 10, 0)
         GtkFileDialog* dialog = gtk_file_dialog_new();
         if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
         if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
+        setInitialFolder(dialog, initial_directory);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         active_cancellable_ = g_cancellable_new();
@@ -238,6 +279,7 @@ public:
             "_Select", "_Cancel");
         if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
         gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), FALSE);
+        setInitialFolder(GTK_FILE_CHOOSER(dialog), initial_directory);
         auto* context = new CallbackContext{std::move(completion)};
         active_dialog_ = G_OBJECT(dialog);
         g_signal_connect_data(dialog, "response", G_CALLBACK(&completeChooser), context,
@@ -310,6 +352,7 @@ public:
 
     void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                std::string suggested_filename,
+               const std::optional<std::filesystem::path>& initial_directory,
                NativeSaveFileCompletion completion) override {
         cancel();
         if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
@@ -319,6 +362,7 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
         if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
         setFileFilter(dialog, extensions);
+        setInitialFolder(dialog, initial_directory);
         if (!suggested_filename.empty()) {
             gtk_file_dialog_set_initial_name(dialog, suggested_filename.c_str());
         }
@@ -333,6 +377,7 @@ public:
         if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
         gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), FALSE);
         addFileFilter(GTK_FILE_CHOOSER(dialog), extensions);
+        setInitialFolder(GTK_FILE_CHOOSER(dialog), initial_directory);
         if (!suggested_filename.empty()) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -472,6 +517,8 @@ FileDialogRequestId GtkFileDialogService::requestOpenFile(OpenFileDialogRequest 
     const std::string title = strictTitle(request.title); // before ID allocation
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"GTK file-dialog request ID space exhausted"};
@@ -524,7 +571,7 @@ FileDialogRequestId GtkFileDialogService::requestOpenFile(OpenFileDialogRequest 
     };
 
     try {
-        open_invoker_->begin(owner_, title, extensions, completion);
+        open_invoker_->begin(owner_, title, extensions, initial_directory, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
     }
@@ -542,6 +589,8 @@ FileDialogRequestId GtkFileDialogService::requestSaveFile(SaveFileDialogRequest 
     const std::string suggested_filename = strictSuggestedFilename(request.suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"GTK file-dialog request ID space exhausted"};
@@ -589,7 +638,7 @@ FileDialogRequestId GtkFileDialogService::requestSaveFile(SaveFileDialogRequest 
     };
 
     try {
-        save_invoker_->begin(owner_, title, extensions, suggested_filename, completion);
+        save_invoker_->begin(owner_, title, extensions, suggested_filename, initial_directory, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
     }
@@ -604,6 +653,8 @@ FileDialogRequestId GtkFileDialogService::requestSelectFolder(SelectFolderDialog
         throw std::runtime_error{"GTK file dialogs must start on their owner thread"};
     }
     const std::string title = strictTitle(request.title);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"GTK file-dialog request ID space exhausted"};
@@ -650,7 +701,7 @@ FileDialogRequestId GtkFileDialogService::requestSelectFolder(SelectFolderDialog
     };
 
     try {
-        folder_invoker_->begin(owner_, title, completion);
+        folder_invoker_->begin(owner_, title, initial_directory, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
     }

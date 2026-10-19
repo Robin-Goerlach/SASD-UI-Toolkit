@@ -253,7 +253,7 @@ Fortschritt der File-Dialog-Slices:
 - [ ] Filter / erweiterte Optionen
   - [x] Literale Extension-Filter für Open File
   - [x] Save-File-Extension-Filter / native Default-Extension-Regel
-  - [ ] Startverzeichnis
+  - [x] Startverzeichnis
   - [x] Vorgeschlagener Dateiname
   - [ ] Mehrfachauswahl
 

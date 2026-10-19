@@ -23,9 +23,11 @@ public:
     explicit FakeOpenFileInvoker(NativeOpenFileOutcome outcome) : outcome_{std::move(outcome)} {}
 
     NativeOpenFileOutcome show(HWND, std::wstring_view title,
-                               const std::vector<std::wstring>& extensions) override {
+                               const std::vector<std::wstring>& extensions,
+                               const std::optional<std::filesystem::path>& initial_directory) override {
         title_ = title;
         extensions_ = extensions;
+        initial_directory_ = initial_directory;
         ++invocations;
         if (service != nullptr) {
             try {
@@ -40,6 +42,7 @@ public:
     NativeOpenFileOutcome outcome_;
     std::wstring title_;
     std::vector<std::wstring> extensions_;
+    std::optional<std::filesystem::path> initial_directory_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool nested_request_rejected{false};
@@ -51,10 +54,12 @@ public:
 
     NativeSaveFileOutcome show(HWND, std::wstring_view title,
                                const std::vector<std::wstring>& extensions,
-                               std::wstring_view suggested_filename) override {
+                               std::wstring_view suggested_filename,
+                               const std::optional<std::filesystem::path>& initial_directory) override {
         title_ = title;
         extensions_ = extensions;
         suggested_filename_ = suggested_filename;
+        initial_directory_ = initial_directory;
         ++invocations;
         if (service != nullptr) {
             try {
@@ -70,6 +75,7 @@ public:
     std::wstring title_;
     std::vector<std::wstring> extensions_;
     std::wstring suggested_filename_;
+    std::optional<std::filesystem::path> initial_directory_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool nested_request_rejected{false};
@@ -79,8 +85,11 @@ class FakeSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
     explicit FakeSelectFolderInvoker(NativeSelectFolderOutcome outcome) : outcome_{std::move(outcome)} {}
 
-    NativeSelectFolderOutcome show(HWND, std::wstring_view title) override {
+    NativeSelectFolderOutcome show(
+        HWND, std::wstring_view title,
+        const std::optional<std::filesystem::path>& initial_directory) override {
         title_ = title;
+        initial_directory_ = initial_directory;
         ++invocations;
         if (service != nullptr) {
             try { (void)service->requestOpenFile(OpenFileDialogRequest{"nested open"}); }
@@ -95,6 +104,7 @@ public:
 
     NativeSelectFolderOutcome outcome_;
     std::wstring title_;
+    std::optional<std::filesystem::path> initial_directory_;
     Win32FileDialogService* service{nullptr};
     int invocations{0};
     bool open_rejected{false};
@@ -350,6 +360,60 @@ TEST_CASE("Win32 save filters validate before IDs and preserve native default pr
     CHECK(win32FilterPattern(save_ptr->extensions_) == L"*.txt;*.md");
     CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).path ==
           std::filesystem::path{L"C:\\report"});
+}
+
+TEST_CASE("Win32 initial directories propagate independently to open save and folder") {
+    EventQueue events;
+    auto open = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::accepted, L"C:\\Other\\selected.txt"});
+    auto save = std::make_unique<FakeSaveFileInvoker>(NativeSaveFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    auto folder = std::make_unique<FakeSelectFolderInvoker>(NativeSelectFolderOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    FakeOpenFileInvoker* open_ptr = open.get();
+    FakeSaveFileInvoker* save_ptr = save.get();
+    FakeSelectFolderInvoker* folder_ptr = folder.get();
+    Win32FileDialogService service{nullptr, events, std::move(open), std::move(save), std::move(folder)};
+
+    const std::filesystem::path directory{L"C:\\Users\\Robin\\Documents"};
+    const auto open_id = service.requestOpenFile({"Open", {}, directory});
+    const auto save_id = service.requestSaveFile({"Save", {"txt"}, "notes.md", directory});
+    const auto folder_id = service.requestSelectFolder({"Folder", directory});
+    CHECK(open_id == 1);
+    CHECK(save_id == 2);
+    CHECK(folder_id == 3);
+    CHECK(open_ptr->initial_directory_ == directory);
+    CHECK(save_ptr->initial_directory_ == directory);
+    CHECK(folder_ptr->initial_directory_ == directory);
+    const auto open_event = events.tryPop();
+    CHECK(std::get<FileDialogResultEvent>(*open_event).request_id == open_id);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).status == FileDialogResultStatus::accepted);
+    CHECK(std::get<FileDialogResultEvent>(*open_event).path ==
+          std::filesystem::path{L"C:\\Other\\selected.txt"});
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == save_id);
+    CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).request_id == folder_id);
+}
+
+TEST_CASE("Win32 initial-directory validation rejects caller errors before IDs") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFileInvoker>(NativeOpenFileOutcome{
+        FileDialogResultStatus::cancelled, L""});
+    FakeOpenFileInvoker* fake_ptr = fake.get();
+    Win32FileDialogService service{nullptr, events, std::move(fake)};
+
+    const std::vector<std::optional<std::filesystem::path>> invalid{
+        std::filesystem::path{},
+        std::filesystem::path{"relative/path"},
+        std::filesystem::path{std::wstring{L"C:\\bad\0directory", 13}},
+    };
+    for (const auto& directory : invalid) {
+        bool rejected = false;
+        try { (void)service.requestOpenFile({"Open", {}, directory}); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        CHECK(rejected);
+        CHECK(fake_ptr->invocations == 0);
+    }
+    CHECK(service.requestOpenFile({"Open", {}, std::filesystem::path{L"C:\\"}}) == 1);
 }
 
 TEST_CASE("Win32 open and save share IDs and the pending boundary") {

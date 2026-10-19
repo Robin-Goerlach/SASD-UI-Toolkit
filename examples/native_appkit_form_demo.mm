@@ -8,6 +8,8 @@
 #include <sasd/ui/window.hpp>
 
 #include <chrono>
+#include <filesystem>
+#include <optional>
 #include <thread>
 #include <iostream>
 
@@ -23,21 +25,27 @@ int main() {
     FileDialogRequestId open_id = 0;
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;
+    std::error_code directory_error;
+    const std::filesystem::path demo_directory = std::filesystem::current_path(directory_error);
+    const std::optional<std::filesystem::path> initial_directory =
+        directory_error ? std::nullopt : std::optional<std::filesystem::path>{demo_directory};
     open_file_command.setOnExecuted([&] {
         if (auto* dialogs = backend.fileDialogs()) {
-            open_id = dialogs->requestOpenFile({"Open Text or Source File", {"txt", "md", "cpp", "hpp"}});
+            open_id = dialogs->requestOpenFile(
+                {"Open Text or Source File", {"txt", "md", "cpp", "hpp"}, initial_directory});
         }
     });
     Command save_file_command{"Save File"};
     save_file_command.setOnExecuted([&] {
         if (auto* dialogs = backend.fileDialogs()) {
-            save_id = dialogs->requestSaveFile({"Save Text or Source File", {"txt", "md"}, "untitled.txt"});
+            save_id = dialogs->requestSaveFile(
+                {"Save Text or Source File", {"txt", "md"}, "untitled.txt", initial_directory});
         }
     });
     Command select_folder_command{"Select Folder"};
     select_folder_command.setOnExecuted([&] {
         if (auto* dialogs = backend.fileDialogs()) {
-            folder_id = dialogs->requestSelectFolder({"Select Folder"});
+            folder_id = dialogs->requestSelectFolder({"Select Folder", initial_directory});
         }
     });
     Command copy_command{"Copy"};

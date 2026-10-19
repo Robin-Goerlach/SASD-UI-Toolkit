@@ -1,6 +1,7 @@
 #include "win32_file_dialog_service.hpp"
 
 #include "../file_dialog_extension_filter.hpp"
+#include "../file_dialog_initial_directory.hpp"
 #include "../file_dialog_suggested_filename.hpp"
 
 #include <shobjidl.h>
@@ -12,6 +13,21 @@
 
 namespace sasd::ui::native::win32::detail {
 namespace {
+
+[[nodiscard]] HRESULT setDefaultFolder(
+    IFileDialog* dialog, const std::optional<std::filesystem::path>& initial_directory) {
+    if (!initial_directory.has_value()) return S_OK;
+
+    IShellItem* folder = nullptr;
+    const HRESULT item_result = SHCreateItemFromParsingName(
+        initial_directory->c_str(), nullptr, IID_PPV_ARGS(&folder));
+    if (FAILED(item_result)) return item_result;
+    struct ItemRelease final {
+        IShellItem* value;
+        ~ItemRelease() { value->Release(); }
+    } release{folder};
+    return dialog->SetDefaultFolder(folder);
+}
 
 [[nodiscard]] std::wstring utf8ToWide(std::string_view value) {
     if (value.empty()) return {};
@@ -33,7 +49,8 @@ class ProductionOpenFileInvoker final : public NativeOpenFileInvoker {
 public:
     [[nodiscard]] NativeOpenFileOutcome show(
         HWND owner, std::wstring_view title,
-        const std::vector<std::wstring>& extensions) override {
+        const std::vector<std::wstring>& extensions,
+        const std::optional<std::filesystem::path>& initial_directory) override {
         HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
 
@@ -70,6 +87,10 @@ public:
             }
         }
 
+        if (FAILED(setDefaultFolder(dialog, initial_directory))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+
         result = dialog->Show(owner);
         if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
             return {FileDialogResultStatus::cancelled, {}};
@@ -98,7 +119,8 @@ public:
     [[nodiscard]] NativeSaveFileOutcome show(
         HWND owner, std::wstring_view title,
         const std::vector<std::wstring>& extensions,
-        std::wstring_view suggested_filename) override {
+        std::wstring_view suggested_filename,
+        const std::optional<std::filesystem::path>& initial_directory) override {
         HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
 
@@ -144,6 +166,9 @@ public:
             FAILED(dialog->SetFileName(std::wstring{suggested_filename}.c_str()))) {
             return {FileDialogResultStatus::failed, {}};
         }
+        if (FAILED(setDefaultFolder(dialog, initial_directory))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
 
         result = dialog->Show(owner);
         if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
@@ -170,7 +195,9 @@ public:
 
 class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
-    [[nodiscard]] NativeSelectFolderOutcome show(HWND owner, std::wstring_view title) override {
+    [[nodiscard]] NativeSelectFolderOutcome show(
+        HWND owner, std::wstring_view title,
+        const std::optional<std::filesystem::path>& initial_directory) override {
         HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
         struct ComApartment final { ~ComApartment() { CoUninitialize(); } } apartment;
@@ -191,6 +218,9 @@ public:
         options |= FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR;
         if (FAILED(dialog->SetOptions(options))) return {FileDialogResultStatus::failed, {}};
         if (!title.empty() && FAILED(dialog->SetTitle(std::wstring{title}.c_str()))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+        if (FAILED(setDefaultFolder(dialog, initial_directory))) {
             return {FileDialogResultStatus::failed, {}};
         }
 
@@ -244,6 +274,8 @@ FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogReques
     const std::wstring title = utf8ToWide(request.title);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     std::vector<std::wstring> wide_extensions;
     wide_extensions.reserve(extensions.size());
     for (const std::string& extension : extensions) {
@@ -257,7 +289,8 @@ FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogReques
     const FileDialogRequestId request_id = next_request_id_++;
     pending_ = true;
     try {
-        const NativeOpenFileOutcome outcome = open_invoker_->show(owner_, title, wide_extensions);
+        const NativeOpenFileOutcome outcome =
+            open_invoker_->show(owner_, title, wide_extensions, initial_directory);
         if (outcome.status == FileDialogResultStatus::accepted) {
             if (outcome.path.empty()) throw std::runtime_error{"Win32 file dialog returned no path"};
             events_.push(Event{FileDialogResultEvent{
@@ -285,6 +318,8 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
     const std::wstring wide_suggested_filename = utf8ToWide(suggested_filename);
     const std::vector<std::string> extensions =
         sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     std::vector<std::wstring> wide_extensions;
     wide_extensions.reserve(extensions.size());
     for (const std::string& extension : extensions) {
@@ -299,7 +334,7 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
     pending_ = true;
     try {
         const NativeSaveFileOutcome outcome = save_invoker_->show(
-            owner_, title, wide_extensions, wide_suggested_filename);
+            owner_, title, wide_extensions, wide_suggested_filename, initial_directory);
         if (outcome.status == FileDialogResultStatus::accepted) {
             if (outcome.path.empty()) throw std::runtime_error{"Win32 file dialog returned no path"};
             // The returned path is the application's destination. Do not inspect or mutate the
@@ -320,6 +355,8 @@ FileDialogRequestId Win32FileDialogService::requestSaveFile(SaveFileDialogReques
 
 FileDialogRequestId Win32FileDialogService::requestSelectFolder(SelectFolderDialogRequest request) {
     const std::wstring title = utf8ToWide(request.title);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
     if (pending_) throw std::logic_error{"Win32 file dialog already has a pending request"};
     if (next_request_id_ == 0) {
         throw std::overflow_error{"Win32 file-dialog request ID space exhausted"};
@@ -328,7 +365,8 @@ FileDialogRequestId Win32FileDialogService::requestSelectFolder(SelectFolderDial
     const FileDialogRequestId request_id = next_request_id_++;
     pending_ = true;
     try {
-        const NativeSelectFolderOutcome outcome = folder_invoker_->show(owner_, title);
+        const NativeSelectFolderOutcome outcome =
+            folder_invoker_->show(owner_, title, initial_directory);
         if (outcome.status == FileDialogResultStatus::accepted && !outcome.path.empty()) {
             events_.push(Event{FileDialogResultEvent{
                 request_id, FileDialogResultStatus::accepted, std::filesystem::path{outcome.path}}});
