@@ -236,7 +236,7 @@ TEST_CASE("RenderedTextFieldHitTest captured scalar drag stays conservative for 
 TEST_CASE("Rendered TextField stateful double-click drag extends selection by complete word runs") {
     ScalarDragMetrics metrics;
     PointerRouter pointer_router;
-    RenderedTextFieldPointerSelection::GestureState gesture_state;
+    RenderedTextFieldPointerSelection::GestureState gesture_state{};
 
     Window window;
     window.arrange({0, 0, 240, 60});
@@ -321,7 +321,7 @@ TEST_CASE("Rendered TextField stateful double-click drag extends selection by co
 TEST_CASE("Rendered TextField word drag keeps whole-word selection while pointer crosses whitespace") {
     ScalarDragMetrics metrics;
     PointerRouter pointer_router;
-    RenderedTextFieldPointerSelection::GestureState gesture_state;
+    RenderedTextFieldPointerSelection::GestureState gesture_state{};
 
     Window window;
     window.arrange({0, 0, 220, 60});
@@ -373,7 +373,7 @@ TEST_CASE("Rendered TextField word drag keeps whole-word selection while pointer
 TEST_CASE("Rendered TextField word gesture state does not survive external capture loss") {
     ScalarDragMetrics metrics;
     PointerRouter pointer_router;
-    RenderedTextFieldPointerSelection::GestureState gesture_state;
+    RenderedTextFieldPointerSelection::GestureState gesture_state{};
 
     Window window;
     window.arrange({0, 0, 220, 60});

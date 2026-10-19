@@ -46,7 +46,7 @@ TEST_CASE("Terminal TextField stateful double click drags right by complete sema
     field.setCursorPosition(0);
 
     PointerRouter pointer_router;
-    TerminalTextFieldPointerSelection::GestureState gesture;
+    TerminalTextFieldPointerSelection::GestureState gesture{};
 
     /*
      * Content starts at x=1, so x=2 is scalar index 1 ('n') inside "one". The stateful overload selects
@@ -113,7 +113,7 @@ TEST_CASE("Terminal TextField word drag left preserves origin word and restores 
     field.setCursorPosition(0);
 
     PointerRouter pointer_router;
-    TerminalTextFieldPointerSelection::GestureState gesture;
+    TerminalTextFieldPointerSelection::GestureState gesture{};
 
     /*
      * x=6 is scalar index 5 ('w') inside the middle word "two" -> origin [4,7). The initial word is
@@ -185,7 +185,7 @@ TEST_CASE("Terminal TextField word drag over whitespace keeps the last semantic 
     field.setCursorPosition(0);
 
     PointerRouter pointer_router;
-    TerminalTextFieldPointerSelection::GestureState gesture;
+    TerminalTextFieldPointerSelection::GestureState gesture{};
 
     (void)TerminalTextFieldPointerSelection::route(
         window,
@@ -242,7 +242,7 @@ TEST_CASE("Terminal TextField word gesture state synchronizes after external cap
     field.setCursorPosition(0);
 
     PointerRouter pointer_router;
-    TerminalTextFieldPointerSelection::GestureState gesture;
+    TerminalTextFieldPointerSelection::GestureState gesture{};
 
     (void)TerminalTextFieldPointerSelection::route(
         window,

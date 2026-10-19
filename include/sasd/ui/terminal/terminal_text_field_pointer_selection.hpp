@@ -271,6 +271,7 @@ private:
                     gesture_state != nullptr ? gesture_state->word_origin_ : std::nullopt;
 
                 if (word_origin.has_value()) {
+                    const auto origin = *word_origin;
                     /*
                      * A semantic word gesture targets painted scalars, not insertion boundaries. The
                      * captured scalar mapper may clamp outside/trailing positions to visible text while
@@ -283,22 +284,22 @@ private:
                         if (const auto target_word = text::basicWordRangeAt(
                                 captured->text(),
                                 *scalar)) {
-                            if (target_word->end <= word_origin->start) {
+                            if (target_word->end <= origin.start) {
                                 /*
                                  * Dragging left keeps the entire origin word selected by anchoring at
                                  * its right boundary. The moving cursor uses the target word's complete
                                  * left boundary, naturally including intervening separators.
                                  */
                                 captured->setSelection(
-                                    word_origin->end,
+                                    origin.end,
                                     target_word->start);
-                            } else if (target_word->start >= word_origin->end) {
+                            } else if (target_word->start >= origin.end) {
                                 /*
                                  * Symmetric right extension: anchor at the origin word's left boundary
                                  * and move to the complete right edge of the target semantic run.
                                  */
                                 captured->setSelection(
-                                    word_origin->start,
+                                    origin.start,
                                     target_word->end);
                             } else {
                                 /*
@@ -306,8 +307,8 @@ private:
                                  * double-click range instead of collapsing to a character caret.
                                  */
                                 captured->setSelection(
-                                    word_origin->start,
-                                    word_origin->end);
+                                    origin.start,
+                                    origin.end);
                             }
                         }
                         /*
