@@ -220,7 +220,8 @@ Reihenfolge und Umfang werden nach M3/M4 anhand realer Erfahrungen entschieden.
 
 ## M7 – Desktop-Integration
 
-Status: aktiv am 14.10.2026. Slice 1 ist der erste reale Consumer: Der Win32-Native-Host projiziert
+Status: abgeschlossen am 20.10.2026. Der aktuell definierte M7-Umfang ist über die drei nativen
+Consumer vollständig; siehe [ADR 0170](../adr/0170-m7-desktop-integration-exit-review.md). Slice 1 war der erste reale Consumer: Der Win32-Native-Host projiziert
 die bestehende Core-Menüsemantik in einen besitzenden HMENU-Baum. `WM_COMMAND` legt ein
 application-level, lebenszeitsicheres `CommandActivationEvent` in die Queue; der Host kann den
 referenzierten `Command` erst nach Ende der nativen Nachrichtenverarbeitung ausführen. Literal-
@@ -256,6 +257,10 @@ Fortschritt der File-Dialog-Slices:
   - [x] Startverzeichnis
   - [x] Vorgeschlagener Dateiname
   - [x] Mehrfachauswahl
+
+Der sichtbare manuelle macOS/Cocoa-M3-Gate bleibt offen und wird durch diesen Meilenstein nicht
+geschlossen. Native Child-Control-Peers und alle genannten langfristigen Desktop-Integrationen
+bleiben separate spätere Arbeiten.
 
 Langfristige Themen:
 
