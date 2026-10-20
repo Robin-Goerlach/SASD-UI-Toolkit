@@ -580,8 +580,8 @@ GtkFileDialogService::GtkFileDialogService(GtkWindow* owner, EventQueue& events,
                                            std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker)
     : owner_{owner}, events_{&events}, owner_thread_{owner_thread},
       open_invoker_{std::move(open_invoker)}, save_invoker_{std::move(save_invoker)},
-      folder_invoker_{std::move(folder_invoker)},
       open_files_invoker_{std::move(open_files_invoker)},
+      folder_invoker_{std::move(folder_invoker)},
       state_{std::make_shared<CompletionState>()} {
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
     if (open_files_invoker_ == nullptr) {
@@ -726,7 +726,8 @@ FileDialogRequestId GtkFileDialogService::requestOpenFiles(OpenFilesDialogReques
                     valid = count != 0;
                     paths.reserve(static_cast<std::size_t>(count));
                     for (guint index = 0; valid && index < count; ++index) {
-                        GObject* object = g_list_model_get_item(selection.model, index);
+                        GObject* object = static_cast<GObject*>(
+                            g_list_model_get_item(selection.model, index));
                         if (object == nullptr || !G_IS_FILE(object)) {
                             if (object != nullptr) g_object_unref(object);
                             valid = false;
