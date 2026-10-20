@@ -185,6 +185,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0166](0166-m7-save-file-suggested-filename.md) | M7 Save File suggested filename | Accepted |
 | [0167](0167-m7-file-dialog-initial-directory.md) | M7 File Dialog initial directory | Accepted |
 | [0168](0168-m7-open-file-multiple-selection.md) | M7 Open File multiple selection | Accepted |
+| [0169](0169-m7-file-dialog-richer-options-completion-review.md) | M7 File Dialog richer-options completion review | Accepted |
 
 ## ADR policy
 
