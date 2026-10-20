@@ -165,7 +165,7 @@ public:
                 }
                 [panel beginSheetModalForWindow:owner completionHandler:
                     ^(NSModalResponse response) {
-                        completion(response, panel_state->panel.URLs);
+                        completion(response, panel.URLs);
                         panel_state->panel = nil;
                     }];
                 active_panel_ = std::move(panel_state);
