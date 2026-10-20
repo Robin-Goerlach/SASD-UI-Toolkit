@@ -26,6 +26,7 @@ int main() {
     const auto open_id = dialogs->requestOpenFile(
         OpenFileDialogRequest{"Open a text or source file", {"txt", "md", "cpp", "hpp"},
                               initial_directory});
+    FileDialogRequestId open_files_id = 0;
 
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;
@@ -34,6 +35,22 @@ int main() {
         (void)application.processRoutedEvents(
             {},
             [&](const Event& event) {
+                if (std::holds_alternative<OpenFilesDialogResultEvent>(event)) {
+                    const auto& multiple = std::get<OpenFilesDialogResultEvent>(event);
+                    if (multiple.request_id != open_files_id) return;
+                    if (multiple.status == FileDialogResultStatus::accepted) {
+                        std::cout << "Open Multiple accepted (" << multiple.paths.size() << "):\n";
+                        for (const auto& path : multiple.paths) std::cout << "  " << path.string() << '\n';
+                        save_id = dialogs->requestSaveFile(
+                            SaveFileDialogRequest{"Save Text or Source File", {"txt", "md"},
+                                                  "untitled.txt", initial_directory});
+                    } else {
+                        std::cout << (multiple.status == FileDialogResultStatus::cancelled
+                                          ? "Open Multiple cancelled\n" : "Open Multiple failed\n");
+                        finished = true;
+                    }
+                    return;
+                }
                 if (!std::holds_alternative<FileDialogResultEvent>(event)) return;
                 const auto& result = std::get<FileDialogResultEvent>(event);
                 const bool is_open = result.request_id == open_id;
@@ -49,10 +66,9 @@ int main() {
                     std::cout << operation << " failed\n";
                 }
                 if (is_open) {
-                    // The demo displays the target only; it never creates or writes a file.
-                    save_id = dialogs->requestSaveFile(
-                        SaveFileDialogRequest{"Save Text or Source File", {"txt", "md"},
-                                              "untitled.txt", initial_directory});
+                    open_files_id = dialogs->requestOpenFiles(
+                        OpenFilesDialogRequest{"Open Multiple Text or Source Files",
+                                               {"txt", "md", "cpp", "hpp"}, initial_directory});
                 } else if (is_save) {
                     // Folder selection only displays the selected existing directory.
                     folder_id = dialogs->requestSelectFolder(

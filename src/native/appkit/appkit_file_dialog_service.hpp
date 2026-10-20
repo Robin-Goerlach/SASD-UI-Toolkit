@@ -16,6 +16,7 @@
 namespace sasd::ui::native::appkit::detail {
 
 using NativeOpenFileCompletion = std::function<void(NSModalResponse, NSURL*)>;
+using NativeOpenFilesCompletion = std::function<void(NSModalResponse, NSArray<NSURL*>*)>;
 using NativeSaveFileCompletion = NativeOpenFileCompletion;
 using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 
@@ -26,6 +27,16 @@ public:
     virtual void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
                        const std::optional<std::filesystem::path>& initial_directory,
                        NativeOpenFileCompletion completion) = 0;
+    virtual void cancel() noexcept = 0;
+};
+
+/** Private seam for multiple existing local files; the single-file seam remains unchanged. */
+class NativeOpenFilesInvoker {
+public:
+    virtual ~NativeOpenFilesInvoker() = default;
+    virtual void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+                       const std::optional<std::filesystem::path>& initial_directory,
+                       NativeOpenFilesCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 
@@ -56,13 +67,15 @@ public:
     AppKitFileDialogService(NSWindow* owner, EventQueue& events,
                             std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
                             std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
-                            std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
+                            std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr,
+                            std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker = nullptr);
     ~AppKitFileDialogService() override;
 
     AppKitFileDialogService(const AppKitFileDialogService&) = delete;
     AppKitFileDialogService& operator=(const AppKitFileDialogService&) = delete;
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestOpenFiles(OpenFilesDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSelectFolder(
         SelectFolderDialogRequest request) override;
@@ -73,6 +86,7 @@ private:
     struct CompletionState;
     NSWindow* owner_{}; // non-owning: the AppKitWindowBackend owns the window
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
+    std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
     std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     std::shared_ptr<CompletionState> state_;

@@ -22,6 +22,10 @@ struct CallbackContext {
     NativeOpenFileCompletion completion;
 };
 
+struct FilesCallbackContext {
+    NativeOpenFilesCompletion completion;
+};
+
 [[nodiscard]] GFile* makeInitialFolder(const std::filesystem::path& directory) {
     // The full GFile reference is released by the caller after the native setter has retained
     // or copied the folder. No URI conversion or filesystem query is performed.
@@ -255,6 +259,104 @@ private:
     GCancellable* active_cancellable_{nullptr};
 };
 
+class ProductionOpenFilesInvoker final : public NativeOpenFilesInvoker {
+public:
+    ~ProductionOpenFilesInvoker() override { cancel(); }
+
+    void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
+               NativeOpenFilesCompletion completion) override {
+        cancel();
+        if (owner == nullptr) throw std::logic_error{"GTK file dialog requires a window owner"};
+#if GTK_CHECK_VERSION(4, 10, 0)
+        GtkFileDialog* dialog = gtk_file_dialog_new();
+        if (dialog == nullptr) throw std::runtime_error{"GtkFileDialog creation failed"};
+        if (!title.empty()) gtk_file_dialog_set_title(dialog, title.c_str());
+        setFileFilter(dialog, extensions);
+        setInitialFolder(dialog, initial_directory);
+        auto* context = new FilesCallbackContext{std::move(completion)};
+        active_dialog_ = G_OBJECT(dialog);
+        active_cancellable_ = g_cancellable_new();
+        gtk_file_dialog_open_multiple(dialog, owner, active_cancellable_, &completeFileDialog, context);
+#else
+        GtkFileChooserNative* dialog = gtk_file_chooser_native_new(
+            title.empty() ? nullptr : title.c_str(), owner, GTK_FILE_CHOOSER_ACTION_OPEN,
+            "_Open", "_Cancel");
+        if (dialog == nullptr) throw std::runtime_error{"GtkFileChooserNative creation failed"};
+        gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+        addFileFilter(GTK_FILE_CHOOSER(dialog), extensions);
+        setInitialFolder(GTK_FILE_CHOOSER(dialog), initial_directory);
+        auto* context = new FilesCallbackContext{std::move(completion)};
+        active_dialog_ = G_OBJECT(dialog);
+        g_signal_connect_data(dialog, "response", G_CALLBACK(&completeChooser), context,
+                              &destroyContext, G_CONNECT_DEFAULT);
+        gtk_native_dialog_show(GTK_NATIVE_DIALOG(dialog));
+#endif
+    }
+
+    void cancel() noexcept override {
+        if (active_dialog_ == nullptr) return;
+#if GTK_CHECK_VERSION(4, 10, 0)
+        if (active_cancellable_ != nullptr) g_cancellable_cancel(active_cancellable_);
+        if (active_cancellable_ != nullptr) {
+            g_object_unref(active_cancellable_);
+            active_cancellable_ = nullptr;
+        }
+        g_object_unref(active_dialog_);
+#else
+        gtk_native_dialog_hide(GTK_NATIVE_DIALOG(active_dialog_));
+        g_object_unref(active_dialog_);
+#endif
+        active_dialog_ = nullptr;
+    }
+
+private:
+    static void destroyContext(gpointer data, GClosure*) noexcept {
+        delete static_cast<FilesCallbackContext*>(data);
+    }
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+    static void completeFileDialog(GObject* source, GAsyncResult* result, gpointer data) noexcept {
+        std::unique_ptr<FilesCallbackContext> context{static_cast<FilesCallbackContext*>(data)};
+        GError* error = nullptr;
+        GListModel* model = gtk_file_dialog_open_multiple_finish(
+            GTK_FILE_DIALOG(source), result, &error);
+        FileDialogResultStatus status = FileDialogResultStatus::failed;
+        if (error != nullptr) {
+            if (error->domain == GTK_DIALOG_ERROR && error->code == GTK_DIALOG_ERROR_DISMISSED) {
+                status = FileDialogResultStatus::cancelled;
+            }
+            g_error_free(error);
+        } else if (model != nullptr) {
+            status = FileDialogResultStatus::accepted;
+        }
+        try { context->completion(status, {model, nullptr}); } catch (...) {}
+        if (model != nullptr) g_object_unref(model);
+    }
+#else
+    static void completeChooser(GtkNativeDialog* native_dialog, int response,
+                                gpointer data) noexcept {
+        auto* context = static_cast<FilesCallbackContext*>(data);
+        GSList* files = nullptr;
+        FileDialogResultStatus status = FileDialogResultStatus::failed;
+        if (response == GTK_RESPONSE_CANCEL || response == GTK_RESPONSE_DELETE_EVENT) {
+            status = FileDialogResultStatus::cancelled;
+        } else if (response == GTK_RESPONSE_ACCEPT) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+            files = gtk_file_chooser_get_files(GTK_FILE_CHOOSER(native_dialog));
+#pragma GCC diagnostic pop
+            if (files != nullptr) status = FileDialogResultStatus::accepted;
+        }
+        try { context->completion(status, {nullptr, files}); } catch (...) {}
+        if (files != nullptr) g_slist_free_full(files, g_object_unref);
+    }
+#endif
+
+    GObject* active_dialog_{nullptr};
+    GCancellable* active_cancellable_{nullptr};
+};
+
 class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
     ~ProductionSelectFolderInvoker() override { cancel(); }
@@ -474,12 +576,17 @@ GtkFileDialogService::GtkFileDialogService(GtkWindow* owner, EventQueue& events,
                                            std::thread::id owner_thread,
                                            std::unique_ptr<NativeOpenFileInvoker> open_invoker,
                                            std::unique_ptr<NativeSaveFileInvoker> save_invoker,
-                                           std::unique_ptr<NativeSelectFolderInvoker> folder_invoker)
+                                           std::unique_ptr<NativeSelectFolderInvoker> folder_invoker,
+                                           std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker)
     : owner_{owner}, events_{&events}, owner_thread_{owner_thread},
       open_invoker_{std::move(open_invoker)}, save_invoker_{std::move(save_invoker)},
       folder_invoker_{std::move(folder_invoker)},
+      open_files_invoker_{std::move(open_files_invoker)},
       state_{std::make_shared<CompletionState>()} {
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
+    if (open_files_invoker_ == nullptr) {
+        open_files_invoker_ = std::make_unique<ProductionOpenFilesInvoker>();
+    }
     if (save_invoker_ == nullptr) save_invoker_ = std::make_unique<ProductionSaveFileInvoker>();
     if (folder_invoker_ == nullptr) {
         folder_invoker_ = std::make_unique<ProductionSelectFolderInvoker>();
@@ -501,6 +608,7 @@ void GtkFileDialogService::shutdown() noexcept {
     state_->queue = nullptr;
     ++state_->generation;
     if (open_invoker_ != nullptr) open_invoker_->cancel();
+    if (open_files_invoker_ != nullptr) open_files_invoker_->cancel();
     if (save_invoker_ != nullptr) save_invoker_->cancel();
     if (folder_invoker_ != nullptr) folder_invoker_->cancel();
     events_ = nullptr;
@@ -574,6 +682,99 @@ FileDialogRequestId GtkFileDialogService::requestOpenFile(OpenFileDialogRequest 
         open_invoker_->begin(owner_, title, extensions, initial_directory, completion);
     } catch (...) {
         completion(FileDialogResultStatus::failed, nullptr);
+    }
+    return id;
+}
+
+FileDialogRequestId GtkFileDialogService::requestOpenFiles(OpenFilesDialogRequest request) {
+    if (events_ == nullptr || owner_ == nullptr || state_ == nullptr || !state_->active) {
+        throw std::logic_error{"GTK file dialog requires initialize()"};
+    }
+    if (std::this_thread::get_id() != owner_thread_) {
+        throw std::runtime_error{"GTK file dialogs must start on their owner thread"};
+    }
+    const std::string title = strictTitle(request.title);
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
+    if (state_->pending) throw std::logic_error{"GTK file dialog already has a pending request"};
+    if (next_request_id_ == 0) {
+        throw std::overflow_error{"GTK file-dialog request ID space exhausted"};
+    }
+
+    const FileDialogRequestId id = next_request_id_++;
+    const std::uint64_t generation = ++state_->generation;
+    state_->request_id = id;
+    state_->pending = true;
+    state_->completed = false;
+    const std::weak_ptr<CompletionState> weak_state = state_;
+    const NativeOpenFilesCompletion completion = [weak_state, id, generation](
+        FileDialogResultStatus native_status, NativeOpenFilesSelection selection) noexcept {
+        try {
+            const std::shared_ptr<CompletionState> state = weak_state.lock();
+            if (state == nullptr || !state->active || !state->pending || state->completed ||
+                state->request_id != id || state->generation != generation || state->queue == nullptr) return;
+            FileDialogResultStatus status = FileDialogResultStatus::failed;
+            std::vector<std::filesystem::path> paths;
+            if (native_status == FileDialogResultStatus::cancelled) {
+                status = FileDialogResultStatus::cancelled;
+            } else if (native_status == FileDialogResultStatus::accepted) {
+                bool valid = false;
+                if (selection.model != nullptr) {
+                    const guint count = g_list_model_get_n_items(selection.model);
+                    valid = count != 0;
+                    paths.reserve(static_cast<std::size_t>(count));
+                    for (guint index = 0; valid && index < count; ++index) {
+                        GObject* object = g_list_model_get_item(selection.model, index);
+                        if (object == nullptr || !G_IS_FILE(object)) {
+                            if (object != nullptr) g_object_unref(object);
+                            valid = false;
+                            break;
+                        }
+                        const auto path = localPath(G_FILE(object));
+                        g_object_unref(object);
+                        if (!path || path->empty()) {
+                            valid = false;
+                            break;
+                        }
+                        paths.push_back(*path);
+                    }
+                } else if (selection.files != nullptr) {
+                    valid = true;
+                    for (GSList* node = selection.files; node != nullptr; node = node->next) {
+                        const auto path = localPath(G_FILE(node->data));
+                        if (!path || path->empty()) {
+                            valid = false;
+                            break;
+                        }
+                        paths.push_back(*path);
+                    }
+                    valid = valid && !paths.empty();
+                }
+                if (valid) status = FileDialogResultStatus::accepted;
+                else paths.clear();
+            }
+            state->completed = true;
+            state->queue->push(Event{OpenFilesDialogResultEvent{id, status, std::move(paths)}});
+            state->pending = false;
+        } catch (...) {
+            if (const std::shared_ptr<CompletionState> state = weak_state.lock()) {
+                if (state->active && state->pending && !state->completed && state->queue != nullptr) {
+                    try {
+                        state->completed = true;
+                        state->queue->push(Event{OpenFilesDialogResultEvent{
+                            id, FileDialogResultStatus::failed}});
+                    } catch (...) {}
+                }
+                state->pending = false;
+            }
+        }
+    };
+    try {
+        open_files_invoker_->begin(owner_, title, extensions, initial_directory, completion);
+    } catch (...) {
+        completion(FileDialogResultStatus::failed, {});
     }
     return id;
 }

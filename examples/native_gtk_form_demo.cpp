@@ -25,6 +25,7 @@ int main() {
     Command action{"Action"};
     Command open_file{"Open File"};
     FileDialogRequestId open_id = 0;
+    FileDialogRequestId open_files_id = 0;
     FileDialogRequestId save_id = 0;
     FileDialogRequestId folder_id = 0;
     std::error_code directory_error;
@@ -35,6 +36,13 @@ int main() {
         if (auto* dialogs = backend.fileDialogs()) {
             open_id = dialogs->requestOpenFile(
                 {"Open Text or Source File", {"txt", "md", "cpp", "hpp"}, initial_directory});
+        }
+    });
+    Command open_files{"Open Multiple Files"};
+    open_files.setOnExecuted([&] {
+        if (auto* dialogs = backend.fileDialogs()) {
+            open_files_id = dialogs->requestOpenFiles(
+                {"Open Multiple Text or Source Files", {"txt", "md", "cpp", "hpp"}, initial_directory});
         }
     });
     Command save_file{"Save File"};
@@ -64,6 +72,7 @@ int main() {
     MenuBarModel menu_bar;
     MenuModel& file = menu_bar.appendMenu("File");
     file.appendCommand(open_file);
+    file.appendCommand(open_files);
     file.appendCommand(save_file);
     file.appendCommand(select_folder);
     file.appendCommand(action);
@@ -96,6 +105,12 @@ int main() {
             if (std::holds_alternative<CommandActivationEvent>(*event)) {
                 const Command::Reference command = std::get<CommandActivationEvent>(*event).command;
                 if (Command* const live = command.get()) (void)live->execute();
+            } else if (std::holds_alternative<OpenFilesDialogResultEvent>(*event)) {
+                const auto& result = std::get<OpenFilesDialogResultEvent>(*event);
+                if (result.request_id == open_files_id && result.status == FileDialogResultStatus::accepted) {
+                    std::cout << "Open Multiple accepted (" << result.paths.size() << "):\n";
+                    for (const auto& path : result.paths) std::cout << "  " << path.string() << '\n';
+                }
             } else if (std::holds_alternative<FileDialogResultEvent>(*event)) {
                 const auto& result = std::get<FileDialogResultEvent>(*event);
                 const bool is_folder = result.request_id == folder_id;

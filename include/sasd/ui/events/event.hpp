@@ -214,6 +214,7 @@ using Event =
     std::variant<QuitEvent,
                  CommandActivationEvent,
                  FileDialogResultEvent,
+                 OpenFilesDialogResultEvent,
                  FocusEvent,
                  KeyEvent,
                  TextInputEvent,

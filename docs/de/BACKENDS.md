@@ -499,3 +499,30 @@ Beispiele:
 Zusätzlich erhält jedes Backend plattformspezifische Integrations- und Smoke-Tests.
 
 Für das aktuelle Terminal-Backend existieren nun echte Prozess-Smoke-Tests statt reiner Mock-/Compilerabdeckung: Linux und macOS starten den nativen POSIX-Adapter in einem Kernel-PTY, Windows startet den nativen Adapter in einer ConPTY-Pseudokonsole. Geprüft werden dabei unter anderem Größenabfrage, Raw-/VT-Input, Frame-Output, Alternate-Screen-/Cursor-Sequenzen sowie die Wiederherstellung von `termios` beziehungsweise Windows Console Modes und Codepages. Diese automatisierten Pseudoterminaltests ergänzen, ersetzen aber nicht den manuellen Emulator-Smoke-Test unter Linux/xterm und Windows Terminal.
+
+#### M7 Open File Mehrfachauswahl (Slice 10)
+
+Der Core-Vertrag hält Einzel-Open und Mehrfach-Open getrennt. `OpenFileDialogRequest` und
+`FileDialogResultEvent` bedeuten weiterhin genau einen Pfad; `OpenFilesDialogRequest` und
+`OpenFilesDialogResultEvent` bedeuten eine oder mehrere bestehende lokale Dateien. Das Plural-
+Event ist ein Application-Level-Event und durchläuft kein Widget-Routing. Die native Auswahlreihenfolge
+bleibt einschließlich Duplikaten erhalten; es gibt kein Sortieren, Deduplizieren, Canonicalisieren
+oder Normalisieren. Cancel und Failure liefern eine leere Liste. Kann ein akzeptiertes natives
+Element nicht als nichtleerer lokaler `std::filesystem::path` dargestellt werden, wird das gesamte
+Result atomar zu Failed.
+
+Alle drei nativen Services verwenden dieselbe Request-ID-Sequenz und dieselbe Pending-Grenze. Sie
+wiederverwenden die literal Extension-Filter- und absolute Startverzeichnis-Regeln der Einzel-
+Operation. Win32 aktiviert `FOS_ALLOWMULTISELECT` und liest über `GetResults()` ein
+`IShellItemArray`; AppKit setzt `NSOpenPanel.allowsMultipleSelection` und transportiert `URLs`;
+GTK ab 4.10 verwendet `gtk_file_dialog_open_multiple()` und dessen `GListModel`, ältere
+unterstützte GTK4-Versionen `GtkFileChooserNative` mit Mehrfachauswahl und
+`gtk_file_chooser_get_files()`. Alle Backends akzeptieren nur lokale Dateisystempfade, niemals
+öffentliche URIs. Save und Folder bleiben Einzel-Auswahl; `BackendCapabilities::file_dialogs` bleibt
+unverändert.
+
+Manueller nativer Smoke-Ablauf (unter WSL nicht ausgeführt): Jede native Demo starten, Single Open
+testen, anschließend `Open Multiple Files` wählen, mit der jeweiligen Standardgeste eine und mehrere
+Dateien markieren, akzeptieren und alle Pfade in Reihenfolge prüfen; danach Cancel, Filter,
+Startverzeichnis und Navigation in ein anderes Verzeichnis testen. Der sichtbare macOS/Cocoa-M3-
+Gate bleibt offen; CI schließt ihn nicht.

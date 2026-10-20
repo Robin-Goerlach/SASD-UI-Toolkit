@@ -16,6 +16,11 @@ namespace sasd::ui::native::gtk::detail {
 // The GFile is borrowed for the duration of the completion call. The production invoker owns the
 // GFile returned by GTK and releases it immediately after the service has copied its local path.
 using NativeOpenFileCompletion = std::function<void(FileDialogResultStatus, GFile*)>;
+struct NativeOpenFilesSelection {
+    GListModel* model{}; // borrowed during completion for GTK >= 4.10
+    GSList* files{}; // borrowed during completion for the compatibility chooser route
+};
+using NativeOpenFilesCompletion = std::function<void(FileDialogResultStatus, NativeOpenFilesSelection)>;
 using NativeSaveFileCompletion = NativeOpenFileCompletion;
 using NativeSelectFolderCompletion = NativeOpenFileCompletion;
 
@@ -26,6 +31,16 @@ public:
     virtual void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
                        const std::optional<std::filesystem::path>& initial_directory,
                        NativeOpenFileCompletion completion) = 0;
+    virtual void cancel() noexcept = 0;
+};
+
+/** Private seam for multiple local files; its single-file counterpart remains unchanged. */
+class NativeOpenFilesInvoker {
+public:
+    virtual ~NativeOpenFilesInvoker() = default;
+    virtual void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+                       const std::optional<std::filesystem::path>& initial_directory,
+                       NativeOpenFilesCompletion completion) = 0;
     virtual void cancel() noexcept = 0;
 };
 
@@ -56,13 +71,15 @@ public:
     GtkFileDialogService(GtkWindow* owner, EventQueue& events, std::thread::id owner_thread,
                          std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
                          std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
-                         std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
+                         std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr,
+                         std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker = nullptr);
     ~GtkFileDialogService() override;
 
     GtkFileDialogService(const GtkFileDialogService&) = delete;
     GtkFileDialogService& operator=(const GtkFileDialogService&) = delete;
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestOpenFiles(OpenFilesDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSelectFolder(
         SelectFolderDialogRequest request) override;
@@ -76,6 +93,7 @@ private:
     EventQueue* events_{}; // non-owning and nulled before backend teardown
     std::thread::id owner_thread_{};
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
+    std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
     std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     std::shared_ptr<CompletionState> state_;

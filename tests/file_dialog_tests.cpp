@@ -64,10 +64,71 @@ TEST_CASE("FileDialogResultEvent is an application event and never bubbles to wi
     CHECK(widget.deliveryCount() == 0);
 }
 
+TEST_CASE("OpenFilesDialogResultEvent enforces plural result invariants") {
+    const std::vector<std::filesystem::path> selected{
+        std::filesystem::path{"/tmp/first.txt"}, std::filesystem::path{"/tmp/first.txt"},
+        std::filesystem::path{"/tmp/second.txt"}};
+    const OpenFilesDialogResultEvent accepted{1, FileDialogResultStatus::accepted, selected};
+    CHECK(accepted.paths == selected);
+    CHECK(OpenFilesDialogResultEvent{2, FileDialogResultStatus::accepted,
+                                     {std::filesystem::path{"/tmp/one.txt"}}}
+              .paths.size() == 1);
+    CHECK(OpenFilesDialogResultEvent{3, FileDialogResultStatus::cancelled}.paths.empty());
+    CHECK(OpenFilesDialogResultEvent{4, FileDialogResultStatus::failed}.paths.empty());
+
+    const auto rejects = [](FileDialogRequestId id, FileDialogResultStatus status,
+                            std::vector<std::filesystem::path> paths) {
+        try {
+            (void)OpenFilesDialogResultEvent{id, status, std::move(paths)};
+            return false;
+        } catch (const std::logic_error&) {
+            return true;
+        }
+    };
+    CHECK(rejects(0, FileDialogResultStatus::accepted, {std::filesystem::path{"/tmp/a"}}));
+    CHECK(rejects(5, FileDialogResultStatus::accepted, {}));
+    CHECK(rejects(6, FileDialogResultStatus::accepted, {std::filesystem::path{}}));
+    CHECK(rejects(7, FileDialogResultStatus::cancelled, {std::filesystem::path{"/tmp/a"}}));
+    CHECK(rejects(8, FileDialogResultStatus::failed, {std::filesystem::path{"/tmp/a"}}));
+}
+
+TEST_CASE("OpenFilesDialogResultEvent is an application event and never bubbles to widgets") {
+    RecordingWidget widget;
+    const Event event = OpenFilesDialogResultEvent{
+        10, FileDialogResultStatus::accepted, {std::filesystem::path{"/tmp/a"}}};
+    CHECK(std::holds_alternative<OpenFilesDialogResultEvent>(event));
+    CHECK(!EventDispatcher::dispatch(widget, event).handled());
+    CHECK(widget.deliveryCount() == 0);
+
+    MockBackend backend;
+    Application application{backend};
+    backend.postEvent(event);
+    std::size_t resolver_calls = 0;
+    std::size_t application_events = 0;
+    CHECK(application.processRoutedEvents(
+              [&](const Event&) -> Widget* {
+                  ++resolver_calls;
+                  return &widget;
+              },
+              [&](const Event& received) {
+                  ++application_events;
+                  CHECK(std::holds_alternative<OpenFilesDialogResultEvent>(received));
+              }) == 1);
+    CHECK(resolver_calls == 0);
+    CHECK(application_events == 1);
+    CHECK(widget.deliveryCount() == 0);
+}
+
 TEST_CASE("Open file requests keep the small literal extension contract") {
     const OpenFileDialogRequest unfiltered{"Open File"};
     CHECK(unfiltered.title == "Open File");
     CHECK(unfiltered.extensions.empty());
+    const OpenFilesDialogRequest multiple_default{"Open Files"};
+    CHECK(multiple_default.title == "Open Files");
+    CHECK(multiple_default.extensions.empty());
+    CHECK(!multiple_default.initial_directory.has_value());
+    const OpenFilesDialogRequest multiple_filtered{"Open Source Files", {"cpp", "hpp"}};
+    CHECK(multiple_filtered.extensions == std::vector<std::string>{"cpp", "hpp"});
     const OpenFileDialogRequest filtered{"Open Source", {"txt", "md", "cpp"}};
     CHECK(filtered.extensions == std::vector<std::string>{"txt", "md", "cpp"});
     const SaveFileDialogRequest save{"Save File", {"txt", "md"}};
@@ -79,9 +140,11 @@ TEST_CASE("Open file requests keep the small literal extension contract") {
     CHECK(!suggested.initial_directory.has_value());
     const std::filesystem::path directory{"/tmp/Documents"};
     const OpenFileDialogRequest located_open{"Open File", {}, directory};
+    const OpenFilesDialogRequest located_multiple{"Open Files", {}, directory};
     const SaveFileDialogRequest located_save{"Save File", {}, {}, directory};
     const SelectFolderDialogRequest located_folder{"Select Folder", directory};
     CHECK(located_open.initial_directory == directory);
+    CHECK(located_multiple.initial_directory == directory);
     CHECK(located_save.initial_directory == directory);
     CHECK(located_folder.initial_directory == directory);
 }

@@ -37,7 +37,8 @@ std::size_t Application::processRoutedEvents(const EventTargetResolver& target_r
          */
         if (std::holds_alternative<QuitEvent>(*event) ||
             std::holds_alternative<CommandActivationEvent>(*event) ||
-            std::holds_alternative<FileDialogResultEvent>(*event)) {
+            std::holds_alternative<FileDialogResultEvent>(*event) ||
+            std::holds_alternative<OpenFilesDialogResultEvent>(*event)) {
             if (std::holds_alternative<QuitEvent>(*event)) {
                 exit_requested_ = true;
             }
