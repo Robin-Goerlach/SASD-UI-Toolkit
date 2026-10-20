@@ -9,11 +9,19 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M7 Open File multiple-selection slice: added the separate `OpenFilesDialogRequest`,
+  `requestOpenFiles()` and `OpenFilesDialogResultEvent` contract. Accepted results contain one or
+  more local filesystem paths in native order, preserving duplicates without sorting or
+  normalization; cancellation and failure are empty, and any unrepresentable member fails the
+  whole completion atomically. Win32 uses `FOS_ALLOWMULTISELECT`/`GetResults`, AppKit uses
+  `NSOpenPanel.allowsMultipleSelection`/`URLs`, and GTK uses `open_multiple`/`GListModel` with the
+  older chooser multiple-selection fallback. Single Open, Save, Folder, capabilities, filters,
+  initial-directory policy and shared request/pending semantics remain unchanged.
+
 - M7 File Dialog foundation: optional backend `FileDialogService` with request IDs and queued
   application-level `FileDialogResultEvent` completion for accepted, cancelled and failed results.
 - First M7 File Dialog consumer: Win32 `IFileOpenDialog` for one existing filesystem file with the
-  existing HWND as owner, strict UTF-8/UTF-16 handling and no filters, save, folder or multiselect
-  semantics yet.
+  existing HWND as owner, strict UTF-8/UTF-16 handling and no filters, save or folder semantics yet.
 - Second M7 File Dialog consumer: AppKit `NSOpenPanel` as an asynchronous sheet owned by the
   existing `NSWindow`, with lifetime-safe completion state, generation/double-completion protection,
   strict UTF-8 titles and native filesystem-representation paths. Save, folder and richer selection

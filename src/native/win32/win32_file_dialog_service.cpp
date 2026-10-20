@@ -6,6 +6,7 @@
 
 #include <shobjidl.h>
 
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -111,6 +112,88 @@ public:
         std::wstring path{native_path};
         CoTaskMemFree(native_path);
         return {FileDialogResultStatus::accepted, std::move(path)};
+    }
+};
+
+class ProductionOpenFilesInvoker final : public NativeOpenFilesInvoker {
+public:
+    [[nodiscard]] NativeOpenFilesOutcome show(
+        HWND owner, std::wstring_view title,
+        const std::vector<std::wstring>& extensions,
+        const std::optional<std::filesystem::path>& initial_directory) override {
+        HRESULT initialization = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (FAILED(initialization)) return {FileDialogResultStatus::failed, {}};
+        struct ComApartment final { ~ComApartment() { CoUninitialize(); } } apartment;
+
+        IFileOpenDialog* dialog = nullptr;
+        HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                          IID_PPV_ARGS(&dialog));
+        if (FAILED(result)) return {FileDialogResultStatus::failed, {}};
+        struct DialogRelease final {
+            IFileOpenDialog* value;
+            ~DialogRelease() { value->Release(); }
+        } release{dialog};
+
+        DWORD options = 0;
+        if (FAILED(dialog->GetOptions(&options))) return {FileDialogResultStatus::failed, {}};
+        options |= FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST |
+                   FOS_NOCHANGEDIR | FOS_ALLOWMULTISELECT;
+        if (FAILED(dialog->SetOptions(options))) return {FileDialogResultStatus::failed, {}};
+        if (!title.empty() && FAILED(dialog->SetTitle(std::wstring{title}.c_str()))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+        if (!extensions.empty()) {
+            const std::wstring pattern = win32FilterPattern(extensions);
+            const std::wstring display_name = pattern;
+            const COMDLG_FILTERSPEC filter{display_name.c_str(), pattern.c_str()};
+            if (FAILED(dialog->SetFileTypes(1, &filter))) {
+                return {FileDialogResultStatus::failed, {}};
+            }
+        }
+        if (FAILED(setDefaultFolder(dialog, initial_directory))) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+
+        result = dialog->Show(owner);
+        if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+            return {FileDialogResultStatus::cancelled, {}};
+        }
+        if (FAILED(result)) return {FileDialogResultStatus::failed, {}};
+
+        IShellItemArray* items = nullptr;
+        if (FAILED(dialog->GetResults(&items)) || items == nullptr) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+        struct ItemArrayRelease final {
+            IShellItemArray* value;
+            ~ItemArrayRelease() { value->Release(); }
+        } items_release{items};
+
+        DWORD count = 0;
+        if (FAILED(items->GetCount(&count)) || count == 0) {
+            return {FileDialogResultStatus::failed, {}};
+        }
+        std::vector<std::wstring> paths;
+        paths.reserve(static_cast<std::size_t>(count));
+        for (DWORD index = 0; index < count; ++index) {
+            IShellItem* item = nullptr;
+            if (FAILED(items->GetItemAt(index, &item)) || item == nullptr) {
+                return {FileDialogResultStatus::failed, {}};
+            }
+            struct ItemRelease final {
+                IShellItem* value;
+                ~ItemRelease() { value->Release(); }
+            } item_release{item};
+            PWSTR native_path = nullptr;
+            if (FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &native_path)) ||
+                native_path == nullptr || *native_path == L'\0') {
+                CoTaskMemFree(native_path);
+                return {FileDialogResultStatus::failed, {}};
+            }
+            paths.emplace_back(native_path);
+            CoTaskMemFree(native_path);
+        }
+        return {FileDialogResultStatus::accepted, std::move(paths)};
     }
 };
 
@@ -255,13 +338,18 @@ Win32FileDialogService::Win32FileDialogService(
     EventQueue& events,
     std::unique_ptr<NativeOpenFileInvoker> open_invoker,
     std::unique_ptr<NativeSaveFileInvoker> save_invoker,
-    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker)
+    std::unique_ptr<NativeSelectFolderInvoker> folder_invoker,
+    std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker)
     : owner_{owner},
       events_{events},
       open_invoker_{std::move(open_invoker)},
+      open_files_invoker_{std::move(open_files_invoker)},
       save_invoker_{std::move(save_invoker)},
       folder_invoker_{std::move(folder_invoker)} {
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
+    if (open_files_invoker_ == nullptr) {
+        open_files_invoker_ = std::make_unique<ProductionOpenFilesInvoker>();
+    }
     if (save_invoker_ == nullptr) save_invoker_ = std::make_unique<ProductionSaveFileInvoker>();
     if (folder_invoker_ == nullptr) {
         folder_invoker_ = std::make_unique<ProductionSelectFolderInvoker>();
@@ -304,6 +392,51 @@ FileDialogRequestId Win32FileDialogService::requestOpenFile(OpenFileDialogReques
         // Once the request ID has been issued, every technical failure becomes exactly one failed
         // completion. No application callback runs here, and the exception never crosses native UI.
         events_.push(Event{FileDialogResultEvent{request_id, FileDialogResultStatus::failed}});
+    }
+    pending_ = false;
+    return request_id;
+}
+
+FileDialogRequestId Win32FileDialogService::requestOpenFiles(OpenFilesDialogRequest request) {
+    const std::wstring title = utf8ToWide(request.title);
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
+    std::vector<std::wstring> wide_extensions;
+    wide_extensions.reserve(extensions.size());
+    for (const std::string& extension : extensions) {
+        wide_extensions.push_back(utf8ToWide(extension));
+    }
+    if (pending_) throw std::logic_error{"Win32 file dialog already has a pending request"};
+    if (next_request_id_ == 0) {
+        throw std::overflow_error{"Win32 file-dialog request ID space exhausted"};
+    }
+
+    const FileDialogRequestId request_id = next_request_id_++;
+    pending_ = true;
+    try {
+        const NativeOpenFilesOutcome outcome =
+            open_files_invoker_->show(owner_, title, wide_extensions, initial_directory);
+        if (outcome.status == FileDialogResultStatus::accepted) {
+            if (outcome.paths.empty() || std::any_of(outcome.paths.begin(), outcome.paths.end(),
+                                                     [](const auto& path) { return path.empty(); })) {
+                throw std::runtime_error{"Win32 file dialog returned an invalid path list"};
+            }
+            std::vector<std::filesystem::path> paths;
+            paths.reserve(outcome.paths.size());
+            for (const std::wstring& path : outcome.paths) paths.emplace_back(path);
+            events_.push(Event{OpenFilesDialogResultEvent{
+                request_id, FileDialogResultStatus::accepted, std::move(paths)}});
+        } else if (outcome.status == FileDialogResultStatus::cancelled) {
+            events_.push(Event{OpenFilesDialogResultEvent{
+                request_id, FileDialogResultStatus::cancelled}});
+        } else {
+            events_.push(Event{OpenFilesDialogResultEvent{
+                request_id, FileDialogResultStatus::failed}});
+        }
+    } catch (...) {
+        events_.push(Event{OpenFilesDialogResultEvent{request_id, FileDialogResultStatus::failed}});
     }
     pending_ = false;
     return request_id;

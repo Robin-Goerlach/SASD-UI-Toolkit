@@ -112,6 +112,92 @@ private:
     std::shared_ptr<PanelState> active_panel_;
 };
 
+class ProductionOpenFilesInvoker final : public NativeOpenFilesInvoker {
+public:
+    void begin(NSWindow* owner, NSString* title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
+               NativeOpenFilesCompletion completion) override {
+        @autoreleasepool {
+            @try {
+                auto panel_state = std::make_shared<PanelState>();
+                NSOpenPanel* panel = [NSOpenPanel openPanel];
+                panel_state->panel = panel;
+                panel.canChooseFiles = YES;
+                panel.canChooseDirectories = NO;
+                panel.allowsMultipleSelection = YES;
+                if (title != nil) panel.title = title;
+                if (initial_directory.has_value()) {
+                    panel.directoryURL = nativeDirectoryURL(*initial_directory);
+                    if (panel.directoryURL == nil) {
+                        throw std::runtime_error{"AppKit initial directory cannot be represented"};
+                    }
+                }
+                if (!extensions.empty()) {
+                    if (@available(macOS 11.0, *)) {
+                        NSMutableArray* content_types =
+                            [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            if (value == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension must be valid UTF-8"};
+                            UTType* type = [UTType typeWithFilenameExtension:value];
+                            if (type == nil) throw std::invalid_argument{
+                                "AppKit file-dialog extension could not become a UTType"};
+                            [content_types addObject:type];
+                        }
+                        panel.allowedContentTypes = content_types;
+                    } else {
+                        NSMutableArray* legacy_types =
+                            [NSMutableArray arrayWithCapacity:extensions.size()];
+                        for (const std::string& extension : extensions) {
+                            NSString* value = [[NSString alloc] initWithBytes:extension.data()
+                                                                           length:extension.size()
+                                                                         encoding:NSUTF8StringEncoding];
+                            [legacy_types addObject:value];
+                        }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                        panel.allowedFileTypes = legacy_types;
+#pragma clang diagnostic pop
+                    }
+                }
+                [panel beginSheetModalForWindow:owner completionHandler:
+                    ^(NSModalResponse response) {
+                        completion(response, panel.URLs);
+                        panel_state->panel = nil;
+                    }];
+                active_panel_ = std::move(panel_state);
+            } @catch (NSException* exception) {
+                const char* reason = exception.reason.UTF8String;
+                throw std::runtime_error{std::string{"NSOpenPanel multiple-file start failed"} +
+                                          (reason != nullptr ? std::string{": "} + reason : std::string{})};
+            }
+        }
+    }
+
+    void cancel() noexcept override {
+        @autoreleasepool {
+            if (active_panel_ != nullptr && active_panel_->panel != nil) {
+                @try {
+                    NSWindow* sheet_parent = active_panel_->panel.sheetParent;
+                    if (sheet_parent != nil) {
+                        [sheet_parent endSheet:active_panel_->panel returnCode:NSModalResponseCancel];
+                    } else {
+                        [active_panel_->panel close];
+                    }
+                } @catch (NSException*) {}
+                active_panel_->panel = nil;
+            }
+            active_panel_.reset();
+        }
+    }
+
+private:
+    std::shared_ptr<PanelState> active_panel_;
+};
+
 class ProductionSelectFolderInvoker final : public NativeSelectFolderInvoker {
 public:
     void begin(NSWindow* owner, NSString* title,
@@ -318,14 +404,19 @@ struct AppKitFileDialogService::CompletionState {
 AppKitFileDialogService::AppKitFileDialogService(NSWindow* owner, EventQueue& events,
                                                  std::unique_ptr<NativeOpenFileInvoker> open_invoker,
                                                  std::unique_ptr<NativeSaveFileInvoker> save_invoker,
-                                                 std::unique_ptr<NativeSelectFolderInvoker> folder_invoker)
+                                                 std::unique_ptr<NativeSelectFolderInvoker> folder_invoker,
+                                                 std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker)
     : owner_{owner},
       open_invoker_{std::move(open_invoker)},
+      open_files_invoker_{std::move(open_files_invoker)},
       save_invoker_{std::move(save_invoker)},
       folder_invoker_{std::move(folder_invoker)},
       state_{std::make_shared<CompletionState>()} {
     state_->queue = &events;
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
+    if (open_files_invoker_ == nullptr) {
+        open_files_invoker_ = std::make_unique<ProductionOpenFilesInvoker>();
+    }
     if (save_invoker_ == nullptr) save_invoker_ = std::make_unique<ProductionSaveFileInvoker>();
     if (folder_invoker_ == nullptr) {
         folder_invoker_ = std::make_unique<ProductionSelectFolderInvoker>();
@@ -346,6 +437,7 @@ void AppKitFileDialogService::shutdown() noexcept {
     state_->queue = nullptr;
     ++state_->generation;
     if (open_invoker_ != nullptr) open_invoker_->cancel();
+    if (open_files_invoker_ != nullptr) open_files_invoker_->cancel();
     if (save_invoker_ != nullptr) save_invoker_->cancel();
     if (folder_invoker_ != nullptr) folder_invoker_->cancel();
     owner_ = nullptr;
@@ -404,6 +496,75 @@ FileDialogRequestId AppKitFileDialogService::requestOpenFile(OpenFileDialogReque
     } catch (...) {
         // There is no public "other" response constant on all supported SDKs; any value other
         // than OK/Cancel is deliberately mapped to failed by the completion contract.
+        completion(static_cast<NSModalResponse>(-1), nil);
+    }
+    return id;
+}
+
+FileDialogRequestId AppKitFileDialogService::requestOpenFiles(OpenFilesDialogRequest request) {
+    if (![NSThread isMainThread]) {
+        throw std::runtime_error{"AppKit file dialogs must start on the AppKit main thread"};
+    }
+    if (state_->queue == nullptr || owner_ == nil) {
+        throw std::logic_error{"AppKit file dialog requires initialize()"};
+    }
+    NSString* title = strictTitle(request.title);
+    const std::vector<std::string> extensions =
+        sasd::ui::native::detail::validateFileDialogExtensions(request.extensions);
+    const std::optional<std::filesystem::path> initial_directory =
+        sasd::ui::native::detail::validateInitialDirectory(request.initial_directory);
+    if (state_->pending) throw std::logic_error{"AppKit file dialog already has a pending request"};
+    if (next_request_id_ == 0) throw std::overflow_error{"AppKit file-dialog request ID space exhausted"};
+
+    const FileDialogRequestId id = next_request_id_++;
+    const std::uint64_t generation = ++state_->generation;
+    state_->request_id = id;
+    state_->pending = true;
+    state_->completed = false;
+    const std::weak_ptr<CompletionState> weak_state = state_;
+    const NativeOpenFilesCompletion completion = [weak_state, id, generation](
+        NSModalResponse response, NSArray<NSURL*>* urls) noexcept {
+        try {
+            const std::shared_ptr<CompletionState> state = weak_state.lock();
+            if (state == nullptr || !state->active || !state->pending || state->completed ||
+                state->request_id != id || state->generation != generation || state->queue == nullptr) return;
+            FileDialogResultStatus status = FileDialogResultStatus::failed;
+            std::vector<std::filesystem::path> paths;
+            if (response == NSModalResponseCancel) {
+                status = FileDialogResultStatus::cancelled;
+            } else if (response == NSModalResponseOK && urls != nil) {
+                paths.reserve(urls.count);
+                bool valid = urls.count != 0;
+                for (NSURL* url in urls) {
+                    const auto path = nativeFilePath(url);
+                    if (!path || path->empty()) {
+                        valid = false;
+                        break;
+                    }
+                    paths.push_back(*path);
+                }
+                if (valid) status = FileDialogResultStatus::accepted;
+                else paths.clear();
+            }
+            state->completed = true;
+            state->queue->push(Event{OpenFilesDialogResultEvent{id, status, std::move(paths)}});
+            state->pending = false;
+        } catch (...) {
+            if (const std::shared_ptr<CompletionState> state = weak_state.lock()) {
+                if (state->active && state->pending && !state->completed && state->queue != nullptr) {
+                    try {
+                        state->completed = true;
+                        state->queue->push(Event{OpenFilesDialogResultEvent{
+                            id, FileDialogResultStatus::failed}});
+                    } catch (...) {}
+                }
+                state->pending = false;
+            }
+        }
+    };
+    try {
+        open_files_invoker_->begin(owner_, title, extensions, initial_directory, completion);
+    } catch (...) {
         completion(static_cast<NSModalResponse>(-1), nil);
     }
     return id;

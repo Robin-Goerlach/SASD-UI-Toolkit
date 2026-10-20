@@ -19,6 +19,11 @@ struct NativeOpenFileOutcome {
     std::wstring path{};
 };
 
+struct NativeOpenFilesOutcome {
+    FileDialogResultStatus status{FileDialogResultStatus::failed};
+    std::vector<std::wstring> paths{};
+};
+
 using NativeSaveFileOutcome = NativeOpenFileOutcome;
 using NativeSelectFolderOutcome = NativeOpenFileOutcome;
 
@@ -27,6 +32,15 @@ class NativeOpenFileInvoker {
 public:
     virtual ~NativeOpenFileInvoker() = default;
     [[nodiscard]] virtual NativeOpenFileOutcome show(
+        HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions,
+        const std::optional<std::filesystem::path>& initial_directory) = 0;
+};
+
+/** Private invocation seam for the distinct multiple-file operation. */
+class NativeOpenFilesInvoker {
+public:
+    virtual ~NativeOpenFilesInvoker() = default;
+    [[nodiscard]] virtual NativeOpenFilesOutcome show(
         HWND owner, std::wstring_view title, const std::vector<std::wstring>& extensions,
         const std::optional<std::filesystem::path>& initial_directory) = 0;
 };
@@ -68,9 +82,11 @@ public:
                            EventQueue& events,
                            std::unique_ptr<NativeOpenFileInvoker> open_invoker = nullptr,
                            std::unique_ptr<NativeSaveFileInvoker> save_invoker = nullptr,
-                           std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr);
+                           std::unique_ptr<NativeSelectFolderInvoker> folder_invoker = nullptr,
+                           std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker = nullptr);
 
     [[nodiscard]] FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) override;
+    [[nodiscard]] FileDialogRequestId requestOpenFiles(OpenFilesDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) override;
     [[nodiscard]] FileDialogRequestId requestSelectFolder(
         SelectFolderDialogRequest request) override;
@@ -81,6 +97,7 @@ private:
     HWND owner_;
     EventQueue& events_;
     std::unique_ptr<NativeOpenFileInvoker> open_invoker_;
+    std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker_;
     std::unique_ptr<NativeSaveFileInvoker> save_invoker_;
     std::unique_ptr<NativeSelectFolderInvoker> folder_invoker_;
     FileDialogRequestId next_request_id_{1};

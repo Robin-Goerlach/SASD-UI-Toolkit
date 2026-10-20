@@ -25,6 +25,17 @@ struct OpenFileDialogRequest {
 };
 
 /**
+ * Open one or more existing local files. Its options intentionally mirror OpenFileDialogRequest,
+ * while the distinct type keeps selection cardinality explicit in the public contract.
+ */
+struct OpenFilesDialogRequest {
+    std::string title{};
+    std::vector<std::string> extensions{};
+    /** Optional absolute native directory preference for the initial dialog location. */
+    std::optional<std::filesystem::path> initial_directory{};
+};
+
+/**
  * Save one destination path. Extensions use the same literal UTF-8 token contract as
  * OpenFileDialogRequest. An empty list leaves the native picker unfiltered; otherwise the
  * ordered list is one native filter set and its first token is the preferred native extension
@@ -74,6 +85,23 @@ struct FileDialogResultEvent {
 };
 
 /**
+ * Application-level completion of a multiple-file open request.
+ *
+ * Accepted results contain one or more non-empty local filesystem paths in native selection order.
+ * Cancellation and failure contain no paths. The native result is intentionally not sorted,
+ * deduplicated, normalized or otherwise rewritten.
+ */
+struct OpenFilesDialogResultEvent {
+    FileDialogRequestId request_id;
+    FileDialogResultStatus status;
+    std::vector<std::filesystem::path> paths;
+
+    OpenFilesDialogResultEvent(FileDialogRequestId request_id,
+                               FileDialogResultStatus status,
+                               std::vector<std::filesystem::path> paths = {});
+};
+
+/**
  * Optional host service for choosing one filesystem file for opening or saving, or one existing
  * local filesystem directory.
  *
@@ -104,6 +132,7 @@ public:
     FileDialogService& operator=(FileDialogService&&) = delete;
 
     [[nodiscard]] virtual FileDialogRequestId requestOpenFile(OpenFileDialogRequest request) = 0;
+    [[nodiscard]] virtual FileDialogRequestId requestOpenFiles(OpenFilesDialogRequest request) = 0;
     [[nodiscard]] virtual FileDialogRequestId requestSaveFile(SaveFileDialogRequest request) = 0;
     [[nodiscard]] virtual FileDialogRequestId requestSelectFolder(
         SelectFolderDialogRequest request) = 0;

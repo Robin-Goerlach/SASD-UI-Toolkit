@@ -60,8 +60,8 @@ public:
      * performs target-to-parent bubbling. If no target exists or the complete route ignores the
      * event, unhandled_handler receives it when supplied.
      *
-     * QuitEvent, CommandActivationEvent and FileDialogResultEvent are intentionally application-
-     * level: they bypass widget routing. QuitEvent sets exitRequested(); the other events are only
+     * QuitEvent, CommandActivationEvent, FileDialogResultEvent and OpenFilesDialogResultEvent are
+     * intentionally application-level: they bypass widget routing. QuitEvent sets exitRequested(); the other events are only
      * offered to unhandled_handler and are never interpreted automatically.
      */
     std::size_t processRoutedEvents(const EventTargetResolver& target_resolver,

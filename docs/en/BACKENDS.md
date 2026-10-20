@@ -487,3 +487,27 @@ Examples:
 Each backend additionally receives platform-specific integration and smoke tests.
 
 The terminal backend now has real process-level smoke tests rather than only mock/compiler coverage: Linux and macOS run the native POSIX adapter inside a kernel PTY, while Windows runs the native adapter inside a ConPTY pseudoconsole. The tests cover size discovery, raw/VT input, frame output, alternate-screen/cursor sequences and restoration of `termios` or Windows console modes/code pages. These automated pseudoterminal tests complement rather than replace manual emulator validation in Linux/xterm and Windows Terminal.
+
+#### M7 Open File multiple selection (slice 10)
+
+The Core contract keeps Single Open and Multiple Open separate. `OpenFileDialogRequest` and
+`FileDialogResultEvent` still mean exactly one path; `OpenFilesDialogRequest` and
+`OpenFilesDialogResultEvent` mean one or more existing local files. The plural event is an
+application-level event and bypasses widget routing. Accepted paths retain native selection order,
+including duplicates; no sorting, deduplication, canonicalization or normalization occurs. A
+cancelled or failed result has an empty list. If any accepted native member cannot be represented as
+a non-empty local `std::filesystem::path`, the complete result is failed atomically.
+
+All three native services use the shared request-ID sequence and one pending-operation boundary.
+They reuse the literal extension-filter and absolute initial-directory contracts from the single
+operation. Win32 enables `FOS_ALLOWMULTISELECT` and reads `IShellItemArray` through `GetResults()`;
+AppKit configures `NSOpenPanel.allowsMultipleSelection` and transports `URLs`; GTK 4.10+ uses
+`gtk_file_dialog_open_multiple()` and its `GListModel`, while older supported GTK4 uses
+`GtkFileChooserNative` with multiple selection and `gtk_file_chooser_get_files()`. GTK and both
+other backends accept only local filesystem paths, never public URIs. Save and Folder remain single
+selection, and `BackendCapabilities::file_dialogs` is unchanged.
+
+Manual native smoke procedure (not performed in WSL): start each native demo, test Single Open,
+choose `Open Multiple Files`, select one and several files with the platform's standard gesture,
+accept and verify every path is reported in order, then test Cancel, filters, initial directory and
+navigation to another directory. The visible macOS/Cocoa M3 gate remains open; CI does not close it.
