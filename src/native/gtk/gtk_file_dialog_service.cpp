@@ -579,8 +579,9 @@ GtkFileDialogService::GtkFileDialogService(GtkWindow* owner, EventQueue& events,
                                            std::unique_ptr<NativeSelectFolderInvoker> folder_invoker,
                                            std::unique_ptr<NativeOpenFilesInvoker> open_files_invoker)
     : owner_{owner}, events_{&events}, owner_thread_{owner_thread},
-      open_invoker_{std::move(open_invoker)}, save_invoker_{std::move(save_invoker)},
+      open_invoker_{std::move(open_invoker)},
       open_files_invoker_{std::move(open_files_invoker)},
+      save_invoker_{std::move(save_invoker)},
       folder_invoker_{std::move(folder_invoker)},
       state_{std::make_shared<CompletionState>()} {
     if (open_invoker_ == nullptr) open_invoker_ = std::make_unique<ProductionOpenFileInvoker>();
