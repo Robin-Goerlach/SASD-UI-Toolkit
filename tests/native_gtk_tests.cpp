@@ -64,6 +64,37 @@ private:
     std::shared_ptr<FakeGtkInvokerState> state_;
 };
 
+struct FakeGtkOpenFilesState {
+    struct Invocation {
+        GtkWindow* owner{};
+        std::string title{};
+        std::vector<std::string> extensions{};
+        std::optional<std::filesystem::path> initial_directory{};
+        detail::NativeOpenFilesCompletion completion{};
+    };
+    std::vector<Invocation> invocations{};
+    bool cancelled{false};
+};
+
+class FakeGtkOpenFilesInvoker final : public detail::NativeOpenFilesInvoker {
+public:
+    explicit FakeGtkOpenFilesInvoker(std::shared_ptr<FakeGtkOpenFilesState> state)
+        : state_{std::move(state)} {}
+
+    void begin(GtkWindow* owner, std::string title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
+               detail::NativeOpenFilesCompletion completion) override {
+        state_->invocations.push_back(
+            {owner, std::move(title), std::move(extensions), initial_directory,
+             std::move(completion)});
+    }
+
+    void cancel() noexcept override { state_->cancelled = true; }
+
+private:
+    std::shared_ptr<FakeGtkOpenFilesState> state_;
+};
+
 class FakeGtkSaveInvoker final : public detail::NativeSaveFileInvoker {
 public:
     explicit FakeGtkSaveInvoker(std::shared_ptr<FakeGtkInvokerState> state) : state_{std::move(state)} {}
@@ -254,6 +285,41 @@ TEST_CASE("GTK open extension filters validate before ID and preserve literal or
     completeFake(state, 0, FileDialogResultStatus::accepted, mismatching);
     g_object_unref(mismatching);
     CHECK(std::get<FileDialogResultEvent>(*events.tryPop()).status == FileDialogResultStatus::accepted);
+}
+
+TEST_CASE("GTK multiple open preserves model order and the plural result contract") {
+    EventQueue events;
+    auto state = std::make_shared<FakeGtkOpenFilesState>();
+    detail::GtkFileDialogService service{
+        reinterpret_cast<GtkWindow*>(0x1), events, std::this_thread::get_id(), nullptr, nullptr,
+        nullptr, std::make_unique<FakeGtkOpenFilesInvoker>(state)};
+
+    const auto id = service.requestOpenFiles({"Open Multiple", {"txt", "md"}});
+    CHECK(id == 1);
+    CHECK(state->invocations.size() == 1);
+    CHECK(state->invocations[0].title == "Open Multiple");
+    CHECK(state->invocations[0].extensions == std::vector<std::string>{"txt", "md"});
+
+    GListStore* store = g_list_store_new(G_TYPE_FILE);
+    GFile* first = g_file_new_for_path("/tmp/one.txt");
+    GFile* second = g_file_new_for_path("/tmp/two.md");
+    g_list_store_append(store, first);
+    g_list_store_append(store, second);
+    g_object_unref(first);
+    g_object_unref(second);
+    state->invocations[0].completion(
+        FileDialogResultStatus::accepted, {G_LIST_MODEL(store), nullptr});
+    g_object_unref(store);
+
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    const auto& result = std::get<OpenFilesDialogResultEvent>(*event);
+    CHECK(result.request_id == id);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.paths == std::vector<std::filesystem::path>{
+        std::filesystem::path{"/tmp/one.txt"}, std::filesystem::path{"/tmp/two.md"}});
+    CHECK(!service.pending());
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("GTK save file uses one shared pending boundary and preserves new targets") {

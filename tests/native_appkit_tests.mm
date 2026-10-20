@@ -49,6 +49,34 @@ public:
     int cancels{0};
 };
 
+struct FakeOpenFilesState {
+    std::vector<detail::NativeOpenFilesCompletion> completions;
+    std::optional<std::filesystem::path> initial_directory;
+    int begins{0};
+};
+
+class FakeOpenFilesInvoker final : public detail::NativeOpenFilesInvoker {
+public:
+    explicit FakeOpenFilesInvoker(std::shared_ptr<FakeOpenFilesState> state)
+        : state_{std::move(state)} {}
+    void begin(NSWindow*, NSString* title, std::vector<std::string> extensions,
+               const std::optional<std::filesystem::path>& initial_directory,
+               detail::NativeOpenFilesCompletion completion) override {
+        title_ = title == nil ? std::string{} : std::string{title.UTF8String};
+        extensions_ = std::move(extensions);
+        initial_directory_ = initial_directory;
+        state_->initial_directory = initial_directory;
+        ++state_->begins;
+        state_->completions.push_back(std::move(completion));
+    }
+    void cancel() noexcept override { ++cancels; }
+    std::shared_ptr<FakeOpenFilesState> state_;
+    std::string title_;
+    std::vector<std::string> extensions_;
+    std::optional<std::filesystem::path> initial_directory_;
+    int cancels{0};
+};
+
 struct FakeSaveFileState {
     std::vector<detail::NativeSaveFileCompletion> completions;
     std::vector<std::string> extensions;
@@ -234,6 +262,40 @@ TEST_CASE("AppKit open extension filters validate before ID and preserve order")
     CHECK(id == 1);
     CHECK(fake_ptr->state_->begins == 1);
     CHECK(fake_ptr->extensions_ == std::vector<std::string>{"txt", "md", "cpp"});
+}
+
+TEST_CASE("AppKit multiple open preserves native URL order and the plural result contract") {
+    EventQueue events;
+    auto open_state = std::make_shared<FakeOpenFileState>();
+    auto open_files_state = std::make_shared<FakeOpenFilesState>();
+    auto open_files_fake = std::make_unique<FakeOpenFilesInvoker>(open_files_state);
+    FakeOpenFilesInvoker* open_files_ptr = open_files_fake.get();
+    detail::AppKitFileDialogService service{
+        testOwner(), events,
+        std::make_unique<FakeOpenFileInvoker>(open_state), nullptr, nullptr,
+        std::move(open_files_fake)};
+
+    const auto id = service.requestOpenFiles({"Open Multiple", {"txt", "md"}});
+    CHECK(id == 1);
+    CHECK(open_files_state->begins == 1);
+    CHECK(open_files_state->completions.size() == 1);
+    CHECK(open_files_ptr->extensions_ == std::vector<std::string>{"txt", "md"});
+
+    NSArray<NSURL*>* selected = @[
+        [NSURL fileURLWithPath:@"/tmp/one.txt"],
+        [NSURL fileURLWithPath:@"/tmp/two.md"]
+    ];
+    open_files_state->completions[0](NSModalResponseOK, selected);
+
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    const auto& result = std::get<OpenFilesDialogResultEvent>(*event);
+    CHECK(result.request_id == id);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.paths == std::vector<std::filesystem::path>{
+        std::filesystem::path{"/tmp/one.txt"}, std::filesystem::path{"/tmp/two.md"}});
+    CHECK(!service.pending());
+    CHECK(!events.tryPop().has_value());
 }
 
 TEST_CASE("AppKit file dialog rejects malformed title before native invocation") {

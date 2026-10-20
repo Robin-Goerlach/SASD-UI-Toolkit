@@ -48,6 +48,27 @@ public:
     bool nested_request_rejected{false};
 };
 
+class FakeOpenFilesInvoker final : public NativeOpenFilesInvoker {
+public:
+    explicit FakeOpenFilesInvoker(NativeOpenFilesOutcome outcome) : outcome_{std::move(outcome)} {}
+
+    NativeOpenFilesOutcome show(HWND, std::wstring_view title,
+                                const std::vector<std::wstring>& extensions,
+                                const std::optional<std::filesystem::path>& initial_directory) override {
+        title_ = title;
+        extensions_ = extensions;
+        initial_directory_ = initial_directory;
+        ++invocations;
+        return outcome_;
+    }
+
+    NativeOpenFilesOutcome outcome_;
+    std::wstring title_;
+    std::vector<std::wstring> extensions_;
+    std::optional<std::filesystem::path> initial_directory_;
+    int invocations{0};
+};
+
 class FakeSaveFileInvoker final : public NativeSaveFileInvoker {
 public:
     explicit FakeSaveFileInvoker(NativeSaveFileOutcome outcome) : outcome_{std::move(outcome)} {}
@@ -325,6 +346,32 @@ TEST_CASE("Win32 save file uses the shared contract without touching the filesys
     CHECK(result.request_id == id);
     CHECK(result.status == FileDialogResultStatus::accepted);
     CHECK(result.path == std::filesystem::path{L"C:\\New Folder\\Gr\u00FC\u00DFe \U0001F4C4.txt"});
+    CHECK(!events.tryPop().has_value());
+}
+
+TEST_CASE("Win32 multiple open preserves native order and the plural result contract") {
+    EventQueue events;
+    auto fake = std::make_unique<FakeOpenFilesInvoker>(NativeOpenFilesOutcome{
+        FileDialogResultStatus::accepted, {L"C:\\one.txt", L"C:\\two.md"}});
+    FakeOpenFilesInvoker* fake_ptr = fake.get();
+    Win32FileDialogService service{nullptr, events, nullptr, nullptr, nullptr, std::move(fake)};
+
+    const std::filesystem::path initial_directory{L"C:\\Documents"};
+    const auto id = service.requestOpenFiles({"Open Multiple", {"txt", "md"}, initial_directory});
+    CHECK(id == 1);
+    CHECK(fake_ptr->invocations == 1);
+    CHECK(fake_ptr->title_ == L"Open Multiple");
+    CHECK(fake_ptr->extensions_ == std::vector<std::wstring>{L"txt", L"md"});
+    CHECK(fake_ptr->initial_directory_ == initial_directory);
+
+    const auto event = events.tryPop();
+    CHECK(event.has_value());
+    const auto& result = std::get<OpenFilesDialogResultEvent>(*event);
+    CHECK(result.request_id == id);
+    CHECK(result.status == FileDialogResultStatus::accepted);
+    CHECK(result.paths == std::vector<std::filesystem::path>{
+        std::filesystem::path{L"C:\\one.txt"}, std::filesystem::path{L"C:\\two.md"}});
+    CHECK(!service.pending());
     CHECK(!events.tryPop().has_value());
 }
 

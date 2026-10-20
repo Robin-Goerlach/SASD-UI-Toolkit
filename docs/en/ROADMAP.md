@@ -213,7 +213,8 @@ Order and exact scope will be chosen after lessons from M3/M4.
 
 ## M7 – Desktop integration
 
-Status: active on 2026-10-14. Slice 1 is the first real consumer: the Win32 native host projects the
+Status: completed on 2026-10-20. The currently defined M7 scope is complete across the three native
+consumers; see [ADR 0170](../adr/0170-m7-desktop-integration-exit-review.md). Slice 1 was the first real consumer: the Win32 native host projects the
 existing Core menu semantics into an owned HMENU tree. `WM_COMMAND` queues an application-level,
 lifetime-safe `CommandActivationEvent`; the host may execute the referenced `Command` after native
 message handling has ended. Literal ampersands are escaped for Win32's label parser, and menu
@@ -249,6 +250,9 @@ File-dialog slice progress:
   - [x] Initial directory
   - [x] Suggested filename
   - [x] Multiple selection
+
+The visible manual macOS/Cocoa M3 gate remains open and is not closed by this milestone. Native
+child-control peers and all listed longer-term desktop integrations remain separate future work.
 
 Longer-term areas:
 
