@@ -70,9 +70,24 @@ unveränderliche Built-in-Katalog beschreibt die aktuell im Core implementierten
 Component-Untertypen und kann ohne Instanzerzeugung oder Backend-Initialisierung abgefragt werden.
 
 Diese IDs sind keine C++-RTTI-Namen und nicht lokalisiert. Der Katalog bietet weder Runtime-
-Instanzreflexion noch Factories, Properties, Serialisierung oder eine veränderbare Plugin-Registry;
-diese Entscheidungen bleiben spätere M8-Slices. Komponentenmetadaten beschreiben ausschließlich
-Typen und beeinflussen weder Component-Ownership noch visuelles Parenting, Events oder Layout.
+Instanzreflexion noch Factories, Serialisierung oder eine veränderbare Plugin-Registry; diese
+Entscheidungen bleiben spätere M8-Slices. Komponentenmetadaten beschreiben ausschließlich Typen und
+beeinflussen weder Component-Ownership noch visuelles Parenting, Events oder Layout.
+
+### Komponenten-Property-Metadaten
+
+Die separate Schicht `sasd/ui/component_property_metadata.hpp` beschreibt ein kleines,
+unveränderliches Schema für ausgewählte Built-in-Komponententypen. `ComponentPropertyMetadata`
+enthält eine stabile lokale Property-ID, die ID des direkt deklarierenden Typs und den einfachen
+semantischen Werttyp `boolean` oder `string`. Direkt deklarierte Properties werden unabhängig vom
+Typkatalog abgefragt; der geerbte Lookup folgt der vorhandenen direkten `base_type_id`-Kette und
+liefert den ursprünglichen deklarierenden Deskriptor zurück. Geerbte Properties werden nicht in
+abgeleiteten Typen dupliziert.
+
+Dies sind ausschließlich Schema-Metadaten. Die Schicht liest oder schreibt keine Component-
+Instanzen und fügt keine virtuelle Reflection-API, kein `std::variant`, `std::any`, Getter-/Setter-
+Pointer, Defaults, Validierung oder Anzeige-/Lokalisierungsmetadaten hinzu. Sie bleibt
+backendneutral und verändert nicht die Grenzen von Terminal, Rendered oder nativen Präsentationen.
 
 ### Ownership
 

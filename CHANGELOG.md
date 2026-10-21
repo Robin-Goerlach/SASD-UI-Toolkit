@@ -11,8 +11,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 - M8 Component Type Metadata foundation: added stable explicit toolkit type IDs, direct base-type
   references, `component`/`widget`/`container` classification, an immutable built-in catalog and a
-  backend-neutral headless consumer. Property metadata, factories, serialization, resources and
-  designer/tooling integration remain deferred.
+  backend-neutral headless consumer. Factories, serialization, resources and designer/tooling
+  integration remain deferred.
+
+- M8 Component Property Metadata schema foundation: added stable local property IDs, direct declaring
+  type IDs, `boolean`/`string` value kinds, immutable built-in schema descriptors, direct-declared
+  queries and inherited lookup without instance reflection or property-value access. Defaults,
+  validation attributes, serialization and factories remain deferred.
 
 - M7 Desktop Integration exit review: native menus and the currently defined file-dialog scope are
   complete across Win32, AppKit and GTK4. The visible manual macOS/Cocoa M3 gate, native child

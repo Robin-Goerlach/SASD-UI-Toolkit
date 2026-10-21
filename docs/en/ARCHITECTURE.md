@@ -70,9 +70,23 @@ immutable built-in catalog describes the public Component-derived types currentl
 the Core and can be queried without creating instances or initializing a backend.
 
 These IDs are not C++ RTTI names and are not localized. The catalog does not provide runtime
-instance reflection, factories, properties, serialization or a mutable plugin registry; those
-decisions remain future M8 slices. Component metadata describes types only and has no effect on
-Component ownership, visual parenting, events or layout.
+instance reflection, factories, serialization or a mutable plugin registry; those decisions remain
+future M8 slices. Component metadata describes types only and has no effect on Component ownership,
+visual parenting, events or layout.
+
+### Component property metadata
+
+The separate `sasd/ui/component_property_metadata.hpp` layer describes a small immutable schema for
+selected built-in component types. `ComponentPropertyMetadata` carries a stable local property ID,
+its direct declaring type ID and the simple semantic `boolean` or `string` value kind. Directly
+declared properties are queried independently from the type catalog; inherited lookup follows the
+existing direct `base_type_id` chain and returns the original declaring descriptor. No property is
+duplicated into a derived type.
+
+This is schema metadata only. It neither reads nor writes Component instances and adds no virtual
+reflection API, `std::variant`, `std::any`, getter/setter pointers, defaults, validation or display
+and localization metadata. The layer is backend-neutral and does not alter the Terminal, Rendered
+or native presentation boundaries.
 
 ### Ownership
 
