@@ -17,6 +17,25 @@ else()
     endif()
 endif()
 
+add_executable(sasd_ui_component_metadata_demo
+    component_metadata_demo.cpp
+)
+
+target_link_libraries(sasd_ui_component_metadata_demo PRIVATE SASD::UI)
+target_compile_features(sasd_ui_component_metadata_demo PRIVATE cxx_std_20)
+
+if(MSVC)
+    target_compile_options(sasd_ui_component_metadata_demo PRIVATE /W4 /permissive-)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_component_metadata_demo PRIVATE /WX)
+    endif()
+else()
+    target_compile_options(sasd_ui_component_metadata_demo PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_component_metadata_demo PRIVATE -Werror)
+    endif()
+endif()
+
 if(WIN32)
     add_executable(sasd_ui_win32_file_dialog_demo native_win32_file_dialog_demo.cpp)
     target_link_libraries(sasd_ui_win32_file_dialog_demo PRIVATE SASD::UI::Native::Win32)

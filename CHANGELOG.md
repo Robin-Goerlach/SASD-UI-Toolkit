@@ -9,9 +9,15 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Component Type Metadata foundation: added stable explicit toolkit type IDs, direct base-type
+  references, `component`/`widget`/`container` classification, an immutable built-in catalog and a
+  backend-neutral headless consumer. Property metadata, factories, serialization, resources and
+  designer/tooling integration remain deferred.
+
 - M7 Desktop Integration exit review: native menus and the currently defined file-dialog scope are
   complete across Win32, AppKit and GTK4. The visible manual macOS/Cocoa M3 gate, native child
-  peers and later desktop integrations remain explicitly open or deferred; M8 is not started.
+  peers and later desktop integrations remain explicitly open or deferred; M8 starts separately with
+  the component type metadata foundation documented above.
 
 - M7 Open File multiple-selection slice: added the separate `OpenFilesDialogRequest`,
   `requestOpenFiles()` and `OpenFilesDialogResultEvent` contract. Accepted results contain one or
