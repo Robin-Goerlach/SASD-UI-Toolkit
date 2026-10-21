@@ -81,6 +81,19 @@ Windows and macOS). The feature branch `codex/m8-component-property-metadata` wa
 removed locally and remotely, and `fetch --prune` was performed. No release or tag was created.
 The visible macOS/Cocoa M3 gate remains open.
 
+### Subsequent documentation completion
+
+After PR #66, the historical record was corrected by the documentation-only commit
+`38fc85897b2d78c16462f998e13b3c091b628791` on branch
+`codex/docs-m8-property-metadata-final-record`, published as PR #68. It changed only this ADR;
+no production, API, test, CMake or backend code was changed. All required checks for the final PR
+head passed, and PR #68 was merged by a normal merge commit as
+`8a57ce3a9ae0fd20cc821ac4c90dfa2d4c98cb7e`. Post-merge validation for that merge SHA was fully
+green: Main CI including the complete Linux, Windows and macOS Release matrix, GTK Native CI and
+AppKit Native CI. The documentation branch was then removed locally and remotely, followed by
+`fetch --prune`. PRs #30, #32 and #63 were not changed. No release or tag was created, and M8 Slice
+3 was not started.
+
 ## Deutsch
 
 ### Kontext
@@ -157,3 +170,16 @@ Merge-SHA war vollständig grün: Main CI, GTK Native CI, AppKit Native CI und d
 Release-Matrix für Linux, Windows und macOS. Der Feature-Branch `codex/m8-component-property-metadata`
 wurde anschließend lokal und remote entfernt, und `fetch --prune` wurde ausgeführt. Es wurde kein
 Release und kein Tag erstellt. Der sichtbare macOS/Cocoa-M3-Gate bleibt offen.
+
+### Nachträglicher Dokumentationsabschluss
+
+Nach PR #66 wurde das historische Protokoll mit dem ausschließlich dokumentarischen Commit
+`38fc85897b2d78c16462f998e13b3c091b628791` auf dem Branch
+`codex/docs-m8-property-metadata-final-record` korrigiert und als PR #68 veröffentlicht. Er änderte
+nur diese ADR; Produktions-, API-, Test-, CMake- oder Backend-Code wurde nicht verändert. Alle
+erforderlichen Checks des finalen PR-Heads bestanden, und PR #68 wurde per normalem Merge-Commit als
+`8a57ce3a9ae0fd20cc821ac4c90dfa2d4c98cb7e` gemergt. Die Post-Merge-Validierung für diesen Merge-SHA
+war vollständig grün: Main CI einschließlich der vollständigen Linux-, Windows- und macOS-
+Release-Matrix, GTK Native CI und AppKit Native CI. Der Dokumentationsbranch wurde anschließend
+lokal und remote entfernt und danach `fetch --prune` ausgeführt. Die PRs #30, #32 und #63 wurden
+nicht verändert. Es wurde kein Release und kein Tag erstellt, und M8 Slice 3 wurde nicht begonnen.
