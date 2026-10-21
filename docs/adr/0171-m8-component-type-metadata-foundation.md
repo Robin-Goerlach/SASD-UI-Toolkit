@@ -47,6 +47,20 @@ added to `Component`, so an unknown external C++ class derived from Button, Widg
 cannot be misreported as its base type by a default implementation. Runtime instance introspection
 is deferred until a precise extension contract exists.
 
+### Implementation and validation record
+
+The foundation was implemented in commit `3888e8f`. The follow-up commit `553935e` added
+target-local AddressSanitizer and UndefinedBehaviorSanitizer link options for the headless metadata
+demo after the first sanitizer run exposed an incomplete executable link configuration. The final
+implementation head reviewed before this documentation follow-up was
+`553935edf034d3d4befa50de0fcfc55503bbf26c` in PR #64.
+
+For that exact implementation head, the required Linux GCC/Clang, sanitizer, SDL3, Windows MSVC,
+macOS AppleClang, GTK Native, AppKit Native and Linux/Windows/macOS Release checks passed. Local
+strict Debug and Release builds, CTest and the headless demo also passed. The WSL environment did
+not provide `clang++`, so no local sanitizer result is claimed; the sanitizer result above is from
+CI. No visible native GUI or manual macOS validation is claimed by this record.
+
 ### Consequences and explicit boundaries
 
 The catalog is immutable, deterministic, backend-neutral and free of mutable global registration or
@@ -104,6 +118,22 @@ Der Katalog ist ein Typkatalog und keine Instanz-Reflection. `Component` erhält
 Metadatenmethode. Dadurch kann eine unbekannte externe C++-Klasse, die von Button, Widget oder
 Component erbt, nicht durch eine Default-Implementierung fälschlich als Basistyp gemeldet werden.
 Runtime-Instanzabfragen bleiben zurückgestellt, bis ein präziser Erweiterungsvertrag existiert.
+
+### Implementierungs- und Validierungsprotokoll
+
+Die Grundlage wurde in Commit `3888e8f` implementiert. Der Folgecommit `553935e` ergänzte lokale
+Link-Optionen für AddressSanitizer und UndefinedBehaviorSanitizer am headless Metadata-Demo-Target,
+nachdem der erste Sanitizer-Lauf eine unvollständige Link-Konfiguration des Executables sichtbar
+gemacht hatte. Der vor diesem Dokumentations-Follow-up geprüfte finale Implementierungsstand war
+`553935edf034d3d4befa50de0fcfc55503bbf26c` in PR #64.
+
+Für diesen exakten Implementierungsstand waren die erforderlichen Checks für Linux GCC/Clang,
+Sanitizer, SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native sowie Linux/Windows/macOS
+Release erfolgreich. Die lokalen strikten Debug- und Release-Builds, CTest und das headless Demo
+waren ebenfalls erfolgreich. In der WSL-Umgebung war kein `clang++` vorhanden; deshalb wird kein
+lokales Sanitizer-Ergebnis behauptet, sondern das oben genannte CI-Ergebnis als Nachweis verwendet.
+Eine sichtbare native GUI-Prüfung oder manuelle macOS-Validierung wird durch diesen Eintrag nicht
+behauptet.
 
 ### Folgen und ausdrückliche Grenzen
 
