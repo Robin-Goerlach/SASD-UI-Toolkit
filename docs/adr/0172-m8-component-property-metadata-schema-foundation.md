@@ -67,10 +67,19 @@ executed successfully. The tests cover the ten-descriptor count, exact value kin
 queries, unknown/case-sensitive misses, inheritance through `Window -> Container -> Widget` and
 the no-shadowing invariant without constructing Components.
 
-For the exact PR head `bc183513ef86b674eef181c6a73d807732ab8c5b`, all 11 required CI jobs passed:
+The implementation head `bc183513ef86b674eef181c6a73d807732ab8c5b` passed all 11 required CI jobs:
 Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS AppleClang,
 GTK4 Native, macOS AppKit Native and the Linux, Windows and macOS Release jobs. The PR is currently
-clean and mergeable but has not yet been merged. No release or tag was created.
+clean and mergeable at that point. A documentation-only follow-up commit,
+`cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37`, recorded this validation in the same PR without changing
+production code. PR #66 was then merged with a normal merge commit as
+`0113dad9fe0f5c318ac3e649785e0fd1e45ac08f`.
+
+For that exact merge SHA, Main CI, GTK Native CI and AppKit Native CI all completed successfully.
+Main CI's complete matrix passed: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3,
+Windows MSVC, macOS AppleClang, Linux Release, Windows Release and macOS Release. Local `main` was
+fast-forwarded to the merge SHA, the merged feature branch was removed locally and remotely, and
+`fetch --prune` left the working tree clean. No release or tag was created.
 
 ## Deutsch
 
@@ -134,8 +143,17 @@ das Metadaten-Demo wurde erfolgreich ausgeführt. Die Tests prüfen die Anzahl v
 die exakten ValueKinds, direkte-only Queries, unbekannte/case-sensitive Fehlversuche, Vererbung
 über `Window -> Container -> Widget` und die No-Shadowing-Invariante ohne Components zu erzeugen.
 
-Für den exakten PR-Head `bc183513ef86b674eef181c6a73d807732ab8c5b` bestanden alle 11 erforderlichen
+Der Implementierungsstand `bc183513ef86b674eef181c6a73d807732ab8c5b` bestand alle 11 erforderlichen
 CI-Jobs: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS
 AppleClang, GTK4 Native, macOS AppKit Native sowie die Linux-, Windows- und macOS-Release-Jobs. Der
-PR ist derzeit sauber und mergeable, aber noch nicht gemergt. Es wurde kein Release und kein Tag
+PR war zu diesem Zeitpunkt sauber und mergeable. Ein ausschließlich dokumentarischer Folgecommit,
+`cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37`, hielt diese Validierung im selben PR fest, ohne
+Produktionscode zu ändern. PR #66 wurde anschließend mit dem normalen Merge-Commit
+`0113dad9fe0f5c318ac3e649785e0fd1e45ac08f` zusammengeführt.
+
+Für diesen exakten Merge-SHA bestanden Main CI, GTK Native CI und AppKit Native CI vollständig.
+Die vollständige Main-CI-Matrix war erfolgreich: Linux GCC, Linux Clang, Linux Clang ASan + UBSan,
+Linux SDL3, Windows MSVC, macOS AppleClang, Linux Release, Windows Release und macOS Release. Das
+lokale `main` wurde auf den Merge-SHA vorgespult, der gemergte Feature-Branch lokal und remote
+entfernt, und `fetch --prune` hinterließ den Working Tree sauber. Es wurde kein Release und kein Tag
 erstellt.
