@@ -187,6 +187,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0168](0168-m7-open-file-multiple-selection.md) | M7 Open File multiple selection | Accepted |
 | [0169](0169-m7-file-dialog-richer-options-completion-review.md) | M7 File Dialog richer-options completion review | Accepted |
 | [0170](0170-m7-desktop-integration-exit-review.md) | M7 Desktop Integration exit review | Accepted |
+| [0171](0171-m8-component-type-metadata-foundation.md) | M8 Component Type Metadata foundation | Accepted |
 
 ## ADR policy
 

@@ -278,14 +278,17 @@ Langfristige Themen:
 
 ## M8 – Grundlagen für Entwicklerkomfort
 
-Erst wenn das Komponentenmodell stabil genug ist:
+**Status: aktiv (gestartet am 21.10.2026).** Slice 1 schafft ausschließlich die backendneutrale
+Typidentität und den unveränderlichen Built-in-Katalog. Property-Metadaten, Serialisierung,
+Ressourcen, Designer-Integration und Tooling bleiben eigene spätere Slices.
 
-- Komponenten-Metadaten
-- Serialisierung von UI-Beschreibungen
-- Resource-System
-- Designer-freundliche Properties
-- Design-Time-Validierungsmetadaten
-- IDE-/Tooling-Schnittstellen
+- [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
+- [ ] Property-Metadaten und Design-Time-Attribute
+- [ ] Serialisierung von UI-Beschreibungen
+- [ ] Resource-System
+- [ ] Designer-freundliche Properties
+- [ ] Design-Time-Validierungsmetadaten
+- [ ] IDE-/Tooling-Schnittstellen
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 

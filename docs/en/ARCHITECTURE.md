@@ -61,6 +61,19 @@ Component
 
 `Component` is not necessarily visible. This leaves room for actions, commands, timers and data sources to share lifecycle and ownership concepts with visual components.
 
+### Component type metadata
+
+The Core now exposes a deliberately small type-metadata foundation through
+`sasd/ui/component_metadata.hpp`. `ComponentTypeMetadata` carries an explicit stable toolkit type
+ID, the direct metadata base type ID and the coarse `component`/`widget`/`container` kind. The
+immutable built-in catalog describes the public Component-derived types currently implemented by
+the Core and can be queried without creating instances or initializing a backend.
+
+These IDs are not C++ RTTI names and are not localized. The catalog does not provide runtime
+instance reflection, factories, properties, serialization or a mutable plugin registry; those
+decisions remain future M8 slices. Component metadata describes types only and has no effect on
+Component ownership, visual parenting, events or layout.
+
 ### Ownership
 
 Initial core rules:

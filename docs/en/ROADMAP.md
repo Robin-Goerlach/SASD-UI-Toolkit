@@ -270,14 +270,17 @@ Longer-term areas:
 
 ## M8 – Developer productivity foundations
 
-Only after the component model is sufficiently stable:
+**Status: active (started 2026-10-21).** Slice 1 establishes only the backend-neutral type-identity
+and immutable built-in catalog foundation. Property metadata, serialization, resources, designer
+integration and tooling remain separate future slices.
 
-- component metadata
-- serialization of UI descriptions
-- resource system
-- designer-friendly properties
-- design-time validation metadata
-- IDE/tooling integration points
+- [x] component type identity and built-in catalog foundation
+- [ ] property metadata and design-time attributes
+- [ ] serialization of UI descriptions
+- [ ] resource system
+- [ ] designer-friendly properties
+- [ ] design-time validation metadata
+- [ ] IDE/tooling integration points
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 

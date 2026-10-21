@@ -61,6 +61,19 @@ Component
 
 `Component` ist nicht zwangsläufig sichtbar. Dadurch können später auch Actions, Commands, Timer oder Datenquellen in dasselbe Ownership- und Lebenszyklusmodell integriert werden.
 
+### Komponenten-Typmetadaten
+
+Der Core stellt nun über `sasd/ui/component_metadata.hpp` eine bewusst kleine Grundlage für
+Typmetadaten bereit. `ComponentTypeMetadata` enthält eine explizite stabile Toolkit-Typ-ID, die
+direkte Metadaten-Basis-Typ-ID und die grobe Klassifikation `component`/`widget`/`container`. Der
+unveränderliche Built-in-Katalog beschreibt die aktuell im Core implementierten öffentlichen
+Component-Untertypen und kann ohne Instanzerzeugung oder Backend-Initialisierung abgefragt werden.
+
+Diese IDs sind keine C++-RTTI-Namen und nicht lokalisiert. Der Katalog bietet weder Runtime-
+Instanzreflexion noch Factories, Properties, Serialisierung oder eine veränderbare Plugin-Registry;
+diese Entscheidungen bleiben spätere M8-Slices. Komponentenmetadaten beschreiben ausschließlich
+Typen und beeinflussen weder Component-Ownership noch visuelles Parenting, Events oder Layout.
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:
