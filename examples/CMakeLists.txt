@@ -36,6 +36,12 @@ else()
     endif()
 endif()
 
+if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
+    target_compile_options(sasd_ui_component_metadata_demo
+        PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(sasd_ui_component_metadata_demo PRIVATE -fsanitize=address,undefined)
+endif()
+
 if(WIN32)
     add_executable(sasd_ui_win32_file_dialog_demo native_win32_file_dialog_demo.cpp)
     target_link_libraries(sasd_ui_win32_file_dialog_demo PRIVATE SASD::UI::Native::Win32)
