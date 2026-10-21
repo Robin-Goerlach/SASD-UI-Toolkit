@@ -54,6 +54,24 @@ intentionally small and can be extended by a later decision when a real consumer
 Runtime value access, defaults, validation/design-time metadata and serialization must define their
 own contracts in later M8 slices rather than expanding this schema descriptor spec speculatively.
 
+### Implementation and validation record
+
+The implementation was added in commit `bc183513ef86b674eef181c6a73d807732ab8c5b` on branch
+`codex/m8-component-property-metadata` and published as PR #66. The change adds the public header
+and Core source, wires them into CMake installation/builds, adds the catalog invariant tests and
+extends the existing headless component-metadata demo. No instance or backend code was changed.
+
+Local strict Debug and Release builds were run with GCC, C++20 and warnings as errors. For both
+configurations the complete configured CTest suite passed (4/4 tests), and the metadata demo was
+executed successfully. The tests cover the ten-descriptor count, exact value kinds, direct-only
+queries, unknown/case-sensitive misses, inheritance through `Window -> Container -> Widget` and
+the no-shadowing invariant without constructing Components.
+
+For the exact PR head `bc183513ef86b674eef181c6a73d807732ab8c5b`, all 11 required CI jobs passed:
+Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS AppleClang,
+GTK4 Native, macOS AppKit Native and the Linux, Windows and macOS Release jobs. The PR is currently
+clean and mergeable but has not yet been merged. No release or tag was created.
+
 ## Deutsch
 
 ### Kontext
@@ -101,3 +119,23 @@ Property-Satz sind bewusst klein und können durch eine spätere Entscheidung er
 ein realer Consumer dies benötigt. Runtime-Wertzugriff, Defaults, Validierung/Design-Time-Metadaten
 und Serialisierung müssen in späteren M8-Slices eigene Verträge erhalten, statt diese Schema-
 Deskriptor-Spezifikation spekulativ zu vergrößern.
+
+### Implementierungs- und Validierungsprotokoll
+
+Die Implementierung wurde im Commit `bc183513ef86b674eef181c6a73d807732ab8c5b` auf dem Branch
+`codex/m8-component-property-metadata` erstellt und als PR #66 veröffentlicht. Die Änderung ergänzt
+den öffentlichen Header und die Core-Quelldatei, bindet sie in CMake-Build und Installation ein,
+fügt die Katalog-Invariantentests hinzu und erweitert das bestehende headless
+Komponentenmetadaten-Demo. Instanz- oder Backend-Code wurde nicht verändert.
+
+Lokale strikte Debug- und Release-Builds wurden mit GCC, C++20 und Warnings-as-Errors ausgeführt. In
+beiden Konfigurationen bestand die vollständige konfigurierte CTest-Suite (jeweils 4/4 Tests), und
+das Metadaten-Demo wurde erfolgreich ausgeführt. Die Tests prüfen die Anzahl von zehn Deskriptoren,
+die exakten ValueKinds, direkte-only Queries, unbekannte/case-sensitive Fehlversuche, Vererbung
+über `Window -> Container -> Widget` und die No-Shadowing-Invariante ohne Components zu erzeugen.
+
+Für den exakten PR-Head `bc183513ef86b674eef181c6a73d807732ab8c5b` bestanden alle 11 erforderlichen
+CI-Jobs: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS
+AppleClang, GTK4 Native, macOS AppKit Native sowie die Linux-, Windows- und macOS-Release-Jobs. Der
+PR ist derzeit sauber und mergeable, aber noch nicht gemergt. Es wurde kein Release und kein Tag
+erstellt.
