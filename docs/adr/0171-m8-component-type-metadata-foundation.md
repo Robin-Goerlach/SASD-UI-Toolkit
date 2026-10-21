@@ -55,11 +55,23 @@ demo after the first sanitizer run exposed an incomplete executable link configu
 implementation head reviewed before this documentation follow-up was
 `553935edf034d3d4befa50de0fcfc55503bbf26c` in PR #64.
 
+PR #64 then received one authorized documentation-only commit,
+`2e5459f94fa7c6453dd658ae9561da57e24fcab8` (`docs: record M8 metadata validation`). Compared with
+`553935e`, that commit changes only this ADR by adding 30 lines and deleting none; it does not alter
+production code, public API, tests, CMake, workflows or backend code. This is the final PR head and
+remains within M8 Slice 1.
+
 For that exact implementation head, the required Linux GCC/Clang, sanitizer, SDL3, Windows MSVC,
 macOS AppleClang, GTK Native, AppKit Native and Linux/Windows/macOS Release checks passed. Local
 strict Debug and Release builds, CTest and the headless demo also passed. The WSL environment did
 not provide `clang++`, so no local sanitizer result is claimed; the sanitizer result above is from
 CI. No visible native GUI or manual macOS validation is claimed by this record.
+
+PR #64 was merged with a normal merge commit as
+`b356a473d364e30644679e7b16ecf1a9ec87af76`. For that exact merge SHA, Main CI including the complete
+Linux/Windows/macOS Release matrix, GTK Native CI and AppKit Native CI passed. The local `main` was
+fast-forwarded to the merge SHA, the merged feature branch was deleted remotely, and the working tree
+was left clean. No release or tag was created by this slice.
 
 ### Consequences and explicit boundaries
 
@@ -124,8 +136,14 @@ Runtime-Instanzabfragen bleiben zurückgestellt, bis ein präziser Erweiterungsv
 Die Grundlage wurde in Commit `3888e8f` implementiert. Der Folgecommit `553935e` ergänzte lokale
 Link-Optionen für AddressSanitizer und UndefinedBehaviorSanitizer am headless Metadata-Demo-Target,
 nachdem der erste Sanitizer-Lauf eine unvollständige Link-Konfiguration des Executables sichtbar
-gemacht hatte. Der vor diesem Dokumentations-Follow-up geprüfte finale Implementierungsstand war
+gemacht hatte. Der vor diesem Dokumentations-Follow-up geprüfte Implementierungsstand war
 `553935edf034d3d4befa50de0fcfc55503bbf26c` in PR #64.
+
+PR #64 erhielt danach einen autorisierten, ausschließlich dokumentarischen Commit,
+`2e5459f94fa7c6453dd658ae9561da57e24fcab8` (`docs: record M8 metadata validation`). Gegenüber
+`553935e` änderte dieser Commit ausschließlich dieses ADR mit 30 zusätzlichen Zeilen und ohne
+Löschungen; Produktionscode, öffentliche API, Tests, CMake, Workflows und Backend-Code blieben
+unverändert. Dieser Commit ist der finale PR-Head und bleibt innerhalb von M8 Slice 1.
 
 Für diesen exakten Implementierungsstand waren die erforderlichen Checks für Linux GCC/Clang,
 Sanitizer, SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native sowie Linux/Windows/macOS
@@ -134,6 +152,13 @@ waren ebenfalls erfolgreich. In der WSL-Umgebung war kein `clang++` vorhanden; d
 lokales Sanitizer-Ergebnis behauptet, sondern das oben genannte CI-Ergebnis als Nachweis verwendet.
 Eine sichtbare native GUI-Prüfung oder manuelle macOS-Validierung wird durch diesen Eintrag nicht
 behauptet.
+
+PR #64 wurde mit dem normalen Merge-Commit
+`b356a473d364e30644679e7b16ecf1a9ec87af76` zusammengeführt. Für genau diesen Merge-SHA waren Main
+CI einschließlich der vollständigen Linux-/Windows-/macOS-Release-Matrix, GTK Native CI und AppKit
+Native CI erfolgreich. Der lokale `main` wurde auf diesen Merge-SHA vorgespult, der gemergte
+Feature-Branch wurde remote gelöscht und der Working Tree blieb sauber. Durch diesen Slice wurden
+kein Release und kein Tag erzeugt.
 
 ### Folgen und ausdrückliche Grenzen
 
