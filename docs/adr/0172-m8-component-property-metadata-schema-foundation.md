@@ -67,10 +67,19 @@ executed successfully. The tests cover the ten-descriptor count, exact value kin
 queries, unknown/case-sensitive misses, inheritance through `Window -> Container -> Widget` and
 the no-shadowing invariant without constructing Components.
 
-For the exact PR head `bc183513ef86b674eef181c6a73d807732ab8c5b`, all 11 required CI jobs passed:
-Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS AppleClang,
-GTK4 Native, macOS AppKit Native and the Linux, Windows and macOS Release jobs. The PR is currently
-clean and mergeable but has not yet been merged. No release or tag was created.
+The implementation head `bc183513ef86b674eef181c6a73d807732ab8c5b` passed all required checks for
+PR #66: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS
+AppleClang, GTK4 Native, macOS AppKit Native and the Linux, Windows and macOS Release jobs. The
+subsequent documentation/validation follow-up commit,
+`cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37`, changed only this ADR and no production, API, test,
+CMake or backend code. PR #66 had final head `cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37` and was
+merged by a normal merge commit as `0113dad9fe0f5c318ac3e649785e0fd1e45ac08f`.
+
+All required checks for the final PR head were green. Post-merge validation for the merge SHA was
+fully green: Main CI, GTK Native CI, AppKit Native CI and the complete Release matrix (Linux,
+Windows and macOS). The feature branch `codex/m8-component-property-metadata` was subsequently
+removed locally and remotely, and `fetch --prune` was performed. No release or tag was created.
+The visible macOS/Cocoa M3 gate remains open.
 
 ## Deutsch
 
@@ -134,8 +143,17 @@ das Metadaten-Demo wurde erfolgreich ausgeführt. Die Tests prüfen die Anzahl v
 die exakten ValueKinds, direkte-only Queries, unbekannte/case-sensitive Fehlversuche, Vererbung
 über `Window -> Container -> Widget` und die No-Shadowing-Invariante ohne Components zu erzeugen.
 
-Für den exakten PR-Head `bc183513ef86b674eef181c6a73d807732ab8c5b` bestanden alle 11 erforderlichen
-CI-Jobs: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS
+Der Implementierungsstand `bc183513ef86b674eef181c6a73d807732ab8c5b` bestand alle erforderlichen
+Checks für PR #66: Linux GCC, Linux Clang, Linux Clang ASan + UBSan, Linux SDL3, Windows MSVC, macOS
 AppleClang, GTK4 Native, macOS AppKit Native sowie die Linux-, Windows- und macOS-Release-Jobs. Der
-PR ist derzeit sauber und mergeable, aber noch nicht gemergt. Es wurde kein Release und kein Tag
-erstellt.
+anschließende Dokumentations-/Validierungs-Follow-up-Commit
+`cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37` änderte ausschließlich diese ADR und keinen Produktions-,
+API-, Test-, CMake- oder Backend-Code. PR #66 hatte den finalen Head
+`cc2ec70f00c2d8981fae56f1a5baecfff6c0aa37` und wurde per normalem Merge-Commit als
+`0113dad9fe0f5c318ac3e649785e0fd1e45ac08f` gemergt.
+
+Alle erforderlichen Checks des finalen PR-Heads waren grün. Die Post-Merge-Validierung für den
+Merge-SHA war vollständig grün: Main CI, GTK Native CI, AppKit Native CI und die vollständige
+Release-Matrix für Linux, Windows und macOS. Der Feature-Branch `codex/m8-component-property-metadata`
+wurde anschließend lokal und remote entfernt, und `fetch --prune` wurde ausgeführt. Es wurde kein
+Release und kein Tag erstellt. Der sichtbare macOS/Cocoa-M3-Gate bleibt offen.
