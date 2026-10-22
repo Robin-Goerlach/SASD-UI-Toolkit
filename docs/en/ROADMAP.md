@@ -272,17 +272,20 @@ Longer-term areas:
 
 **Status: active (started 2026-10-21).** Slice 1 establishes the backend-neutral type-identity and
 immutable built-in catalog foundation. Slice 2 adds the immutable property-schema foundation, Slice 3
-adds typed runtime value access while keeping schema and instance access separate, and Slice 4 adds
-target-type-relative effective property defaults. Validation and design-time attributes remain future
-slices.
+adds typed runtime value access while keeping schema and instance access separate, Slice 4 adds
+target-type-relative effective property defaults, and Slice 5 adds exact runtime identification of
+existing built-in instances. Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
+  - [x] immutable built-in type catalog
+  - [x] exact built-in runtime instance identification
 - [ ] property metadata and design-time attributes
   - [x] property schema/catalog foundation
   - [x] runtime property value-access contract
   - [x] effective property default metadata
   - [ ] validation and design-time attributes
-- [ ] serialization of UI descriptions
+- [ ] serialization of UI descriptions (exact runtime identification is a prerequisite; the
+  serialization consumer remains open)
 - [ ] resource system
 - [ ] designer-friendly properties
 - [ ] design-time validation metadata

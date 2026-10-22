@@ -1,5 +1,7 @@
 #include <sasd/ui/component_metadata.hpp>
+#include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/label.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
@@ -63,6 +65,14 @@ int main() {
     }
 
     sasd::ui::Button button{"Initial"};
+    sasd::ui::Label label{"Name"};
+    const auto* button_runtime_type = sasd::ui::builtInComponentTypeOf(button);
+    const auto* label_runtime_type = sasd::ui::builtInComponentTypeOf(label);
+    std::cout << "Button runtime type: "
+              << (button_runtime_type != nullptr ? button_runtime_type->type_id : "unknown") << '\n';
+    std::cout << "Label runtime type: "
+              << (label_runtime_type != nullptr ? label_runtime_type->type_id : "unknown") << '\n';
+
     const auto* visible =
         sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "visible");
     const auto* text = sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "text");
