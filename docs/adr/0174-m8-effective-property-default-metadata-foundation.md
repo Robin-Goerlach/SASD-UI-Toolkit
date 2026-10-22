@@ -60,6 +60,34 @@ or construction side effects. The target type is explicit wherever inheritance c
 while the contract remains small and value-kind-specific. Applying a queried default, validation and
 third-party participation remain separate future decisions.
 
+### Implementation and validation record
+
+The implementation was delivered in commit `2c18a60e59ad22bca6cb0dca6b1af1f18dfcad89` on branch
+`codex/m8-property-default-metadata` and published as PR #73. The final PR head remained this
+commit. The change added the separate public default-metadata header and implementation, focused
+default-resolution tests, CMake wiring, and a small extension of the existing headless
+component-metadata demo. It also completed the existing Built-in catalog's missing `TreeView` entry;
+no new property descriptor was introduced and the ten-property schema remained unchanged.
+
+Strict GCC Debug and Release builds with C++20 and warnings as errors were run. The complete
+configured CTest suite passed in both configurations (4/4 tests each), `git diff --check` passed,
+and the metadata demo ran successfully in both configurations. The tests cover target-relative
+Widget defaults, all verified interactive `focusable` overrides, structural defaults, direct
+boolean and string defaults, copied descriptors, sibling descriptor mismatches, wrong value kinds,
+case mismatches, unknown targets and source-of-truth comparisons with freshly constructed built-ins.
+
+All required PR #73 checks passed for the final head: Linux GCC, Linux Clang, Linux Clang ASan + UBSan,
+Linux SDL3 adapter, Windows MSVC, macOS AppleClang, GTK4 Native, macOS AppKit Native, Linux Release,
+Windows Release and macOS Release. PR #73 was merged by a normal merge commit as
+`16a343047217c02ef5396f9ecd2759012ad85e9b`.
+
+Post-merge validation for that exact merge SHA was fully green: Main CI, GTK Native CI and AppKit
+Native CI, including the complete Linux, Windows and macOS Release matrix. The feature branch was
+deleted locally and remotely, followed by `fetch --prune`; `main` was synchronized to the merge
+SHA. PRs #30, #32 and #63 were not changed. No release or tag was created. The visible macOS/Cocoa
+M3 gate remains open. M8 remains active; validation and design-time attributes, reset-to-default,
+serialization, resources, designer, runtime type enumeration and property binding were not started.
+
 ## Deutsch
 
 ### Kontext
@@ -107,3 +135,34 @@ Instanzwerte, Benutzerkonfiguration, Theme-/Plattformwerte, Factory-Parameter od
 Headless-Tooling kann effektive Defaults ohne Allokation, Backend-Start, Ownership-Änderung oder
 Konstruktionsseiteneffekte abfragen. Der Zieltyp bleibt dort explizit, wo Vererbung die Semantik
 ändert; Anwenden, Validierung und Third-Party-Beteiligung bleiben getrennte spätere Entscheidungen.
+
+### Implementierungs- und Validierungsprotokoll
+
+Die Implementierung wurde im Commit `2c18a60e59ad22bca6cb0dca6b1af1f18dfcad89` auf dem Branch
+`codex/m8-property-default-metadata` erstellt und als PR #73 veröffentlicht. Der finale PR-Head blieb
+dieser Commit. Die Änderung ergänzte den getrennten öffentlichen Default-Metadaten-Header und dessen
+Implementierung, fokussierte Tests zur Default-Auflösung, die CMake-Verdrahtung sowie eine kleine
+Erweiterung der bestehenden headless Component-Metadata-Demo. Außerdem wurde der bereits
+implementierte `TreeView`-Eintrag im Built-in-Katalog ergänzt; es wurde kein neuer Property-Descriptor
+eingeführt und das Schema mit zehn Properties blieb unverändert.
+
+Es wurden strikte GCC-Debug- und Release-Builds mit C++20 und Warnings-as-Errors ausgeführt. Die
+vollständige konfigurierte CTest-Suite war in beiden Konfigurationen erfolgreich (jeweils 4/4 Tests),
+`git diff --check` war erfolgreich und die Metadata-Demo lief in beiden Konfigurationen. Die Tests
+prüfen zieltyprelative Widget-Defaults, alle verifizierten interaktiven `focusable`-Overrides,
+strukturelle Defaults, direkte Boolean- und String-Defaults, kopierte Deskriptoren, Geschwister-
+Deskriptor-Konflikte, falsche ValueKinds, Case-Mismatches, unbekannte Zieltypen sowie Vergleiche mit
+dem Zustand frisch erzeugter Built-ins.
+
+Alle erforderlichen Checks von PR #73 waren für den finalen Head erfolgreich: Linux GCC, Linux Clang,
+Linux Clang ASan + UBSan, Linux SDL3 Adapter, Windows MSVC, macOS AppleClang, GTK4 Native, macOS
+AppKit Native, Linux Release, Windows Release und macOS Release. PR #73 wurde mit dem normalen
+Merge-Commit `16a343047217c02ef5396f9ecd2759012ad85e9b` gemergt.
+
+Die Post-Merge-Validierung für genau diesen Merge-SHA war vollständig erfolgreich: Main CI, GTK Native
+CI und AppKit Native CI einschließlich der vollständigen Linux-, Windows- und macOS-Release-Matrix.
+Der Feature-Branch wurde lokal und remote gelöscht; anschließend wurde `fetch --prune` ausgeführt und
+`main` auf den Merge-SHA synchronisiert. Die PRs #30, #32 und #63 wurden nicht verändert. Es wurde
+kein Release und kein Tag erstellt. Das sichtbare macOS/Cocoa-M3-Gate bleibt offen. M8 bleibt aktiv;
+Validierung und Design-Time-Attribute, Reset-to-Default, Serialisierung, Ressourcen, Designer,
+Runtime-Typenumeration und Property Binding wurden nicht begonnen.
