@@ -84,10 +84,15 @@ Typkatalog abgefragt; der geerbte Lookup folgt der vorhandenen direkten `base_ty
 liefert den ursprünglichen deklarierenden Deskriptor zurück. Geerbte Properties werden nicht in
 abgeleiteten Typen dupliziert.
 
-Dies sind ausschließlich Schema-Metadaten. Die Schicht liest oder schreibt keine Component-
-Instanzen und fügt keine virtuelle Reflection-API, kein `std::variant`, `std::any`, Getter-/Setter-
-Pointer, Defaults, Validierung oder Anzeige-/Lokalisierungsmetadaten hinzu. Sie bleibt
-backendneutral und verändert nicht die Grenzen von Terminal, Rendered oder nativen Präsentationen.
+Dies bleibt ausschließlich Schema-Metadaten. Die getrennte Schicht
+`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins vier explizite
+Boolean-/String-Read-/Write-Funktionen bereit. Sie validiert Deskriptoren semantisch, liefert
+besitzende Strings, benutzt die bestehenden semantischen Getter/Setter und arbeitet bei unbekannten
+Kinds, Identitäten oder inkompatiblen Components fail-closed. Writes melden Zugriffserfolg statt
+Wertänderung. Die Zugriffsschicht verwendet intern sichere RTTI-Prüfungen, exponiert aber weder RTTI-
+Namen noch einen Runtime-Typenumerationsvertrag. Sie ergänzt kein `std::variant`, `std::any`, `void*`,
+keine Getter-/Setter-Pointer, veränderliche Registry, Defaults, Validierung, Serialisierung oder
+Drittanbieter-Registrierung und bleibt backendneutral.
 
 ### Ownership
 

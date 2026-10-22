@@ -83,10 +83,14 @@ declared properties are queried independently from the type catalog; inherited l
 existing direct `base_type_id` chain and returns the original declaring descriptor. No property is
 duplicated into a derived type.
 
-This is schema metadata only. It neither reads nor writes Component instances and adds no virtual
-reflection API, `std::variant`, `std::any`, getter/setter pointers, defaults, validation or display
-and localization metadata. The layer is backend-neutral and does not alter the Terminal, Rendered
-or native presentation boundaries.
+This remains schema metadata only. The separate `sasd/ui/component_property_access.hpp` layer
+provides four explicit boolean/string read/write functions for the currently catalogued built-ins.
+It validates descriptors by value, returns owned strings, uses the existing semantic getters/setters,
+and fails closed for unknown kinds, identities or incompatible Components. Writes report access
+success rather than value change. The access layer uses internal safe RTTI checks, but exposes no
+RTTI names or runtime type-enumeration contract. It adds no `std::variant`, `std::any`, `void*`,
+getter/setter pointers, mutable registry, defaults, validation, serialization or third-party
+registration, and remains backend-neutral.
 
 ### Ownership
 

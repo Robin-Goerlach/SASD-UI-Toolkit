@@ -279,13 +279,14 @@ Langfristige Themen:
 ## M8 – Grundlagen für Entwicklerkomfort
 
 **Status: aktiv (gestartet am 21.10.2026).** Slice 1 schafft die backendneutrale Typidentität und
-den unveränderlichen Built-in-Katalog. Slice 2 ergänzt ausschließlich die unveränderliche Property-
-Schema-Grundlage; Runtime-Wertzugriff und Design-Time-Attribute bleiben eigene spätere Slices.
+den unveränderlichen Built-in-Katalog. Slice 2 ergänzt die unveränderliche Property-Schema-Grundlage,
+Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht. Defaults,
+Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
 - [ ] Property-Metadaten und Design-Time-Attribute
   - [x] Property-Schema-/Katalog-Grundlage
-  - [ ] Runtime-Vertrag für Property-Wertzugriff
+  - [x] Runtime-Vertrag für Property-Wertzugriff
   - [ ] Defaults, Validierung und Design-Time-Attribute
 - [ ] Serialisierung von UI-Beschreibungen
 - [ ] Resource-System
