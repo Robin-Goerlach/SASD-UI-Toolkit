@@ -1,0 +1,214 @@
+#include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
+#include <sasd/ui/command.hpp>
+#include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/label.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/widget.hpp>
+
+#include <utility>
+
+namespace sasd::ui {
+namespace {
+
+bool isBuiltInSchemaDescriptor(const ComponentPropertyMetadata& candidate) noexcept {
+    // A copied descriptor is valid when its semantic fields match a direct catalog entry. Address
+    // identity is intentionally not part of the public metadata contract.
+    for (const auto& property : declaredBuiltInComponentProperties(candidate.declaring_type_id)) {
+        if (property.property_id == candidate.property_id &&
+            property.value_kind == candidate.value_kind) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isWidgetProperty(const ComponentPropertyMetadata& property,
+                     std::string_view property_id) noexcept {
+    return property.declaring_type_id == "sasd.ui.Widget" &&
+           property.property_id == property_id &&
+           property.value_kind == ComponentPropertyValueKind::boolean;
+}
+
+bool isCommandProperty(const ComponentPropertyMetadata& property,
+                       std::string_view property_id,
+                       ComponentPropertyValueKind value_kind) noexcept {
+    return property.declaring_type_id == "sasd.ui.Command" &&
+           property.property_id == property_id && property.value_kind == value_kind;
+}
+
+} // namespace
+
+std::optional<bool> readBuiltInBooleanProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::boolean) {
+        return std::nullopt;
+    }
+
+    if (isWidgetProperty(property, "visible")) {
+        const auto* widget = dynamic_cast<const Widget*>(&component);
+        return widget == nullptr ? std::nullopt : std::optional<bool>{widget->isVisible()};
+    }
+    if (isWidgetProperty(property, "enabled")) {
+        const auto* widget = dynamic_cast<const Widget*>(&component);
+        return widget == nullptr ? std::nullopt : std::optional<bool>{widget->isEnabled()};
+    }
+    if (isWidgetProperty(property, "focusable")) {
+        const auto* widget = dynamic_cast<const Widget*>(&component);
+        return widget == nullptr ? std::nullopt : std::optional<bool>{widget->isFocusable()};
+    }
+    if (isCommandProperty(property, "enabled", ComponentPropertyValueKind::boolean)) {
+        const auto* command = dynamic_cast<const Command*>(&component);
+        return command == nullptr ? std::nullopt : std::optional<bool>{command->isEnabled()};
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "checked") {
+        const auto* check_box = dynamic_cast<const CheckBox*>(&component);
+        return check_box == nullptr ? std::nullopt : std::optional<bool>{check_box->isChecked()};
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> readBuiltInStringProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::string) {
+        return std::nullopt;
+    }
+
+    if (isCommandProperty(property, "text", ComponentPropertyValueKind::string)) {
+        const auto* command = dynamic_cast<const Command*>(&component);
+        return command == nullptr ? std::nullopt : std::optional<std::string>{command->text()};
+    }
+    if (property.declaring_type_id == "sasd.ui.Label" && property.property_id == "text") {
+        const auto* label = dynamic_cast<const Label*>(&component);
+        return label == nullptr ? std::nullopt : std::optional<std::string>{label->text()};
+    }
+    if (property.declaring_type_id == "sasd.ui.Button" && property.property_id == "text") {
+        const auto* button = dynamic_cast<const Button*>(&component);
+        return button == nullptr ? std::nullopt : std::optional<std::string>{button->text()};
+    }
+    if (property.declaring_type_id == "sasd.ui.TextField" && property.property_id == "text") {
+        const auto* text_field = dynamic_cast<const TextField*>(&component);
+        return text_field == nullptr ? std::nullopt
+                                     : std::optional<std::string>{text_field->text()};
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "text") {
+        const auto* check_box = dynamic_cast<const CheckBox*>(&component);
+        return check_box == nullptr ? std::nullopt : std::optional<std::string>{check_box->text()};
+    }
+
+    return std::nullopt;
+}
+
+bool writeBuiltInBooleanProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    bool value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::boolean) {
+        return false;
+    }
+
+    if (isWidgetProperty(property, "visible")) {
+        auto* widget = dynamic_cast<Widget*>(&component);
+        if (widget == nullptr) {
+            return false;
+        }
+        widget->setVisible(value);
+        return true;
+    }
+    if (isWidgetProperty(property, "enabled")) {
+        auto* widget = dynamic_cast<Widget*>(&component);
+        if (widget == nullptr) {
+            return false;
+        }
+        widget->setEnabled(value);
+        return true;
+    }
+    if (isWidgetProperty(property, "focusable")) {
+        auto* widget = dynamic_cast<Widget*>(&component);
+        if (widget == nullptr) {
+            return false;
+        }
+        widget->setFocusable(value);
+        return true;
+    }
+    if (isCommandProperty(property, "enabled", ComponentPropertyValueKind::boolean)) {
+        auto* command = dynamic_cast<Command*>(&component);
+        if (command == nullptr) {
+            return false;
+        }
+        command->setEnabled(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "checked") {
+        auto* check_box = dynamic_cast<CheckBox*>(&component);
+        if (check_box == nullptr) {
+            return false;
+        }
+        // setChecked() reports value change, while this layer reports valid property access.
+        (void)check_box->setChecked(value);
+        return true;
+    }
+
+    return false;
+}
+
+bool writeBuiltInStringProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    std::string value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::string) {
+        return false;
+    }
+
+    if (isCommandProperty(property, "text", ComponentPropertyValueKind::string)) {
+        auto* command = dynamic_cast<Command*>(&component);
+        if (command == nullptr) {
+            return false;
+        }
+        command->setText(std::move(value));
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.Label" && property.property_id == "text") {
+        auto* label = dynamic_cast<Label*>(&component);
+        if (label == nullptr) {
+            return false;
+        }
+        label->setText(std::move(value));
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.Button" && property.property_id == "text") {
+        auto* button = dynamic_cast<Button*>(&component);
+        if (button == nullptr) {
+            return false;
+        }
+        button->setText(std::move(value));
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.TextField" && property.property_id == "text") {
+        auto* text_field = dynamic_cast<TextField*>(&component);
+        if (text_field == nullptr) {
+            return false;
+        }
+        text_field->setText(std::move(value));
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "text") {
+        auto* check_box = dynamic_cast<CheckBox*>(&component);
+        if (check_box == nullptr) {
+            return false;
+        }
+        check_box->setText(std::move(value));
+        return true;
+    }
+
+    return false;
+}
+
+} // namespace sasd::ui

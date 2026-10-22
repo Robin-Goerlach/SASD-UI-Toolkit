@@ -1,4 +1,6 @@
 #include <sasd/ui/component_metadata.hpp>
+#include <sasd/ui/button.hpp>
+#include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 
 #include <iostream>
@@ -45,8 +47,8 @@ int main() {
                   << " [" << kindName(metadata.kind) << "]\n";
     }
 
-    const auto* button = sasd::ui::findBuiltInComponentType("sasd.ui.Button");
-    std::cout << "lookup sasd.ui.Button: " << (button != nullptr ? "found" : "not found") << '\n';
+    const auto* button_type = sasd::ui::findBuiltInComponentType("sasd.ui.Button");
+    std::cout << "lookup sasd.ui.Button: " << (button_type != nullptr ? "found" : "not found") << '\n';
     const auto* unknown = sasd::ui::findBuiltInComponentType("sasd.ui.DoesNotExist");
     std::cout << "lookup sasd.ui.DoesNotExist: " << (unknown != nullptr ? "found" : "not found")
               << '\n';
@@ -57,5 +59,20 @@ int main() {
             sasd::ui::findBuiltInComponentProperty("sasd.ui.CheckBox", property_id);
         std::cout << "  inherited lookup " << property_id << " -> "
                   << (property != nullptr ? property->declaring_type_id : "<not found>") << '\n';
+    }
+
+    sasd::ui::Button button{"Initial"};
+    const auto* visible =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "visible");
+    const auto* text = sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "text");
+    if (visible != nullptr && text != nullptr) {
+        std::cout << "button.visible before: "
+                  << *sasd::ui::readBuiltInBooleanProperty(button, *visible) << '\n';
+        (void)sasd::ui::writeBuiltInBooleanProperty(button, *visible, false);
+        (void)sasd::ui::writeBuiltInStringProperty(button, *text, "Updated");
+        std::cout << "button.visible after: "
+                  << *sasd::ui::readBuiltInBooleanProperty(button, *visible) << '\n';
+        std::cout << "button.text after: "
+                  << *sasd::ui::readBuiltInStringProperty(button, *text) << '\n';
     }
 }

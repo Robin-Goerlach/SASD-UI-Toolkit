@@ -19,6 +19,12 @@ they improve the architecture before compatibility commitments become expensive.
   queries and inherited lookup without instance reflection or property-value access. Defaults,
   validation attributes, serialization and factories remain deferred.
 
+- M8 typed runtime property value access foundation: added explicit boolean/string reads and writes for
+  the ten built-in properties through existing semantic Component getters/setters. Descriptor identity
+  is validated by value, string reads are owned, writes report access rather than value change, and
+  unsupported or incompatible access fails closed. Generic value carriers, RTTI identities,
+  third-party registration, serialization and design-time attributes remain deferred.
+
 - M7 Desktop Integration exit review: native menus and the currently defined file-dialog scope are
   complete across Win32, AppKit and GTK4. The visible manual macOS/Cocoa M3 gate, native child
   peers and later desktop integrations remain explicitly open or deferred; M8 starts separately with

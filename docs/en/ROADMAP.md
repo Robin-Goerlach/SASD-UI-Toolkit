@@ -271,13 +271,14 @@ Longer-term areas:
 ## M8 – Developer productivity foundations
 
 **Status: active (started 2026-10-21).** Slice 1 establishes the backend-neutral type-identity and
-immutable built-in catalog foundation. Slice 2 adds only the immutable property-schema foundation;
-runtime value access and design-time attributes remain separate future slices.
+immutable built-in catalog foundation. Slice 2 adds the immutable property-schema foundation, and
+Slice 3 adds typed runtime value access while keeping schema and instance access separate. Defaults,
+validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
 - [ ] property metadata and design-time attributes
   - [x] property schema/catalog foundation
-  - [ ] runtime property value-access contract
+  - [x] runtime property value-access contract
   - [ ] defaults, validation and design-time attributes
 - [ ] serialization of UI descriptions
 - [ ] resource system
