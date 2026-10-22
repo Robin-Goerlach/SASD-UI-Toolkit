@@ -94,6 +94,16 @@ AppKit Native CI. The documentation branch was then removed locally and remotely
 `fetch --prune`. PRs #30, #32 and #63 were not changed. No release or tag was created, and M8 Slice
 3 was not started.
 
+### Repository hygiene follow-up
+
+PR #67 (`docs: record M8 property metadata merge completion`) was an obsolete documentation PR
+based on the pre-merge M8 Slice 2 state. Its single changed file was this ADR, and its content was
+superseded by merged PRs #68 and #69. PR #67 was closed without being merged. Its branch
+`codex/docs-m8-property-metadata-final-validation` was deleted locally and remotely, followed by
+`fetch --prune`. Main remained at the validated post-PR-69 state; no production, API, test, CMake
+or backend code was changed. PRs #30, #32 and #63 remained untouched. No release or tag was
+created, and M8 Slice 3 was not started.
+
 ## Deutsch
 
 ### Kontext
@@ -183,3 +193,14 @@ war vollständig grün: Main CI einschließlich der vollständigen Linux-, Windo
 Release-Matrix, GTK Native CI und AppKit Native CI. Der Dokumentationsbranch wurde anschließend
 lokal und remote entfernt und danach `fetch --prune` ausgeführt. Die PRs #30, #32 und #63 wurden
 nicht verändert. Es wurde kein Release und kein Tag erstellt, und M8 Slice 3 wurde nicht begonnen.
+
+### Follow-up zur Repository-Hygiene
+
+PR #67 (`docs: record M8 property metadata merge completion`) war ein überholter
+Dokumentations-PR auf Basis des M8-Slice-2-Stands vor dem Merge. Er änderte ausschließlich diese
+ADR; sein Inhalt wurde durch die gemergten PRs #68 und #69 überholt. PR #67 wurde ohne Merge
+geschlossen. Sein Branch `codex/docs-m8-property-metadata-final-validation` wurde lokal und remote
+gelöscht, danach wurde `fetch --prune` ausgeführt. `main` blieb auf dem validierten Stand nach PR
+#69; Produktions-, API-, Test-, CMake- und Backend-Code wurde nicht verändert. Die PRs #30, #32 und
+#63 blieben unangetastet. Es wurde kein Release und kein Tag erstellt, und M8 Slice 3 wurde nicht
+begonnen.
