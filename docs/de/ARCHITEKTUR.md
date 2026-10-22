@@ -121,6 +121,30 @@ inkompatible Anfragen `std::nullopt`. String-Defaults sind unveränderliche View
 zur Abfrage wird keine Component konstruiert. Diese Schicht ergänzt weder Reset-Operationen noch
 Validierung, Serialisierung oder Designer-Metadaten.
 
+### Built-in-Component-Property-Snapshots
+
+Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der
+exakte Runtime-Typidentifikation, geerbtes Property-Schema, semantischen Runtime-Zugriff und
+effektive Defaults gemeinsam verwendet. `captureBuiltInComponentPropertySnapshot(const Component&)`
+besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in zwei expliziten
+Collections für Boolean- bzw. String-Properties. Die Metadatenkette des exakten Zieltyps wird von
+der Basis zum Derived-Typ durchlaufen; innerhalb jeder Collection bleibt die bestehende deklarierte
+Reihenfolge erhalten.
+
+Werte werden ausschließlich über die bestehende Runtime-Access-Schicht gelesen und mit dem Default
+für den exakten Zieltyp verglichen. Der Snapshot enthält jede aktuell im Schema vorhandene Property,
+auch wenn ihr Wert dem Default entspricht; das Weglassen von Defaults ist eine spätere Encoding-
+Policy eines Serializers und nicht Snapshot-Policy. Unbekannter Derived-Typ, ungültige
+Metadaten-Kette, fehlender Runtime-Read oder fehlender Default-Lookup lehnt den vollständigen
+Snapshot ab, statt einen partiellen Zustand zurückzugeben.
+
+Dies ist ein besitzender Snapshot der aktuell katalogisierten Properties, keine vollständige
+Component- oder UI-Tree-Beschreibung. Das aktuelle Zehn-Properties-Schema deckt nicht den gesamten
+semantischen Zustand von Controls, Models, Layouts, Bindings oder Ownership/visuellen Kindern ab.
+Keine Child-Rekursion, kein Ownership-Serializer, kein PropertyValue-Container, kein `std::variant`,
+`std::any`, Persistenzformat, Serializer oder Deserializer wird hier eingeführt; die Schema-Abdeckung
+bleibt in späteren Slices unabhängig erweiterbar.
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:

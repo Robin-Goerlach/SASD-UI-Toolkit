@@ -192,6 +192,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0173](0173-m8-typed-runtime-property-value-access-foundation.md) | M8 Typed Runtime Property Value Access foundation | Accepted |
 | [0174](0174-m8-effective-property-default-metadata-foundation.md) | M8 Effective Property Default Metadata foundation | Accepted |
 | [0175](0175-m8-exact-built-in-runtime-type-identification-foundation.md) | M8 Exact built-in runtime type identification foundation | Accepted |
+| [0176](0176-m8-built-in-component-property-snapshot-foundation.md) | M8 Built-in Component Property Snapshot foundation | Accepted |
 
 ## ADR policy
 

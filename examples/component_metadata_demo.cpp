@@ -5,6 +5,7 @@
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_property_snapshot.hpp>
 
 #include <iostream>
 #include <string_view>
@@ -108,5 +109,21 @@ int main() {
         std::cout << "Button.text default: "
                   << *sasd::ui::builtInStringPropertyDefault("sasd.ui.Button", *button_text)
                   << '\n';
+    }
+
+    const auto button_snapshot =
+        sasd::ui::captureBuiltInComponentPropertySnapshot(button);
+    if (button_snapshot.has_value()) {
+        std::cout << "Button snapshot:\n";
+        std::cout << "  type: " << button_snapshot->type_id << '\n';
+        for (const auto& property : button_snapshot->boolean_properties) {
+            std::cout << "  " << property.property_id << " = " << std::boolalpha
+                      << property.value << (property.is_default ? " [default]" : " [non-default]")
+                      << '\n';
+        }
+        for (const auto& property : button_snapshot->string_properties) {
+            std::cout << "  " << property.property_id << " = \"" << property.value << "\""
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
     }
 }

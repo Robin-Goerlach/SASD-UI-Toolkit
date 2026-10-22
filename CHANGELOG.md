@@ -9,6 +9,14 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Built-in Component Property Snapshot foundation: added the owned, backend-neutral
+  `captureBuiltInComponentPropertySnapshot(const Component&)` consumer for the currently catalogued
+  built-in properties. Exact runtime type identification, inherited base-to-derived schema order,
+  semantic boolean/string runtime reads and target-type-relative default comparisons are combined
+  without a generic value carrier. Snapshots include all catalogued properties, fail closed instead
+  of returning partial results, and explicitly do not claim complete Component state; child/tree
+  serialization, persistence formats and deserialization remain deferred.
+
 - M8 exact built-in runtime type identification foundation: added the allocation-free,
   backend-neutral `builtInComponentTypeOf(const Component&)` query. Exact dynamic built-in C++
   types return the existing immutable catalog descriptor, while unknown derived types fail closed
