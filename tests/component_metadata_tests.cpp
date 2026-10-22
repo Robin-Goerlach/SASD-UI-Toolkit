@@ -17,7 +17,7 @@ struct ExpectedType final {
     ComponentTypeKind kind;
 };
 
-constexpr std::array<ExpectedType, 25> expected_types{{
+constexpr std::array<ExpectedType, 26> expected_types{{
     ExpectedType{"sasd.ui.Component", "", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.Widget", "sasd.ui.Component", ComponentTypeKind::widget},
     ExpectedType{"sasd.ui.Container", "sasd.ui.Widget", ComponentTypeKind::container},
@@ -43,6 +43,7 @@ constexpr std::array<ExpectedType, 25> expected_types{{
     ExpectedType{"sasd.ui.TableView", "sasd.ui.Widget", ComponentTypeKind::widget},
     ExpectedType{"sasd.ui.TreeModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.StringTreeModel", "sasd.ui.TreeModel", ComponentTypeKind::component},
+    ExpectedType{"sasd.ui.TreeView", "sasd.ui.Widget", ComponentTypeKind::widget},
 }};
 
 } // namespace

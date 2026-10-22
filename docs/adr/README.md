@@ -190,6 +190,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0171](0171-m8-component-type-metadata-foundation.md) | M8 Component Type Metadata foundation | Accepted |
 | [0172](0172-m8-component-property-metadata-schema-foundation.md) | M8 Component Property Metadata schema foundation | Accepted |
 | [0173](0173-m8-typed-runtime-property-value-access-foundation.md) | M8 Typed Runtime Property Value Access foundation | Accepted |
+| [0174](0174-m8-effective-property-default-metadata-foundation.md) | M8 Effective Property Default Metadata foundation | Accepted |
 
 ## ADR policy
 

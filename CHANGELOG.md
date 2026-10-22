@@ -25,6 +25,12 @@ they improve the architecture before compatibility commitments become expensive.
   unsupported or incompatible access fails closed. Generic value carriers, RTTI identities,
   third-party registration, serialization and design-time attributes remain deferred.
 
+- M8 effective property default metadata foundation: added target-type-relative immutable boolean and
+  string default queries with complete descriptor identity validation. Widget visibility/enabled
+  defaults, interactive focusable overrides and direct Command/Label/Button/TextField/CheckBox
+  defaults are represented without constructing Components or adding a `default_value` to schema
+  metadata. Reset, validation, serialization and designer metadata remain deferred.
+
 - M7 Desktop Integration exit review: native menus and the currently defined file-dialog scope are
   complete across Win32, AppKit and GTK4. The visible manual macOS/Cocoa M3 gate, native child
   peers and later desktop integrations remain explicitly open or deferred; M8 starts separately with

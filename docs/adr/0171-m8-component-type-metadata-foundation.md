@@ -39,8 +39,9 @@ consumer to walk the catalog.
 `builtInComponentTypes()` returns a read-only `std::span` over immutable static descriptors, and
 `findBuiltInComponentType()` performs an exact case-sensitive query. Unknown IDs return `nullptr`.
 The current catalog includes every public Component-derived type implemented in Core, including
-abstract model bases and concrete StringListModel, StringTableModel and StringTreeModel types. It
-currently contains 25 descriptors; types described only in long-term documentation are not invented.
+abstract model bases and concrete StringListModel, StringTableModel, StringTreeModel and TreeView
+types. It currently contains 26 descriptors; types described only in long-term documentation are not
+invented.
 
 The catalog is a type catalog, not an instance-reflection mechanism. No virtual metadata method is
 added to `Component`, so an unknown external C++ class derived from Button, Widget or Component
@@ -123,7 +124,7 @@ duplizierte vollständige Ahnenlisten und erlaubt einem Consumer dennoch, den Ka
 Deskriptoren; `findBuiltInComponentType()` führt eine exakte case-sensitive Abfrage aus. Unbekannte
 IDs liefern `nullptr`. Der aktuelle Katalog enthält jeden öffentlichen, im Core implementierten
 Component-Untertyp, einschließlich abstrakter Model-Basen und der konkreten Typen StringListModel,
-StringTableModel und StringTreeModel. Er enthält derzeit 25 Deskriptoren; nur langfristig
+StringTableModel, StringTreeModel und TreeView. Er enthält derzeit 26 Deskriptoren; nur langfristig
 dokumentierte, noch nicht implementierte Typen werden nicht erfunden.
 
 Der Katalog ist ein Typkatalog und keine Instanz-Reflection. `Component` erhält keine virtuelle
