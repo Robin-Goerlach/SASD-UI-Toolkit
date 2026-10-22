@@ -282,7 +282,8 @@ Langfristige Themen:
 den unveränderlichen Built-in-Katalog. Slice 2 ergänzt die unveränderliche Property-Schema-Grundlage,
 Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht, Slice 4
 typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identifikation vorhandener
-Built-in-Instanzen. Validierung und Design-Time-Attribute bleiben spätere Slices.
+Built-in-Instanzen und Slice 6 die besitzende Snapshot-Grundlage für aktuell katalogisierte Built-in-
+Properties. Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -292,8 +293,12 @@ Built-in-Instanzen. Validierung und Design-Time-Attribute bleiben spätere Slice
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
   - [ ] Validierung und Design-Time-Attribute
-- [ ] Serialisierung von UI-Beschreibungen (exakte Runtime-Identifikation schafft eine Voraussetzung;
-  der Serialisierungs-Consumer bleibt offen)
+- [ ] Serialisierung von UI-Beschreibungen
+  - [x] Besitzender Built-in-Component-Property-Snapshot
+  - [ ] Vollständige Policy für serialisierbare Property-Abdeckung
+  - [ ] Persistenzrepräsentation / Encoding
+  - [ ] Component-Ownership-/Tree-Beschreibung
+  - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
 - [ ] Design-Time-Validierungsmetadaten

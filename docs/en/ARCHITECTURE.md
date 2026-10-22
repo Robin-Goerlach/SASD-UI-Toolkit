@@ -115,6 +115,28 @@ identity against inherited schema lookup and returns `std::nullopt` for unknown 
 requests. String defaults are immutable process-lifetime views; no Component is constructed to answer
 the query. This layer adds no reset operation, validation, serialization or designer metadata.
 
+### Built-in component property snapshots
+
+The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that
+combines exact runtime type identification, inherited property schema, semantic runtime access and
+effective defaults. `captureBuiltInComponentPropertySnapshot(const Component&)` owns the stable
+type ID, property identities and captured string values in two explicit collections: boolean and
+string properties. It enumerates the exact target's metadata chain from base to derived and keeps
+the existing declaration order within each collection.
+
+The snapshot reads values only through the established runtime access layer and compares each value
+with the effective default for the exact target type. It includes every property currently present
+in the schema, including properties whose value is default; omission is an encoding policy for a
+later serializer, not a snapshot policy. Any unknown derived type, invalid metadata chain, failed
+runtime read or failed default lookup rejects the complete snapshot rather than returning a partial
+description.
+
+This is an owned snapshot of currently catalogued properties, not a complete Component or UI-tree
+description. The current ten-property schema does not cover all semantic state of controls, models,
+layouts, bindings or ownership/visual children. No child recursion, ownership serialization,
+PropertyValue carrier, `std::variant`, `std::any`, persistence format, serializer or deserializer is
+introduced here; property-schema coverage remains independently extensible in later slices.
+
 ### Ownership
 
 Initial core rules:
