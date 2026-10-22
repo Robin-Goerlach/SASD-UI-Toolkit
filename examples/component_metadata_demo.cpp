@@ -1,6 +1,7 @@
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 
 #include <iostream>
@@ -74,5 +75,28 @@ int main() {
                   << *sasd::ui::readBuiltInBooleanProperty(button, *visible) << '\n';
         std::cout << "button.text after: "
                   << *sasd::ui::readBuiltInStringProperty(button, *text) << '\n';
+    }
+
+    const auto* focusable =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "focusable");
+    const auto* checked =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.CheckBox", "checked");
+    if (focusable != nullptr && checked != nullptr) {
+        std::cout << "Widget.focusable default: "
+                  << *sasd::ui::builtInBooleanPropertyDefault("sasd.ui.Widget", *focusable) << '\n';
+        std::cout << "Label.focusable default: "
+                  << *sasd::ui::builtInBooleanPropertyDefault("sasd.ui.Label", *focusable) << '\n';
+        std::cout << "Button.focusable default: "
+                  << *sasd::ui::builtInBooleanPropertyDefault("sasd.ui.Button", *focusable) << '\n';
+        std::cout << "CheckBox.checked default: "
+                  << *sasd::ui::builtInBooleanPropertyDefault("sasd.ui.CheckBox", *checked) << '\n';
+    }
+
+    const auto* button_text =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "text");
+    if (button_text != nullptr) {
+        std::cout << "Button.text default: "
+                  << *sasd::ui::builtInStringPropertyDefault("sasd.ui.Button", *button_text)
+                  << '\n';
     }
 }

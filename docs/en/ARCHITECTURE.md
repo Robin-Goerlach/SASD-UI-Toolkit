@@ -92,6 +92,16 @@ RTTI names or runtime type-enumeration contract. It adds no `std::variant`, `std
 getter/setter pointers, mutable registry, defaults, validation, serialization or third-party
 registration, and remains backend-neutral.
 
+### Effective property defaults
+
+The separate `sasd/ui/component_property_defaults.hpp` layer describes effective defaults for a
+known built-in target type. Defaults are target-type-relative because inherited properties can have
+different construction policies: `Widget.focusable` is false for `Widget` and structural widgets,
+while the interactive built-ins override it to true. The query validates the complete property
+identity against inherited schema lookup and returns `std::nullopt` for unknown or incompatible
+requests. String defaults are immutable process-lifetime views; no Component is constructed to answer
+the query. This layer adds no reset operation, validation, serialization or designer metadata.
+
 ### Ownership
 
 Initial core rules:

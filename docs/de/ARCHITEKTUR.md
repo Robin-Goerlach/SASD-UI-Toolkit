@@ -94,6 +94,17 @@ Namen noch einen Runtime-Typenumerationsvertrag. Sie ergänzt kein `std::variant
 keine Getter-/Setter-Pointer, veränderliche Registry, Defaults, Validierung, Serialisierung oder
 Drittanbieter-Registrierung und bleibt backendneutral.
 
+### Effektive Property-Defaults
+
+Die getrennte Schicht `sasd/ui/component_property_defaults.hpp` beschreibt effektive Defaults für
+einen bekannten Built-in-Zieltyp. Defaults sind zieltypbezogen, weil geerbte Properties verschiedene
+Konstruktionspolitiken besitzen können: `Widget.focusable` ist für `Widget` und strukturelle Widgets
+false, während interaktive Built-ins den Wert auf true überschreiben. Die Abfrage validiert die
+vollständige Property-Identität über den geerbten Schema-Lookup und liefert für unbekannte oder
+inkompatible Anfragen `std::nullopt`. String-Defaults sind unveränderliche Views mit Prozesslebenszeit;
+zur Abfrage wird keine Component konstruiert. Diese Schicht ergänzt weder Reset-Operationen noch
+Validierung, Serialisierung oder Designer-Metadaten.
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:
