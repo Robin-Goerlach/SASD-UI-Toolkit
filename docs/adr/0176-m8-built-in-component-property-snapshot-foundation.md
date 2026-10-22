@@ -69,6 +69,32 @@ wiring, focused tests and an extension of the existing headless component metada
 does not add properties, alter the Component ownership contract, introduce a persistence format or
 modify the earlier metadata/access/default layers.
 
+The implementation was delivered in commit `b40e3e238f7288c68ebd55f186d7902d1fa69928` on branch
+`codex/m8-component-property-snapshot` and published as PR #77. The final PR head remained this
+commit. The focused tests cover default and modified Button snapshots, Label, CheckBox, Command and
+sanitized TextField values, a known built-in with no catalogued properties, unknown derived types,
+owned snapshot strings after Component destruction, deterministic inherited order and unchanged
+Component ownership/state.
+
+Strict GCC Debug and Release builds with C++20 and warnings as errors were run from fresh
+out-of-source build directories. The complete configured CTest suite passed in both configurations
+(4/4 tests each), `git diff --check` passed, and both headless demo builds printed the expected
+snapshot values and default markers. No backend initialization or tree traversal was introduced.
+
+All required checks for PR #77 passed for the final head: Linux GCC, Linux Clang, Linux Clang
+ASan + UBSan, Linux SDL3 adapter, Windows MSVC, macOS AppleClang, GTK4 Native, macOS AppKit
+Native, Linux Release, Windows Release and macOS Release.
+
+PR #77 was merged by a normal merge commit as
+`3a3ca0926c00b5ddd4e687952cc2f8fb2d0fdde3`. Post-merge validation for exactly that merge SHA was
+fully green: Main CI including the complete Linux, Windows and macOS Release matrix, GTK Native CI
+and AppKit Native CI. The feature branch was deleted locally and remotely, followed by
+`fetch --prune`; local `main` was synchronized to the merge SHA and the working tree was clean. PRs
+#30, #32 and #63 were not changed. No release or tag was created. The macOS/Cocoa M3 gate remains
+open. M8 remains active; property-coverage expansion, tree snapshots, persistence formats,
+serialization, deserialization, factories, validation, design-time metadata, resources, designer
+and IDE integration were not started.
+
 ## Deutsch
 
 ### Kontext
@@ -132,3 +158,31 @@ CMake-Verdrahtung, fokussierte Tests sowie eine Erweiterung des bestehenden head
 Metadata-Demos. Es werden keine Properties ergänzt, der Component-Ownership-Vertrag nicht verändert,
 kein Persistenzformat eingeführt und die vorherigen Metadata-/Access-/Default-Schichten nicht
 verändert.
+
+Die Implementierung wurde im Commit `b40e3e238f7288c68ebd55f186d7902d1fa69928` auf dem Branch
+`codex/m8-component-property-snapshot` erstellt und als PR #77 veröffentlicht. Der finale PR-Head
+blieb dieser Commit. Die fokussierten Tests prüfen Default- und geänderte Button-Snapshots, Label,
+CheckBox, Command und sanitisierten TextField-Wert, einen bekannten Built-in ohne katalogisierte
+Properties, unbekannte Derived-Typen, besitzende Snapshot-Strings nach der Zerstörung der Component,
+deterministische geerbte Reihenfolge sowie unveränderten Component-Zustand und Ownership.
+
+Strikte GCC-Debug- und Release-Builds mit C++20 und Warnings-as-Errors wurden in frischen
+Out-of-Source-Builds ausgeführt. Die vollständige konfigurierte CTest-Suite war in beiden
+Konfigurationen erfolgreich (jeweils 4/4 Tests), `git diff --check` war erfolgreich und beide
+headless Demo-Builds gaben die erwarteten Snapshot-Werte und Default-Markierungen aus. Es wurden
+keine Backend-Initialisierung und keine Tree-Traversierung eingeführt.
+
+Alle erforderlichen Checks von PR #77 waren für den finalen Head erfolgreich: Linux GCC, Linux
+Clang, Linux Clang ASan + UBSan, Linux SDL3 Adapter, Windows MSVC, macOS AppleClang, GTK4 Native,
+macOS AppKit Native, Linux Release, Windows Release und macOS Release.
+
+PR #77 wurde mit dem normalen Merge-Commit
+`3a3ca0926c00b5ddd4e687952cc2f8fb2d0fdde3` gemergt. Die Post-Merge-Validierung für genau diesen
+Merge-SHA war vollständig erfolgreich: Main CI einschließlich der vollständigen Linux-/Windows- und
+macOS-Release-Matrix, GTK Native CI und AppKit Native CI. Der Feature-Branch wurde lokal und remote
+gelöscht; anschließend wurde `fetch --prune` ausgeführt, `main` auf den Merge-SHA synchronisiert
+und ein sauberer Working Tree bestätigt. Die PRs #30, #32 und #63 wurden nicht verändert. Es wurde
+kein Release und kein Tag erzeugt. Das macOS/Cocoa-M3-Gate bleibt offen. M8 bleibt aktiv;
+Property-Coverage-Erweiterung, Tree-Snapshots, Persistenzformate, Serialisierung, Deserialisierung,
+Factories, Validierung, Design-Time-Metadaten, Ressourcen, Designer und IDE-Integration wurden nicht
+begonnen.
