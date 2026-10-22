@@ -74,6 +74,19 @@ instance reflection, factories, serialization or a mutable plugin registry; thos
 future M8 slices. Component metadata describes types only and has no effect on Component ownership,
 visual parenting, events or layout.
 
+### Exact built-in runtime identification
+
+The separate `sasd/ui/component_runtime_metadata.hpp` layer answers which exact catalogued built-in
+type a live `Component` instance has. It compares the dynamic `typeid(component)` with each known
+built-in C++ type and then returns the corresponding pointer from the existing immutable catalog.
+It never uses `type_info::name()`, RTTI hashes or compiler-specific names as identity. Unknown
+third-party derived types fail closed with `nullptr`; they are not approximated by their nearest
+built-in base type, because a future serialization consumer must not silently discard derived state.
+
+This is an internal foundation for the next serialization-oriented slice, not serialization itself:
+there is no description format, factory, deserializer, child enumeration, mutable registry or
+third-party registration. `Component` remains free of a virtual `typeId()` reflection method.
+
 ### Component property metadata
 
 The separate `sasd/ui/component_property_metadata.hpp` layer describes a small immutable schema for

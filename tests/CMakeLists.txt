@@ -2,6 +2,7 @@ add_executable(sasd_ui_tests
     test_main.cpp
     geometry_tests.cpp
     component_metadata_tests.cpp
+    component_runtime_metadata_tests.cpp
     component_property_access_tests.cpp
     component_property_defaults_tests.cpp
     component_property_metadata_tests.cpp

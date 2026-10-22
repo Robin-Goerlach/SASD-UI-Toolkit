@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 exact built-in runtime type identification foundation: added the allocation-free,
+  backend-neutral `builtInComponentTypeOf(const Component&)` query. Exact dynamic built-in C++
+  types return the existing immutable catalog descriptor, while unknown derived types fail closed
+  with `nullptr`; internal RTTI names are never exposed or persisted. Serialization, factories and
+  third-party registration remain deferred.
+
 - M8 Component Type Metadata foundation: added stable explicit toolkit type IDs, direct base-type
   references, `component`/`widget`/`container` classification, an immutable built-in catalog and a
   backend-neutral headless consumer. Factories, serialization, resources and designer/tooling

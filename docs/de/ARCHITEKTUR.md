@@ -74,6 +74,22 @@ Instanzreflexion noch Factories, Serialisierung oder eine veränderbare Plugin-R
 Entscheidungen bleiben spätere M8-Slices. Komponentenmetadaten beschreiben ausschließlich Typen und
 beeinflussen weder Component-Ownership noch visuelles Parenting, Events oder Layout.
 
+### Exakte Runtime-Identifikation von Built-in-Typen
+
+Die separate Schicht `sasd/ui/component_runtime_metadata.hpp` beantwortet, welchem exakten
+katalogisierten Built-in-Typ eine lebende `Component`-Instanz entspricht. Sie vergleicht das
+dynamische `typeid(component)` mit jedem bekannten Built-in-C++-Typ und liefert anschließend den
+zugehörigen Pointer aus dem bestehenden unveränderlichen Katalog zurück. Sie verwendet niemals
+`type_info::name()`, RTTI-Hashes oder compilerspezifische Namen als Identität. Unbekannte
+Drittanbieter-Derived-Typen fallen mit `nullptr` fail-closed aus; sie werden nicht auf den nächsten
+bekannten Basistyp angenähert, weil ein künftiger Serialisierungs-Consumer sonst abgeleiteten Zustand
+still verlieren könnte.
+
+Dies ist eine interne Grundlage für den nächsten serialisierungsorientierten Slice, nicht die
+Serialisierung selbst: Es gibt noch kein Beschreibungsformat, keine Factory, keinen Deserializer,
+keine Child-Aufzählung, veränderbare Registry oder Drittanbieter-Registrierung. `Component` bleibt
+frei von einer virtuellen `typeId()`-Reflection-Methode.
+
 ### Komponenten-Property-Metadaten
 
 Die separate Schicht `sasd/ui/component_property_metadata.hpp` beschreibt ein kleines,

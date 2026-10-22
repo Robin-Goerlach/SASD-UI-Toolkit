@@ -280,17 +280,20 @@ Langfristige Themen:
 
 **Status: aktiv (gestartet am 21.10.2026).** Slice 1 schafft die backendneutrale Typidentität und
 den unveränderlichen Built-in-Katalog. Slice 2 ergänzt die unveränderliche Property-Schema-Grundlage,
-Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht und Slice 4
-typenbezogene effektive Property-Defaults. Validierung und Design-Time-Attribute bleiben spätere
-Slices.
+Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht, Slice 4
+typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identifikation vorhandener
+Built-in-Instanzen. Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
+  - [x] Unveränderlicher Built-in-Typkatalog
+  - [x] Exakte Runtime-Identifikation von Built-in-Instanzen
 - [ ] Property-Metadaten und Design-Time-Attribute
   - [x] Property-Schema-/Katalog-Grundlage
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
   - [ ] Validierung und Design-Time-Attribute
-- [ ] Serialisierung von UI-Beschreibungen
+- [ ] Serialisierung von UI-Beschreibungen (exakte Runtime-Identifikation schafft eine Voraussetzung;
+  der Serialisierungs-Consumer bleibt offen)
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
 - [ ] Design-Time-Validierungsmetadaten
