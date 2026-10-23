@@ -195,6 +195,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0176](0176-m8-built-in-component-property-snapshot-foundation.md) | M8 Built-in Component Property Snapshot foundation | Accepted |
 | [0177](0177-m8-serializable-ui-description-state-coverage-policy.md) | M8 Serializable UI-Description State Coverage Policy | Accepted |
 | [0178](0178-m8-numeric-property-value-kind-foundation.md) | M8 Numeric Property Value-Kind Foundation | Accepted |
+| [0179](0179-m8-radio-button-scalar-property-coverage.md) | M8 RadioButton Scalar Property Coverage | Accepted |
 
 ## ADR policy
 

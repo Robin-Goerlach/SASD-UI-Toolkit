@@ -298,9 +298,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
 - [ ] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
-  - [ ] Abdeckung persistenter skalarer Properties
+  - [x] Abdeckung persistenter skalarer Properties
     - [x] Numerische Layout-Property-Grundlage (Signed-/Unsigned-Kinds; HBox/VBox/Grid/Form)
-    - [ ] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
+    - [x] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
   - [ ] Abdeckung von Collections/Compound-Properties
   - [ ] Component-Ownership-/Reference-Graph-Beschreibung
   - [ ] Persistenzrepräsentation / Encoding
@@ -311,6 +311,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
 - [ ] IDE-/Tooling-Schnittstellen
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
+
+Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179). `ComboBox.selectedIndex`
+bleibt als optionaler, an `items` gebundener Wert im späteren Collection/Compound/Optional-Slice.
 
 ## Bewusst später
 

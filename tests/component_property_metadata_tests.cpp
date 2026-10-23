@@ -16,7 +16,7 @@ struct ExpectedProperty final {
     ComponentPropertyValueKind value_kind;
 };
 
-constexpr std::array<ExpectedProperty, 17> expected_properties{{
+constexpr std::array<ExpectedProperty, 19> expected_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
@@ -27,6 +27,8 @@ constexpr std::array<ExpectedProperty, 17> expected_properties{{
     {"sasd.ui.TextField", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "checked", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.RadioButton", "text", ComponentPropertyValueKind::string},
+    {"sasd.ui.RadioButton", "selected", ComponentPropertyValueKind::boolean},
     {"sasd.ui.HBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.VBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.GridLayout", "columnCount", ComponentPropertyValueKind::unsigned_integer},
@@ -146,4 +148,20 @@ TEST_CASE("property metadata lookup is exact and does not access instances") {
     CHECK(findBuiltInComponentProperty("sasd.ui.Button", "doesNotExist") == nullptr);
     CHECK(findBuiltInComponentProperty("sasd.ui.Window", "checked") == nullptr);
     CHECK(findBuiltInComponentProperty("", "visible") == nullptr);
+}
+
+TEST_CASE("RadioButton declares ordered scalars and inherits Widget properties") {
+    const auto direct = declaredBuiltInComponentProperties("sasd.ui.RadioButton");
+    CHECK(direct.size() == 2);
+    CHECK(direct[0].property_id == "text");
+    CHECK(direct[0].value_kind == ComponentPropertyValueKind::string);
+    CHECK(direct[1].property_id == "selected");
+    CHECK(direct[1].value_kind == ComponentPropertyValueKind::boolean);
+    CHECK(findBuiltInComponentProperty("sasd.ui.RadioButton", "text") == &direct[0]);
+    CHECK(findBuiltInComponentProperty("sasd.ui.RadioButton", "selected") == &direct[1]);
+    for (const auto name : {"visible", "enabled", "focusable"}) {
+        const auto* inherited = findBuiltInComponentProperty("sasd.ui.RadioButton", name);
+        CHECK(inherited != nullptr);
+        CHECK(inherited->declaring_type_id == "sasd.ui.Widget");
+    }
 }

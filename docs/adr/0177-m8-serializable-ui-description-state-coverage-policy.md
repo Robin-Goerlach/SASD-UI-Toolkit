@@ -89,7 +89,7 @@ implementation in this slice.
 | `CheckBox.text`, `checked` | persistent property | yes | string/bool, supported | existing scalar schema/access |
 | `CheckBox.textStyle` | style/resource | potentially | no | later style/resource policy |
 | `CheckBox` pressed/gesture and callback | transient/executable | no | no | runtime gesture and callbacks excluded |
-| `RadioButton.text`, `selected` | persistent property | yes | string/bool, not supported | scalar coverage; grouped reconstruction order required |
+| `RadioButton.text`, `selected` | persistent property | yes | string/bool, supported (ADR 0179) | scalar metadata/access/default/snapshot; grouped reconstruction order still required |
 | `RadioButton` -> `RadioGroup` membership | persistent reference relation | yes | no | group identity/reference graph |
 | `RadioButton.textStyle`, selected callback | style/resource + executable | style potentially; callback no | no | style policy; callbacks excluded |
 | `RadioButton` pressed/gesture | transient interaction | no | no | rebuilt by runtime routing |
@@ -160,8 +160,8 @@ becoming an accidental object-graph reflection system.
 Serialization remains open. At the Slice-7 baseline, the recommended next technical slice was
 **M8 Slice 8 – Numeric Property Value-Kind Foundation**, starting with existing layout consumers: `HBox`/`VBox` spacing,
 `GridLayout` column count/spacing and `FormLayout` spacing. This unlocks several authoring
-properties independently of reference reconstruction. RadioButton's missing bool/string coverage is
-a focused follow-up and should not be mixed into the numeric foundation. Slice 7 implements no
+properties independently of reference reconstruction. RadioButton bool/string coverage was completed
+separately in Slice 9 (ADR 0179); group membership remains technically uncovered. Slice 7 implements no
 new property kind, property, collection, compound, reference, serializer or deserializer.
 
 ## Deutsch
@@ -232,8 +232,8 @@ dokumentieren; stille Lücken sind unzulässig.
 
 Die Serialisierung bleibt offen. Zum Stand von Slice 7 wurde **M8 Slice 8 – Numeric
 Property Value-Kind Foundation** empfohlen, zunächst für die realen Layout-Consumer `HBox`/`VBox`,
-`GridLayout` und `FormLayout`. Die fehlenden RadioButton-Properties bleiben ein fokussierter
-Folgeschritt, werden aber nicht mit der Numeric-Grundlage vermischt. Slice 7 beginnt keinen
+`GridLayout` und `FormLayout`. Die RadioButton-Properties wurden separat in Slice 9 abgedeckt (ADR 0179);
+Gruppenmitgliedschaft bleibt technisch offen. Slice 7 beginnt keinen
 Serializer, keine Collections, Compound-Werte, References oder Deserialisierung.
 
 ## Implementation and validation record

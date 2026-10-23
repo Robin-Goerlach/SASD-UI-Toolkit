@@ -9,6 +9,10 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 9: RadioButton `text`/`selected` now use built-in metadata, typed access, effective
+  defaults and owned snapshots. Selected writes preserve RadioGroup semantics through the public
+  setter. Group-reference serialization remains unimplemented (ADR 0179).
+
 - M8 Numeric Property Value-Kind Foundation: added `signed_integer` / `unsigned_integer` with
   fixed-width `std::int64_t` / `std::uint64_t` tooling values. The seventeen-descriptor catalog now
   covers HBox/VBox spacing, GridLayout column count/spacing and FormLayout spacing. Typed runtime
