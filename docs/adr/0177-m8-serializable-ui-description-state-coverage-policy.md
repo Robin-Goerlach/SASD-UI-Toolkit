@@ -237,9 +237,46 @@ This is a documentation/architecture slice. It adds no public C++ API, property 
 serializer, persistence format, parser, factory or deserializer. The source review was performed
 against the 26-entry built-in catalog and current public headers.
 
+The policy was implemented in commit `bd6e305218214ed924c0e119b9618b749bec2e58` on branch
+`codex/m8-serializable-state-coverage-policy` and published as PR #79. The PR head remained this
+commit. Local validation included `git diff --check`, a relative Markdown-link check with zero
+broken links, an ADR-index check and a source re-check confirming the 26 catalogued built-ins and
+ten current boolean/string properties. No local C++ build was run because no C++, CMake or test
+file changed.
+
+PR #79 passed the complete configured CI: Linux GCC, Linux Clang, Linux Clang ASan/UBSan, Linux
+SDL3 adapter, Windows MSVC, macOS AppleClang, GTK4 Native, macOS AppKit Native and the Linux,
+Windows and macOS Release jobs. It was merged by normal merge commit
+`0f077c1f6f26a6991be2f4d3dcd66fa54b295333`. Post-merge Main CI, GTK Native CI, AppKit Native CI
+and the complete Release matrix all passed for exactly that merge SHA.
+
+The remote and local feature branches were deleted after post-merge validation, `main` was
+fast-forwarded to the merge SHA, and the final working tree was clean. PRs #30, #32 and #63 were
+not changed. No release or tag was created. The macOS/Cocoa M3 gate remains open. M8 Slice 8 was
+recommended but not started.
+
 ## Implementierungs- und Validierungsprotokoll
 
 Dies ist ein Dokumentations-/Architektur-Slice. Es ergänzt keine öffentliche C++-API, keinen
 Property-Kind, keine Property, keinen Serializer, kein Persistenzformat, keinen Parser, keine
 Factory und keinen Deserializer. Der Source-Review erfolgte gegen den 26 Einträge umfassenden
 Built-in-Katalog und die aktuellen öffentlichen Header.
+
+Die Policy wurde im Commit `bd6e305218214ed924c0e119b9618b749bec2e58` auf dem Branch
+`codex/m8-serializable-state-coverage-policy` umgesetzt und als PR #79 veröffentlicht. Der finale
+PR-Head blieb dieser Commit. Die lokale Validierung umfasste `git diff --check`, eine Prüfung der
+relativen Markdown-Links mit null fehlerhaften Links, die Prüfung des ADR-Indexes sowie einen
+erneuten Source-Abgleich mit 26 katalogisierten Built-ins und zehn aktuellen Boolean-/String-
+Properties. Ein lokaler C++-Build wurde nicht ausgeführt, weil keine C++-, CMake- oder Testdatei
+geändert wurde.
+
+PR #79 bestand die vollständige konfigurierte CI: Linux GCC, Linux Clang, Linux Clang ASan/UBSan,
+Linux SDL3-Adapter, Windows MSVC, macOS AppleClang, GTK4 Native, macOS AppKit Native sowie die
+Linux-, Windows- und macOS-Release-Jobs. Der PR wurde mit dem normalen Merge-Commit
+`0f077c1f6f26a6991be2f4d3dcd66fa54b295333` gemergt. Main CI, GTK Native CI, AppKit Native CI und
+die vollständige Release-Matrix waren für exakt diesen Merge-SHA erfolgreich.
+
+Nach der Post-Merge-Validierung wurden Remote- und lokaler Feature-Branch gelöscht, `main` auf den
+Merge-SHA vorgespult und der finale Working Tree sauber bestätigt. PRs #30, #32 und #63 wurden nicht
+verändert. Es wurde kein Release und kein Tag erstellt. Das macOS/Cocoa-M3-Gate bleibt offen. M8
+Slice 8 wurde empfohlen, aber nicht begonnen.
