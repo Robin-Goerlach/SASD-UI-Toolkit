@@ -3,6 +3,7 @@
 #include <sasd/ui/component.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -40,5 +41,41 @@ namespace sasd::ui {
     Component& component,
     const ComponentPropertyMetadata& property,
     std::string value);
+
+/**
+ * Reads a built-in signed_integer property into the fixed-width tooling type.
+ * Invalid descriptors, incompatible Components or unrepresentable values return std::nullopt.
+ */
+[[nodiscard]] std::optional<std::int64_t> readBuiltInSignedIntegerProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property);
+
+/**
+ * Writes through the semantic setter after checking representability in its concrete C++ type.
+ * Unrepresentable values return false without mutation. Domain exceptions from the setter propagate;
+ * recognized same-value writes return true, just like boolean/string writes.
+ */
+[[nodiscard]] bool writeBuiltInSignedIntegerProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    std::int64_t value);
+
+/**
+ * Reads a built-in unsigned_integer property into the fixed-width tooling type.
+ * Invalid descriptors, incompatible Components or unrepresentable values return std::nullopt.
+ */
+[[nodiscard]] std::optional<std::uint64_t> readBuiltInUnsignedIntegerProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property);
+
+/**
+ * Writes through the semantic setter after checking representability in its concrete C++ type.
+ * Unrepresentable values return false without mutation. Domain exceptions from the setter propagate;
+ * recognized same-value writes return true, just like boolean/string writes.
+ */
+[[nodiscard]] bool writeBuiltInUnsignedIntegerProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    std::uint64_t value);
 
 } // namespace sasd::ui

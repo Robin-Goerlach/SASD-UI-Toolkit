@@ -2,6 +2,7 @@
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
@@ -30,6 +31,10 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
         return "boolean";
     case sasd::ui::ComponentPropertyValueKind::string:
         return "string";
+    case sasd::ui::ComponentPropertyValueKind::signed_integer:
+        return "signed_integer";
+    case sasd::ui::ComponentPropertyValueKind::unsigned_integer:
+        return "unsigned_integer";
     }
     return "unknown";
 }
@@ -58,6 +63,10 @@ int main() {
               << '\n';
 
     printProperties("sasd.ui.CheckBox");
+    printProperties("sasd.ui.HBox");
+    printProperties("sasd.ui.VBox");
+    printProperties("sasd.ui.GridLayout");
+    printProperties("sasd.ui.FormLayout");
     for (const auto property_id : {"visible", "enabled", "focusable"}) {
         const auto* property =
             sasd::ui::findBuiltInComponentProperty("sasd.ui.CheckBox", property_id);
@@ -109,6 +118,38 @@ int main() {
         std::cout << "Button.text default: "
                   << *sasd::ui::builtInStringPropertyDefault("sasd.ui.Button", *button_text)
                   << '\n';
+    }
+
+    sasd::ui::GridLayout grid;
+    const auto* columns =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.GridLayout", "columnCount");
+    const auto* spacing =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.GridLayout", "columnSpacing");
+    if (columns != nullptr && spacing != nullptr) {
+        std::cout << "GridLayout.columnCount default: "
+                  << *sasd::ui::builtInUnsignedIntegerPropertyDefault("sasd.ui.GridLayout", *columns)
+                  << '\n';
+        std::cout << "GridLayout.columnSpacing default: "
+                  << *sasd::ui::builtInSignedIntegerPropertyDefault("sasd.ui.GridLayout", *spacing)
+                  << '\n';
+        (void)sasd::ui::writeBuiltInUnsignedIntegerProperty(grid, *columns, 3);
+        (void)sasd::ui::writeBuiltInSignedIntegerProperty(grid, *spacing, 2);
+        std::cout << "GridLayout.columnCount after: "
+                  << *sasd::ui::readBuiltInUnsignedIntegerProperty(grid, *columns) << '\n';
+        std::cout << "GridLayout.columnSpacing after: "
+                  << *sasd::ui::readBuiltInSignedIntegerProperty(grid, *spacing) << '\n';
+    }
+    const auto grid_snapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(grid);
+    if (grid_snapshot.has_value()) {
+        std::cout << "GridLayout numeric snapshot:\n";
+        for (const auto& property : grid_snapshot->signed_integer_properties) {
+            std::cout << "  " << property.property_id << " = " << property.value
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
+        for (const auto& property : grid_snapshot->unsigned_integer_properties) {
+            std::cout << "  " << property.property_id << " = " << property.value
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
     }
 
     const auto button_snapshot =

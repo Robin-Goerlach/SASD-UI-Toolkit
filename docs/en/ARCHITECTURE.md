@@ -91,13 +91,15 @@ third-party registration. `Component` remains free of a virtual `typeId()` refle
 
 The separate `sasd/ui/component_property_metadata.hpp` layer describes a small immutable schema for
 selected built-in component types. `ComponentPropertyMetadata` carries a stable local property ID,
-its direct declaring type ID and the simple semantic `boolean` or `string` value kind. Directly
-declared properties are queried independently from the type catalog; inherited lookup follows the
+its direct declaring type ID and the simple semantic `boolean`, `string`, `signed_integer` or
+`unsigned_integer` value kind. Directly declared properties are queried independently from the
+type catalog; inherited lookup follows the
 existing direct `base_type_id` chain and returns the original declaring descriptor. No property is
 duplicated into a derived type.
 
 This remains schema metadata only. The separate `sasd/ui/component_property_access.hpp` layer
-provides four explicit boolean/string read/write functions for the currently catalogued built-ins.
+provides eight explicit boolean/string/signed-integer/unsigned-integer read/write functions for the
+currently catalogued built-ins.
 It validates descriptors by value, returns owned strings, uses the existing semantic getters/setters,
 and fails closed for unknown kinds, identities or incompatible Components. Writes report access
 success rather than value change. The access layer uses internal safe RTTI checks, but exposes no
@@ -120,8 +122,8 @@ the query. This layer adds no reset operation, validation, serialization or desi
 The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that
 combines exact runtime type identification, inherited property schema, semantic runtime access and
 effective defaults. `captureBuiltInComponentPropertySnapshot(const Component&)` owns the stable
-type ID, property identities and captured string values in two explicit collections: boolean and
-string properties. It enumerates the exact target's metadata chain from base to derived and keeps
+type ID, property identities and captured string values in four explicit collections: boolean, string, signed-integer and
+unsigned-integer properties. It enumerates the exact target's metadata chain from base to derived and keeps
 the existing declaration order within each collection.
 
 The snapshot reads values only through the established runtime access layer and compares each value
@@ -132,7 +134,7 @@ runtime read or failed default lookup rejects the complete snapshot rather than 
 description.
 
 This is an owned snapshot of currently catalogued properties, not a complete Component or UI-tree
-description. The current ten-property schema does not cover all semantic state of controls, models,
+description. The current seventeen-property schema does not cover all semantic state of controls, models,
 layouts, bindings or ownership/visual children. No child recursion, ownership serialization,
 PropertyValue carrier, `std::variant`, `std::any`, persistence format, serializer or deserializer is
 introduced here; property-schema coverage remains independently extensible in later slices.
@@ -157,9 +159,17 @@ serialization coverage. A built-in becomes coverage-complete only when every rel
 semantic state is represented by a persistent property, a defined structural/reference/resource
 relation, or an explicit exclusion.
 
-The current catalog has 26 built-in types. The current schema still has only ten boolean/string
-properties. ADR 0177 records the complete review matrix and identifies, without implementing them,
-future numeric, optional, collection, compound and reference value needs. No serializer or generic
+The current catalog has 26 built-in types and seventeen property descriptors. ADR 0177 records
+the coverage matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md) adds
+numeric layout coverage. Six spacing properties (`HBox.spacing`, `VBox.spacing`, Grid/Form
+`columnSpacing` and `rowSpacing`) use `signed_integer` with `std::int64_t` tooling values;
+`GridLayout.columnCount` uses `unsigned_integer` with `std::uint64_t`. Both conversion directions
+are range-checked; unrepresentable writes return false without mutation. Semantic setter exceptions
+(negative spacing or zero columns) propagate unchanged. The property layer does not duplicate domain
+validation. Numeric defaults are immutable constants: spacing is zero except Form column spacing
+(one), and column count is one. No Component is constructed for default queries. Numeric snapshots
+own `signed_integer_properties` and `unsigned_integer_properties` with the same complete-snapshot
+failure contract. Optional, collection, compound and reference values remain future work. No serializer or generic
 `PropertyValue` carrier is introduced.
 
 ### Ownership

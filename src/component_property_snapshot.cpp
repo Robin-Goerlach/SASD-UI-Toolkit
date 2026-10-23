@@ -101,6 +101,36 @@ captureBuiltInComponentPropertySnapshot(const Component& component) {
                 });
                 break;
             }
+            case ComponentPropertyValueKind::signed_integer: {
+                const auto value = readBuiltInSignedIntegerProperty(component, property);
+                const auto effective_default =
+                    builtInSignedIntegerPropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                snapshot.signed_integer_properties.push_back({
+                    std::string{property.declaring_type_id},
+                    std::string{property.property_id},
+                    *value,
+                    *value == *effective_default,
+                });
+                break;
+            }
+            case ComponentPropertyValueKind::unsigned_integer: {
+                const auto value = readBuiltInUnsignedIntegerProperty(component, property);
+                const auto effective_default =
+                    builtInUnsignedIntegerPropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                snapshot.unsigned_integer_properties.push_back({
+                    std::string{property.declaring_type_id},
+                    std::string{property.property_id},
+                    *value,
+                    *value == *effective_default,
+                });
+                break;
+            }
             default:
                 return std::nullopt;
             }

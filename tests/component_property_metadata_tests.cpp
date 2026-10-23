@@ -16,7 +16,7 @@ struct ExpectedProperty final {
     ComponentPropertyValueKind value_kind;
 };
 
-constexpr std::array<ExpectedProperty, 10> expected_properties{{
+constexpr std::array<ExpectedProperty, 17> expected_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
@@ -27,6 +27,13 @@ constexpr std::array<ExpectedProperty, 10> expected_properties{{
     {"sasd.ui.TextField", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "checked", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.HBox", "spacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.VBox", "spacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.GridLayout", "columnCount", ComponentPropertyValueKind::unsigned_integer},
+    {"sasd.ui.GridLayout", "columnSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.GridLayout", "rowSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.FormLayout", "columnSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.FormLayout", "rowSpacing", ComponentPropertyValueKind::signed_integer},
 }};
 
 const ComponentPropertyMetadata* findDirect(std::string_view type_id,

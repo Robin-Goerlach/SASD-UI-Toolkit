@@ -100,9 +100,9 @@ implementation in this slice.
 | `ComboBox.selectedText` | derived | no | no | derive from items and selected index |
 | `ComboBox` preview/open/pressed/pointer gesture | transient interaction | no | no | popup/capture state is rebuilt |
 | `ComboBox.textStyle` and callbacks | style/resource + executable | style potentially; callbacks no | no | style policy; no callback persistence |
-| `HBox.spacing`, `VBox.spacing` | persistent property | yes | no | future signed integral/coordinate kind |
-| `GridLayout.columnCount`, `columnSpacing`, `rowSpacing` | persistent properties | yes | no | future unsigned integral plus coordinate kinds |
-| `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | no | future coordinate kind; rows derive from child order |
+| `HBox.spacing`, `VBox.spacing` | persistent property | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access |
+| `GridLayout.columnCount`, `columnSpacing`, `rowSpacing` | persistent properties | yes | unsigned_integer / signed_integer, supported (ADR 0178) | existing scalar schema/access |
+| `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access; rows derive from child order |
 | `StackLayout` layer order | persistent structural relation | yes | no | child/adoption order; no scalar configuration currently |
 | `ListModel`/`TableModel`/`TreeModel` contract | reference target, not payload | no as property | no | model identity/reference policy |
 | String model contents | application data | no baseline | no | later data/resource policy; never implicit layout data |
@@ -122,8 +122,10 @@ contract says otherwise.
 
 ### Future value-kind consequences
 
-The current catalog needs only `boolean` and `string`. The source review identifies, without
-implementing, these future kinds:
+The Slice-7 baseline needed only `boolean` and `string`. Slice 8 now supports `signed_integer`
+(`std::int64_t`) and `unsigned_integer` (`std::uint64_t`) for the seven layout properties in the
+matrix; see [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md). The original review
+identified the following additional kinds (the first two are now implemented):
 
 - signed integral / coordinate: `HBox`/`VBox` spacing and Grid/Form spacing;
 - unsigned integral: `GridLayout.columnCount`;
@@ -155,8 +157,8 @@ The policy keeps a static UI description distinct from a session/application sna
 transient interaction state from leaking into persistence. It also prevents property metadata from
 becoming an accidental object-graph reflection system.
 
-Serialization remains open. The recommended next technical slice is **M8 Slice 8 – Numeric Property
-Value-Kind Foundation**, starting with existing layout consumers: `HBox`/`VBox` spacing,
+Serialization remains open. At the Slice-7 baseline, the recommended next technical slice was
+**M8 Slice 8 – Numeric Property Value-Kind Foundation**, starting with existing layout consumers: `HBox`/`VBox` spacing,
 `GridLayout` column count/spacing and `FormLayout` spacing. This unlocks several authoring
 properties independently of reference reconstruction. RadioButton's missing bool/string coverage is
 a focused follow-up and should not be mixed into the numeric foundation. Slice 7 implements no
@@ -206,12 +208,15 @@ Property, `Command`-Text/Enabled, Control-Texte und deklarative Zustände, Layou
 und Tree-Expansion bleiben Runtime-/Session-State. Model-Inhalte bleiben Application Data;
 View-Model-Referenzen sind davon getrennt. `TextStyle` ist Style/Resource und nicht transient.
 
-Zusätzlich zu den aktuell unterstützten `boolean`- und `string`-Kinds ergeben sich später signed
+Zusätzlich zu den bei Slice 7 unterstützten `boolean`- und `string`-Kinds ergaben sich signed
 integral/Coordinate für Layout-Spacings, unsigned integral für `GridLayout.columnCount`, optional
 unsigned integral für `ComboBox.selectedIndex`, eine String-Collection für `ComboBox.items`,
 Compound-Strukturen für mögliche `Widget.sizeConstraints` und `TextStyle` sowie References/Graph
 Edges für Ownership, Bindings, Gruppen und Models. Slice 7 implementiert keinen dieser Kinds und
-führt kein generisches `PropertyValue`, `std::variant` oder `std::any` ein.
+führt kein generisches `PropertyValue`, `std::variant` oder `std::any` ein. Slice 8 unterstützt
+inzwischen `signed_integer` (`std::int64_t`) und `unsigned_integer` (`std::uint64_t`) für die sieben
+Layout-Properties der aktualisierten Matrix; siehe [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md).
+Optionale Werte, Collections, Compound-Werte und References bleiben offen.
 
 ### Regel für vollständige Abdeckung
 
@@ -225,7 +230,7 @@ dokumentieren; stille Lücken sind unzulässig.
 
 ### Folgen und nächster Schritt
 
-Die Serialisierung bleibt offen. Als nächster technischer Slice wird **M8 Slice 8 – Numeric
+Die Serialisierung bleibt offen. Zum Stand von Slice 7 wurde **M8 Slice 8 – Numeric
 Property Value-Kind Foundation** empfohlen, zunächst für die realen Layout-Consumer `HBox`/`VBox`,
 `GridLayout` und `FormLayout`. Die fehlenden RadioButton-Properties bleiben ein fokussierter
 Folgeschritt, werden aber nicht mit der Numeric-Grundlage vermischt. Slice 7 beginnt keinen

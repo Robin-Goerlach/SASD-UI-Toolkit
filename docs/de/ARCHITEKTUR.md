@@ -95,14 +95,16 @@ frei von einer virtuellen `typeId()`-Reflection-Methode.
 Die separate Schicht `sasd/ui/component_property_metadata.hpp` beschreibt ein kleines,
 unveränderliches Schema für ausgewählte Built-in-Komponententypen. `ComponentPropertyMetadata`
 enthält eine stabile lokale Property-ID, die ID des direkt deklarierenden Typs und den einfachen
-semantischen Werttyp `boolean` oder `string`. Direkt deklarierte Properties werden unabhängig vom
+semantischen Werttyp `boolean`, `string`, `signed_integer` oder `unsigned_integer`. Direkt
+deklarierte Properties werden unabhängig vom
 Typkatalog abgefragt; der geerbte Lookup folgt der vorhandenen direkten `base_type_id`-Kette und
 liefert den ursprünglichen deklarierenden Deskriptor zurück. Geerbte Properties werden nicht in
 abgeleiteten Typen dupliziert.
 
 Dies bleibt ausschließlich Schema-Metadaten. Die getrennte Schicht
-`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins vier explizite
-Boolean-/String-Read-/Write-Funktionen bereit. Sie validiert Deskriptoren semantisch, liefert
+`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins acht explizite
+Boolean-/String-/Signed-Integer-/Unsigned-Integer-Read-/Write-Funktionen bereit. Sie validiert
+Deskriptoren semantisch, liefert
 besitzende Strings, benutzt die bestehenden semantischen Getter/Setter und arbeitet bei unbekannten
 Kinds, Identitäten oder inkompatiblen Components fail-closed. Writes melden Zugriffserfolg statt
 Wertänderung. Die Zugriffsschicht verwendet intern sichere RTTI-Prüfungen, exponiert aber weder RTTI-
@@ -126,8 +128,8 @@ Validierung, Serialisierung oder Designer-Metadaten.
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der
 exakte Runtime-Typidentifikation, geerbtes Property-Schema, semantischen Runtime-Zugriff und
 effektive Defaults gemeinsam verwendet. `captureBuiltInComponentPropertySnapshot(const Component&)`
-besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in zwei expliziten
-Collections für Boolean- bzw. String-Properties. Die Metadatenkette des exakten Zieltyps wird von
+besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in vier expliziten
+Collections für Boolean-, String-, Signed-Integer- und Unsigned-Integer-Properties. Die Metadatenkette des exakten Zieltyps wird von
 der Basis zum Derived-Typ durchlaufen; innerhalb jeder Collection bleibt die bestehende deklarierte
 Reihenfolge erhalten.
 
@@ -139,7 +141,7 @@ Metadaten-Kette, fehlender Runtime-Read oder fehlender Default-Lookup lehnt den 
 Snapshot ab, statt einen partiellen Zustand zurückzugeben.
 
 Dies ist ein besitzender Snapshot der aktuell katalogisierten Properties, keine vollständige
-Component- oder UI-Tree-Beschreibung. Das aktuelle Zehn-Properties-Schema deckt nicht den gesamten
+Component- oder UI-Tree-Beschreibung. Das aktuelle Siebzehn-Properties-Schema deckt nicht den gesamten
 semantischen Zustand von Controls, Models, Layouts, Bindings oder Ownership/visuellen Kindern ab.
 Keine Child-Rekursion, kein Ownership-Serializer, kein PropertyValue-Container, kein `std::variant`,
 `std::any`, Persistenzformat, Serializer oder Deserializer wird hier eingeführt; die Schema-Abdeckung
@@ -165,9 +167,18 @@ und niemals vollständige Component-Serialisierungsabdeckung. Vollständigkeit l
 jeder relevante öffentliche semantische Zustand durch Property, Struktur-/Reference-/Resource-
 Beziehung oder ausdrückliche Exklusion abgedeckt ist.
 
-Der aktuelle Katalog enthält 26 Built-in-Typen, das Schema weiterhin nur zehn Boolean-/String-
-Properties. ADR 0177 enthält die vollständige Review-Matrix und leitet zukünftige numerische,
-optionale, Collection-, Compound- und Referenzbedarfe ab, ohne sie zu implementieren. Kein
+Der aktuelle Katalog enthält 26 Built-in-Typen und siebzehn Property-Deskriptoren. ADR 0177
+enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
+ergänzt numerische Layout-Properties. Sechs Spacing-Properties (`HBox.spacing`, `VBox.spacing`,
+Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std::int64_t` als
+Tooling-Wert; `GridLayout.columnCount` verwendet `unsigned_integer` mit `std::uint64_t`.
+Beide Konvertierungsrichtungen prüfen den Wertebereich; nicht darstellbare Writes liefern false
+ohne Mutation. Semantische Setter-Exceptions für negatives Spacing bzw. null Spalten propagieren
+unverändert. Die Property-Schicht dupliziert keine Domain-Validierung. Numerische Defaults sind
+unveränderliche Konstanten: Spacing null außer Form-Spaltenabstand eins, Spaltenzahl eins.
+Default-Abfragen konstruieren keine Component. Numerische Snapshots besitzen getrennte
+`signed_integer_properties` und `unsigned_integer_properties`; jeder fehlende Read/Default verwirft
+den gesamten Snapshot. Optionale, Collection-, Compound- und Referenzwerte bleiben offen. Kein
 Serializer und kein generischer `PropertyValue`-Carrier wird eingeführt.
 
 ### Ownership

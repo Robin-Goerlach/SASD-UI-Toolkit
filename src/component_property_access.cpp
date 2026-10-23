@@ -2,8 +2,12 @@
 #include <sasd/ui/check_box.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/form_layout.hpp>
+#include <sasd/ui/grid_layout.hpp>
+#include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/text_field.hpp>
+#include <sasd/ui/vbox.hpp>
 #include <sasd/ui/widget.hpp>
 
 #include <utility>
@@ -208,6 +212,208 @@ bool writeBuiltInStringProperty(
         return true;
     }
 
+    return false;
+}
+
+
+std::optional<std::int64_t> readBuiltInSignedIntegerProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::signed_integer) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.HBox" &&
+        property.property_id == "spacing") {
+        const auto* layout = dynamic_cast<const HBox*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->spacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    if (property.declaring_type_id == "sasd.ui.VBox" &&
+        property.property_id == "spacing") {
+        const auto* layout = dynamic_cast<const VBox*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->spacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "columnSpacing") {
+        const auto* layout = dynamic_cast<const GridLayout*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->columnSpacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "rowSpacing") {
+        const auto* layout = dynamic_cast<const GridLayout*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->rowSpacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" &&
+        property.property_id == "columnSpacing") {
+        const auto* layout = dynamic_cast<const FormLayout*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->columnSpacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" &&
+        property.property_id == "rowSpacing") {
+        const auto* layout = dynamic_cast<const FormLayout*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->rowSpacing();
+        if (!std::in_range<std::int64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(value);
+    }
+    return std::nullopt;
+}
+
+bool writeBuiltInSignedIntegerProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    std::int64_t value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::signed_integer) {
+        return false;
+    }
+    // Representation belongs to this bridge; semantic domain validation belongs to the setter.
+    // Check before casting or calling any setter so narrowing failure cannot mutate the Component.
+    if (!std::in_range<Coordinate>(value)) {
+        return false;
+    }
+    const auto concrete_value = static_cast<Coordinate>(value);
+    if (property.declaring_type_id == "sasd.ui.HBox" &&
+        property.property_id == "spacing") {
+        auto* layout = dynamic_cast<HBox*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setSpacing(concrete_value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.VBox" &&
+        property.property_id == "spacing") {
+        auto* layout = dynamic_cast<VBox*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setSpacing(concrete_value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "columnSpacing") {
+        auto* layout = dynamic_cast<GridLayout*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setColumnSpacing(concrete_value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "rowSpacing") {
+        auto* layout = dynamic_cast<GridLayout*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setRowSpacing(concrete_value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" &&
+        property.property_id == "columnSpacing") {
+        auto* layout = dynamic_cast<FormLayout*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setColumnSpacing(concrete_value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" &&
+        property.property_id == "rowSpacing") {
+        auto* layout = dynamic_cast<FormLayout*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setRowSpacing(concrete_value);
+        return true;
+    }
+    return false;
+}
+
+std::optional<std::uint64_t> readBuiltInUnsignedIntegerProperty(
+    const Component& component,
+    const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::unsigned_integer) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "columnCount") {
+        const auto* layout = dynamic_cast<const GridLayout*>(&component);
+        if (layout == nullptr) {
+            return std::nullopt;
+        }
+        const auto value = layout->columnCount();
+        if (!std::in_range<std::uint64_t>(value)) {
+            return std::nullopt;
+        }
+        return static_cast<std::uint64_t>(value);
+    }
+    return std::nullopt;
+}
+
+bool writeBuiltInUnsignedIntegerProperty(
+    Component& component,
+    const ComponentPropertyMetadata& property,
+    std::uint64_t value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::unsigned_integer) {
+        return false;
+    }
+    // Representation belongs to this bridge; semantic domain validation belongs to the setter.
+    // Check before casting or calling any setter so narrowing failure cannot mutate the Component.
+    if (!std::in_range<std::size_t>(value)) {
+        return false;
+    }
+    const auto concrete_value = static_cast<std::size_t>(value);
+    if (property.declaring_type_id == "sasd.ui.GridLayout" &&
+        property.property_id == "columnCount") {
+        auto* layout = dynamic_cast<GridLayout*>(&component);
+        if (layout == nullptr) {
+            return false;
+        }
+        layout->setColumnCount(concrete_value);
+        return true;
+    }
     return false;
 }
 

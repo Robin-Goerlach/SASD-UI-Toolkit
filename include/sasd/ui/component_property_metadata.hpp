@@ -12,10 +12,13 @@ namespace sasd::ui {
  *
  * This describes a property's schema only. It is not a value container and does not provide
  * access to a value held by a Component instance.
+ * Integer tooling values use std::int64_t / std::uint64_t independently of concrete setter types.
  */
 enum class ComponentPropertyValueKind {
     boolean,
     string,
+    signed_integer,
+    unsigned_integer,
 };
 
 /**
