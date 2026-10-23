@@ -1,6 +1,7 @@
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/component_property_access.hpp>
@@ -163,6 +164,20 @@ int main() {
                       << '\n';
         }
         for (const auto& property : button_snapshot->string_properties) {
+            std::cout << "  " << property.property_id << " = \"" << property.value << "\""
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
+    }
+    sasd::ui::RadioButton radio{"Choice"};
+    (void)radio.setSelected(true);
+    const auto radioSnapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(radio);
+    if (radioSnapshot.has_value()) {
+        std::cout << "RadioButton snapshot:\n";
+        for (const auto& property : radioSnapshot->boolean_properties) {
+            std::cout << "  " << property.property_id << " = " << std::boolalpha << property.value
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
+        for (const auto& property : radioSnapshot->string_properties) {
             std::cout << "  " << property.property_id << " = \"" << property.value << "\""
                       << (property.is_default ? " [default]" : " [non-default]") << '\n';
         }

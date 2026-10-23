@@ -290,9 +290,9 @@ Validation and design-time attributes remain future slices.
 - [ ] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy
-  - [ ] persistent scalar property coverage
+  - [x] persistent scalar property coverage
     - [x] numeric layout property foundation (signed/unsigned kinds; HBox/VBox/Grid/Form)
-    - [ ] RadioButton scalar property coverage (`text`, `selected`)
+    - [x] RadioButton scalar property coverage (`text`, `selected`)
   - [ ] collection/compound property coverage
   - [ ] component ownership/reference graph description
   - [ ] persisted representation / encoding
@@ -301,6 +301,9 @@ Validation and design-time attributes remain future slices.
 - [ ] designer-friendly properties
 - [ ] design-time validation metadata
 - [ ] IDE/tooling integration points
+
+Slice 9 covers `RadioButton.text` and `selected` (ADR 0179). `ComboBox.selectedIndex`
+remains an optional value tied to `items`, deferred to collection/compound/optional coverage.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 

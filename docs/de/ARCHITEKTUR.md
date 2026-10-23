@@ -167,7 +167,14 @@ und niemals vollständige Component-Serialisierungsabdeckung. Vollständigkeit l
 jeder relevante öffentliche semantische Zustand durch Property, Struktur-/Reference-/Resource-
 Beziehung oder ausdrückliche Exklusion abgedeckt ist.
 
-Der aktuelle Katalog enthält 26 Built-in-Typen und siebzehn Property-Deskriptoren. ADR 0177
+RadioButton-Metadaten, Zugriff, Defaults und Snapshots decken jetzt `text` (Default leer)
+und `selected` (Default false) über bestehende String-/Boolean-Pfade ab (ADR 0179). Writes
+delegieren an `setText()`/`setSelected()` und erhalten Gruppenexklusivität und Callbacks.
+RadioGroup-Mitgliedschaft bleibt eine persistente Graph-/Referenzbeziehung. Ein skalarer Snapshot
+impliziert keine rekonstruierbare Gruppensemantik: Mitgliedschaft/Reference Reconstruction und
+deren Reihenfolge bleiben zu definieren.
+
+Der aktuelle Katalog enthält 26 Built-in-Typen und neunzehn Property-Deskriptoren. ADR 0177
 enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
 ergänzt numerische Layout-Properties. Sechs Spacing-Properties (`HBox.spacing`, `VBox.spacing`,
 Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std::int64_t` als

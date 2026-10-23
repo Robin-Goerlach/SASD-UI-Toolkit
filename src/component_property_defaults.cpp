@@ -49,6 +49,9 @@ std::optional<bool> builtInBooleanPropertyDefault(
     if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "checked") {
         return false;
     }
+    if (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "selected") {
+        return false;
+    }
     return std::nullopt;
 }
 
@@ -65,7 +68,8 @@ std::optional<std::string_view> builtInStringPropertyDefault(
         (property.declaring_type_id == "sasd.ui.Label" && property.property_id == "text") ||
         (property.declaring_type_id == "sasd.ui.Button" && property.property_id == "text") ||
         (property.declaring_type_id == "sasd.ui.TextField" && property.property_id == "text") ||
-        (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "text")) {
+        (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "text") ||
+        (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "text")) {
         // Empty built-in defaults use immutable literal storage and require no allocation.
         return std::string_view{};
     }

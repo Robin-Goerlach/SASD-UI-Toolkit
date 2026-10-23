@@ -159,7 +159,13 @@ serialization coverage. A built-in becomes coverage-complete only when every rel
 semantic state is represented by a persistent property, a defined structural/reference/resource
 relation, or an explicit exclusion.
 
-The current catalog has 26 built-in types and seventeen property descriptors. ADR 0177 records
+RadioButton scalar metadata/access/defaults/snapshots now cover `text` (empty string default)
+and `selected` (false default), using existing string/boolean paths (ADR 0179). Writes delegate
+to `setText()`/`setSelected()`, preserving group exclusivity and callbacks. RadioGroup membership
+remains a persistent graph/reference relation. A scalar snapshot does not imply reconstructable
+group semantics: membership/reference reconstruction and ordering must first be defined.
+
+The current catalog has 26 built-in types and nineteen property descriptors. ADR 0177 records
 the coverage matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md) adds
 numeric layout coverage. Six spacing properties (`HBox.spacing`, `VBox.spacing`, Grid/Form
 `columnSpacing` and `rowSpacing`) use `signed_integer` with `std::int64_t` tooling values;

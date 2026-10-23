@@ -2,6 +2,8 @@
 
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
+#include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/label.hpp>
@@ -172,4 +174,53 @@ TEST_CASE("snapshot does not mutate Component state or ownership") {
     CHECK(button.isVisible() == visible_before);
     CHECK(button.isEnabled() == enabled_before);
     CHECK(button.isFocusable() == focusable_before);
+}
+
+TEST_CASE("RadioButton snapshots capture default modified and grouped scalar state") {
+    RadioButton radio;
+    const auto initial = captureBuiltInComponentPropertySnapshot(radio);
+    CHECK(initial.has_value());
+    CHECK(initial->type_id == "sasd.ui.RadioButton");
+    CHECK(initial->boolean_properties.size() == 4);
+    CHECK(initial->string_properties.size() == 1);
+    CHECK(initial->signed_integer_properties.empty());
+    CHECK(initial->unsigned_integer_properties.empty());
+    const std::string_view names[]{"visible", "enabled", "focusable", "selected"};
+    for (std::size_t index = 0; index < 4; ++index) {
+        const auto& entry = initial->boolean_properties[index];
+        CHECK(entry.property_id == names[index]);
+        CHECK(entry.declaring_type_id == (index < 3 ? "sasd.ui.Widget" : "sasd.ui.RadioButton"));
+        CHECK(entry.value == (index < 3));
+        CHECK(entry.is_default);
+    }
+    CHECK(stringProperty(*initial, "sasd.ui.RadioButton", "text").value.empty());
+    CHECK(stringProperty(*initial, "sasd.ui.RadioButton", "text").is_default);
+    radio.setText("Option");
+    CHECK(radio.setSelected(true));
+    radio.setEnabled(false);
+    const auto modified = captureBuiltInComponentPropertySnapshot(radio);
+    CHECK(modified.has_value());
+    CHECK(stringProperty(*modified, "sasd.ui.RadioButton", "text").value == "Option");
+    CHECK(!stringProperty(*modified, "sasd.ui.RadioButton", "text").is_default);
+    CHECK(booleanProperty(*modified, "sasd.ui.RadioButton", "selected").value);
+    CHECK(!booleanProperty(*modified, "sasd.ui.RadioButton", "selected").is_default);
+    CHECK(!booleanProperty(*modified, "sasd.ui.Widget", "enabled").value);
+    CHECK(!booleanProperty(*modified, "sasd.ui.Widget", "enabled").is_default);
+    RadioGroup group;
+    RadioButton first{group, "First"};
+    RadioButton second{group, "Second"};
+    CHECK(first.setSelected(true));
+    const auto before = captureBuiltInComponentPropertySnapshot(first);
+    CHECK(before.has_value());
+    CHECK(second.setSelected(true));
+    const auto after = captureBuiltInComponentPropertySnapshot(first);
+    const auto chosen = captureBuiltInComponentPropertySnapshot(second);
+    CHECK(after.has_value());
+    CHECK(chosen.has_value());
+    CHECK(booleanProperty(*before, "sasd.ui.RadioButton", "selected").value);
+    CHECK(!booleanProperty(*after, "sasd.ui.RadioButton", "selected").value);
+    CHECK(booleanProperty(*after, "sasd.ui.RadioButton", "selected").is_default);
+    CHECK(booleanProperty(*chosen, "sasd.ui.RadioButton", "selected").value);
+    CHECK(chosen->boolean_properties.size() == 4);
+    CHECK(chosen->string_properties.size() == 1);
 }

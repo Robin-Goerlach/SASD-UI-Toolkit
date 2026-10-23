@@ -6,8 +6,11 @@
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/radio_button.hpp>
+#include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/text_field.hpp>
 
+#include <memory>
 #include <string>
 
 using namespace sasd::ui;
@@ -151,4 +154,94 @@ TEST_CASE("copied valid metadata works and access does not alter ownership") {
     CHECK(writeBuiltInStringProperty(button, copied, "Changed"));
     CHECK(readBuiltInStringProperty(button, copied) == std::optional<std::string>{"Changed"});
     CHECK(button.owner() == original_owner);
+}
+
+TEST_CASE("RadioButton scalar access delegates selection and text semantics") {
+    RadioButton radio;
+    const auto text = property("sasd.ui.RadioButton", "text");
+    const auto selected = property("sasd.ui.RadioButton", "selected");
+    CHECK(readBuiltInStringProperty(radio, text) == "");
+    RadioButton option{"Option"};
+    CHECK(readBuiltInStringProperty(option, text) == "Option");
+    CHECK(writeBuiltInStringProperty(radio, text, "Updated"));
+    CHECK(writeBuiltInStringProperty(radio, text, "Updated"));
+    CHECK(radio.text() == "Updated");
+    int selectedCalls = 0;
+    radio.setOnSelected([&] { ++selectedCalls; });
+    CHECK(readBuiltInBooleanProperty(radio, selected) == false);
+    CHECK(writeBuiltInBooleanProperty(radio, selected, true));
+    CHECK(radio.isSelected());
+    CHECK(readBuiltInBooleanProperty(radio, selected) == true);
+    CHECK(selectedCalls == 1);
+    CHECK(writeBuiltInBooleanProperty(radio, selected, true));
+    CHECK(!radio.setSelected(true));
+    CHECK(selectedCalls == 1);
+    CHECK(writeBuiltInBooleanProperty(radio, selected, false));
+    CHECK(!radio.isSelected());
+    CHECK(selectedCalls == 1);
+
+    Button button;
+    Label label;
+    CheckBox checkBox;
+    TextField field;
+    Command command;
+    for (Component* other : {static_cast<Component*>(&button), static_cast<Component*>(&label),
+                            static_cast<Component*>(&checkBox), static_cast<Component*>(&field),
+                            static_cast<Component*>(&command)}) {
+        CHECK(!readBuiltInStringProperty(*other, text));
+        CHECK(!writeBuiltInStringProperty(*other, text, "Rejected"));
+        CHECK(!readBuiltInBooleanProperty(*other, selected));
+        CHECK(!writeBuiltInBooleanProperty(*other, selected, true));
+    }
+    for (const auto type : {"sasd.ui.Button", "sasd.ui.Label", "sasd.ui.CheckBox",
+                            "sasd.ui.TextField", "sasd.ui.Command"}) {
+        const auto otherText = property(type, "text");
+        CHECK(!readBuiltInStringProperty(radio, otherText));
+        CHECK(!writeBuiltInStringProperty(radio, otherText, "Rejected"));
+    }
+    for (auto invalid : {
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "text", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "text", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.radiobutton", "text", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "Text", ComponentPropertyValueKind::string}}) {
+        CHECK(!readBuiltInStringProperty(radio, invalid));
+        CHECK(!writeBuiltInStringProperty(radio, invalid, "Rejected"));
+    }
+    for (auto invalid : {
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "selected", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.CheckBox", "selected", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.radiobutton", "selected", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "Selected", ComponentPropertyValueKind::boolean}}) {
+        CHECK(!readBuiltInBooleanProperty(radio, invalid));
+        CHECK(!writeBuiltInBooleanProperty(radio, invalid, true));
+    }
+}
+
+TEST_CASE("RadioButton property selection preserves group transaction and permits destruction") {
+    const auto selected = property("sasd.ui.RadioButton", "selected");
+    RadioGroup group;
+    RadioButton first{group, "First"};
+    RadioButton second{group, "Second"};
+    second.setOnSelected([&] {
+        CHECK(!first.isSelected());
+        CHECK(second.isSelected());
+        CHECK(group.selectedButton() == &second);
+    });
+    CHECK(writeBuiltInBooleanProperty(first, selected, true));
+    CHECK(first.isSelected());
+    CHECK(!second.isSelected());
+    CHECK(group.selectedButton() == &first);
+    CHECK(writeBuiltInBooleanProperty(second, selected, true));
+    CHECK(!first.isSelected());
+    CHECK(second.isSelected());
+    CHECK(group.selectedButton() == &second);
+    CHECK(writeBuiltInBooleanProperty(second, selected, false));
+    CHECK(!second.isSelected());
+    CHECK(group.selectedButton() == nullptr);
+
+    auto owned = std::make_unique<RadioButton>(group, "Released");
+    owned->setOnSelected([&] { owned.reset(); });
+    CHECK(writeBuiltInBooleanProperty(*owned, selected, true));
+    CHECK(!owned);
+    CHECK(group.selectedButton() == nullptr);
 }

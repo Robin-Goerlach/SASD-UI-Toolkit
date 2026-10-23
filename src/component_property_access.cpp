@@ -6,6 +6,7 @@
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/widget.hpp>
@@ -72,6 +73,11 @@ std::optional<bool> readBuiltInBooleanProperty(
         return check_box == nullptr ? std::nullopt : std::optional<bool>{check_box->isChecked()};
     }
 
+    if (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "selected") {
+        const auto* radioButton = dynamic_cast<const RadioButton*>(&component);
+        return radioButton == nullptr ? std::nullopt : std::optional<bool>{radioButton->isSelected()};
+    }
+
     return std::nullopt;
 }
 
@@ -103,6 +109,11 @@ std::optional<std::string> readBuiltInStringProperty(
     if (property.declaring_type_id == "sasd.ui.CheckBox" && property.property_id == "text") {
         const auto* check_box = dynamic_cast<const CheckBox*>(&component);
         return check_box == nullptr ? std::nullopt : std::optional<std::string>{check_box->text()};
+    }
+
+    if (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "text") {
+        const auto* radioButton = dynamic_cast<const RadioButton*>(&component);
+        return radioButton == nullptr ? std::nullopt : std::optional<std::string>{radioButton->text()};
     }
 
     return std::nullopt;
@@ -159,6 +170,18 @@ bool writeBuiltInBooleanProperty(
         return true;
     }
 
+    if (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "selected") {
+        auto* radioButton = dynamic_cast<RadioButton*>(&component);
+        if (radioButton == nullptr) {
+            return false;
+        }
+        // Only the semantic setter preserves group exclusivity and callback ordering. Its bool
+        // reports state change; property success includes same-value writes. The callback may
+        // destroy the button, so do not access it again after entering the setter.
+        (void)radioButton->setSelected(value);
+        return true;
+    }
+
     return false;
 }
 
@@ -209,6 +232,15 @@ bool writeBuiltInStringProperty(
             return false;
         }
         check_box->setText(std::move(value));
+        return true;
+    }
+
+    if (property.declaring_type_id == "sasd.ui.RadioButton" && property.property_id == "text") {
+        auto* radioButton = dynamic_cast<RadioButton*>(&component);
+        if (radioButton == nullptr) {
+            return false;
+        }
+        radioButton->setText(std::move(value));
         return true;
     }
 

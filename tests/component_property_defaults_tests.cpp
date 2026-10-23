@@ -136,4 +136,29 @@ TEST_CASE("default metadata agrees with simple fresh built-in construction") {
         "sasd.ui.CheckBox", property("sasd.ui.CheckBox", "checked")));
 }
 
+TEST_CASE("RadioButton scalar defaults validate complete descriptor identity") {
+    const auto text = property("sasd.ui.RadioButton", "text");
+    const auto selected = property("sasd.ui.RadioButton", "selected");
+    CHECK(builtInStringPropertyDefault("sasd.ui.RadioButton", text) == "");
+    CHECK(builtInBooleanPropertyDefault("sasd.ui.RadioButton", selected) == false);
+    for (const auto target : {"sasd.ui.Button", "sasd.ui.CheckBox", "sasd.ui.radiobutton"}) {
+        CHECK(!builtInStringPropertyDefault(target, text));
+        CHECK(!builtInBooleanPropertyDefault(target, selected));
+    }
+    for (const auto invalid : {
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "text", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "text", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "Text", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.radiobutton", "text", ComponentPropertyValueKind::string}}) {
+        CHECK(!builtInStringPropertyDefault("sasd.ui.RadioButton", invalid));
+    }
+    for (const auto invalid : {
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "selected", ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "selected", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.RadioButton", "Selected", ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.radiobutton", "selected", ComponentPropertyValueKind::boolean}}) {
+        CHECK(!builtInBooleanPropertyDefault("sasd.ui.RadioButton", invalid));
+    }
+}
+
 } // namespace sasd::ui

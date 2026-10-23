@@ -30,6 +30,8 @@ namespace sasd::ui {
  *
  * The result reports recognized, compatible access, not whether the value changed. Setter side
  * effects and callback semantics therefore remain owned by the concrete Component API.
+ * RadioButton.selected delegates to setSelected(), including group exclusivity and onSelected;
+ * the setter's state-change result is intentionally not the property-access result.
  */
 [[nodiscard]] bool writeBuiltInBooleanProperty(
     Component& component,
