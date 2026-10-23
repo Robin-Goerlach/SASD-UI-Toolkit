@@ -8,6 +8,11 @@
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
+#include <sasd/ui/component_ownership_snapshot.hpp>
+#include <sasd/ui/command.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/vbox.hpp>
+#include <sasd/ui/window.hpp>
 
 #include <iostream>
 #include <string_view>
@@ -168,6 +173,27 @@ int main() {
                       << (property.is_default ? " [default]" : " [non-default]") << '\n';
         }
     }
+    sasd::ui::Window root;
+    root.emplace<sasd::ui::Command>("Save");
+    auto& box = root.emplace<sasd::ui::VBox>();
+    box.emplace<sasd::ui::Label>("Name");
+    box.emplace<sasd::ui::TextField>();
+    const auto ownership = sasd::ui::captureBuiltInComponentOwnershipSnapshot(root);
+    if (!ownership.has_value()) {
+        std::cerr << "Ownership snapshot failed\n";
+        return 1;
+    }
+    for (const auto& node : ownership->nodes) {
+        std::cout << "node " << node.node_id << ' ' << node.properties.type_id << "\n  owns:";
+        if (node.owned_component_ids.empty()) {
+            std::cout << " -";
+        }
+        for (const auto ownedId : node.owned_component_ids) {
+            std::cout << ' ' << ownedId;
+        }
+        std::cout << '\n';
+    }
+
     sasd::ui::RadioButton radio{"Choice"};
     (void)radio.setSelected(true);
     const auto radioSnapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(radio);

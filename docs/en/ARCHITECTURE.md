@@ -178,6 +178,20 @@ own `signed_integer_properties` and `unsigned_integer_properties` with the same 
 failure contract. Optional, collection, compound and reference values remain future work. No serializer or generic
 `PropertyValue` carrier is introduced.
 
+### Description-local identity and ownership snapshots
+
+The separate `sasd/ui/component_ownership_snapshot.hpp` layer composes existing property snapshots
+into an owned tree. Each node owns a description-local `std::uint64_t` ID, its property snapshot
+(including exact type identity), and ordered owned-component IDs. Root is 0; dense IDs follow
+pre-order `componentAt()` traversal, including non-visual Commands, groups and concrete models.
+The explicit edge lists preserve ownership order independently of global node-vector order.
+IDs are neither permanent Runtime Component identity nor application/resource identity; no stability
+across captures is promised. Capture requires an unowned root. Unknown exact types, invalid properties,
+repeated nodes and inconsistent owner/Widget-parent relations reject the entire snapshot. Current
+Container adoption derives Widget parenting from ownership, so it is checked without a duplicate
+visual-parent edge list. Cross-references (command/group/view-model/selection associations), model
+payloads, encoding and reconstruction remain open; see [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+
 ### Ownership
 
 Initial core rules:
