@@ -275,7 +275,8 @@ immutable built-in catalog foundation. Slice 2 adds the immutable property-schem
 adds typed runtime value access while keeping schema and instance access separate, Slice 4 adds
 target-type-relative effective property defaults, Slice 5 adds exact runtime identification of
 existing built-in instances, and Slice 6 adds the owned snapshot foundation for currently catalogued
-built-in properties. Validation and design-time attributes remain future slices.
+built-in properties. Slice 7 defines the serializable UI-description state coverage policy.
+Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -287,9 +288,11 @@ built-in properties. Validation and design-time attributes remain future slices.
   - [ ] validation and design-time attributes
 - [ ] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
-  - [ ] complete serializable property coverage policy
+  - [x] serializable UI-description state coverage policy
+  - [ ] persistent scalar property coverage
+  - [ ] collection/compound property coverage
+  - [ ] component ownership/reference graph description
   - [ ] persisted representation / encoding
-  - [ ] component ownership/tree description
   - [ ] deserialization / reconstruction
 - [ ] resource system
 - [ ] designer-friendly properties

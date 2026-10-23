@@ -283,7 +283,8 @@ den unveränderlichen Built-in-Katalog. Slice 2 ergänzt die unveränderliche Pr
 Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht, Slice 4
 typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identifikation vorhandener
 Built-in-Instanzen und Slice 6 die besitzende Snapshot-Grundlage für aktuell katalogisierte Built-in-
-Properties. Validierung und Design-Time-Attribute bleiben spätere Slices.
+Properties; Slice 7 definiert die Coverage-Policy für serialisierbaren UI-Description-Zustand.
+Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -295,9 +296,11 @@ Properties. Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [ ] Validierung und Design-Time-Attribute
 - [ ] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
-  - [ ] Vollständige Policy für serialisierbare Property-Abdeckung
+  - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
+  - [ ] Abdeckung persistenter skalarer Properties
+  - [ ] Abdeckung von Collections/Compound-Properties
+  - [ ] Component-Ownership-/Reference-Graph-Beschreibung
   - [ ] Persistenzrepräsentation / Encoding
-  - [ ] Component-Ownership-/Tree-Beschreibung
   - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
