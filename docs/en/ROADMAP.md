@@ -277,7 +277,8 @@ target-type-relative effective property defaults, Slice 5 adds exact runtime ide
 existing built-in instances, and Slice 6 adds the owned snapshot foundation for currently catalogued
 built-in properties. Slice 7 defines the serializable UI-description state coverage policy.
 Slice 8 adds numeric value kinds and the seven existing layout properties (ADR 0178).
-Validation and design-time attributes remain future slices.
+Slice 10 adds description-local node identity and ordered ownership snapshots (ADR 0180);
+built-in cross-reference edge coverage remains open. Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -295,6 +296,8 @@ Validation and design-time attributes remain future slices.
     - [x] RadioButton scalar property coverage (`text`, `selected`)
   - [ ] collection/compound property coverage
   - [ ] component ownership/reference graph description
+    - [x] description-local node identity and ordered ownership snapshot (ADR 0180)
+    - [ ] built-in cross-reference edge coverage
   - [ ] persisted representation / encoding
   - [ ] deserialization / reconstruction
 - [ ] resource system

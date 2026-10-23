@@ -285,7 +285,8 @@ typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identif
 Built-in-Instanzen und Slice 6 die besitzende Snapshot-Grundlage für aktuell katalogisierte Built-in-
 Properties; Slice 7 definiert die Coverage-Policy für serialisierbaren UI-Description-Zustand.
 Slice 8 ergänzt numerische Value-Kinds und sieben bestehende Layout-Properties (ADR 0178).
-Validierung und Design-Time-Attribute bleiben spätere Slices.
+Slice 10 ergänzt beschreibungslokale Node-Identität und geordnete Ownership-Snapshots (ADR 0180);
+Built-in-Cross-Reference-Edges bleiben offen. Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -303,6 +304,8 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
     - [x] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
   - [ ] Abdeckung von Collections/Compound-Properties
   - [ ] Component-Ownership-/Reference-Graph-Beschreibung
+    - [x] Beschreibungs-lokale Node-Identität und geordneter Ownership-Snapshot (ADR 0180)
+    - [ ] Built-in-Cross-Reference-Edges
   - [ ] Persistenzrepräsentation / Encoding
   - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System

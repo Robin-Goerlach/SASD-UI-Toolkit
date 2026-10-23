@@ -9,6 +9,11 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 10: description-local Component node IDs and ordered built-in ownership snapshots,
+  including non-visual owned Components, composed with existing property snapshots. Unknown exact
+  types and ownership/Widget-parent invariant violations fail closed atomically. Cross-reference
+  edges, model payloads and serialization/reconstruction remain deferred (ADR 0180).
+
 - M8 Slice 9: RadioButton `text`/`selected` now use built-in metadata, typed access, effective
   defaults and owned snapshots. Selected writes preserve RadioGroup semantics through the public
   setter. Group-reference serialization remains unimplemented (ADR 0179).

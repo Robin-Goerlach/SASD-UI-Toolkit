@@ -196,6 +196,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0177](0177-m8-serializable-ui-description-state-coverage-policy.md) | M8 Serializable UI-Description State Coverage Policy | Accepted |
 | [0178](0178-m8-numeric-property-value-kind-foundation.md) | M8 Numeric Property Value-Kind Foundation | Accepted |
 | [0179](0179-m8-radio-button-scalar-property-coverage.md) | M8 RadioButton Scalar Property Coverage | Accepted |
+| [0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md) | M8 UI Description Node Identity and Ordered Ownership Snapshot Foundation | Accepted |
 
 ## ADR policy
 

@@ -188,6 +188,21 @@ Default-Abfragen konstruieren keine Component. Numerische Snapshots besitzen get
 den gesamten Snapshot. Optionale, Collection-, Compound- und Referenzwerte bleiben offen. Kein
 Serializer und kein generischer `PropertyValue`-Carrier wird eingeführt.
 
+### Beschreibungslokale Identität und Ownership-Snapshots
+
+Die separate Schicht `sasd/ui/component_ownership_snapshot.hpp` komponiert bestehende Property-
+Snapshots zu einem besitzenden Baum. Jeder Node besitzt eine beschreibungslokale `std::uint64_t`-ID,
+seinen Property-Snapshot einschließlich exakter Typ-Identität und geordnete Owned-Component-IDs.
+Root ist 0; dichte IDs folgen der Pre-order über `componentAt()`, einschließlich non-visueller
+Commands, Gruppen und konkreter Models. Explizite Edge-Listen bewahren Ownership-Reihenfolge
+unabhängig von der globalen Node-Vector-Reihenfolge. IDs sind keine permanente Runtime-Component-,
+Application- oder Resource-Identität; Stabilität zwischen Captures wird nicht garantiert.
+Capture verlangt einen unowned Root. Unbekannte exakte Typen, ungültige Properties, doppelte Nodes
+und inkonsistente Owner-/Widget-Parent-Beziehungen verwerfen den gesamten Snapshot. Aktuelle
+Container-Adoption leitet Widget-Parenting aus Ownership ab; geprüft wird ohne doppelte visuelle
+Parent-Edges. Cross-References (Command/Gruppe/View-Model/Selection-Assoziationen), Model-Payloads,
+Encoding und Rekonstruktion bleiben offen; siehe [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:

@@ -64,16 +64,16 @@ not become a universal reflection or object-graph system.
 “Future mechanism” describes the layer that must eventually cover the state; it does not authorize
 implementation in this slice.
 
-| Built-in / state | Classification | Description | Current metadata | Future mechanism / deferral |
+| Built-in / state | Classification | Description | Current technical coverage | Future mechanism / deferral |
 |---|---|---:|---|---|
-| `Component` ownership | persistent structural relation | yes | no | ownership/tree identities and reconstruction |
+| `Component` ownership | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | description-local node identities; reconstruction still open |
 | `Widget.visible`, `enabled`, `focusable` | persistent property | yes | bool, supported | existing scalar schema/access |
 | `Widget.sizeConstraints` | persistent compound candidate | yes | no | compound authoring value; defer until consumer |
-| `Widget.parent` | structural relation | yes | no | visual-parent/tree reconstruction |
+| `Widget.parent` | structural relation | yes | checked adoption invariant (ADR 0180) | derived from current ownership adoption; no duplicate edge list |
 | `Widget.hasFocus`, pointer-over, measure validity, desired size, dirty flags | transient/derived | no | no | runtime and presentation rebuild |
 | `Widget.bounds` | derived layout state | no baseline | no | `arrange()` output; future free-form layout may define authoring geometry |
 | `Window` own title/chrome state | none currently | no | no | source has no such property; do not invent one |
-| `Container` adopted child order | persistent structural relation | yes | no | ownership/tree description |
+| `Container` adopted component order | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | componentAt order includes non-visual Components |
 | `Command.text`, `enabled` | persistent property | yes | string/bool, supported | existing scalar schema/access |
 | `Command` execution callback and observer state | executable/transient | no | no | callbacks are not serializable values |
 | `Label.text` | persistent property | yes | string, supported | existing scalar schema/access |
@@ -103,7 +103,7 @@ implementation in this slice.
 | `HBox.spacing`, `VBox.spacing` | persistent property | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access |
 | `GridLayout.columnCount`, `columnSpacing`, `rowSpacing` | persistent properties | yes | unsigned_integer / signed_integer, supported (ADR 0178) | existing scalar schema/access |
 | `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access; rows derive from child order |
-| `StackLayout` layer order | persistent structural relation | yes | no | child/adoption order; no scalar configuration currently |
+| `StackLayout` layer order | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | component/adoption order; no scalar configuration currently |
 | `ListModel`/`TableModel`/`TreeModel` contract | reference target, not payload | no as property | no | model identity/reference policy |
 | String model contents | application data | no baseline | no | later data/resource policy; never implicit layout data |
 | `ListView` -> `ListModel` | persistent reference relation | yes | no | model identity/reference graph |
@@ -119,6 +119,14 @@ implementation in this slice.
 The model contract itself is not a property payload. View-to-model references may become part of a
 future description graph, while model contents remain application data unless a separate resource
 contract says otherwise.
+
+Slice 10 adds description-local node identity and the ordered ownership snapshot foundation
+([ADR 0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md)). Visual parenting stays
+conceptually distinct: current Container adoption derives it, and capture checks consistency without
+storing duplicate edges. Button -> Command, RadioButton -> RadioGroup and all three View -> Model
+relations remain technically uncovered cross-references, as do selection-model associations.
+RadioGroup.selectedButton remains derived; model payloads remain application data. Neither property
+nor ownership snapshot success implies complete UI-description coverage or reconstruction.
 
 ### Future value-kind consequences
 
@@ -198,6 +206,14 @@ Zustand. Der Property-Mechanismus wird nicht zu einer universellen Reflection- o
 Schicht erweitert.
 
 ### Coverage-Matrix und Value-Kinds
+
+Slice 10 liefert beschreibungslokale Node-Identität und die geordnete Ownership-Snapshot-Grundlage
+([ADR 0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md)). componentAt-Reihenfolge
+umfasst non-visuelle Components. Visuelles Parenting bleibt konzeptionell getrennt; aktuelle
+Container-Adoption leitet es ab und Capture prüft Konsistenz ohne doppelte Edges. Button -> Command,
+RadioButton -> RadioGroup, alle drei View -> Model und SelectionModel-Assoziationen bleiben technisch
+offene Cross-References. RadioGroup.selectedButton bleibt abgeleitet, Model-Payloads Application Data.
+Erfolgreiche Property-/Ownership-Snapshots bedeuten keine vollständige UI Description/Rekonstruktion.
 
 Die englische Matrix oben ist die verbindliche Zustandsabdeckung für alle aktuell 26 katalogisierten
 Built-ins. Sie klassifiziert `Widget`-Grund-Properties, `Window` ohne erfundene Title-/Chrome-
