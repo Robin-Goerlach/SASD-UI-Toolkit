@@ -137,6 +137,31 @@ layouts, bindings or ownership/visual children. No child recursion, ownership se
 PropertyValue carrier, `std::variant`, `std::any`, persistence format, serializer or deserializer is
 introduced here; property-schema coverage remains independently extensible in later slices.
 
+### Serializable UI-description state coverage
+
+ADR [0177](../adr/0177-m8-serializable-ui-description-state-coverage-policy.md) defines the
+boundary for a future UI Description. A UI Description is durable declarative construction and
+initial configuration, not a session snapshot, application-data snapshot, heap snapshot or
+presentation/backend dump. Persistent scalar properties are only one part of the future model:
+ownership, child order, visual parenting, command bindings, radio-group membership and view/model
+associations are structural or reference relations and must not be forced into scalar property
+metadata.
+
+The policy explicitly excludes focus, hover, pressed/capture gestures, text editing selection and
+caret state, ComboBox popup/preview state, viewports, current selections, tree expansion, layout
+caches, arranged bounds, rendered snapshots and backend handles. `TextStyle` is durable
+presentation authoring state, not transient state, but belongs to a later style/resource policy.
+Model contents remain application data by default; a view's model reference is a separate future
+relation. A Slice-6 snapshot covers only currently catalogued properties, never complete Component
+serialization coverage. A built-in becomes coverage-complete only when every relevant public
+semantic state is represented by a persistent property, a defined structural/reference/resource
+relation, or an explicit exclusion.
+
+The current catalog has 26 built-in types. The current schema still has only ten boolean/string
+properties. ADR 0177 records the complete review matrix and identifies, without implementing them,
+future numeric, optional, collection, compound and reference value needs. No serializer or generic
+`PropertyValue` carrier is introduced.
+
 ### Ownership
 
 Initial core rules:

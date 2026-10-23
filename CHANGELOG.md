@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Serializable UI-Description State Coverage Policy: documented the boundary between durable
+  declarative configuration, structural/reference relations, style/resources, runtime interaction
+  state, derived presentation state, application data and callbacks across all 26 current built-ins.
+  The policy defines coverage completeness and recommends a numeric property value-kind foundation
+  as the next technical slice. No new property kinds, properties, serializer, persistence format or
+  deserializer were added.
+
 - M8 Built-in Component Property Snapshot foundation: added the owned, backend-neutral
   `captureBuiltInComponentPropertySnapshot(const Component&)` consumer for the currently catalogued
   built-in properties. Exact runtime type identification, inherited base-to-derived schema order,

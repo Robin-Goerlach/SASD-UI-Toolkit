@@ -145,6 +145,31 @@ Keine Child-Rekursion, kein Ownership-Serializer, kein PropertyValue-Container, 
 `std::any`, Persistenzformat, Serializer oder Deserializer wird hier eingeführt; die Schema-Abdeckung
 bleibt in späteren Slices unabhängig erweiterbar.
 
+### Abdeckung des serialisierbaren UI-Description-Zustands
+
+ADR [0177](../adr/0177-m8-serializable-ui-description-state-coverage-policy.md) definiert die
+Grenze einer späteren UI Description. Eine UI Description beschreibt dauerhafte deklarative
+Konstruktion und Initialkonfiguration, nicht Session-Snapshot, Application-Data-Snapshot,
+Heap-Snapshot oder Presentation-/Backend-Dump. Persistente skalare Properties sind nur ein Teil:
+Ownership, Child-Reihenfolge, visuelles Parenting, Command-Bindings, RadioGroup-Mitgliedschaft und
+View-/Model-Beziehungen sind strukturelle bzw. Referenzbeziehungen und dürfen nicht in skalare
+Property-Metadaten gepresst werden.
+
+Die Policy schließt Fokus, Hover, Pressed-/Capture-Gesten, Textauswahl/Caret, ComboBox-Popup und
+Preview, Viewports, aktuelle Selection, Tree-Expansion, Layout-Caches, arrangierte Bounds,
+Presentation-Snapshots und Backend-Handles ausdrücklich aus. `TextStyle` ist dauerhafter visueller
+Authoring-Zustand und nicht transient, gehört aber in eine spätere Style-/Resource-Policy.
+Model-Inhalte bleiben standardmäßig Application Data; die Model-Referenz einer View ist eine
+separate zukünftige Beziehung. Ein Slice-6-Snapshot erfasst nur aktuell katalogisierte Properties
+und niemals vollständige Component-Serialisierungsabdeckung. Vollständigkeit liegt erst vor, wenn
+jeder relevante öffentliche semantische Zustand durch Property, Struktur-/Reference-/Resource-
+Beziehung oder ausdrückliche Exklusion abgedeckt ist.
+
+Der aktuelle Katalog enthält 26 Built-in-Typen, das Schema weiterhin nur zehn Boolean-/String-
+Properties. ADR 0177 enthält die vollständige Review-Matrix und leitet zukünftige numerische,
+optionale, Collection-, Compound- und Referenzbedarfe ab, ohne sie zu implementieren. Kein
+Serializer und kein generischer `PropertyValue`-Carrier wird eingeführt.
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:
