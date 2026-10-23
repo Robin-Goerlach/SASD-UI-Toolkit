@@ -276,6 +276,7 @@ adds typed runtime value access while keeping schema and instance access separat
 target-type-relative effective property defaults, Slice 5 adds exact runtime identification of
 existing built-in instances, and Slice 6 adds the owned snapshot foundation for currently catalogued
 built-in properties. Slice 7 defines the serializable UI-description state coverage policy.
+Slice 8 adds numeric value kinds and the seven existing layout properties (ADR 0178).
 Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
@@ -290,6 +291,8 @@ Validation and design-time attributes remain future slices.
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy
   - [ ] persistent scalar property coverage
+    - [x] numeric layout property foundation (signed/unsigned kinds; HBox/VBox/Grid/Form)
+    - [ ] RadioButton scalar property coverage (`text`, `selected`)
   - [ ] collection/compound property coverage
   - [ ] component ownership/reference graph description
   - [ ] persisted representation / encoding

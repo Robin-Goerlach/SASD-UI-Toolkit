@@ -284,6 +284,7 @@ Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschich
 typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identifikation vorhandener
 Built-in-Instanzen und Slice 6 die besitzende Snapshot-Grundlage für aktuell katalogisierte Built-in-
 Properties; Slice 7 definiert die Coverage-Policy für serialisierbaren UI-Description-Zustand.
+Slice 8 ergänzt numerische Value-Kinds und sieben bestehende Layout-Properties (ADR 0178).
 Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
@@ -298,6 +299,8 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
   - [ ] Abdeckung persistenter skalarer Properties
+    - [x] Numerische Layout-Property-Grundlage (Signed-/Unsigned-Kinds; HBox/VBox/Grid/Form)
+    - [ ] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
   - [ ] Abdeckung von Collections/Compound-Properties
   - [ ] Component-Ownership-/Reference-Graph-Beschreibung
   - [ ] Persistenzrepräsentation / Encoding

@@ -6,6 +6,7 @@ add_executable(sasd_ui_tests
     component_property_access_tests.cpp
     component_property_defaults_tests.cpp
     component_property_metadata_tests.cpp
+    component_property_numeric_tests.cpp
     component_property_snapshot_tests.cpp
     presentation_anchored_popup_layout_tests.cpp
     component_tests.cpp

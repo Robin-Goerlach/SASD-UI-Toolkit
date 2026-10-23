@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component_property_metadata.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
@@ -24,6 +25,22 @@ namespace sasd::ui {
  * process. It does not refer to a Component instance and does not transfer ownership.
  */
 [[nodiscard]] std::optional<std::string_view> builtInStringPropertyDefault(
+    std::string_view target_type_id,
+    const ComponentPropertyMetadata& property) noexcept;
+
+/**
+ * Returns the effective signed_integer default without constructing a Component.
+ * Unknown targets, wrong kinds or incompatible descriptor identities return std::nullopt.
+ */
+[[nodiscard]] std::optional<std::int64_t> builtInSignedIntegerPropertyDefault(
+    std::string_view target_type_id,
+    const ComponentPropertyMetadata& property) noexcept;
+
+/**
+ * Returns the effective unsigned_integer default without constructing a Component.
+ * Unknown targets, wrong kinds or incompatible descriptor identities return std::nullopt.
+ */
+[[nodiscard]] std::optional<std::uint64_t> builtInUnsignedIntegerPropertyDefault(
     std::string_view target_type_id,
     const ComponentPropertyMetadata& property) noexcept;
 

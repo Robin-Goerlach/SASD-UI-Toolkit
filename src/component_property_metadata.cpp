@@ -9,7 +9,7 @@ namespace {
 // Keep descriptors grouped by declaring type so a direct query can return a subspan without
 // allocating or constructing a temporary list. Inherited properties deliberately appear only in
 // the catalog of their declaring type; lookup walks ComponentTypeMetadata::base_type_id instead.
-constexpr std::array<ComponentPropertyMetadata, 10> built_in_properties{{
+constexpr std::array<ComponentPropertyMetadata, 17> built_in_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
@@ -20,6 +20,13 @@ constexpr std::array<ComponentPropertyMetadata, 10> built_in_properties{{
     {"sasd.ui.TextField", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "checked", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.HBox", "spacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.VBox", "spacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.GridLayout", "columnCount", ComponentPropertyValueKind::unsigned_integer},
+    {"sasd.ui.GridLayout", "columnSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.GridLayout", "rowSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.FormLayout", "columnSpacing", ComponentPropertyValueKind::signed_integer},
+    {"sasd.ui.FormLayout", "rowSpacing", ComponentPropertyValueKind::signed_integer},
 }};
 
 constexpr std::span<const ComponentPropertyMetadata> empty_properties() noexcept {

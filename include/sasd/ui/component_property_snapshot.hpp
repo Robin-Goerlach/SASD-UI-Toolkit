@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -30,6 +31,22 @@ struct ComponentStringPropertySnapshot final {
     bool is_default{false};
 };
 
+/** Owns one captured signed_integer value and its stable schema identity. */
+struct ComponentSignedIntegerPropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    std::int64_t value{0};
+    bool is_default{false};
+};
+
+/** Owns one captured unsigned_integer value and its stable schema identity. */
+struct ComponentUnsignedIntegerPropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    std::uint64_t value{0};
+    bool is_default{false};
+};
+
 /**
  * Owns all currently catalogued properties captured from one exact built-in Component type.
  *
@@ -41,6 +58,8 @@ struct BuiltInComponentPropertySnapshot final {
     std::string type_id;
     std::vector<ComponentBooleanPropertySnapshot> boolean_properties;
     std::vector<ComponentStringPropertySnapshot> string_properties;
+    std::vector<ComponentSignedIntegerPropertySnapshot> signed_integer_properties;
+    std::vector<ComponentUnsignedIntegerPropertySnapshot> unsigned_integer_properties;
 };
 
 /**

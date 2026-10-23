@@ -9,12 +9,20 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Numeric Property Value-Kind Foundation: added `signed_integer` / `unsigned_integer` with
+  fixed-width `std::int64_t` / `std::uint64_t` tooling values. The seventeen-descriptor catalog now
+  covers HBox/VBox spacing, GridLayout column count/spacing and FormLayout spacing. Typed runtime
+  access checks representability before conversion, delegates domain validation to semantic setters,
+  and preserves same-value write success. Constant typed defaults require no Component construction;
+  owned signed/unsigned snapshot collections retain complete fail-closed capture. No generic value
+  carrier, serializer, deserializer or additional control coverage is introduced (ADR 0178).
+
 - M8 Serializable UI-Description State Coverage Policy: documented the boundary between durable
   declarative configuration, structural/reference relations, style/resources, runtime interaction
   state, derived presentation state, application data and callbacks across all 26 current built-ins.
-  The policy defines coverage completeness and recommends a numeric property value-kind foundation
-  as the next technical slice. No new property kinds, properties, serializer, persistence format or
-  deserializer were added.
+  The policy defines coverage completeness; its proposed numeric property value-kind foundation
+  is now implemented separately in Slice 8. The policy slice itself added no property kinds,
+  properties, serializer, persistence format or deserializer.
 
 - M8 Built-in Component Property Snapshot foundation: added the owned, backend-neutral
   `captureBuiltInComponentPropertySnapshot(const Component&)` consumer for the currently catalogued

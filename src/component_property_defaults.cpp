@@ -72,4 +72,49 @@ std::optional<std::string_view> builtInStringPropertyDefault(
     return std::nullopt;
 }
 
+std::optional<std::int64_t> builtInSignedIntegerPropertyDefault(
+    std::string_view target_type_id,
+    const ComponentPropertyMetadata& property) noexcept {
+    if (findBuiltInComponentType(target_type_id) == nullptr ||
+        property.value_kind != ComponentPropertyValueKind::signed_integer ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    // Mirror the public construction defaults, without constructing a layout or evaluating its
+    // children. Descriptor identity keeps equal local names on sibling layouts independent.
+    if (property.declaring_type_id == "sasd.ui.HBox" && property.property_id == "spacing") {
+        return 0;
+    }
+    if (property.declaring_type_id == "sasd.ui.VBox" && property.property_id == "spacing") {
+        return 0;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" && property.property_id == "columnSpacing") {
+        return 0;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" && property.property_id == "rowSpacing") {
+        return 0;
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" && property.property_id == "columnSpacing") {
+        return 1;
+    }
+    if (property.declaring_type_id == "sasd.ui.FormLayout" && property.property_id == "rowSpacing") {
+        return 0;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint64_t> builtInUnsignedIntegerPropertyDefault(
+    std::string_view target_type_id,
+    const ComponentPropertyMetadata& property) noexcept {
+    if (findBuiltInComponentType(target_type_id) == nullptr ||
+        property.value_kind != ComponentPropertyValueKind::unsigned_integer ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.GridLayout" && property.property_id == "columnCount") {
+        return 1;
+    }
+    return std::nullopt;
+}
+
 } // namespace sasd::ui
