@@ -200,8 +200,19 @@ Application- oder Resource-Identität; Stabilität zwischen Captures wird nicht 
 Capture verlangt einen unowned Root. Unbekannte exakte Typen, ungültige Properties, doppelte Nodes
 und inkonsistente Owner-/Widget-Parent-Beziehungen verwerfen den gesamten Snapshot. Aktuelle
 Container-Adoption leitet Widget-Parenting aus Ownership ab; geprüft wird ohne doppelte visuelle
-Parent-Edges. Cross-References (Command/Gruppe/View-Model/Selection-Assoziationen), Model-Payloads,
-Encoding und Rekonstruktion bleiben offen; siehe [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+Parent-Edges; siehe [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+
+### Component-Reference-Graph-Snapshots
+
+`sasd/ui/component_reference_snapshot.hpp` komponiert den Ownership-Snapshot mit besitzenden Edges
+aus beschreibungslokalen Source-/Target-Node-IDs und fünf expliziten Kinds: Button -> Command,
+RadioButton -> RadioGroup und List/Table/Tree View -> Model. Jedes lebende Ziel muss im selben
+Ownership-Snapshot liegen; externe Ziele verwerfen den gesamten Capture. Null-/ungebundene/abgelaufene
+Getter erzeugen keine Edge. Pointer dienen nur temporärem Lookup und werden niemals persistiert.
+Edge-Reihenfolge folgt Source-Nodes und darin fester Kind-Reihenfolge. RadioGroup-Selection bleibt
+abgeleitet; Model-Payloads bleiben Application Data. SelectionModels sind keine Components und haben
+hier keine Nodes; ihre Assoziationspolicy bleibt offen. Encoding und Rekonstruktion bleiben spätere
+Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership
 

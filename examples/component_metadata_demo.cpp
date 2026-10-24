@@ -9,6 +9,9 @@
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/component_ownership_snapshot.hpp>
+#include <sasd/ui/component_reference_snapshot.hpp>
+#include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/list_view.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/vbox.hpp>
@@ -27,6 +30,18 @@ const char* kindName(sasd::ui::ComponentTypeKind kind) noexcept {
         return "widget";
     case sasd::ui::ComponentTypeKind::container:
         return "container";
+    }
+    return "unknown";
+}
+
+const char* referenceKindName(sasd::ui::BuiltInComponentReferenceKind kind) noexcept {
+    using Kind = sasd::ui::BuiltInComponentReferenceKind;
+    switch (kind) {
+    case Kind::button_command: return "button_command";
+    case Kind::radio_button_group: return "radio_button_group";
+    case Kind::list_view_model: return "list_view_model";
+    case Kind::table_view_model: return "table_view_model";
+    case Kind::tree_view_model: return "tree_view_model";
     }
     return "unknown";
 }
@@ -174,16 +189,21 @@ int main() {
         }
     }
     sasd::ui::Window root;
-    root.emplace<sasd::ui::Command>("Save");
+    auto& command = root.emplace<sasd::ui::Command>("Save");
+    root.emplace<sasd::ui::Button>().bindCommand(command);
+    auto& group = root.emplace<sasd::ui::RadioGroup>();
+    root.emplace<sasd::ui::RadioButton>(group, "Choice");
+    auto& model = root.emplace<sasd::ui::StringListModel>();
+    root.emplace<sasd::ui::ListView>().setModel(&model);
     auto& box = root.emplace<sasd::ui::VBox>();
     box.emplace<sasd::ui::Label>("Name");
     box.emplace<sasd::ui::TextField>();
-    const auto ownership = sasd::ui::captureBuiltInComponentOwnershipSnapshot(root);
-    if (!ownership.has_value()) {
-        std::cerr << "Ownership snapshot failed\n";
+    const auto graph = sasd::ui::captureBuiltInComponentReferenceGraphSnapshot(root);
+    if (!graph.has_value()) {
+        std::cerr << "Reference graph snapshot failed\n";
         return 1;
     }
-    for (const auto& node : ownership->nodes) {
+    for (const auto& node : graph->ownership.nodes) {
         std::cout << "node " << node.node_id << ' ' << node.properties.type_id << "\n  owns:";
         if (node.owned_component_ids.empty()) {
             std::cout << " -";
@@ -192,6 +212,10 @@ int main() {
             std::cout << ' ' << ownedId;
         }
         std::cout << '\n';
+    }
+    for (const auto& edge : graph->reference_edges) {
+        std::cout << "reference: node " << edge.source_node_id << " --"
+                  << referenceKindName(edge.kind) << "--> node " << edge.target_node_id << '\n';
     }
 
     sasd::ui::RadioButton radio{"Choice"};

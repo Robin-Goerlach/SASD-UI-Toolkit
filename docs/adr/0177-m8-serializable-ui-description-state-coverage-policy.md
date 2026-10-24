@@ -79,7 +79,7 @@ implementation in this slice.
 | `Label.text` | persistent property | yes | string, supported | existing scalar schema/access |
 | `Label.textStyle` | style/resource | potentially | no | later style/resource policy |
 | `Button.text` | persistent property | yes | string, supported | existing scalar schema/access |
-| `Button` -> `Command` binding | persistent reference relation | yes | no | component identity/reference graph |
+| `Button` -> `Command` binding | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
 | `Button.textStyle` | style/resource | potentially | no | later style/resource policy |
 | `Button.pressed`, pointer gesture | transient interaction | no | no | capture/gesture state is rebuilt |
 | `Button.onActivated` | executable behavior | no | no | no function persistence |
@@ -90,10 +90,10 @@ implementation in this slice.
 | `CheckBox.textStyle` | style/resource | potentially | no | later style/resource policy |
 | `CheckBox` pressed/gesture and callback | transient/executable | no | no | runtime gesture and callbacks excluded |
 | `RadioButton.text`, `selected` | persistent property | yes | string/bool, supported (ADR 0179) | scalar metadata/access/default/snapshot; grouped reconstruction order still required |
-| `RadioButton` -> `RadioGroup` membership | persistent reference relation | yes | no | group identity/reference graph |
+| `RadioButton` -> `RadioGroup` membership | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
 | `RadioButton.textStyle`, selected callback | style/resource + executable | style potentially; callback no | no | style policy; callbacks excluded |
 | `RadioButton` pressed/gesture | transient interaction | no | no | rebuilt by runtime routing |
-| `RadioGroup` membership | persistent structural/reference relation | yes | no | membership graph; `selectedButton` is derived |
+| `RadioGroup` membership | persistent structural/reference relation | yes | RadioButton membership edges (ADR 0181) | `selectedButton` is derived, not independently persisted |
 | `RadioGroup.selectedButton` | derived group state | no as independent value | no | derive from membership; avoid two truths |
 | `ComboBox.items` | persistent owned collection | yes | no | future string-collection kind |
 | `ComboBox.selectedIndex` | persistent optional scalar | yes | no | future optional unsigned integral kind |
@@ -104,29 +104,31 @@ implementation in this slice.
 | `GridLayout.columnCount`, `columnSpacing`, `rowSpacing` | persistent properties | yes | unsigned_integer / signed_integer, supported (ADR 0178) | existing scalar schema/access |
 | `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access; rows derive from child order |
 | `StackLayout` layer order | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | component/adoption order; no scalar configuration currently |
-| `ListModel`/`TableModel`/`TreeModel` contract | reference target, not payload | no as property | no | model identity/reference policy |
+| `ListModel`/`TableModel`/`TreeModel` contract | reference target, not payload | no as property | target nodes/edges (ADRs 0180/0181) | exact built-in type; no model payload |
 | String model contents | application data | no baseline | no | later data/resource policy; never implicit layout data |
-| `ListView` -> `ListModel` | persistent reference relation | yes | no | model identity/reference graph |
+| `ListView` -> `ListModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
 | `ListView` -> `ListSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
 | `ListView` viewport/current selection | transient/application runtime | no | no | navigation and selection are session/application state |
-| `TableView` -> `TableModel` | persistent reference relation | yes | no | model identity/reference graph |
+| `TableView` -> `TableModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
 | `TableView` -> `TableSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
 | `TableView` viewport/current selected cell | transient/application runtime | no | no | navigation and selection are session/application state |
-| `TreeView` -> `TreeModel` | persistent reference relation | yes | no | model identity/reference graph |
+| `TreeView` -> `TreeModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
 | `TreeView` -> `TreeSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
 | `TreeView` viewport/current selection/expanded paths | transient/application runtime | no | no | navigation, selection and expansion are session state |
 
-The model contract itself is not a property payload. View-to-model references may become part of a
-future description graph, while model contents remain application data unless a separate resource
+The model contract itself is not a property payload. View-to-model references are captured by the
+ADR-0181 graph, while model contents remain application data unless a separate resource
 contract says otherwise.
 
 Slice 10 adds description-local node identity and the ordered ownership snapshot foundation
 ([ADR 0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md)). Visual parenting stays
 conceptually distinct: current Container adoption derives it, and capture checks consistency without
-storing duplicate edges. Button -> Command, RadioButton -> RadioGroup and all three View -> Model
-relations remain technically uncovered cross-references, as do selection-model associations.
+storing duplicate edges. Slice 11 captures Button -> Command, RadioButton -> RadioGroup and all three
+View -> Model relations as self-contained live reference edges
+([ADR 0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md)). SelectionModels
+are not Components and have no node IDs; their association policy remains open.
 RadioGroup.selectedButton remains derived; model payloads remain application data. Neither property
-nor ownership snapshot success implies complete UI-description coverage or reconstruction.
+nor reference/ownership snapshot success implies complete UI-description coverage or reconstruction.
 
 ### Future value-kind consequences
 
@@ -210,9 +212,11 @@ Schicht erweitert.
 Slice 10 liefert beschreibungslokale Node-Identität und die geordnete Ownership-Snapshot-Grundlage
 ([ADR 0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md)). componentAt-Reihenfolge
 umfasst non-visuelle Components. Visuelles Parenting bleibt konzeptionell getrennt; aktuelle
-Container-Adoption leitet es ab und Capture prüft Konsistenz ohne doppelte Edges. Button -> Command,
-RadioButton -> RadioGroup, alle drei View -> Model und SelectionModel-Assoziationen bleiben technisch
-offene Cross-References. RadioGroup.selectedButton bleibt abgeleitet, Model-Payloads Application Data.
+Container-Adoption leitet es ab und Capture prüft Konsistenz ohne doppelte Edges. Slice 11 erfasst
+Button -> Command, RadioButton -> RadioGroup und alle drei View -> Model als selbständig geschlossene
+lebende Reference-Edges ([ADR 0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md)).
+SelectionModels sind keine Components und haben keine Node-IDs; ihre Assoziationspolicy bleibt offen.
+RadioGroup.selectedButton bleibt abgeleitet, Model-Payloads bleiben Application Data.
 Erfolgreiche Property-/Ownership-Snapshots bedeuten keine vollständige UI Description/Rekonstruktion.
 
 Die englische Matrix oben ist die verbindliche Zustandsabdeckung für alle aktuell 26 katalogisierten
