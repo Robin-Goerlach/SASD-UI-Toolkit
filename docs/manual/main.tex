@@ -1,0 +1,66 @@
+% SPDX-License-Identifier: MIT
+% Ein Buch = eine Sprache; Uebersetzungen liegen unter content/<Sprache>.
+\documentclass[11pt,a4paper,twoside,open=any,BCOR=7mm,DIV=12]{scrbook}
+% PDF-Leseausgabe ohne Leerseiten; print.tex aktiviert den klassischen Buchsatz.
+\ifdefined\SASDPrintEdition
+  \KOMAoptions{open=right}
+\fi
+\providecommand{\SASDLanguage}{de}
+\usepackage{style/sasdmanual}
+\input{i18n/\SASDLanguage.tex}
+\ifdefstring{\SASDLanguage}{de}{\selectlanguage{ngerman}}{\selectlanguage{english}}
+\hypersetup{pdftitle={SASD UI Toolkit -- \ManualBookTitle},
+ pdfauthor={SASD GmbH},pdfsubject={SASD UI Toolkit Anwenderhandbuch}}
+\begin{document}
+\frontmatter
+\begin{titlepage}
+\pagecolor{SASDDark}\color{white}\thispagestyle{empty}
+\vspace*{1.8cm}
+{\sffamily\bfseries\fontsize{17}{20}\selectfont SASD UI TOOLKIT\par}
+\vspace{2.3cm}
+{\sffamily\bfseries\fontsize{37}{42}\selectfont \ManualBookTitle\par}
+\vspace{.55cm}
+{\sffamily\fontsize{18}{25}\selectfont \ManualBookSubtitle\par}
+\vspace{1.1cm}
+\begin{tikzpicture}
+\draw[SASDTurquoise,line width=1.3pt,rounded corners=5pt] (0,0) rectangle (12,4.4);
+\fill[SASDDarkTwo,rounded corners=5pt] (0.03,.03) rectangle (11.97,4.37);
+\fill[SASDTurquoise] (.07,3.65) rectangle (11.93,4.30);
+\node[anchor=west,SASDDark,font=\ttfamily\bfseries] at (.38,3.96) {SASD UI Toolkit --- Terminal / Rendered};
+\node[anchor=west,white,font=\ttfamily\large] at (.55,2.85) {\$ sasd\_ui\_terminal\_demo};
+\node[anchor=west,SASDSoft,font=\ttfamily] at (.55,2.15) {\ManualCoverName: \_\_\_\_\_\_\_\_\_\_\_\_};
+\node[anchor=west,SASDTurquoise,font=\ttfamily] at (.55,1.43) {[ \ManualCoverGreet ]   [ \ManualCoverExit ]};
+\node[anchor=west,SASDSoft,font=\ttfamily\small] at (.55,.65) {C++20  |  CMake  |  ANSI/VT  |  SDL3 experimental};
+\end{tikzpicture}
+\vfill
+{\sffamily\Large SASD GmbH\par}
+{\sffamily\small \ManualEdition\quad\textbullet\quad \ManualDate\par}
+\end{titlepage}
+\nopagecolor\color{black}
+\input{content/\SASDLanguage/frontmatter.tex}
+\tableofcontents
+% KOMA-Script erzwingt bei \mainmatter auch bei open=any eine unbedruckte
+% Verso-Seite im twoside-Modus. Nur in der Bildschirmfassung unterdruecken.
+\ifdefined\SASDPrintEdition
+  \mainmatter
+\else
+  \let\SASDSavedCleardoubleoddpage\cleardoubleoddpage
+  \let\cleardoubleoddpage\clearpage
+  \mainmatter
+  \let\cleardoubleoddpage\SASDSavedCleardoubleoddpage
+\fi
+\input{content/\SASDLanguage/01-einfuehrung.tex}
+\input{content/\SASDLanguage/02-installation.tex}
+\input{content/\SASDLanguage/03-erste-schritte.tex}
+\input{content/\SASDLanguage/04-komponenten.tex}
+\input{content/\SASDLanguage/05-layout-events.tex}
+\input{content/\SASDLanguage/06-befehle-menues.tex}
+\input{content/\SASDLanguage/07-datenmodelle.tex}
+\input{content/\SASDLanguage/08-backends.tex}
+\input{content/\SASDLanguage/09-praxis.tex}
+\input{content/\SASDLanguage/10-fehlersuche.tex}
+\appendix
+\input{content/\SASDLanguage/anhang.tex}
+\backmatter
+\input{content/\SASDLanguage/closing.tex}
+\end{document}
