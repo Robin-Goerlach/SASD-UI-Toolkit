@@ -189,8 +189,18 @@ IDs are neither permanent Runtime Component identity nor application/resource id
 across captures is promised. Capture requires an unowned root. Unknown exact types, invalid properties,
 repeated nodes and inconsistent owner/Widget-parent relations reject the entire snapshot. Current
 Container adoption derives Widget parenting from ownership, so it is checked without a duplicate
-visual-parent edge list. Cross-references (command/group/view-model/selection associations), model
-payloads, encoding and reconstruction remain open; see [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+visual-parent edge list; see [ADR 0180](../adr/0180-m8-description-node-identity-ordered-ownership-snapshot.md).
+
+### Component reference graph snapshots
+
+`sasd/ui/component_reference_snapshot.hpp` composes the ownership snapshot with owned edges using
+description-local source/target Node IDs and five explicit kinds: Button -> Command, RadioButton ->
+RadioGroup and List/Table/Tree View -> Model. Every live target must belong to the same ownership
+snapshot; external targets reject the entire capture. Null/unbound/expired getters produce no edge.
+Pointers exist only during lookup and are never persisted. Edge order follows source nodes, then
+fixed kind order. RadioGroup selection remains derived; model payloads stay Application Data.
+SelectionModels are not Components and have no nodes here; their association policy remains open.
+Encoding and reconstruction remain future work; see [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership
 

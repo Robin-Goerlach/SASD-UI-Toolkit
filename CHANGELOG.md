@@ -9,6 +9,11 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 11: owned Component cross-reference edge snapshots compose the ownership snapshot with
+  Button/Command, RadioButton/RadioGroup and List/Table/Tree View-to-Model edges using local node IDs.
+  External live targets fail closed; null and expired targets produce no edge. SelectionModel
+  association policy remains open; model payloads and serialization remain deferred (ADR 0181).
+
 - M8 Slice 10: description-local Component node IDs and ordered built-in ownership snapshots,
   including non-visual owned Components, composed with existing property snapshots. Unknown exact
   types and ownership/Widget-parent invariant violations fail closed atomically. Cross-reference
