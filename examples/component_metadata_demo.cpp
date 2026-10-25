@@ -1,6 +1,7 @@
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/grid_layout.hpp>
@@ -18,6 +19,7 @@
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <iomanip>
 #include <iostream>
 #include <string_view>
 
@@ -63,6 +65,10 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
         return "signed_integer";
     case sasd::ui::ComponentPropertyValueKind::unsigned_integer:
         return "unsigned_integer";
+    case sasd::ui::ComponentPropertyValueKind::string_collection:
+        return "string_collection";
+    case sasd::ui::ComponentPropertyValueKind::optional_unsigned_integer:
+        return "optional_unsigned_integer";
     }
     return "unknown";
 }
@@ -78,6 +84,30 @@ void printProperties(std::string_view type_id) {
 } // namespace
 
 int main() {
+    sasd::ui::ComboBox combo{{"One", "Two", "Three"}};
+    (void)combo.setSelectedIndex(1);
+    const auto combo_snapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(combo);
+    if (!combo_snapshot.has_value()) {
+        return 1;
+    }
+    std::cout << "ComboBox snapshot:\n  items = [";
+    const auto& items = combo_snapshot->string_collection_properties.front();
+    for (std::size_t index = 0; index < items.value.size(); ++index) {
+        if (index != 0) {
+            std::cout << ", ";
+        }
+        std::cout << std::quoted(items.value[index]);
+    }
+    std::cout << "] [" << (items.is_default ? "default" : "non-default") << "]\n";
+    const auto& combo_selection = combo_snapshot->optional_unsigned_integer_properties.front();
+    std::cout << "  selectedIndex = ";
+    if (combo_selection.value.has_value()) {
+        std::cout << *combo_selection.value;
+    } else {
+        std::cout << "none";
+    }
+    std::cout << " [" << (combo_selection.is_default ? "default" : "non-default") << "]\n";
+
     for (const auto& metadata : sasd::ui::builtInComponentTypes()) {
         std::cout << metadata.type_id << " <- "
                   << (metadata.base_type_id.empty() ? "<none>" : metadata.base_type_id)

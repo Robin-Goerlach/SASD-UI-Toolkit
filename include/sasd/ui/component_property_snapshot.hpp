@@ -47,12 +47,31 @@ struct ComponentUnsignedIntegerPropertySnapshot final {
     bool is_default{false};
 };
 
+/** Owns every string in a captured collection, independently of the source Component. */
+struct ComponentStringCollectionPropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    std::vector<std::string> value;
+    bool is_default{false};
+};
+
+/** A successful capture needs only one optional: nullopt here means no selection, not failure. */
+struct ComponentOptionalUnsignedIntegerPropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    std::optional<std::uint64_t> value;
+    bool is_default{false};
+};
+
 /**
  * Owns all currently catalogued properties captured from one exact built-in Component type.
  *
  * This is deliberately not a complete Component or UI-tree description. A successful snapshot
  * promises only that every property currently present in the built-in property schema was read;
- * ownership, children, models, bindings and other semantic state remain outside this slice.
+ * ownership, children, models, bindings and other semantic state remain outside this value.
+ * Kind-separated vectors do not encode global reconstruction order. Future reconstruction must
+ * restore ComboBox.items before selectedIndex: setItems clears selection and setSelectedIndex
+ * validates against current items. This snapshot implements no reconstruction engine.
  */
 struct BuiltInComponentPropertySnapshot final {
     std::string type_id;
@@ -60,6 +79,8 @@ struct BuiltInComponentPropertySnapshot final {
     std::vector<ComponentStringPropertySnapshot> string_properties;
     std::vector<ComponentSignedIntegerPropertySnapshot> signed_integer_properties;
     std::vector<ComponentUnsignedIntegerPropertySnapshot> unsigned_integer_properties;
+    std::vector<ComponentStringCollectionPropertySnapshot> string_collection_properties;
+    std::vector<ComponentOptionalUnsignedIntegerPropertySnapshot> optional_unsigned_integer_properties;
 };
 
 /**

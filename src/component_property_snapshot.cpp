@@ -6,7 +6,9 @@
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 
+#include <algorithm>
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace sasd::ui {
@@ -128,6 +130,35 @@ captureBuiltInComponentPropertySnapshot(const Component& component) {
                     std::string{property.property_id},
                     *value,
                     *value == *effective_default,
+                });
+                break;
+            }
+            case ComponentPropertyValueKind::string_collection: {
+                auto value = readBuiltInStringCollectionProperty(component, property);
+                const auto effective_default =
+                    builtInStringCollectionPropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                const bool is_default = std::equal(
+                    value->begin(), value->end(), effective_default->begin(), effective_default->end());
+                snapshot.string_collection_properties.push_back({
+                    std::string{property.declaring_type_id}, std::string{property.property_id},
+                    std::move(*value), is_default,
+                });
+                break;
+            }
+            case ComponentPropertyValueKind::optional_unsigned_integer: {
+                auto value = readBuiltInOptionalUnsignedIntegerProperty(component, property);
+                const auto effective_default =
+                    builtInOptionalUnsignedIntegerPropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                const bool is_default = *value == *effective_default;
+                snapshot.optional_unsigned_integer_properties.push_back({
+                    std::string{property.declaring_type_id}, std::string{property.property_id},
+                    std::move(*value), is_default,
                 });
                 break;
             }

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace sasd::ui {
 
@@ -79,5 +80,27 @@ namespace sasd::ui {
     Component& component,
     const ComponentPropertyMetadata& property,
     std::uint64_t value);
+
+/** Returns an owned collection snapshot; invalid/incompatible access returns nullopt. */
+[[nodiscard]] std::optional<std::vector<std::string>> readBuiltInStringCollectionProperty(
+    const Component& component, const ComponentPropertyMetadata& property);
+
+/** Delegates to setItems(), including selection clearing and callbacks. True means valid access,
+ * not a changed value. No member is accessed after the potentially destructive callback. */
+[[nodiscard]] bool writeBuiltInStringCollectionProperty(
+    Component& component, const ComponentPropertyMetadata& property, std::vector<std::string> value);
+
+/**
+ * Outer nullopt means invalid/incompatible access or an unrepresentable value. Engaged outer with
+ * empty inner means valid access with no selection; engaged inner contains the selection index.
+ * Two levels keep access failure distinct from semantic absence; no integer sentinel means none.
+ */
+[[nodiscard]] std::optional<std::optional<std::uint64_t>> readBuiltInOptionalUnsignedIntegerProperty(
+    const Component& component, const ComponentPropertyMetadata& property);
+
+/** Checks representation before setSelectedIndex(); domain exceptions propagate from the setter.
+ * True means valid access, including same-value writes. Setter callbacks are never suppressed. */
+[[nodiscard]] bool writeBuiltInOptionalUnsignedIntegerProperty(
+    Component& component, const ComponentPropertyMetadata& property, std::optional<std::uint64_t> value);
 
 } // namespace sasd::ui

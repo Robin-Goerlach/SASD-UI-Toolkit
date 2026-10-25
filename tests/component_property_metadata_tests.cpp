@@ -16,7 +16,7 @@ struct ExpectedProperty final {
     ComponentPropertyValueKind value_kind;
 };
 
-constexpr std::array<ExpectedProperty, 19> expected_properties{{
+constexpr std::array<ExpectedProperty, 21> expected_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
@@ -29,6 +29,8 @@ constexpr std::array<ExpectedProperty, 19> expected_properties{{
     {"sasd.ui.CheckBox", "checked", ComponentPropertyValueKind::boolean},
     {"sasd.ui.RadioButton", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.RadioButton", "selected", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.ComboBox", "items", ComponentPropertyValueKind::string_collection},
+    {"sasd.ui.ComboBox", "selectedIndex", ComponentPropertyValueKind::optional_unsigned_integer},
     {"sasd.ui.HBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.VBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.GridLayout", "columnCount", ComponentPropertyValueKind::unsigned_integer},

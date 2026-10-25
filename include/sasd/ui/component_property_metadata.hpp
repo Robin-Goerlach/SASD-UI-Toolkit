@@ -19,6 +19,8 @@ enum class ComponentPropertyValueKind {
     string,
     signed_integer,
     unsigned_integer,
+    string_collection,
+    optional_unsigned_integer,
 };
 
 /**

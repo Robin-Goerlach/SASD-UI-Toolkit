@@ -26,11 +26,11 @@ intended to reconstruct a logically equivalent configured UI. It is not a sessio
 application-state snapshot, savegame, heap snapshot, widget memento, presentation frame or backend
 state dump. Reconstruction need not restore current interaction state.
 
-The current built-in catalog contains 26 types: `Component`, `Widget`, `Container`, `Window`,
+The current built-in catalog contains 29 types: `Component`, `Widget`, `Container`, `Window`,
 `Command`, `Label`, `Button`, `TextField`, `CheckBox`, `RadioButton`, `RadioGroup`, `ComboBox`,
 `HBox`, `VBox`, `GridLayout`, `FormLayout`, `StackLayout`, `ListModel`, `StringListModel`,
-`ListView`, `TableModel`, `StringTableModel`, `TableView`, `TreeModel`, `StringTreeModel` and
-`TreeView`.
+`ListSelectionModel`, `ListView`, `TableModel`, `StringTableModel`, `TableSelectionModel`,
+`TableView`, `TreeModel`, `StringTreeModel`, `TreeSelectionModel` and `TreeView`.
 
 ### Decision
 
@@ -95,8 +95,8 @@ implementation in this slice.
 | `RadioButton` pressed/gesture | transient interaction | no | no | rebuilt by runtime routing |
 | `RadioGroup` membership | persistent structural/reference relation | yes | RadioButton membership edges (ADR 0181) | `selectedButton` is derived, not independently persisted |
 | `RadioGroup.selectedButton` | derived group state | no as independent value | no | derive from membership; avoid two truths |
-| `ComboBox.items` | persistent owned collection | yes | no | future string-collection kind |
-| `ComboBox.selectedIndex` | persistent optional scalar | yes | no | future optional unsigned integral kind |
+| `ComboBox.items` | persistent owned collection | yes | string_collection, supported (ADR 0183) | owned typed access/default/snapshot |
+| `ComboBox.selectedIndex` | persistent optional scalar | yes | optional_unsigned_integer, supported (ADR 0183) | future reconstruction: items before selectedIndex |
 | `ComboBox.selectedText` | derived | no | no | derive from items and selected index |
 | `ComboBox` preview/open/pressed/pointer gesture | transient interaction | no | no | popup/capture state is rebuilt |
 | `ComboBox.textStyle` and callbacks | style/resource + executable | style potentially; callbacks no | no | style policy; no callback persistence |
@@ -136,18 +136,22 @@ Sharing and independent model bindings are preserved; current selection remains 
 RadioGroup.selectedButton remains derived; model payloads remain application data. Neither property
 nor reference/ownership snapshot success implies complete UI-description coverage or reconstruction.
 
+Slice 13 covers items and selectedIndex ([ADR 0183](0183-m8-combo-box-collection-and-optional-property-coverage.md)).
+Future reconstruction must restore ComboBox.items before selectedIndex; this dependency is only
+documented, not implemented. selectedText remains derived, preview/open/pressed transient.
+
 ### Future value-kind consequences
 
 The Slice-7 baseline needed only `boolean` and `string`. Slice 8 now supports `signed_integer`
 (`std::int64_t`) and `unsigned_integer` (`std::uint64_t`) for the seven layout properties in the
 matrix; see [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md). The original review
-identified the following additional kinds (the first two are now implemented):
+identified the following additional kinds (the first four are now implemented; see ADR 0183):
 
 - signed integral / coordinate: `HBox`/`VBox` spacing and Grid/Form spacing;
 - unsigned integral: `GridLayout.columnCount`;
 - optional unsigned integral: `ComboBox.selectedIndex`;
 - string collection: `ComboBox.items`;
-- compound structure: potentially `Widget.sizeConstraints` and `TextStyle`;
+- compound structure: potentially `Widget.sizeConstraints`; `TextStyle` needs separate style/resource policy;
 - references/graph edges: ownership/children, Button-to-Command, RadioButton-to-RadioGroup and
   view-to-model, view-to-selection-model and selection-model-to-model (ADR 0182).
 
@@ -182,6 +186,12 @@ associations by ADR 0182. Slice 7 itself implements no
 new property kind, property, collection, compound, reference, serializer or deserializer.
 
 ## Deutsch
+
+Der aktuelle Source-Katalog enthält 29 Typen, einschließlich ListSelectionModel,
+TableSelectionModel und TreeSelectionModel; die vollständige englische Liste oben ist abgeglichen.
+Slice 13 deckt ComboBox.items (string_collection) und selectedIndex (optional_unsigned_integer)
+über ADR 0183 ab. Zukünftige Rekonstruktion muss items vor selectedIndex setzen; nur dokumentiert,
+nicht implementiert. selectedText bleibt abgeleitet, Preview/Open/Pressed transient.
 
 ### Kontext und Definition
 
@@ -240,12 +250,12 @@ View-Model-Referenzen sind davon getrennt. `TextStyle` ist Style/Resource und ni
 Zusätzlich zu den bei Slice 7 unterstützten `boolean`- und `string`-Kinds ergaben sich signed
 integral/Coordinate für Layout-Spacings, unsigned integral für `GridLayout.columnCount`, optional
 unsigned integral für `ComboBox.selectedIndex`, eine String-Collection für `ComboBox.items`,
-Compound-Strukturen für mögliche `Widget.sizeConstraints` und `TextStyle` sowie References/Graph
+Compound-Strukturen für mögliche `Widget.sizeConstraints` (TextStyle bleibt Style-/Resource-Policy) sowie References/Graph
 Edges für Ownership, Bindings, Gruppen und Models. Slice 7 implementiert keinen dieser Kinds und
 führt kein generisches `PropertyValue`, `std::variant` oder `std::any` ein. Slice 8 unterstützt
 inzwischen `signed_integer` (`std::int64_t`) und `unsigned_integer` (`std::uint64_t`) für die sieben
 Layout-Properties der aktualisierten Matrix; siehe [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md).
-Optionale Werte, Collections und Compound-Werte bleiben offen; Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
+Optionale ComboBox-Indizes und String-Collections sind durch ADR 0183 abgedeckt; Compound-Werte bleiben offen. Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
 
 ### Regel für vollständige Abdeckung
 
