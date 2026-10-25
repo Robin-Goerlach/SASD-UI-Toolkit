@@ -121,4 +121,30 @@ std::optional<std::uint64_t> builtInUnsignedIntegerPropertyDefault(
     return std::nullopt;
 }
 
+std::optional<std::span<const std::string_view>> builtInStringCollectionPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept {
+    if (findBuiltInComponentType(target_type_id) == nullptr ||
+        property.value_kind != ComponentPropertyValueKind::string_collection ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.ComboBox" && property.property_id == "items") {
+        return std::span<const std::string_view>{};
+    }
+    return std::nullopt;
+}
+
+std::optional<std::optional<std::uint64_t>> builtInOptionalUnsignedIntegerPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept {
+    if (findBuiltInComponentType(target_type_id) == nullptr ||
+        property.value_kind != ComponentPropertyValueKind::optional_unsigned_integer ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.ComboBox" && property.property_id == "selectedIndex") {
+        return std::optional<std::optional<std::uint64_t>>{std::in_place, std::nullopt};
+    }
+    return std::nullopt;
+}
+
 } // namespace sasd::ui

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string_view>
 
 namespace sasd::ui {
@@ -43,5 +44,14 @@ namespace sasd::ui {
 [[nodiscard]] std::optional<std::uint64_t> builtInUnsignedIntegerPropertyDefault(
     std::string_view target_type_id,
     const ComponentPropertyMetadata& property) noexcept;
+
+/** Allocation-free immutable default collection; outer nullopt means an invalid query. */
+[[nodiscard]] std::optional<std::span<const std::string_view>> builtInStringCollectionPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
+
+/** Outer nullopt means invalid query; engaged outer and empty inner means the valid default none.
+ * No sentinel index represents absence. Defaults never construct a Component. */
+[[nodiscard]] std::optional<std::optional<std::uint64_t>> builtInOptionalUnsignedIntegerPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
 
 } // namespace sasd::ui

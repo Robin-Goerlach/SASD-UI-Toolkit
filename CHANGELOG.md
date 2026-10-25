@@ -9,6 +9,11 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 13: concrete string_collection and optional_unsigned_integer property kinds cover
+  ComboBox.items / selectedIndex through typed runtime access, effective defaults and owned snapshots.
+  Checked integral conversions preserve semantic setter/domain exception and callback behavior.
+  Future reconstruction requires items before selectedIndex; no serializer or reconstruction yet.
+
 - M8 Slice 12: List/Table/Tree SelectionModels now participate in non-visual Component lifecycle
   with three stable built-in type IDs, ordinary ownership/node identity and empty scalar snapshots.
   View-to-SelectionModel and SelectionModel-to-Model reference edges preserve sharing and independent

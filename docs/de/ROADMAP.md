@@ -305,6 +305,8 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
     - [x] Numerische Layout-Property-Grundlage (Signed-/Unsigned-Kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
   - [ ] Abdeckung von Collections/Compound-Properties
+    - [x] ComboBox-Collection und optionaler Skalar (`items`, `selectedIndex`; ADR 0183)
+    - [ ] Compound-Authoring-Werte (`Widget.sizeConstraints`)
   - [x] Component-Ownership-/Reference-Graph-Beschreibung
     - [x] Beschreibungs-lokale Node-Identität und geordneter Ownership-Snapshot (ADR 0180)
     - [x] Built-in-Component-zu-Component-Cross-Reference-Edges (ADR 0181)
@@ -318,8 +320,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 
-Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179). `ComboBox.selectedIndex`
-bleibt als optionaler, an `items` gebundener Wert im späteren Collection/Compound/Optional-Slice.
+Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179).
+Slice 13 deckt `ComboBox.items` und optionalen `selectedIndex` ab (ADR 0183); zukünftige
+Rekonstruktion muss items vor selectedIndex setzen. Encoding und Rekonstruktion bleiben offen.
 
 ## Bewusst später
 

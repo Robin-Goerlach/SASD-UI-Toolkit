@@ -297,6 +297,8 @@ Validation and design-time attributes remain future slices.
     - [x] numeric layout property foundation (signed/unsigned kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton scalar property coverage (`text`, `selected`)
   - [ ] collection/compound property coverage
+    - [x] ComboBox collection and optional scalar coverage (`items`, `selectedIndex`; ADR 0183)
+    - [ ] compound authoring values (`Widget.sizeConstraints`)
   - [x] component ownership/reference graph description
     - [x] description-local node identity and ordered ownership snapshot (ADR 0180)
     - [x] built-in Component-to-Component cross-reference edge coverage (ADR 0181)
@@ -308,8 +310,9 @@ Validation and design-time attributes remain future slices.
 - [ ] design-time validation metadata
 - [ ] IDE/tooling integration points
 
-Slice 9 covers `RadioButton.text` and `selected` (ADR 0179). `ComboBox.selectedIndex`
-remains an optional value tied to `items`, deferred to collection/compound/optional coverage.
+Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
+Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); future reconstruction
+must restore items before selectedIndex. Encoding and reconstruction remain open.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 

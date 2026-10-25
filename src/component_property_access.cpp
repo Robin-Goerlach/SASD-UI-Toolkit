@@ -1,6 +1,7 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/check_box.hpp>
 #include <sasd/ui/command.hpp>
+#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
@@ -447,6 +448,86 @@ bool writeBuiltInUnsignedIntegerProperty(
         return true;
     }
     return false;
+}
+
+std::optional<std::vector<std::string>> readBuiltInStringCollectionProperty(
+    const Component& component, const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::string_collection ||
+        property.declaring_type_id != "sasd.ui.ComboBox" || property.property_id != "items") {
+        return std::nullopt;
+    }
+    const auto* combo = dynamic_cast<const ComboBox*>(&component);
+    if (combo == nullptr) {
+        return std::nullopt;
+    }
+    std::vector<std::string> value;
+    value.reserve(combo->itemCount());
+    for (std::size_t index = 0; index < combo->itemCount(); ++index) {
+        value.emplace_back(combo->itemAt(index));
+    }
+    return value;
+}
+
+bool writeBuiltInStringCollectionProperty(
+    Component& component, const ComponentPropertyMetadata& property, std::vector<std::string> value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::string_collection ||
+        property.declaring_type_id != "sasd.ui.ComboBox" || property.property_id != "items") {
+        return false;
+    }
+    auto* combo = dynamic_cast<ComboBox*>(&component);
+    if (combo == nullptr) {
+        return false;
+    }
+    // Only the semantic setter owns selection clearing, invalidation and callback delivery.
+    // Its changed bool is not our access result. The callback may destroy combo: do not touch it.
+    (void)combo->setItems(std::move(value));
+    return true;
+}
+
+std::optional<std::optional<std::uint64_t>> readBuiltInOptionalUnsignedIntegerProperty(
+    const Component& component, const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::optional_unsigned_integer ||
+        property.declaring_type_id != "sasd.ui.ComboBox" || property.property_id != "selectedIndex") {
+        return std::nullopt;
+    }
+    const auto* combo = dynamic_cast<const ComboBox*>(&component);
+    if (combo == nullptr) {
+        return std::nullopt;
+    }
+    const auto index = combo->selectedIndex();
+    if (!index.has_value()) {
+        // Explicit in_place engages the access result while preserving semantic absence.
+        return std::optional<std::optional<std::uint64_t>>{std::in_place, std::nullopt};
+    }
+    if (!std::in_range<std::uint64_t>(*index)) {
+        return std::nullopt;
+    }
+    return std::optional<std::optional<std::uint64_t>>{
+        std::in_place, static_cast<std::uint64_t>(*index)};
+}
+
+bool writeBuiltInOptionalUnsignedIntegerProperty(
+    Component& component, const ComponentPropertyMetadata& property, std::optional<std::uint64_t> value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::optional_unsigned_integer ||
+        property.declaring_type_id != "sasd.ui.ComboBox" || property.property_id != "selectedIndex") {
+        return false;
+    }
+    auto* combo = dynamic_cast<ComboBox*>(&component);
+    if (combo == nullptr || (value.has_value() && !std::in_range<std::size_t>(*value))) {
+        return false;
+    }
+    std::optional<std::size_t> index;
+    if (value.has_value()) {
+        index = static_cast<std::size_t>(*value);
+    }
+    // Representation is checked here; item-count domain validation stays in the setter and its
+    // out_of_range propagates. Ignore changed bool and never touch combo after callback delivery.
+    (void)combo->setSelectedIndex(index);
+    return true;
 }
 
 } // namespace sasd::ui
