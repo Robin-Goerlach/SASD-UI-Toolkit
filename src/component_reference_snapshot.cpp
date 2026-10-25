@@ -5,10 +5,13 @@
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/list_view.hpp>
+#include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/tree_view.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
 
 #include <unordered_map>
 #include <utility>
@@ -83,7 +86,7 @@ captureBuiltInComponentReferenceGraphSnapshot(const Component& root) {
             return true;
         };
         // Typed getters enforce target compatibility. Explicit checks in enum order keep output
-        // deterministic, independent of hash iteration and of today's single-relation source types.
+        // deterministic, independent of hash iteration, including sources with multiple relations.
         if (const auto* button = dynamic_cast<const Button*>(component)) {
             if (!append(button->boundCommand(), BuiltInComponentReferenceKind::button_command)) {
                 return std::nullopt;
@@ -109,8 +112,47 @@ captureBuiltInComponentReferenceGraphSnapshot(const Component& root) {
                 return std::nullopt;
             }
         }
+        // A view and its selection model have independent model bindings. Preserve both rather
+        // than inferring one from the other or introducing a new model-equality invariant.
+        // Shared selection targets resolve to one existing node ID, never cloned state nodes.
+        if (const auto* view = dynamic_cast<const ListView*>(component)) {
+            if (!append(view->selectionModel(),
+                        BuiltInComponentReferenceKind::list_view_selection_model)) {
+                return std::nullopt;
+            }
+        }
+        if (const auto* view = dynamic_cast<const TableView*>(component)) {
+            if (!append(view->selectionModel(),
+                        BuiltInComponentReferenceKind::table_view_selection_model)) {
+                return std::nullopt;
+            }
+        }
+        if (const auto* view = dynamic_cast<const TreeView*>(component)) {
+            if (!append(view->selectionModel(),
+                        BuiltInComponentReferenceKind::tree_view_selection_model)) {
+                return std::nullopt;
+            }
+        }
+        if (const auto* selection = dynamic_cast<const ListSelectionModel*>(component)) {
+            if (!append(selection->model(),
+                        BuiltInComponentReferenceKind::list_selection_model_model)) {
+                return std::nullopt;
+            }
+        }
+        if (const auto* selection = dynamic_cast<const TableSelectionModel*>(component)) {
+            if (!append(selection->model(),
+                        BuiltInComponentReferenceKind::table_selection_model_model)) {
+                return std::nullopt;
+            }
+        }
+        if (const auto* selection = dynamic_cast<const TreeSelectionModel*>(component)) {
+            if (!append(selection->model(),
+                        BuiltInComponentReferenceKind::tree_selection_model_model)) {
+                return std::nullopt;
+            }
+        }
         // Ownership is already composed, not repeated as reference edges. RadioGroup selection
-        // derives from membership + selected properties; model data and SelectionModels stay out.
+        // derives from membership + selected properties; model data and current selection stay out.
     }
     return result;
 }

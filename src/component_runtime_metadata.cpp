@@ -10,14 +10,17 @@
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/list_model.hpp>
+#include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/table_model.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/table_view.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/tree_model.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
 #include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/widget.hpp>
@@ -103,6 +106,10 @@ const ComponentTypeMetadata* builtInComponentTypeOf(const Component& component) 
                                          "sasd.ui.StringListModel")) {
         return metadata;
     }
+    if (const auto* metadata = findExact(component, typeid(ListSelectionModel),
+                                         "sasd.ui.ListSelectionModel")) {
+        return metadata;
+    }
     if (const auto* metadata = findExact(component, typeid(ListView), "sasd.ui.ListView")) {
         return metadata;
     }
@@ -113,6 +120,10 @@ const ComponentTypeMetadata* builtInComponentTypeOf(const Component& component) 
                                          "sasd.ui.StringTableModel")) {
         return metadata;
     }
+    if (const auto* metadata = findExact(component, typeid(TableSelectionModel),
+                                         "sasd.ui.TableSelectionModel")) {
+        return metadata;
+    }
     if (const auto* metadata = findExact(component, typeid(TableView), "sasd.ui.TableView")) {
         return metadata;
     }
@@ -121,6 +132,10 @@ const ComponentTypeMetadata* builtInComponentTypeOf(const Component& component) 
     }
     if (const auto* metadata = findExact(component, typeid(StringTreeModel),
                                          "sasd.ui.StringTreeModel")) {
+        return metadata;
+    }
+    if (const auto* metadata = findExact(component, typeid(TreeSelectionModel),
+                                         "sasd.ui.TreeSelectionModel")) {
         return metadata;
     }
     if (const auto* metadata = findExact(component, typeid(TreeView), "sasd.ui.TreeView")) {

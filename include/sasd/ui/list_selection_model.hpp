@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/component.hpp>
 #include <sasd/ui/list_model.hpp>
 
 #include <cstddef>
@@ -23,8 +24,11 @@ struct ListSelectionChange final {
  * changed range is shifted to continue identifying the same surviving positional item; a selected row
  * inside a removed range is cleared. Reset and model destruction fail closed. This policy is specific
  * to positional list selection and is intentionally not presented as a universal selection model.
+ *
+ * Component supplies non-visual ownership/lifecycle only, not a universal selection contract.
+ * Current selection and observation state remain transient; description captures only wiring.
  */
-class ListSelectionModel final {
+class ListSelectionModel final : public Component {
 private:
     struct ObserverSlot;
     struct ObserverState;
@@ -68,7 +72,7 @@ public:
     };
 
     ListSelectionModel() = default;
-    ~ListSelectionModel();
+    ~ListSelectionModel() override;
 
     [[nodiscard]] ListModel* model() const noexcept { return model_.get(); }
     [[nodiscard]] std::uint64_t modelRevision() const noexcept {

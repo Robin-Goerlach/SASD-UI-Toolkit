@@ -278,8 +278,9 @@ existing built-in instances, and Slice 6 adds the owned snapshot foundation for 
 built-in properties. Slice 7 defines the serializable UI-description state coverage policy.
 Slice 8 adds numeric value kinds and the seven existing layout properties (ADR 0178).
 Slice 10 adds description-local node identity and ordered ownership snapshots (ADR 0180);
-Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). SelectionModel association
-policy remains open. Validation and design-time attributes remain future slices.
+Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). Slice 12 adds
+SelectionModel Component lifecycle and association coverage (ADR 0182).
+Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -296,10 +297,10 @@ policy remains open. Validation and design-time attributes remain future slices.
     - [x] numeric layout property foundation (signed/unsigned kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton scalar property coverage (`text`, `selected`)
   - [ ] collection/compound property coverage
-  - [ ] component ownership/reference graph description
+  - [x] component ownership/reference graph description
     - [x] description-local node identity and ordered ownership snapshot (ADR 0180)
     - [x] built-in Component-to-Component cross-reference edge coverage (ADR 0181)
-    - [ ] SelectionModel association policy
+    - [x] SelectionModel Component lifecycle and association coverage (ADR 0182)
   - [ ] persisted representation / encoding
   - [ ] deserialization / reconstruction
 - [ ] resource system

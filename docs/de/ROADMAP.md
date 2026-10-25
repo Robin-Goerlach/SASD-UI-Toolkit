@@ -286,8 +286,9 @@ Built-in-Instanzen und Slice 6 die besitzende Snapshot-Grundlage für aktuell ka
 Properties; Slice 7 definiert die Coverage-Policy für serialisierbaren UI-Description-Zustand.
 Slice 8 ergänzt numerische Value-Kinds und sieben bestehende Layout-Properties (ADR 0178).
 Slice 10 ergänzt beschreibungslokale Node-Identität und geordnete Ownership-Snapshots (ADR 0180);
-Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Die SelectionModel-
-Assoziationspolicy bleibt offen. Validierung und Design-Time-Attribute bleiben spätere Slices.
+Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Slice 12 ergänzt
+SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
+Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -304,10 +305,10 @@ Assoziationspolicy bleibt offen. Validierung und Design-Time-Attribute bleiben s
     - [x] Numerische Layout-Property-Grundlage (Signed-/Unsigned-Kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
   - [ ] Abdeckung von Collections/Compound-Properties
-  - [ ] Component-Ownership-/Reference-Graph-Beschreibung
+  - [x] Component-Ownership-/Reference-Graph-Beschreibung
     - [x] Beschreibungs-lokale Node-Identität und geordneter Ownership-Snapshot (ADR 0180)
     - [x] Built-in-Component-zu-Component-Cross-Reference-Edges (ADR 0181)
-    - [ ] SelectionModel-Assoziationspolicy
+    - [x] SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182)
   - [ ] Persistenzrepräsentation / Encoding
   - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System

@@ -174,7 +174,7 @@ RadioGroup-Mitgliedschaft bleibt eine persistente Graph-/Referenzbeziehung. Ein 
 impliziert keine rekonstruierbare Gruppensemantik: Mitgliedschaft/Reference Reconstruction und
 deren Reihenfolge bleiben zu definieren.
 
-Der aktuelle Katalog enthält 26 Built-in-Typen und neunzehn Property-Deskriptoren. ADR 0177
+Der aktuelle Katalog enthält 29 Built-in-Typen und neunzehn Property-Deskriptoren. ADR 0177
 enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
 ergänzt numerische Layout-Properties. Sechs Spacing-Properties (`HBox.spacing`, `VBox.spacing`,
 Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std::int64_t` als
@@ -205,14 +205,17 @@ Parent-Edges; siehe [ADR 0180](../adr/0180-m8-description-node-identity-ordered-
 ### Component-Reference-Graph-Snapshots
 
 `sasd/ui/component_reference_snapshot.hpp` komponiert den Ownership-Snapshot mit besitzenden Edges
-aus beschreibungslokalen Source-/Target-Node-IDs und fünf expliziten Kinds: Button -> Command,
-RadioButton -> RadioGroup und List/Table/Tree View -> Model. Jedes lebende Ziel muss im selben
-Ownership-Snapshot liegen; externe Ziele verwerfen den gesamten Capture. Null-/ungebundene/abgelaufene
+aus beschreibungslokalen Source-/Target-Node-IDs und elf expliziten Kinds: Button -> Command,
+RadioButton -> RadioGroup, List/Table/Tree View -> Model, View -> SelectionModel und
+SelectionModel -> Model. Jedes lebende Ziel muss im selben Ownership-Snapshot liegen; externe Ziele verwerfen den gesamten Capture. Null-/ungebundene/abgelaufene
 Getter erzeugen keine Edge. Pointer dienen nur temporärem Lookup und werden niemals persistiert.
 Edge-Reihenfolge folgt Source-Nodes und darin fester Kind-Reihenfolge. RadioGroup-Selection bleibt
-abgeleitet; Model-Payloads bleiben Application Data. SelectionModels sind keine Components und haben
-hier keine Nodes; ihre Assoziationspolicy bleibt offen. Encoding und Rekonstruktion bleiben spätere
-Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
+abgeleitet; Model-Payloads bleiben Application Data. SelectionModels sind getrennte non-visuelle
+Components ohne generische SelectionModel-Hierarchie.
+Normale Component-Ownership/-Identität erhält Sharing durch Node-IDs. View- und SelectionModel-Model-
+Bindings bleiben unabhängig, ohne neue Gleichheitsinvariante. Aktuelle Zeilen-/Zellen-/Node-Selection
+und Revision bleiben transient und ohne Scalar-Properties; siehe [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
+Encoding und Rekonstruktion bleiben spätere Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership
 

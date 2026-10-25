@@ -11,14 +11,17 @@
 #include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/list_model.hpp>
+#include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/table_model.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/table_view.hpp>
 #include <sasd/ui/text_field.hpp>
 #include <sasd/ui/tree_model.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
 #include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/widget.hpp>
@@ -64,10 +67,13 @@ TEST_CASE("runtime metadata identifies exact built-in component types") {
     FormLayout form_layout;
     StackLayout stack_layout;
     StringListModel list_model{{"one", "two"}};
+    ListSelectionModel list_selection;
     ListView list_view;
     StringTableModel table_model{{"Name"}, {{"Ada"}}};
+    TableSelectionModel table_selection;
     TableView table_view;
     StringTreeModel tree_model{{"root"}};
+    TreeSelectionModel tree_selection;
     TreeView tree_view;
 
     checkExactType(component, "sasd.ui.Component");
@@ -87,10 +93,13 @@ TEST_CASE("runtime metadata identifies exact built-in component types") {
     checkExactType(form_layout, "sasd.ui.FormLayout");
     checkExactType(stack_layout, "sasd.ui.StackLayout");
     checkExactType(list_model, "sasd.ui.StringListModel");
+    checkExactType(list_selection, "sasd.ui.ListSelectionModel");
     checkExactType(list_view, "sasd.ui.ListView");
     checkExactType(table_model, "sasd.ui.StringTableModel");
+    checkExactType(table_selection, "sasd.ui.TableSelectionModel");
     checkExactType(table_view, "sasd.ui.TableView");
     checkExactType(tree_model, "sasd.ui.StringTreeModel");
+    checkExactType(tree_selection, "sasd.ui.TreeSelectionModel");
     checkExactType(tree_view, "sasd.ui.TreeView");
 }
 

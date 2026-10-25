@@ -198,6 +198,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0179](0179-m8-radio-button-scalar-property-coverage.md) | M8 RadioButton Scalar Property Coverage | Accepted |
 | [0180](0180-m8-description-node-identity-ordered-ownership-snapshot.md) | M8 UI Description Node Identity and Ordered Ownership Snapshot Foundation | Accepted |
 | [0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) | M8 Built-in Component Cross-Reference Edge Snapshot Foundation | Accepted |
+| [0182](0182-m8-selection-model-component-lifecycle-and-reference-coverage.md) | M8 SelectionModel Component Lifecycle and Reference Coverage | Accepted |
 
 ## ADR policy
 

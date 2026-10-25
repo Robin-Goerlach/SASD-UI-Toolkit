@@ -11,6 +11,12 @@ enum class BuiltInComponentReferenceKind {
     list_view_model,
     table_view_model,
     tree_view_model,
+    list_view_selection_model,
+    table_view_selection_model,
+    tree_view_selection_model,
+    list_selection_model_model,
+    table_selection_model_model,
+    tree_selection_model_model,
 };
 
 /** Endpoints are description-local IDs in the containing graph's ownership snapshot. */
@@ -32,7 +38,8 @@ struct BuiltInComponentReferenceGraphSnapshot final {
  * capture returns std::nullopt. Null/unbound/expired getters produce no edge: runtime failure
  * history is not a durable relation. No runtime pointers escape. Allocation failures propagate.
  * Edges follow source node ID order, then the fixed reference-kind order declared above.
- * SelectionModels are not Components and have no node IDs; their association policy remains open.
+ * View/model and selection/model bindings are independent; capture imposes no equality invariant.
+ * SelectionModel identity/sharing uses ordinary Component nodes; current selection is excluded.
  * No model payloads, selectedButton back-reference, external IDs or reconstruction are provided.
  */
 [[nodiscard]] std::optional<BuiltInComponentReferenceGraphSnapshot>
