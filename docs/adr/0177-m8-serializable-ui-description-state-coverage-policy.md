@@ -68,7 +68,7 @@ implementation in this slice.
 |---|---|---:|---|---|
 | `Component` ownership | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | description-local node identities; reconstruction still open |
 | `Widget.visible`, `enabled`, `focusable` | persistent property | yes | bool, supported | existing scalar schema/access |
-| `Widget.sizeConstraints` | persistent compound candidate | yes | no | compound authoring value; defer until consumer |
+| `Widget.sizeConstraints` | persistent compound property | yes | size_constraints, supported (ADR 0184) | existing typed compound access/default/snapshot |
 | `Widget.parent` | structural relation | yes | checked adoption invariant (ADR 0180) | derived from current ownership adoption; no duplicate edge list |
 | `Widget.hasFocus`, pointer-over, measure validity, desired size, dirty flags | transient/derived | no | no | runtime and presentation rebuild |
 | `Widget.bounds` | derived layout state | no baseline | no | `arrange()` output; future free-form layout may define authoring geometry |
@@ -151,13 +151,18 @@ identified the following additional kinds (the first four are now implemented; s
 - unsigned integral: `GridLayout.columnCount`;
 - optional unsigned integral: `ComboBox.selectedIndex`;
 - string collection: `ComboBox.items`;
-- compound structure: potentially `Widget.sizeConstraints`; `TextStyle` needs separate style/resource policy;
 - references/graph edges: ownership/children, Button-to-Command, RadioButton-to-RadioGroup and
   view-to-model, view-to-selection-model and selection-model-to-model (ADR 0182).
 
 No generic `PropertyValue`, `std::variant` or `std::any` is introduced. Scalar/owned-value
-properties may use the property schema later; structures, references, resources and application data
-need separate architectural layers.
+properties use the typed property schema; references, resources and application data
+need their separate architectural layers.
+
+Slice 14 covers the last identified compound property, Widget.sizeConstraints, with the existing
+public SizeConstraints value and concrete size_constraints access/default/snapshot (ADR 0184).
+The public API review of all 29 built-ins found no further baseline persistent collection/compound
+gaps. TextStyle remains presentation/style/resource state. Bounds, desiredSize and measure validity
+remain derived; MeasureConstraints is parent runtime input, not a Widget property.
 
 ### Coverage-complete rule
 
@@ -250,12 +255,17 @@ View-Model-Referenzen sind davon getrennt. `TextStyle` ist Style/Resource und ni
 Zusätzlich zu den bei Slice 7 unterstützten `boolean`- und `string`-Kinds ergaben sich signed
 integral/Coordinate für Layout-Spacings, unsigned integral für `GridLayout.columnCount`, optional
 unsigned integral für `ComboBox.selectedIndex`, eine String-Collection für `ComboBox.items`,
-Compound-Strukturen für mögliche `Widget.sizeConstraints` (TextStyle bleibt Style-/Resource-Policy) sowie References/Graph
+den inzwischen konkreten Compound-Kind `size_constraints` für `Widget.sizeConstraints` sowie References/Graph
 Edges für Ownership, Bindings, Gruppen und Models. Slice 7 implementiert keinen dieser Kinds und
 führt kein generisches `PropertyValue`, `std::variant` oder `std::any` ein. Slice 8 unterstützt
 inzwischen `signed_integer` (`std::int64_t`) und `unsigned_integer` (`std::uint64_t`) für die sieben
 Layout-Properties der aktualisierten Matrix; siehe [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md).
-Optionale ComboBox-Indizes und String-Collections sind durch ADR 0183 abgedeckt; Compound-Werte bleiben offen. Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
+Optionale ComboBox-Indizes und String-Collections sind durch ADR 0183 abgedeckt; ADR 0184 ergänzt
+Widget.sizeConstraints als persistente Compound-Property mit typisiertem Access/Default/Snapshot
+des bestehenden Public Values. Der Abgleich aller 29 Built-ins ergab keine weitere persistente
+Collection-/Compound-Lücke der Baseline. TextStyle bleibt Presentation-/Style-/Resource-Zustand.
+Bounds, desiredSize und Measure-Validität bleiben abgeleitet; MeasureConstraints ist Parent-Runtime-
+Input, keine Widget-Property. Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
 
 ### Regel für vollständige Abdeckung
 

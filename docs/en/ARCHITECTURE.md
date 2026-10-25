@@ -91,14 +91,14 @@ third-party registration. `Component` remains free of a virtual `typeId()` refle
 
 The separate `sasd/ui/component_property_metadata.hpp` layer describes a small immutable schema for
 selected built-in component types. `ComponentPropertyMetadata` carries a stable local property ID,
-its direct declaring type ID and one of six concrete semantic kinds: `boolean`, `string`,
-`signed_integer`, `unsigned_integer`, `string_collection` or `optional_unsigned_integer`. Directly declared properties are queried independently from the
+its direct declaring type ID and one of seven concrete semantic kinds: `boolean`, `string`,
+`signed_integer`, `unsigned_integer`, `string_collection`, `optional_unsigned_integer` or `size_constraints`. Directly declared properties are queried independently from the
 type catalog; inherited lookup follows the
 existing direct `base_type_id` chain and returns the original declaring descriptor. No property is
 duplicated into a derived type.
 
 This remains schema metadata only. The separate `sasd/ui/component_property_access.hpp` layer
-provides twelve explicit typed read/write functions for the
+provides fourteen explicit typed read/write functions for the
 currently catalogued built-ins.
 It validates descriptors by value, returns owned strings, uses the existing semantic getters/setters,
 and fails closed for unknown kinds, identities or incompatible Components. Writes report access
@@ -106,6 +106,13 @@ success rather than value change. The access layer uses internal safe RTTI check
 RTTI names or runtime type-enumeration contract. It adds no `std::variant`, `std::any`, `void*`,
 getter/setter pointers, mutable registry, defaults, validation, serialization or third-party
 registration, and remains backend-neutral.
+
+M8 Slice 14 adds `Widget.sizeConstraints` as one concrete typed compound property ([ADR 0184](../adr/0184-m8-widget-size-constraints-compound-property-coverage.md)).
+Access, defaults and owned snapshots reuse the public backend-neutral `SizeConstraints` value directly;
+there is no generic compound abstraction. The atomic semantic setter owns range validation and
+measurement invalidation; same-value access succeeds, domain exceptions propagate, and preferred
+outside min/max or negative hints gain no additional restrictions. Bounds, desired size, measure
+validity and parent-provided MeasureConstraints remain outside the UI Description.
 
 ### Effective property defaults
 
@@ -122,8 +129,8 @@ the query. This layer adds no reset operation, validation, serialization or desi
 The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that
 combines exact runtime type identification, inherited property schema, semantic runtime access and
 effective defaults. `captureBuiltInComponentPropertySnapshot(const Component&)` owns the stable
-type ID, property identities and captured string values in six explicit collections: boolean, string, signed-integer, unsigned-integer,
-string-collection and optional-unsigned-integer properties. It enumerates the exact target's metadata chain from base to derived and keeps
+type ID, property identities and captured string values in seven explicit collections: boolean, string, signed-integer, unsigned-integer,
+string-collection, optional-unsigned-integer and size-constraints properties. It enumerates the exact target's metadata chain from base to derived and keeps
 the existing declaration order within each collection.
 
 The snapshot reads values only through the established runtime access layer and compares each value
@@ -134,7 +141,7 @@ runtime read or failed default lookup rejects the complete snapshot rather than 
 description.
 
 This is an owned snapshot of currently catalogued properties, not a complete Component or UI-tree
-description. The current twenty-one-property schema does not cover all semantic state of controls, models,
+description. The current twenty-two-property schema does not cover all semantic state of controls, models,
 layouts, bindings or ownership/visual children. No child recursion, ownership serialization,
 PropertyValue carrier, `std::variant`, `std::any`, persistence format, serializer or deserializer is
 introduced here; property-schema coverage remains independently extensible in later slices.
@@ -165,7 +172,7 @@ to `setText()`/`setSelected()`, preserving group exclusivity and callbacks. Radi
 remains a persistent graph/reference relation. A scalar snapshot does not imply reconstructable
 group semantics: membership/reference reconstruction and ordering must first be defined.
 
-The current catalog has 29 built-in types and twenty-one property descriptors. ADR 0177 records
+The current catalog has 29 built-in types and twenty-two property descriptors. ADR 0177 records
 the coverage matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md) adds
 numeric layout coverage. Six spacing properties (`HBox.spacing`, `VBox.spacing`, Grid/Form
 `columnSpacing` and `rowSpacing`) use `signed_integer` with `std::int64_t` tooling values;

@@ -200,6 +200,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) | M8 Built-in Component Cross-Reference Edge Snapshot Foundation | Accepted |
 | [0182](0182-m8-selection-model-component-lifecycle-and-reference-coverage.md) | M8 SelectionModel Component Lifecycle and Reference Coverage | Accepted |
 | [0183](0183-m8-combo-box-collection-and-optional-property-coverage.md) | M8 ComboBox Collection and Optional Property Coverage | Accepted |
+| [0184](0184-m8-widget-size-constraints-compound-property-coverage.md) | M8 Widget SizeConstraints Compound Property Coverage | Accepted |
 
 ## ADR policy
 

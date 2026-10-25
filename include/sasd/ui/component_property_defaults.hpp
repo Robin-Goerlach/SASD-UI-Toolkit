@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/geometry.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -52,6 +53,11 @@ namespace sasd::ui {
 /** Outer nullopt means invalid query; engaged outer and empty inner means the valid default none.
  * No sentinel index represents absence. Defaults never construct a Component. */
 [[nodiscard]] std::optional<std::optional<std::uint64_t>> builtInOptionalUnsignedIntegerPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
+
+/** Returns SizeConstraints{} for Widget and its built-in metadata descendants without construction.
+ * Unknown targets, incompatible descriptors and wrong kinds return nullopt. */
+[[nodiscard]] std::optional<SizeConstraints> builtInSizeConstraintsPropertyDefault(
     std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
 
 } // namespace sasd::ui

@@ -304,9 +304,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Abdeckung persistenter skalarer Properties
     - [x] Numerische Layout-Property-Grundlage (Signed-/Unsigned-Kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton-Scalar-Property-Abdeckung (`text`, `selected`)
-  - [ ] Abdeckung von Collections/Compound-Properties
+  - [x] Abdeckung von Collections/Compound-Properties
     - [x] ComboBox-Collection und optionaler Skalar (`items`, `selectedIndex`; ADR 0183)
-    - [ ] Compound-Authoring-Werte (`Widget.sizeConstraints`)
+    - [x] Widget.sizeConstraints als Compound-Authoring-Wert (ADR 0184)
   - [x] Component-Ownership-/Reference-Graph-Beschreibung
     - [x] Beschreibungs-lokale Node-Identität und geordneter Ownership-Snapshot (ADR 0180)
     - [x] Built-in-Component-zu-Component-Cross-Reference-Edges (ADR 0181)

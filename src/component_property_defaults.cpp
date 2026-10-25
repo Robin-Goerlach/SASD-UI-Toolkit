@@ -147,4 +147,17 @@ std::optional<std::optional<std::uint64_t>> builtInOptionalUnsignedIntegerProper
     return std::nullopt;
 }
 
+std::optional<SizeConstraints> builtInSizeConstraintsPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept {
+    if (findBuiltInComponentType(target_type_id) == nullptr ||
+        property.value_kind != ComponentPropertyValueKind::size_constraints ||
+        property.declaring_type_id != "sasd.ui.Widget" || property.property_id != "sizeConstraints" ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    // Inherited lookup establishes Widget compatibility. No built-in constructor overrides these
+    // hints, so reuse the public value's default instead of constructing widgets or duplicating it.
+    return SizeConstraints{};
+}
+
 } // namespace sasd::ui

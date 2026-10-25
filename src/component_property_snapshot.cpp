@@ -162,6 +162,21 @@ captureBuiltInComponentPropertySnapshot(const Component& component) {
                 });
                 break;
             }
+            case ComponentPropertyValueKind::size_constraints: {
+                const auto value = readBuiltInSizeConstraintsProperty(component, property);
+                const auto effective_default =
+                    builtInSizeConstraintsPropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                // Capture semantic hints only. Bounds, desired size and measurement validity are
+                // derived runtime state and must be recomputed rather than persisted.
+                snapshot.size_constraints_properties.push_back({
+                    std::string{property.declaring_type_id}, std::string{property.property_id},
+                    *value, *value == *effective_default,
+                });
+                break;
+            }
             default:
                 return std::nullopt;
             }
