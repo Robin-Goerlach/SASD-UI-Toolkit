@@ -105,15 +105,19 @@ implementation in this slice.
 | `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access; rows derive from child order |
 | `StackLayout` layer order | persistent structural relation | yes | ordered ownership snapshot foundation (ADR 0180) | component/adoption order; no scalar configuration currently |
 | `ListModel`/`TableModel`/`TreeModel` contract | reference target, not payload | no as property | target nodes/edges (ADRs 0180/0181) | exact built-in type; no model payload |
+| SelectionModels: current selected row/cell/node, previous selection, revision, observers/subscriptions | transient/application runtime | no | excluded | associations persist independently; no selection properties |
 | String model contents | application data | no baseline | no | later data/resource policy; never implicit layout data |
 | `ListView` -> `ListModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
-| `ListView` -> `ListSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
+| `ListView` -> `ListSelectionModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | shared Component target; no current selection |
+| `ListSelectionModel` -> `ListModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | independent model binding; self-contained live target |
 | `ListView` viewport/current selection | transient/application runtime | no | no | navigation and selection are session/application state |
 | `TableView` -> `TableModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
-| `TableView` -> `TableSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
+| `TableView` -> `TableSelectionModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | shared Component target; no current selection |
+| `TableSelectionModel` -> `TableModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | independent model binding; self-contained live target |
 | `TableView` viewport/current selected cell | transient/application runtime | no | no | navigation and selection are session/application state |
 | `TreeView` -> `TreeModel` | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
-| `TreeView` -> `TreeSelectionModel` | persistent reference candidate | evaluate separately | no | separate reference policy; not scalar |
+| `TreeView` -> `TreeSelectionModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | shared Component target; no current selection |
+| `TreeSelectionModel` -> `TreeModel` | persistent reference relation | yes | reference edge snapshot (ADR 0182) | independent model binding; self-contained live target |
 | `TreeView` viewport/current selection/expanded paths | transient/application runtime | no | no | navigation, selection and expansion are session state |
 
 The model contract itself is not a property payload. View-to-model references are captured by the
@@ -125,8 +129,10 @@ Slice 10 adds description-local node identity and the ordered ownership snapshot
 conceptually distinct: current Container adoption derives it, and capture checks consistency without
 storing duplicate edges. Slice 11 captures Button -> Command, RadioButton -> RadioGroup and all three
 View -> Model relations as self-contained live reference edges
-([ADR 0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md)). SelectionModels
-are not Components and have no node IDs; their association policy remains open.
+([ADR 0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md)).
+Slice 12 makes SelectionModels non-visual Components and captures View -> SelectionModel and
+SelectionModel -> Model using the same Node IDs ([ADR 0182](0182-m8-selection-model-component-lifecycle-and-reference-coverage.md)).
+Sharing and independent model bindings are preserved; current selection remains transient.
 RadioGroup.selectedButton remains derived; model payloads remain application data. Neither property
 nor reference/ownership snapshot success implies complete UI-description coverage or reconstruction.
 
@@ -143,7 +149,7 @@ identified the following additional kinds (the first two are now implemented):
 - string collection: `ComboBox.items`;
 - compound structure: potentially `Widget.sizeConstraints` and `TextStyle`;
 - references/graph edges: ownership/children, Button-to-Command, RadioButton-to-RadioGroup and
-  view-to-model (with selection-model associations evaluated separately).
+  view-to-model, view-to-selection-model and selection-model-to-model (ADR 0182).
 
 No generic `PropertyValue`, `std::variant` or `std::any` is introduced. Scalar/owned-value
 properties may use the property schema later; structures, references, resources and application data
@@ -171,7 +177,8 @@ Serialization remains open. At the Slice-7 baseline, the recommended next techni
 **M8 Slice 8 – Numeric Property Value-Kind Foundation**, starting with existing layout consumers: `HBox`/`VBox` spacing,
 `GridLayout` column count/spacing and `FormLayout` spacing. This unlocks several authoring
 properties independently of reference reconstruction. RadioButton bool/string coverage was completed
-separately in Slice 9 (ADR 0179); group membership remains technically uncovered. Slice 7 implements no
+separately in Slice 9 (ADR 0179); group membership is now covered by ADR 0181 and SelectionModel
+associations by ADR 0182. Slice 7 itself implements no
 new property kind, property, collection, compound, reference, serializer or deserializer.
 
 ## Deutsch
@@ -215,11 +222,13 @@ umfasst non-visuelle Components. Visuelles Parenting bleibt konzeptionell getren
 Container-Adoption leitet es ab und Capture prüft Konsistenz ohne doppelte Edges. Slice 11 erfasst
 Button -> Command, RadioButton -> RadioGroup und alle drei View -> Model als selbständig geschlossene
 lebende Reference-Edges ([ADR 0181](0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md)).
-SelectionModels sind keine Components und haben keine Node-IDs; ihre Assoziationspolicy bleibt offen.
+Slice 12 erfasst SelectionModels als non-visuelle Components und View -> SelectionModel sowie
+SelectionModel -> Model über dieselben Node-IDs ([ADR 0182](0182-m8-selection-model-component-lifecycle-and-reference-coverage.md)).
+Sharing und unabhängige Model-Bindings bleiben erhalten; aktuelle Selection bleibt transient.
 RadioGroup.selectedButton bleibt abgeleitet, Model-Payloads bleiben Application Data.
 Erfolgreiche Property-/Ownership-Snapshots bedeuten keine vollständige UI Description/Rekonstruktion.
 
-Die englische Matrix oben ist die verbindliche Zustandsabdeckung für alle aktuell 26 katalogisierten
+Die englische Matrix oben ist die verbindliche Zustandsabdeckung für alle aktuell 29 katalogisierten
 Built-ins. Sie klassifiziert `Widget`-Grund-Properties, `Window` ohne erfundene Title-/Chrome-
 Property, `Command`-Text/Enabled, Control-Texte und deklarative Zustände, Layout-Spacings,
 `ComboBox.items`/`selectedIndex`, View-Model-Referenzen sowie Ownership und Child-Reihenfolge.
@@ -236,7 +245,7 @@ Edges für Ownership, Bindings, Gruppen und Models. Slice 7 implementiert keinen
 führt kein generisches `PropertyValue`, `std::variant` oder `std::any` ein. Slice 8 unterstützt
 inzwischen `signed_integer` (`std::int64_t`) und `unsigned_integer` (`std::uint64_t`) für die sieben
 Layout-Properties der aktualisierten Matrix; siehe [ADR 0178](0178-m8-numeric-property-value-kind-foundation.md).
-Optionale Werte, Collections, Compound-Werte und References bleiben offen.
+Optionale Werte, Collections und Compound-Werte bleiben offen; Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
 
 ### Regel für vollständige Abdeckung
 
@@ -253,7 +262,8 @@ dokumentieren; stille Lücken sind unzulässig.
 Die Serialisierung bleibt offen. Zum Stand von Slice 7 wurde **M8 Slice 8 – Numeric
 Property Value-Kind Foundation** empfohlen, zunächst für die realen Layout-Consumer `HBox`/`VBox`,
 `GridLayout` und `FormLayout`. Die RadioButton-Properties wurden separat in Slice 9 abgedeckt (ADR 0179);
-Gruppenmitgliedschaft bleibt technisch offen. Slice 7 beginnt keinen
+Gruppenmitgliedschaft ist inzwischen durch ADR 0181 und SelectionModel-Assoziationen durch ADR 0182
+abgedeckt. Slice 7 selbst beginnt keinen
 Serializer, keine Collections, Compound-Werte, References oder Deserialisierung.
 
 ## Implementation and validation record

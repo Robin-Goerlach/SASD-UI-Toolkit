@@ -11,6 +11,7 @@
 #include <sasd/ui/component_ownership_snapshot.hpp>
 #include <sasd/ui/component_reference_snapshot.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/text_field.hpp>
@@ -42,6 +43,12 @@ const char* referenceKindName(sasd::ui::BuiltInComponentReferenceKind kind) noex
     case Kind::list_view_model: return "list_view_model";
     case Kind::table_view_model: return "table_view_model";
     case Kind::tree_view_model: return "tree_view_model";
+    case Kind::list_view_selection_model: return "list_view_selection_model";
+    case Kind::table_view_selection_model: return "table_view_selection_model";
+    case Kind::tree_view_selection_model: return "tree_view_selection_model";
+    case Kind::list_selection_model_model: return "list_selection_model_model";
+    case Kind::table_selection_model_model: return "table_selection_model_model";
+    case Kind::tree_selection_model_model: return "tree_selection_model_model";
     }
     return "unknown";
 }
@@ -194,7 +201,14 @@ int main() {
     auto& group = root.emplace<sasd::ui::RadioGroup>();
     root.emplace<sasd::ui::RadioButton>(group, "Choice");
     auto& model = root.emplace<sasd::ui::StringListModel>();
-    root.emplace<sasd::ui::ListView>().setModel(&model);
+    auto& selection = root.emplace<sasd::ui::ListSelectionModel>();
+    selection.setModel(&model);
+    auto& view = root.emplace<sasd::ui::ListView>();
+    view.setModel(&model);
+    view.setSelectionModel(&selection);
+    auto& sharedView = root.emplace<sasd::ui::ListView>();
+    sharedView.setModel(&model);
+    sharedView.setSelectionModel(&selection);
     auto& box = root.emplace<sasd::ui::VBox>();
     box.emplace<sasd::ui::Label>("Name");
     box.emplace<sasd::ui::TextField>();

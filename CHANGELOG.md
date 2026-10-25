@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 12: List/Table/Tree SelectionModels now participate in non-visual Component lifecycle
+  with three stable built-in type IDs, ordinary ownership/node identity and empty scalar snapshots.
+  View-to-SelectionModel and SelectionModel-to-Model reference edges preserve sharing and independent
+  bindings. Selected row/cell/node remains transient; no generic SelectionModel abstraction is
+  introduced. External live targets fail closed; null/expired targets produce no edge (ADR 0182).
+
 - M8 Slice 11: owned Component cross-reference edge snapshots compose the ownership snapshot with
   Button/Command, RadioButton/RadioGroup and List/Table/Tree View-to-Model edges using local node IDs.
   External live targets fail closed; null and expired targets produce no edge. SelectionModel

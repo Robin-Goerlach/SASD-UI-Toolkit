@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sasd/ui/component.hpp>
 #include <sasd/ui/tree_model.hpp>
 
 #include <functional>
@@ -21,8 +22,11 @@ struct TreeSelectionChange final {
  * Selection is separate from keyboard focus and observes, but never owns, a TreeModel. Paths remain
  * valid only for the current model revision; reset and model destruction clear selection. A content
  * change keeps selection because it does not change positional identity.
+ *
+ * Component supplies non-visual ownership/lifecycle only, not a universal selection contract.
+ * Current selection and observation state remain transient; description captures only wiring.
  */
-class TreeSelectionModel final {
+class TreeSelectionModel final : public Component {
 private:
     struct ObserverSlot;
     struct ObserverState;
@@ -66,7 +70,7 @@ public:
     };
 
     TreeSelectionModel() = default;
-    ~TreeSelectionModel();
+    ~TreeSelectionModel() override;
 
     void setModel(TreeModel* model);
     [[nodiscard]] TreeModel* model() const noexcept { return model_.get(); }

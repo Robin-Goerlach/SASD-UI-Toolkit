@@ -165,7 +165,7 @@ to `setText()`/`setSelected()`, preserving group exclusivity and callbacks. Radi
 remains a persistent graph/reference relation. A scalar snapshot does not imply reconstructable
 group semantics: membership/reference reconstruction and ordering must first be defined.
 
-The current catalog has 26 built-in types and nineteen property descriptors. ADR 0177 records
+The current catalog has 29 built-in types and nineteen property descriptors. ADR 0177 records
 the coverage matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md) adds
 numeric layout coverage. Six spacing properties (`HBox.spacing`, `VBox.spacing`, Grid/Form
 `columnSpacing` and `rowSpacing`) use `signed_integer` with `std::int64_t` tooling values;
@@ -194,12 +194,15 @@ visual-parent edge list; see [ADR 0180](../adr/0180-m8-description-node-identity
 ### Component reference graph snapshots
 
 `sasd/ui/component_reference_snapshot.hpp` composes the ownership snapshot with owned edges using
-description-local source/target Node IDs and five explicit kinds: Button -> Command, RadioButton ->
-RadioGroup and List/Table/Tree View -> Model. Every live target must belong to the same ownership
-snapshot; external targets reject the entire capture. Null/unbound/expired getters produce no edge.
+description-local source/target Node IDs and eleven explicit kinds: Button -> Command, RadioButton ->
+RadioGroup, List/Table/Tree View -> Model, View -> SelectionModel and SelectionModel -> Model.
+Every live target must belong to the same ownership snapshot; external targets reject the entire capture. Null/unbound/expired getters produce no edge.
 Pointers exist only during lookup and are never persisted. Edge order follows source nodes, then
 fixed kind order. RadioGroup selection remains derived; model payloads stay Application Data.
-SelectionModels are not Components and have no nodes here; their association policy remains open.
+SelectionModels are separate non-visual Components, with no generic SelectionModel hierarchy.
+Normal Component ownership/identity preserves sharing through Node IDs. View and SelectionModel
+model bindings remain independent; capture imposes no equality invariant. Current selected row/cell/node
+and revision remain transient and have no scalar properties; see [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
 Encoding and reconstruction remain future work; see [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership

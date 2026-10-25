@@ -9,7 +9,7 @@ namespace {
 // compilers, the direct base references make omissions and accidental hierarchy changes visible in
 // review. The array is immutable and uses only string literals, so lookups need no allocation or
 // registration-time initialization.
-constexpr std::array<ComponentTypeMetadata, 26> built_in_types{{
+constexpr std::array<ComponentTypeMetadata, 29> built_in_types{{
     {"sasd.ui.Component", "", ComponentTypeKind::component},
     {"sasd.ui.Widget", "sasd.ui.Component", ComponentTypeKind::widget},
     {"sasd.ui.Container", "sasd.ui.Widget", ComponentTypeKind::container},
@@ -29,14 +29,17 @@ constexpr std::array<ComponentTypeMetadata, 26> built_in_types{{
     {"sasd.ui.StackLayout", "sasd.ui.Container", ComponentTypeKind::container},
     {"sasd.ui.ListModel", "sasd.ui.Component", ComponentTypeKind::component},
     {"sasd.ui.StringListModel", "sasd.ui.ListModel", ComponentTypeKind::component},
+    {"sasd.ui.ListSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     {"sasd.ui.ListView", "sasd.ui.Widget", ComponentTypeKind::widget},
     {"sasd.ui.TableModel", "sasd.ui.Component", ComponentTypeKind::component},
     {"sasd.ui.StringTableModel", "sasd.ui.TableModel", ComponentTypeKind::component},
+    {"sasd.ui.TableSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     {"sasd.ui.TableView", "sasd.ui.Widget", ComponentTypeKind::widget},
     {"sasd.ui.TreeModel", "sasd.ui.Component", ComponentTypeKind::component},
     // StringTreeModel is intentionally included: concrete built-in model types are part of the
     // catalog just like concrete widgets, even though they are not visual components.
     {"sasd.ui.StringTreeModel", "sasd.ui.TreeModel", ComponentTypeKind::component},
+    {"sasd.ui.TreeSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     {"sasd.ui.TreeView", "sasd.ui.Widget", ComponentTypeKind::widget},
 }};
 

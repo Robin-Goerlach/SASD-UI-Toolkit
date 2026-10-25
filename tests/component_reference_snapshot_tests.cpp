@@ -5,10 +5,13 @@
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/label.hpp>
+#include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/table_selection_model.hpp>
 #include <sasd/ui/table_view.hpp>
+#include <sasd/ui/tree_selection_model.hpp>
 #include <sasd/ui/tree_view.hpp>
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
@@ -254,4 +257,256 @@ TEST_CASE("Reference graph preserves ownership rejection for unknown derived and
     root.emplace<Button>().bindCommand(command);
     root.emplace<UnknownWidget>();
     CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+}
+
+TEST_CASE("Reference graph List SelectionModel captures complete wiring without current selection") {
+    std::optional<BuiltInComponentReferenceGraphSnapshot> graph;
+    {
+        Window root;
+        auto& model = root.emplace<StringListModel>(std::vector<std::string>{"data"});
+        auto& selection = root.emplace<ListSelectionModel>();
+        auto& view = root.emplace<ListView>();
+        selection.setModel(&model);
+        view.setModel(&model);
+        view.setSelectionModel(&selection);
+        CHECK(selection.select(0));
+        CHECK(selection.owner() == &root);
+        CHECK(root.componentCount() == 3);
+        CHECK(root.childCount() == 1);
+        CHECK(&root.componentAt(1) == &selection);
+        // Direct property capture is valid even with a live selection; no scalar state leaks out.
+        const auto properties = captureBuiltInComponentPropertySnapshot(selection);
+        CHECK(properties.has_value());
+        CHECK(properties->type_id == "sasd.ui.ListSelectionModel");
+        CHECK(properties->boolean_properties.empty());
+        CHECK(properties->string_properties.empty());
+        CHECK(properties->signed_integer_properties.empty());
+        CHECK(properties->unsigned_integer_properties.empty());
+        graph = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(graph.has_value());
+        const auto again = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(again.has_value());
+        CHECK(again->reference_edges.size() == 3);
+        checkEdge(again->reference_edges[1], 3, 1, Kind::list_view_model);
+        checkEdge(again->reference_edges[2], 3, 2, Kind::list_view_selection_model);
+    }
+    // All nodes/types/wiring survive runtime destruction; selection values have no representation.
+    CHECK(graph->ownership.nodes.size() == 4);
+    CHECK(graph->ownership.nodes[0].owned_component_ids ==
+          std::vector<ComponentDescriptionNodeId>({1, 2, 3}));
+    checkNoPayload(graph->ownership.nodes[1], "sasd.ui.StringListModel");
+    checkNoPayload(graph->ownership.nodes[2], "sasd.ui.ListSelectionModel");
+    CHECK(graph->ownership.nodes[3].properties.type_id == "sasd.ui.ListView");
+    CHECK(graph->reference_edges.size() == 3);
+    checkEdge(graph->reference_edges[0], 2, 1, Kind::list_selection_model_model);
+    checkEdge(graph->reference_edges[1], 3, 1, Kind::list_view_model);
+    checkEdge(graph->reference_edges[2], 3, 2, Kind::list_view_selection_model);
+}
+
+TEST_CASE("Reference graph List SelectionModel rejects external and omits expired targets") {
+    Window root;
+    auto& selection = root.emplace<ListSelectionModel>();
+    auto& view = root.emplace<ListView>();
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        ListSelectionModel external;
+        view.setSelectionModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        StringListModel external;
+        selection.setModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(selection.model() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    view.setSelectionModel(&selection);
+    // Release via the ordinary Component API, then destroy: existing safe references must expire.
+    auto released = root.release(selection);
+    CHECK(released->owner() == nullptr);
+    CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    released.reset();
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+}
+
+TEST_CASE("Reference graph Table SelectionModel captures complete wiring without current selection") {
+    std::optional<BuiltInComponentReferenceGraphSnapshot> graph;
+    {
+        Window root;
+        auto& model = root.emplace<StringTableModel>(std::vector<std::string>{"Column"}, std::vector<std::vector<std::string>>{{"data"}});
+        auto& selection = root.emplace<TableSelectionModel>();
+        auto& view = root.emplace<TableView>();
+        selection.setModel(&model);
+        view.setModel(&model);
+        view.setSelectionModel(&selection);
+        CHECK(selection.select(0, 0));
+        CHECK(selection.owner() == &root);
+        CHECK(root.componentCount() == 3);
+        CHECK(root.childCount() == 1);
+        CHECK(&root.componentAt(1) == &selection);
+        // Direct property capture is valid even with a live selection; no scalar state leaks out.
+        const auto properties = captureBuiltInComponentPropertySnapshot(selection);
+        CHECK(properties.has_value());
+        CHECK(properties->type_id == "sasd.ui.TableSelectionModel");
+        CHECK(properties->boolean_properties.empty());
+        CHECK(properties->string_properties.empty());
+        CHECK(properties->signed_integer_properties.empty());
+        CHECK(properties->unsigned_integer_properties.empty());
+        graph = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(graph.has_value());
+        const auto again = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(again.has_value());
+        CHECK(again->reference_edges.size() == 3);
+        checkEdge(again->reference_edges[1], 3, 1, Kind::table_view_model);
+        checkEdge(again->reference_edges[2], 3, 2, Kind::table_view_selection_model);
+    }
+    // All nodes/types/wiring survive runtime destruction; selection values have no representation.
+    CHECK(graph->ownership.nodes.size() == 4);
+    CHECK(graph->ownership.nodes[0].owned_component_ids ==
+          std::vector<ComponentDescriptionNodeId>({1, 2, 3}));
+    checkNoPayload(graph->ownership.nodes[1], "sasd.ui.StringTableModel");
+    checkNoPayload(graph->ownership.nodes[2], "sasd.ui.TableSelectionModel");
+    CHECK(graph->ownership.nodes[3].properties.type_id == "sasd.ui.TableView");
+    CHECK(graph->reference_edges.size() == 3);
+    checkEdge(graph->reference_edges[0], 2, 1, Kind::table_selection_model_model);
+    checkEdge(graph->reference_edges[1], 3, 1, Kind::table_view_model);
+    checkEdge(graph->reference_edges[2], 3, 2, Kind::table_view_selection_model);
+}
+
+TEST_CASE("Reference graph Table SelectionModel rejects external and omits expired targets") {
+    Window root;
+    auto& selection = root.emplace<TableSelectionModel>();
+    auto& view = root.emplace<TableView>();
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        TableSelectionModel external;
+        view.setSelectionModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        StringTableModel external;
+        selection.setModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(selection.model() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    view.setSelectionModel(&selection);
+    // Release via the ordinary Component API, then destroy: existing safe references must expire.
+    auto released = root.release(selection);
+    CHECK(released->owner() == nullptr);
+    CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    released.reset();
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+}
+
+TEST_CASE("Reference graph Tree SelectionModel captures complete wiring without current selection") {
+    std::optional<BuiltInComponentReferenceGraphSnapshot> graph;
+    {
+        Window root;
+        auto& model = root.emplace<StringTreeModel>(std::vector<std::string>{"data"});
+        auto& selection = root.emplace<TreeSelectionModel>();
+        auto& view = root.emplace<TreeView>();
+        selection.setModel(&model);
+        view.setModel(&model);
+        view.setSelectionModel(&selection);
+        CHECK(selection.select(TreeNodePath{{0}}));
+        CHECK(selection.owner() == &root);
+        CHECK(root.componentCount() == 3);
+        CHECK(root.childCount() == 1);
+        CHECK(&root.componentAt(1) == &selection);
+        // Direct property capture is valid even with a live selection; no scalar state leaks out.
+        const auto properties = captureBuiltInComponentPropertySnapshot(selection);
+        CHECK(properties.has_value());
+        CHECK(properties->type_id == "sasd.ui.TreeSelectionModel");
+        CHECK(properties->boolean_properties.empty());
+        CHECK(properties->string_properties.empty());
+        CHECK(properties->signed_integer_properties.empty());
+        CHECK(properties->unsigned_integer_properties.empty());
+        graph = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(graph.has_value());
+        const auto again = captureBuiltInComponentReferenceGraphSnapshot(root);
+        CHECK(again.has_value());
+        CHECK(again->reference_edges.size() == 3);
+        checkEdge(again->reference_edges[1], 3, 1, Kind::tree_view_model);
+        checkEdge(again->reference_edges[2], 3, 2, Kind::tree_view_selection_model);
+    }
+    // All nodes/types/wiring survive runtime destruction; selection values have no representation.
+    CHECK(graph->ownership.nodes.size() == 4);
+    CHECK(graph->ownership.nodes[0].owned_component_ids ==
+          std::vector<ComponentDescriptionNodeId>({1, 2, 3}));
+    checkNoPayload(graph->ownership.nodes[1], "sasd.ui.StringTreeModel");
+    checkNoPayload(graph->ownership.nodes[2], "sasd.ui.TreeSelectionModel");
+    CHECK(graph->ownership.nodes[3].properties.type_id == "sasd.ui.TreeView");
+    CHECK(graph->reference_edges.size() == 3);
+    checkEdge(graph->reference_edges[0], 2, 1, Kind::tree_selection_model_model);
+    checkEdge(graph->reference_edges[1], 3, 1, Kind::tree_view_model);
+    checkEdge(graph->reference_edges[2], 3, 2, Kind::tree_view_selection_model);
+}
+
+TEST_CASE("Reference graph Tree SelectionModel rejects external and omits expired targets") {
+    Window root;
+    auto& selection = root.emplace<TreeSelectionModel>();
+    auto& view = root.emplace<TreeView>();
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        TreeSelectionModel external;
+        view.setSelectionModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    {
+        StringTreeModel external;
+        selection.setModel(&external);
+        CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    }
+    CHECK(selection.model() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+    view.setSelectionModel(&selection);
+    // Release via the ordinary Component API, then destroy: existing safe references must expire.
+    auto released = root.release(selection);
+    CHECK(released->owner() == nullptr);
+    CHECK(!captureBuiltInComponentReferenceGraphSnapshot(root));
+    released.reset();
+    CHECK(view.selectionModel() == nullptr);
+    CHECK(captureBuiltInComponentReferenceGraphSnapshot(root)->reference_edges.empty());
+}
+
+TEST_CASE("Reference graph preserves shared SelectionModel identity and independent model bindings") {
+    Window root;
+    // Put views before targets to exercise forward references and within-source kind order.
+    auto& first = root.emplace<ListView>(); // 1
+    auto& second = root.emplace<ListView>(); // 2
+    auto& modelA = root.emplace<StringListModel>(); // 3
+    auto& modelB = root.emplace<StringListModel>(); // 4
+    auto& selection = root.emplace<ListSelectionModel>(); // 5
+    selection.setModel(&modelA);
+    first.setModel(&modelA);
+    second.setModel(&modelA);
+    first.setSelectionModel(&selection);
+    second.setSelectionModel(&selection);
+    const auto shared = captureBuiltInComponentReferenceGraphSnapshot(root);
+    CHECK(shared.has_value());
+    CHECK(shared->ownership.nodes.size() == 6);
+    CHECK(shared->reference_edges.size() == 5);
+    checkEdge(shared->reference_edges[0], 1, 3, Kind::list_view_model);
+    checkEdge(shared->reference_edges[1], 1, 5, Kind::list_view_selection_model);
+    checkEdge(shared->reference_edges[2], 2, 3, Kind::list_view_model);
+    checkEdge(shared->reference_edges[3], 2, 5, Kind::list_view_selection_model);
+    checkEdge(shared->reference_edges[4], 5, 3, Kind::list_selection_model_model);
+    selection.setModel(&modelB);
+    CHECK(first.model() == &modelA);
+    CHECK(selection.model() == &modelB);
+    const auto mismatched = captureBuiltInComponentReferenceGraphSnapshot(root);
+    CHECK(mismatched.has_value());
+    CHECK(mismatched->reference_edges.size() == 5);
+    checkEdge(mismatched->reference_edges[0], 1, 3, Kind::list_view_model);
+    checkEdge(mismatched->reference_edges[1], 1, 5, Kind::list_view_selection_model);
+    checkEdge(mismatched->reference_edges[4], 5, 4, Kind::list_selection_model_model);
 }

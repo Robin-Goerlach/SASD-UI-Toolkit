@@ -17,7 +17,7 @@ struct ExpectedType final {
     ComponentTypeKind kind;
 };
 
-constexpr std::array<ExpectedType, 26> expected_types{{
+constexpr std::array<ExpectedType, 29> expected_types{{
     ExpectedType{"sasd.ui.Component", "", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.Widget", "sasd.ui.Component", ComponentTypeKind::widget},
     ExpectedType{"sasd.ui.Container", "sasd.ui.Widget", ComponentTypeKind::container},
@@ -37,12 +37,15 @@ constexpr std::array<ExpectedType, 26> expected_types{{
     ExpectedType{"sasd.ui.StackLayout", "sasd.ui.Container", ComponentTypeKind::container},
     ExpectedType{"sasd.ui.ListModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.StringListModel", "sasd.ui.ListModel", ComponentTypeKind::component},
+    ExpectedType{"sasd.ui.ListSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.ListView", "sasd.ui.Widget", ComponentTypeKind::widget},
     ExpectedType{"sasd.ui.TableModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.StringTableModel", "sasd.ui.TableModel", ComponentTypeKind::component},
+    ExpectedType{"sasd.ui.TableSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.TableView", "sasd.ui.Widget", ComponentTypeKind::widget},
     ExpectedType{"sasd.ui.TreeModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.StringTreeModel", "sasd.ui.TreeModel", ComponentTypeKind::component},
+    ExpectedType{"sasd.ui.TreeSelectionModel", "sasd.ui.Component", ComponentTypeKind::component},
     ExpectedType{"sasd.ui.TreeView", "sasd.ui.Widget", ComponentTypeKind::widget},
 }};
 
@@ -62,6 +65,7 @@ TEST_CASE("built-in component metadata catalog is explicit and complete") {
 
     for (std::size_t index = 0; index < catalog.size(); ++index) {
         CHECK(!catalog[index].type_id.empty());
+        CHECK(catalog[index].type_id == expected_types[index].type_id);
         for (std::size_t other = index + 1; other < catalog.size(); ++other) {
             CHECK(catalog[index].type_id != catalog[other].type_id);
         }
