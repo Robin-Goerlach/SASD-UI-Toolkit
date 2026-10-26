@@ -41,8 +41,9 @@ The baseline policy has seven categories:
 2. **Persistent structural/reference relation**: ownership, child order, visual parenting, command
    binding, group membership and model/reference relationships. These need identities and graph/tree
    reconstruction rules; they are not scalar properties.
-3. **Presentation/style/resource state**: durable authoring appearance such as `TextStyle`. It
-   is not transient, but belongs to a later style/resource policy.
+3. **Presentation/style/resource state**: current inline `TextStyle` is durable presentation
+   authoring value, technically covered by `text_style` (ADR 0185). Future resource-backed styling
+   remains separate and is not part of the current baseline snapshot.
 4. **Transient runtime/interaction state**: focus, hover, pressed/capture gestures, editing
    caret/selection, popup state, viewport/navigation, current selection and tree expansion. These
    are rebuilt during normal runtime and are excluded from a static UI Description.
@@ -77,21 +78,22 @@ implementation in this slice.
 | `Command.text`, `enabled` | persistent property | yes | string/bool, supported | existing scalar schema/access |
 | `Command` execution callback and observer state | executable/transient | no | no | callbacks are not serializable values |
 | `Label.text` | persistent property | yes | string, supported | existing scalar schema/access |
-| `Label.textStyle` | style/resource | potentially | no | later style/resource policy |
+| `Label.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
 | `Button.text` | persistent property | yes | string, supported | existing scalar schema/access |
 | `Button` -> `Command` binding | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
-| `Button.textStyle` | style/resource | potentially | no | later style/resource policy |
+| `Button.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
 | `Button.pressed`, pointer gesture | transient interaction | no | no | capture/gesture state is rebuilt |
 | `Button.onActivated` | executable behavior | no | no | no function persistence |
 | `TextField.text` | persistent property | yes | string, supported | existing scalar schema/access |
-| `TextField.textStyle` | style/resource | potentially | no | later style/resource policy |
+| `TextField.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
 | `TextField` cursor, selection, pointer gesture, clipboard operation | transient interaction | no | no | current editing/session state is rebuilt |
 | `CheckBox.text`, `checked` | persistent property | yes | string/bool, supported | existing scalar schema/access |
-| `CheckBox.textStyle` | style/resource | potentially | no | later style/resource policy |
+| `CheckBox.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
 | `CheckBox` pressed/gesture and callback | transient/executable | no | no | runtime gesture and callbacks excluded |
 | `RadioButton.text`, `selected` | persistent property | yes | string/bool, supported (ADR 0179) | scalar metadata/access/default/snapshot; grouped reconstruction order still required |
 | `RadioButton` -> `RadioGroup` membership | persistent reference relation | yes | reference edge snapshot (ADR 0181) | self-contained live target |
-| `RadioButton.textStyle`, selected callback | style/resource + executable | style potentially; callback no | no | style policy; callbacks excluded |
+| `RadioButton.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
+| `RadioButton` selected callback | executable | no | excluded | no callback persistence |
 | `RadioButton` pressed/gesture | transient interaction | no | no | rebuilt by runtime routing |
 | `RadioGroup` membership | persistent structural/reference relation | yes | RadioButton membership edges (ADR 0181) | `selectedButton` is derived, not independently persisted |
 | `RadioGroup.selectedButton` | derived group state | no as independent value | no | derive from membership; avoid two truths |
@@ -99,7 +101,8 @@ implementation in this slice.
 | `ComboBox.selectedIndex` | persistent optional scalar | yes | optional_unsigned_integer, supported (ADR 0183) | future reconstruction: items before selectedIndex |
 | `ComboBox.selectedText` | derived | no | no | derive from items and selected index |
 | `ComboBox` preview/open/pressed/pointer gesture | transient interaction | no | no | popup/capture state is rebuilt |
-| `ComboBox.textStyle` and callbacks | style/resource + executable | style potentially; callbacks no | no | style policy; no callback persistence |
+| `ComboBox.textStyle` | durable inline presentation authoring value | yes | text_style, supported (ADR 0185) | richer resource/theme system remains separate |
+| `ComboBox` callbacks | executable | no | excluded | no callback persistence |
 | `HBox.spacing`, `VBox.spacing` | persistent property | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access |
 | `GridLayout.columnCount`, `columnSpacing`, `rowSpacing` | persistent properties | yes | unsigned_integer / signed_integer, supported (ADR 0178) | existing scalar schema/access |
 | `FormLayout.columnSpacing`, `rowSpacing` | persistent properties | yes | signed_integer, supported (ADR 0178) | existing scalar schema/access; rows derive from child order |
@@ -161,8 +164,23 @@ need their separate architectural layers.
 Slice 14 covers the last identified compound property, Widget.sizeConstraints, with the existing
 public SizeConstraints value and concrete size_constraints access/default/snapshot (ADR 0184).
 The public API review of all 29 built-ins found no further baseline persistent collection/compound
-gaps. TextStyle remains presentation/style/resource state. Bounds, desiredSize and measure validity
+gaps. Slice 15 now covers current inline TextStyle via text_style (ADR 0185). Bounds, desiredSize and measure validity
 remain derived; MeasureConstraints is parent runtime input, not a Widget property.
+
+### Inline style boundary and current readiness (Slice 15)
+
+[ADR 0185](0185-m8-inline-text-style-authoring-persistence-coverage.md) closes current inline TextStyle coverage
+before encoding: this pointer-free public value needs no resource node or style identity. The six
+owning controls use public getters/setters, TextStyle{} defaults and owned value snapshots.
+Backend focus/disabled/selection overlays remain excluded. Future fonts, images, shared styles,
+theme tokens, RGB/alpha and resource dictionaries remain a separate open resource-system concern.
+Future durable Color encoding must be symbolic, never the current enum ordinal; spelling and
+unknown-value handling belong to the encoding ADR, with no Color string API introduced here.
+
+A fresh review of all 29 built-in public APIs (documented in ADR 0185) found no durable state missing
+both technical coverage and an explicit resource/application/executable/transient/derived category.
+Current built-in UI-description semantic coverage is ready for a persisted representation/encoding
+slice. Serialization is not complete; encoding and deserialization/reconstruction remain open.
 
 ### Coverage-complete rule
 
@@ -216,8 +234,8 @@ oder Backend-State-Dump. Der aktuelle Interaktionszustand muss nicht wiederherge
 Die Policy trennt sieben Kategorien: (1) persistente Properties für dauerhafte Konfiguration und
 semantischen Initialzustand; (2) persistente strukturelle/Referenz-Beziehungen für Ownership,
 Child-Reihenfolge, visuelles Parenting, Command-Binding, Group-Mitgliedschaft und Model-Referenzen;
-(3) dauerhafte Style-/Resource-Konfiguration wie `TextStyle`, die nicht transient ist, aber eine
-spätere Policy benötigt; (4) transiente Runtime-/Interaktionszustände wie Fokus, Hover,
+(3) dauerhafte inline Presentation-Authoring-Werte wie `TextStyle`, jetzt durch text_style
+erfasst (ADR 0185); zukünftiges Resource-basiertes Styling bleibt separat; (4) transiente Runtime-/Interaktionszustände wie Fokus, Hover,
 Pressed-/Capture-Gesten, Caret/Selection, Popup, Viewport, aktuelle Selection und Tree-Expansion;
 (5) abgeleitete Layout-/Presentation-Zustände wie Bounds, Desired Size, Measurement-Caches,
 Dirty-Flags, Popup-Geometrie, Frames, Snapshots und Native Handles; (6) Application Data,
@@ -250,7 +268,7 @@ Property, `Command`-Text/Enabled, Control-Texte und deklarative Zustände, Layou
 `Button`-Command-Binding und RadioGroup-Mitgliedschaft sind Referenzbeziehungen;
 `RadioGroup.selectedButton` ist abgeleitet und keine zweite Wahrheit. Viewport, aktuelle Selection
 und Tree-Expansion bleiben Runtime-/Session-State. Model-Inhalte bleiben Application Data;
-View-Model-Referenzen sind davon getrennt. `TextStyle` ist Style/Resource und nicht transient.
+View-Model-Referenzen sind davon getrennt. `TextStyle` ist dauerhafter inline Presentation-Authoring-Wert und durch text_style erfasst (ADR 0185).
 
 Zusätzlich zu den bei Slice 7 unterstützten `boolean`- und `string`-Kinds ergaben sich signed
 integral/Coordinate für Layout-Spacings, unsigned integral für `GridLayout.columnCount`, optional
@@ -263,9 +281,23 @@ Layout-Properties der aktualisierten Matrix; siehe [ADR 0178](0178-m8-numeric-pr
 Optionale ComboBox-Indizes und String-Collections sind durch ADR 0183 abgedeckt; ADR 0184 ergänzt
 Widget.sizeConstraints als persistente Compound-Property mit typisiertem Access/Default/Snapshot
 des bestehenden Public Values. Der Abgleich aller 29 Built-ins ergab keine weitere persistente
-Collection-/Compound-Lücke der Baseline. TextStyle bleibt Presentation-/Style-/Resource-Zustand.
+Collection-/Compound-Lücke der Baseline. Der heutige inline TextStyle ist durch ADR 0185 technisch erfasst; reichere Style-/Resource-Systeme bleiben separat.
 Bounds, desiredSize und Measure-Validität bleiben abgeleitet; MeasureConstraints ist Parent-Runtime-
 Input, keine Widget-Property. Reference-Edges sind durch ADRs 0181/0182 abgedeckt.
+
+### Inline-Style-Grenze und Readiness (Slice 15)
+
+ADR 0185 erfasst heutigen inline TextStyle als dauerhaften Authoring-Value vor dem Encoding,
+ohne Resource-Node oder Style-ID. Sechs Controls nutzen öffentliche Getter/Setter, TextStyle{}-
+Defaults und besitzende Snapshots. Backend-Overlays bleiben ausgeschlossen. Zukünftige Fonts,
+Images, Shared Styles, Theme-Tokens, RGB/Alpha und Resource-Dictionaries bleiben ein separates,
+offenes Resource-System. Dauerhaftes Color-Encoding muss symbolisch statt Enum-Ordinal sein;
+Schreibweise und unbekannte Werte entscheidet erst das Encoding-ADR, ohne neue Color-String-API.
+
+Der erneute Review aller 29 Built-in-Public-APIs (ADR 0185) fand keine weitere dauerhafte Lücke ohne
+technische Abdeckung oder explizite Resource-/Application-/Executable-/Transient-/Derived-Kategorie.
+Die heutige Built-in-Semantik ist für einen Persistenzrepräsentations-/Encoding-Slice bereit.
+Serialisierung ist nicht abgeschlossen: Encoding und Deserialisierung/Rekonstruktion bleiben offen.
 
 ### Regel für vollständige Abdeckung
 

@@ -160,4 +160,15 @@ std::optional<SizeConstraints> builtInSizeConstraintsPropertyDefault(
     return SizeConstraints{};
 }
 
+std::optional<TextStyle> builtInTextStylePropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept {
+    if (property.value_kind != ComponentPropertyValueKind::text_style ||
+        !isExactBuiltInProperty(target_type_id, property)) {
+        return std::nullopt;
+    }
+    // All six direct owning controls initialize the public value identically. Schema identity
+    // excludes siblings and unrelated targets; there is no style inheritance or constructor probe.
+    return TextStyle{};
+}
+
 } // namespace sasd::ui

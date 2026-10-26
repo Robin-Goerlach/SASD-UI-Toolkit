@@ -96,14 +96,14 @@ Die separate Schicht `sasd/ui/component_property_metadata.hpp` beschreibt ein kl
 unveränderliches Schema für ausgewählte Built-in-Komponententypen. `ComponentPropertyMetadata`
 enthält eine stabile lokale Property-ID, die ID des direkt deklarierenden Typs und den einfachen
 semantischen Werttyp `boolean`, `string`, `signed_integer`, `unsigned_integer`,
-`string_collection`, `optional_unsigned_integer` oder `size_constraints`. Direkt
+`string_collection`, `optional_unsigned_integer`, `size_constraints` oder `text_style`. Direkt
 deklarierte Properties werden unabhängig vom
 Typkatalog abgefragt; der geerbte Lookup folgt der vorhandenen direkten `base_type_id`-Kette und
 liefert den ursprünglichen deklarierenden Deskriptor zurück. Geerbte Properties werden nicht in
 abgeleiteten Typen dupliziert.
 
 Dies bleibt ausschließlich Schema-Metadaten. Die getrennte Schicht
-`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins vierzehn explizite
+`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins sechzehn explizite
 typisierte Read-/Write-Funktionen bereit. Sie validiert
 Deskriptoren semantisch, liefert
 besitzende Strings, benutzt die bestehenden semantischen Getter/Setter und arbeitet bei unbekannten
@@ -120,10 +120,19 @@ Validierung und Measurement-Invalidierung. Same-value-Zugriff gelingt, Domain-Ex
 Preferred außerhalb min/max und negative Hints erhalten keine zusätzliche Einschränkung. Bounds,
 Desired Size, Measure-Validität und Parent-MeasureConstraints bleiben außerhalb der UI Description.
 
+M8 Slice 15 erfasst inline `TextStyle` für genau Label, Button, TextField, CheckBox, RadioButton und
+ComboBox ([ADR 0185](../adr/0185-m8-inline-text-style-authoring-persistence-coverage.md)). Der konkrete `text_style`-
+Pfad nutzt den Public Value direkt mit TextStyle{}-Defaults, ohne Resource-Node oder Widget-weite Property. Writes ausschließlich
+über Setter erhalten Presentation-Invalidierung ohne Measurement-Invalidierung und Same-value-No-op.
+Keine Vererbung/Cascade; Backend-Fokus-/Disabled-/Selection-Overlays bleiben ausgeschlossen. Fonts,
+RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Dauerhaftes Color-Encoding muss symbolisch
+statt Enum-Ordinal sein; Encoding ist nicht implementiert. Der Review aller 29 Built-ins bestätigt
+Readiness der aktuellen Semantik für persistiertes Encoding; Serialisierung und Rekonstruktion fehlen.
+
 ### Effektive Property-Defaults
 
 Die getrennte Schicht `sasd/ui/component_property_defaults.hpp` beschreibt effektive Defaults für
-einen bekannten Built-in-Zieltyp. Defaults sind zieltypbezogen, weil geerbte Properties verschiedene
+einen bekannten Built-in-Zieltyp über acht typisierte Abfragefamilien. Defaults sind zieltypbezogen, weil geerbte Properties verschiedene
 Konstruktionspolitiken besitzen können: `Widget.focusable` ist für `Widget` und strukturelle Widgets
 false, während interaktive Built-ins den Wert auf true überschreiben. Die Abfrage validiert die
 vollständige Property-Identität über den geerbten Schema-Lookup und liefert für unbekannte oder
@@ -136,9 +145,9 @@ Validierung, Serialisierung oder Designer-Metadaten.
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der
 exakte Runtime-Typidentifikation, geerbtes Property-Schema, semantischen Runtime-Zugriff und
 effektive Defaults gemeinsam verwendet. `captureBuiltInComponentPropertySnapshot(const Component&)`
-besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in sieben expliziten
+besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in acht expliziten
 Collections für Boolean-, String-, Signed-Integer-, Unsigned-Integer-, String-Collection-,
-Optional-Unsigned-Integer- und Size-Constraints-Properties. Die Metadatenkette des exakten Zieltyps wird von
+Optional-Unsigned-Integer-, Size-Constraints- und Text-Style-Properties. Die Metadatenkette des exakten Zieltyps wird von
 der Basis zum Derived-Typ durchlaufen; innerhalb jeder Collection bleibt die bestehende deklarierte
 Reihenfolge erhalten.
 
@@ -150,7 +159,7 @@ Metadaten-Kette, fehlender Runtime-Read oder fehlender Default-Lookup lehnt den 
 Snapshot ab, statt einen partiellen Zustand zurückzugeben.
 
 Dies ist ein besitzender Snapshot der aktuell katalogisierten Properties, keine vollständige
-Component- oder UI-Tree-Beschreibung. Das aktuelle Zweiundzwanzig-Properties-Schema deckt nicht den gesamten
+Component- oder UI-Tree-Beschreibung. Das aktuelle Achtundzwanzig-Properties-Schema deckt nicht den gesamten
 semantischen Zustand von Controls, Models, Layouts, Bindings oder Ownership/visuellen Kindern ab.
 Keine Child-Rekursion, kein Ownership-Serializer, kein PropertyValue-Container, kein `std::variant`,
 `std::any`, Persistenzformat, Serializer oder Deserializer wird hier eingeführt; die Schema-Abdeckung
@@ -169,7 +178,8 @@ Property-Metadaten gepresst werden.
 Die Policy schließt Fokus, Hover, Pressed-/Capture-Gesten, Textauswahl/Caret, ComboBox-Popup und
 Preview, Viewports, aktuelle Selection, Tree-Expansion, Layout-Caches, arrangierte Bounds,
 Presentation-Snapshots und Backend-Handles ausdrücklich aus. `TextStyle` ist dauerhafter visueller
-Authoring-Zustand und nicht transient, gehört aber in eine spätere Style-/Resource-Policy.
+Authoring-Zustand und durch text_style inline erfasst (ADR 0185), nicht transient.
+Zukünftiges Resource-basiertes Styling bleibt separat.
 Model-Inhalte bleiben standardmäßig Application Data; die Model-Referenz einer View ist eine
 separate zukünftige Beziehung. Ein Slice-6-Snapshot erfasst nur aktuell katalogisierte Properties
 und niemals vollständige Component-Serialisierungsabdeckung. Vollständigkeit liegt erst vor, wenn
@@ -183,7 +193,7 @@ RadioGroup-Mitgliedschaft bleibt eine persistente Graph-/Referenzbeziehung. Ein 
 impliziert keine rekonstruierbare Gruppensemantik: Mitgliedschaft/Reference Reconstruction und
 deren Reihenfolge bleiben zu definieren.
 
-Der aktuelle Katalog enthält 29 Built-in-Typen und zweiundzwanzig Property-Deskriptoren. ADR 0177
+Der aktuelle Katalog enthält 29 Built-in-Typen und achtundzwanzig Property-Deskriptoren. ADR 0177
 enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
 ergänzt numerische Layout-Properties. Sechs Spacing-Properties (`HBox.spacing`, `VBox.spacing`,
 Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std::int64_t` als
@@ -194,7 +204,7 @@ unverändert. Die Property-Schicht dupliziert keine Domain-Validierung. Numerisc
 unveränderliche Konstanten: Spacing null außer Form-Spaltenabstand eins, Spaltenzahl eins.
 Default-Abfragen konstruieren keine Component. Numerische Snapshots besitzen getrennte
 `signed_integer_properties` und `unsigned_integer_properties`; jeder fehlende Read/Default verwirft
-den gesamten Snapshot. Compound-Authoring-Werte bleiben offen; Referenz-Edges nutzen ihre eigene Schicht. Kein
+den gesamten Snapshot. Heutige Compound-Authoring-Werte sind durch ADRs 0184/0185 erfasst; Referenz-Edges nutzen ihre eigene Schicht. Kein
 Serializer und kein generischer `PropertyValue`-Carrier wird eingeführt.
 
 M8 Slice 13 ergänzt konkrete Kinds `string_collection` / `optional_unsigned_integer` für ComboBox

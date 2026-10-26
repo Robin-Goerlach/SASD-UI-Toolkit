@@ -177,6 +177,21 @@ captureBuiltInComponentPropertySnapshot(const Component& component) {
                 });
                 break;
             }
+            case ComponentPropertyValueKind::text_style: {
+                const auto value = readBuiltInTextStyleProperty(component, property);
+                const auto effective_default =
+                    builtInTextStylePropertyDefault(type->type_id, property);
+                if (!value.has_value() || !effective_default.has_value()) {
+                    return std::nullopt;
+                }
+                // Only the public semantic value is durable. Focus/disabled/selection overlays
+                // belong to presentation and must never leak into a UI-description snapshot.
+                snapshot.text_style_properties.push_back({
+                    std::string{property.declaring_type_id}, std::string{property.property_id},
+                    *value, *value == *effective_default,
+                });
+                break;
+            }
             default:
                 return std::nullopt;
             }

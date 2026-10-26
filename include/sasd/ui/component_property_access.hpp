@@ -3,6 +3,7 @@
 #include <sasd/ui/component.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/style.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -114,5 +115,16 @@ namespace sasd::ui {
  * Preferred hints outside min/max and negative coordinates retain their existing public semantics. */
 [[nodiscard]] bool writeBuiltInSizeConstraintsProperty(
     Component& component, const ComponentPropertyMetadata& property, SizeConstraints value);
+
+/** Reads the inline authoring value by copy, never a backend-resolved focus/disabled overlay.
+ * Only the six controls declaring textStyle own this property; it is not a Widget-wide contract. */
+[[nodiscard]] std::optional<TextStyle> readBuiltInTextStyleProperty(
+    const Component& component, const ComponentPropertyMetadata& property);
+
+/** Delegates exclusively to setTextStyle(): visual invalidation and same-value no-op semantics
+ * belong to the setter. True means compatible access, including same-value writes. No additional
+ * Color validation is imposed on the existing runtime contract. Measurement remains valid. */
+[[nodiscard]] bool writeBuiltInTextStyleProperty(
+    Component& component, const ComponentPropertyMetadata& property, TextStyle value);
 
 } // namespace sasd::ui

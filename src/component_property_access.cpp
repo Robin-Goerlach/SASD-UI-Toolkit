@@ -559,4 +559,96 @@ bool writeBuiltInSizeConstraintsProperty(
     return true;
 }
 
+std::optional<TextStyle> readBuiltInTextStyleProperty(
+    const Component& component, const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::text_style) {
+        return std::nullopt;
+    }
+    if (property.declaring_type_id == "sasd.ui.Label") {
+        const auto* control = dynamic_cast<const Label*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    if (property.declaring_type_id == "sasd.ui.Button") {
+        const auto* control = dynamic_cast<const Button*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    if (property.declaring_type_id == "sasd.ui.TextField") {
+        const auto* control = dynamic_cast<const TextField*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox") {
+        const auto* control = dynamic_cast<const CheckBox*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    if (property.declaring_type_id == "sasd.ui.RadioButton") {
+        const auto* control = dynamic_cast<const RadioButton*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    if (property.declaring_type_id == "sasd.ui.ComboBox") {
+        const auto* control = dynamic_cast<const ComboBox*>(&component);
+        return control == nullptr ? std::nullopt : std::optional<TextStyle>{control->textStyle()};
+    }
+    return std::nullopt;
+}
+
+bool writeBuiltInTextStyleProperty(
+    Component& component, const ComponentPropertyMetadata& property, TextStyle value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::text_style) {
+        return false;
+    }
+    // Inline style is authoring state, not a resource or resolved presentation snapshot. Keep the
+    // semantic setter as the sole authority for visual invalidation and same-value no-op behavior.
+    if (property.declaring_type_id == "sasd.ui.Label") {
+        auto* control = dynamic_cast<Label*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.Button") {
+        auto* control = dynamic_cast<Button*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.TextField") {
+        auto* control = dynamic_cast<TextField*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.CheckBox") {
+        auto* control = dynamic_cast<CheckBox*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.RadioButton") {
+        auto* control = dynamic_cast<RadioButton*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    if (property.declaring_type_id == "sasd.ui.ComboBox") {
+        auto* control = dynamic_cast<ComboBox*>(&component);
+        if (control == nullptr) {
+            return false;
+        }
+        control->setTextStyle(value);
+        return true;
+    }
+    return false;
+}
+
 } // namespace sasd::ui

@@ -1,4 +1,7 @@
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/component_property_defaults.hpp>
+#include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
@@ -62,6 +65,24 @@ int main() {
     const std::size_t executed =
         sasd::ui::rendered::DisplayListExecutor::execute(display_list, package_device);
 
+    // Exercise the new non-inline typed symbols through the installed public headers/library.
+    const auto* style_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "textStyle");
+    if (style_property == nullptr) {
+        return EXIT_FAILURE;
+    }
+    const sasd::ui::TextStyle style{sasd::ui::Color::bright_cyan, true, false, true, false};
+    if (sasd::ui::builtInTextStylePropertyDefault("sasd.ui.Button", *style_property) !=
+            sasd::ui::TextStyle{} ||
+        !sasd::ui::writeBuiltInTextStyleProperty(button, *style_property, style) ||
+        sasd::ui::readBuiltInTextStyleProperty(button, *style_property) != style) {
+        return EXIT_FAILURE;
+    }
+    const auto snapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(button);
+    const bool style_linked = snapshot && snapshot->text_style_properties.size() == 1 &&
+        snapshot->text_style_properties.front().value == style &&
+        !snapshot->text_style_properties.front().is_default;
+
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
     const bool rendered_linked =
@@ -72,5 +93,5 @@ int main() {
         package_device.stroke_count == 0 &&
         package_device.text_count == 0;
 
-    return core_linked && terminal_linked && rendered_linked ? EXIT_SUCCESS : EXIT_FAILURE;
+    return style_linked && core_linked && terminal_linked && rendered_linked ? EXIT_SUCCESS : EXIT_FAILURE;
 }
