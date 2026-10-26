@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 15: current inline TextStyle is covered as durable UI-description authoring state with
+  the concrete text_style kind on Label, Button, TextField, CheckBox, RadioButton and ComboBox.
+  Typed access, TextStyle{} defaults and owned snapshots preserve presentation-only setter behavior.
+  Backend overlays remain excluded; the future theme/resource system stays separate. The current
+  built-in coverage is ready for persisted encoding, which is still not implemented (ADR 0185).
+
 - M8 Slice 14: Widget.sizeConstraints joins built-in property metadata with the concrete
   size_constraints kind, typed access/defaults and owned snapshots using the existing public value.
   Semantic setter validation, exceptions and measurement invalidation are preserved; no generic

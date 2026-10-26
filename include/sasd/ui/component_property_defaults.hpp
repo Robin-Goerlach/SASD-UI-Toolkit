@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/style.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -58,6 +59,11 @@ namespace sasd::ui {
 /** Returns SizeConstraints{} for Widget and its built-in metadata descendants without construction.
  * Unknown targets, incompatible descriptors and wrong kinds return nullopt. */
 [[nodiscard]] std::optional<SizeConstraints> builtInSizeConstraintsPropertyDefault(
+    std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
+
+/** Returns TextStyle{} for the six direct owning controls, without constructing a Component.
+ * Copied complete identities are accepted; sibling, unknown and malformed identities fail closed. */
+[[nodiscard]] std::optional<TextStyle> builtInTextStylePropertyDefault(
     std::string_view target_type_id, const ComponentPropertyMetadata& property) noexcept;
 
 } // namespace sasd::ui

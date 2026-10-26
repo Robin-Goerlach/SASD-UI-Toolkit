@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component.hpp>
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/style.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -72,6 +73,14 @@ struct ComponentSizeConstraintsPropertySnapshot final {
     bool is_default{false};
 };
 
+/** Owns the small inline authoring value. No resource identity or backend overlay is captured. */
+struct ComponentTextStylePropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    TextStyle value;
+    bool is_default{false};
+};
+
 /**
  * Owns all currently catalogued properties captured from one exact built-in Component type.
  *
@@ -91,6 +100,7 @@ struct BuiltInComponentPropertySnapshot final {
     std::vector<ComponentStringCollectionPropertySnapshot> string_collection_properties;
     std::vector<ComponentOptionalUnsignedIntegerPropertySnapshot> optional_unsigned_integer_properties;
     std::vector<ComponentSizeConstraintsPropertySnapshot> size_constraints_properties;
+    std::vector<ComponentTextStylePropertySnapshot> text_style_properties;
 };
 
 /**

@@ -64,11 +64,11 @@ TEST_CASE("Widget size constraints schema is ordered and inherited without dupli
             CHECK(!builtInSizeConstraintsPropertyDefault(type.type_id, direct[3]));
         }
         for (const auto excluded : {"bounds", "desiredSize", "measureValid", "isMeasureValid",
-                                   "MeasureConstraints", "MeasurementContext", "textStyle"}) {
+                                   "MeasureConstraints", "MeasurementContext"}) {
             CHECK(findBuiltInComponentProperty(type.type_id, excluded) == nullptr);
         }
     }
-    CHECK(count == 22);
+    CHECK(count == 28);
     static_assert(static_cast<int>(ComponentPropertyValueKind::boolean) == 0);
     static_assert(static_cast<int>(ComponentPropertyValueKind::string) == 1);
     static_assert(static_cast<int>(ComponentPropertyValueKind::signed_integer) == 2);

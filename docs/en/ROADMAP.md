@@ -280,6 +280,8 @@ Slice 8 adds numeric value kinds and the seven existing layout properties (ADR 0
 Slice 10 adds description-local node identity and ordered ownership snapshots (ADR 0180);
 Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). Slice 12 adds
 SelectionModel Component lifecycle and association coverage (ADR 0182).
+Current built-in semantic coverage is ready for persisted encoding after the Slice-15 review
+(ADR 0185). Encoding, reconstruction and the separate resource system remain open.
 Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
@@ -303,6 +305,7 @@ Validation and design-time attributes remain future slices.
     - [x] description-local node identity and ordered ownership snapshot (ADR 0180)
     - [x] built-in Component-to-Component cross-reference edge coverage (ADR 0181)
     - [x] SelectionModel Component lifecycle and association coverage (ADR 0182)
+  - [x] current inline TextStyle authoring coverage (ADR 0185)
   - [ ] persisted representation / encoding
   - [ ] deserialization / reconstruction
 - [ ] resource system

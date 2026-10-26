@@ -16,7 +16,7 @@ struct ExpectedProperty final {
     ComponentPropertyValueKind value_kind;
 };
 
-constexpr std::array<ExpectedProperty, 22> expected_properties{{
+constexpr std::array<ExpectedProperty, 28> expected_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
@@ -24,14 +24,20 @@ constexpr std::array<ExpectedProperty, 22> expected_properties{{
     {"sasd.ui.Command", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.Command", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Label", "text", ComponentPropertyValueKind::string},
+    {"sasd.ui.Label", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.Button", "text", ComponentPropertyValueKind::string},
+    {"sasd.ui.Button", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.TextField", "text", ComponentPropertyValueKind::string},
+    {"sasd.ui.TextField", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.CheckBox", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.CheckBox", "checked", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.CheckBox", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.RadioButton", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.RadioButton", "selected", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.RadioButton", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.ComboBox", "items", ComponentPropertyValueKind::string_collection},
     {"sasd.ui.ComboBox", "selectedIndex", ComponentPropertyValueKind::optional_unsigned_integer},
+    {"sasd.ui.ComboBox", "textStyle", ComponentPropertyValueKind::text_style},
     {"sasd.ui.HBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.VBox", "spacing", ComponentPropertyValueKind::signed_integer},
     {"sasd.ui.GridLayout", "columnCount", ComponentPropertyValueKind::unsigned_integer},
@@ -60,6 +66,16 @@ TEST_CASE("built-in component property schema is explicit and complete") {
         const auto properties = declaredBuiltInComponentProperties(type.type_id);
         descriptor_count += properties.size();
 
+        std::size_t expectedIndex = 0;
+        for (const auto& expected : expected_properties) {
+            if (expected.declaring_type_id != type.type_id) { continue; }
+            CHECK(expectedIndex < properties.size());
+            CHECK(properties[expectedIndex].property_id == expected.property_id);
+            CHECK(properties[expectedIndex].value_kind == expected.value_kind);
+            ++expectedIndex;
+        }
+        CHECK(expectedIndex == properties.size());
+
         for (std::size_t index = 0; index < properties.size(); ++index) {
             const auto& property = properties[index];
             CHECK(!property.declaring_type_id.empty());
@@ -85,10 +101,10 @@ TEST_CASE("built-in component property schema is explicit and complete") {
 TEST_CASE("direct property queries return only properties declared by that type") {
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Widget").size() == 4);
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Command").size() == 2);
-    CHECK(declaredBuiltInComponentProperties("sasd.ui.Label").size() == 1);
-    CHECK(declaredBuiltInComponentProperties("sasd.ui.Button").size() == 1);
-    CHECK(declaredBuiltInComponentProperties("sasd.ui.TextField").size() == 1);
-    CHECK(declaredBuiltInComponentProperties("sasd.ui.CheckBox").size() == 2);
+    CHECK(declaredBuiltInComponentProperties("sasd.ui.Label").size() == 2);
+    CHECK(declaredBuiltInComponentProperties("sasd.ui.Button").size() == 2);
+    CHECK(declaredBuiltInComponentProperties("sasd.ui.TextField").size() == 2);
+    CHECK(declaredBuiltInComponentProperties("sasd.ui.CheckBox").size() == 3);
 
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Window").empty());
     CHECK(declaredBuiltInComponentProperties("sasd.ui.DoesNotExist").empty());
@@ -155,7 +171,7 @@ TEST_CASE("property metadata lookup is exact and does not access instances") {
 
 TEST_CASE("RadioButton declares ordered scalars and inherits Widget properties") {
     const auto direct = declaredBuiltInComponentProperties("sasd.ui.RadioButton");
-    CHECK(direct.size() == 2);
+    CHECK(direct.size() == 3);
     CHECK(direct[0].property_id == "text");
     CHECK(direct[0].value_kind == ComponentPropertyValueKind::string);
     CHECK(direct[1].property_id == "selected");

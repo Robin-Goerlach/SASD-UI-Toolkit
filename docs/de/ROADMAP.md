@@ -288,6 +288,8 @@ Slice 8 ergänzt numerische Value-Kinds und sieben bestehende Layout-Properties 
 Slice 10 ergänzt beschreibungslokale Node-Identität und geordnete Ownership-Snapshots (ADR 0180);
 Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Slice 12 ergänzt
 SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
+Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes Encoding bereit
+(ADR 0185). Encoding, Rekonstruktion und das separate Resource-System bleiben offen.
 Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
@@ -311,6 +313,7 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
     - [x] Beschreibungs-lokale Node-Identität und geordneter Ownership-Snapshot (ADR 0180)
     - [x] Built-in-Component-zu-Component-Cross-Reference-Edges (ADR 0181)
     - [x] SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182)
+  - [x] Heutiger inline TextStyle als dauerhafter Authoring-Wert (ADR 0185)
   - [ ] Persistenzrepräsentation / Encoding
   - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System

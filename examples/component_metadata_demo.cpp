@@ -67,6 +67,8 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
         return "unsigned_integer";
     case sasd::ui::ComponentPropertyValueKind::string_collection:
         return "string_collection";
+    case sasd::ui::ComponentPropertyValueKind::text_style:
+        return "text_style";
     case sasd::ui::ComponentPropertyValueKind::size_constraints:
         return "size_constraints";
     case sasd::ui::ComponentPropertyValueKind::optional_unsigned_integer:
@@ -236,6 +238,22 @@ int main() {
                       << (property.is_default ? " [default]" : " [non-default]") << '\n';
         }
     }
+    sasd::ui::Label styledLabel{"Important"};
+    styledLabel.setTextStyle({sasd::ui::Color::bright_cyan, true, false, true, false});
+    const auto styledSnapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(styledLabel);
+    if (!styledSnapshot.has_value()) {
+        return 1;
+    }
+    const auto& styleProperty = styledSnapshot->text_style_properties.front();
+    std::cout << "Label snapshot:\n  text = \""
+              << styledSnapshot->string_properties.front().value << "\"\n  textStyle:\n"
+              << "    foreground = "
+              << (styleProperty.value.foreground == sasd::ui::Color::bright_cyan
+                      ? "bright_cyan" : "unexpected example color")
+              << "\n    bold = " << std::boolalpha << styleProperty.value.bold
+              << "\n    underline = " << styleProperty.value.underline
+              << (styleProperty.is_default ? " [default]" : " [non-default]") << '\n';
+
     sasd::ui::Window root;
     auto& command = root.emplace<sasd::ui::Command>("Save");
     root.emplace<sasd::ui::Button>().bindCommand(command);

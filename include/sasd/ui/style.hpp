@@ -35,6 +35,10 @@ enum class Color : std::uint8_t {
 /**
  * Minimal text-oriented appearance shared by semantic text controls.
  *
+ * This small inline value is durable Component authoring state (ADR 0185), not a resource.
+ * Backend focus/disabled overlays are separate and must not mutate the semantic value. A future
+ * persisted Color representation must use stable symbolic values, never the current enum ordinal.
+ *
  * The style affects presentation only; it never changes intrinsic text metrics in the current M2
  * contract. Background colors, font families/sizes, padding, borders, cascading inheritance and
  * themes are intentionally not part of this first slice.

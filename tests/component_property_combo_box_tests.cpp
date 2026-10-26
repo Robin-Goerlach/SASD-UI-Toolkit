@@ -21,9 +21,11 @@ ComponentPropertyMetadata indexProperty() {
 }
 }
 
-TEST_CASE("ComboBox declares only items then selectedIndex and excludes derived and transient state") {
+TEST_CASE("ComboBox declares items then selectedIndex then textStyle and excludes derived and transient state") {
     const auto properties = declaredBuiltInComponentProperties("sasd.ui.ComboBox");
-    CHECK(properties.size() == 2);
+    CHECK(properties.size() == 3);
+    CHECK(properties[2].property_id == "textStyle");
+    CHECK(properties[2].value_kind == ComponentPropertyValueKind::text_style);
     CHECK(properties[0].property_id == "items");
     CHECK(properties[0].value_kind == ComponentPropertyValueKind::string_collection);
     CHECK(properties[1].property_id == "selectedIndex");
