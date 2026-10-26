@@ -9,10 +9,11 @@ namespace {
 // Keep descriptors grouped by declaring type so a direct query can return a subspan without
 // allocating or constructing a temporary list. Inherited properties deliberately appear only in
 // the catalog of their declaring type; lookup walks ComponentTypeMetadata::base_type_id instead.
-constexpr std::array<ComponentPropertyMetadata, 21> built_in_properties{{
+constexpr std::array<ComponentPropertyMetadata, 22> built_in_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.Widget", "sizeConstraints", ComponentPropertyValueKind::size_constraints},
     {"sasd.ui.Command", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.Command", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Label", "text", ComponentPropertyValueKind::string},

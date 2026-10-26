@@ -16,10 +16,11 @@ struct ExpectedProperty final {
     ComponentPropertyValueKind value_kind;
 };
 
-constexpr std::array<ExpectedProperty, 21> expected_properties{{
+constexpr std::array<ExpectedProperty, 22> expected_properties{{
     {"sasd.ui.Widget", "visible", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Widget", "focusable", ComponentPropertyValueKind::boolean},
+    {"sasd.ui.Widget", "sizeConstraints", ComponentPropertyValueKind::size_constraints},
     {"sasd.ui.Command", "text", ComponentPropertyValueKind::string},
     {"sasd.ui.Command", "enabled", ComponentPropertyValueKind::boolean},
     {"sasd.ui.Label", "text", ComponentPropertyValueKind::string},
@@ -82,7 +83,7 @@ TEST_CASE("built-in component property schema is explicit and complete") {
 }
 
 TEST_CASE("direct property queries return only properties declared by that type") {
-    CHECK(declaredBuiltInComponentProperties("sasd.ui.Widget").size() == 3);
+    CHECK(declaredBuiltInComponentProperties("sasd.ui.Widget").size() == 4);
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Command").size() == 2);
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Label").size() == 1);
     CHECK(declaredBuiltInComponentProperties("sasd.ui.Button").size() == 1);

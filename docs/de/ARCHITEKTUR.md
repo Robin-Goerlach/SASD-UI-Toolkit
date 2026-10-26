@@ -96,14 +96,14 @@ Die separate Schicht `sasd/ui/component_property_metadata.hpp` beschreibt ein kl
 unveränderliches Schema für ausgewählte Built-in-Komponententypen. `ComponentPropertyMetadata`
 enthält eine stabile lokale Property-ID, die ID des direkt deklarierenden Typs und den einfachen
 semantischen Werttyp `boolean`, `string`, `signed_integer`, `unsigned_integer`,
-`string_collection` oder `optional_unsigned_integer`. Direkt
+`string_collection`, `optional_unsigned_integer` oder `size_constraints`. Direkt
 deklarierte Properties werden unabhängig vom
 Typkatalog abgefragt; der geerbte Lookup folgt der vorhandenen direkten `base_type_id`-Kette und
 liefert den ursprünglichen deklarierenden Deskriptor zurück. Geerbte Properties werden nicht in
 abgeleiteten Typen dupliziert.
 
 Dies bleibt ausschließlich Schema-Metadaten. Die getrennte Schicht
-`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins zwölf explizite
+`sasd/ui/component_property_access.hpp` stellt für die katalogisierten Built-ins vierzehn explizite
 typisierte Read-/Write-Funktionen bereit. Sie validiert
 Deskriptoren semantisch, liefert
 besitzende Strings, benutzt die bestehenden semantischen Getter/Setter und arbeitet bei unbekannten
@@ -112,6 +112,13 @@ Wertänderung. Die Zugriffsschicht verwendet intern sichere RTTI-Prüfungen, exp
 Namen noch einen Runtime-Typenumerationsvertrag. Sie ergänzt kein `std::variant`, `std::any`, `void*`,
 keine Getter-/Setter-Pointer, veränderliche Registry, Defaults, Validierung, Serialisierung oder
 Drittanbieter-Registrierung und bleibt backendneutral.
+
+M8 Slice 14 ergänzt `Widget.sizeConstraints` als konkrete typisierte Compound-Property ([ADR 0184](../adr/0184-m8-widget-size-constraints-compound-property-coverage.md)).
+Access, Defaults und besitzende Snapshots nutzen direkt den bestehenden backendneutralen Public Value
+`SizeConstraints`, ohne generische Compound-Abstraktion. Der atomare semantische Setter besitzt Range-
+Validierung und Measurement-Invalidierung. Same-value-Zugriff gelingt, Domain-Exceptions propagieren;
+Preferred außerhalb min/max und negative Hints erhalten keine zusätzliche Einschränkung. Bounds,
+Desired Size, Measure-Validität und Parent-MeasureConstraints bleiben außerhalb der UI Description.
 
 ### Effektive Property-Defaults
 
@@ -129,9 +136,9 @@ Validierung, Serialisierung oder Designer-Metadaten.
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der
 exakte Runtime-Typidentifikation, geerbtes Property-Schema, semantischen Runtime-Zugriff und
 effektive Defaults gemeinsam verwendet. `captureBuiltInComponentPropertySnapshot(const Component&)`
-besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in sechs expliziten
-Collections für Boolean-, String-, Signed-Integer-, Unsigned-Integer-, String-Collection- und
-Optional-Unsigned-Integer-Properties. Die Metadatenkette des exakten Zieltyps wird von
+besitzt die stabile Typ-ID, Property-Identitäten und erfassten String-Werte in sieben expliziten
+Collections für Boolean-, String-, Signed-Integer-, Unsigned-Integer-, String-Collection-,
+Optional-Unsigned-Integer- und Size-Constraints-Properties. Die Metadatenkette des exakten Zieltyps wird von
 der Basis zum Derived-Typ durchlaufen; innerhalb jeder Collection bleibt die bestehende deklarierte
 Reihenfolge erhalten.
 
@@ -143,7 +150,7 @@ Metadaten-Kette, fehlender Runtime-Read oder fehlender Default-Lookup lehnt den 
 Snapshot ab, statt einen partiellen Zustand zurückzugeben.
 
 Dies ist ein besitzender Snapshot der aktuell katalogisierten Properties, keine vollständige
-Component- oder UI-Tree-Beschreibung. Das aktuelle Einundzwanzig-Properties-Schema deckt nicht den gesamten
+Component- oder UI-Tree-Beschreibung. Das aktuelle Zweiundzwanzig-Properties-Schema deckt nicht den gesamten
 semantischen Zustand von Controls, Models, Layouts, Bindings oder Ownership/visuellen Kindern ab.
 Keine Child-Rekursion, kein Ownership-Serializer, kein PropertyValue-Container, kein `std::variant`,
 `std::any`, Persistenzformat, Serializer oder Deserializer wird hier eingeführt; die Schema-Abdeckung
@@ -176,7 +183,7 @@ RadioGroup-Mitgliedschaft bleibt eine persistente Graph-/Referenzbeziehung. Ein 
 impliziert keine rekonstruierbare Gruppensemantik: Mitgliedschaft/Reference Reconstruction und
 deren Reihenfolge bleiben zu definieren.
 
-Der aktuelle Katalog enthält 29 Built-in-Typen und einundzwanzig Property-Deskriptoren. ADR 0177
+Der aktuelle Katalog enthält 29 Built-in-Typen und zweiundzwanzig Property-Deskriptoren. ADR 0177
 enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
 ergänzt numerische Layout-Properties. Sechs Spacing-Properties (`HBox.spacing`, `VBox.spacing`,
 Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std::int64_t` als

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sasd/ui/component.hpp>
+#include <sasd/ui/geometry.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -63,6 +64,14 @@ struct ComponentOptionalUnsignedIntegerPropertySnapshot final {
     bool is_default{false};
 };
 
+/** Owns the existing public compound value; no borrowed geometry or measurement cache is retained. */
+struct ComponentSizeConstraintsPropertySnapshot final {
+    std::string declaring_type_id;
+    std::string property_id;
+    SizeConstraints value;
+    bool is_default{false};
+};
+
 /**
  * Owns all currently catalogued properties captured from one exact built-in Component type.
  *
@@ -81,6 +90,7 @@ struct BuiltInComponentPropertySnapshot final {
     std::vector<ComponentUnsignedIntegerPropertySnapshot> unsigned_integer_properties;
     std::vector<ComponentStringCollectionPropertySnapshot> string_collection_properties;
     std::vector<ComponentOptionalUnsignedIntegerPropertySnapshot> optional_unsigned_integer_properties;
+    std::vector<ComponentSizeConstraintsPropertySnapshot> size_constraints_properties;
 };
 
 /**

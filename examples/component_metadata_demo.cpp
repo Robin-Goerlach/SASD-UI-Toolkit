@@ -67,6 +67,8 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
         return "unsigned_integer";
     case sasd::ui::ComponentPropertyValueKind::string_collection:
         return "string_collection";
+    case sasd::ui::ComponentPropertyValueKind::size_constraints:
+        return "size_constraints";
     case sasd::ui::ComponentPropertyValueKind::optional_unsigned_integer:
         return "optional_unsigned_integer";
     }
@@ -210,10 +212,19 @@ int main() {
         }
     }
 
+    button.setSizeConstraints({{10, 5}, {40, 20}, {100, 50}});
     const auto button_snapshot =
         sasd::ui::captureBuiltInComponentPropertySnapshot(button);
     if (button_snapshot.has_value()) {
         std::cout << "Button snapshot:\n";
+        for (const auto& property : button_snapshot->size_constraints_properties) {
+            const auto& value = property.value;
+            std::cout << "  " << property.property_id << ": min = "
+                      << value.minimum.width << 'x' << value.minimum.height
+                      << ", preferred = " << value.preferred.width << 'x' << value.preferred.height
+                      << ", max = " << value.maximum.width << 'x' << value.maximum.height
+                      << (property.is_default ? " [default]" : " [non-default]") << '\n';
+        }
         std::cout << "  type: " << button_snapshot->type_id << '\n';
         for (const auto& property : button_snapshot->boolean_properties) {
             std::cout << "  " << property.property_id << " = " << std::boolalpha

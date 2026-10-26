@@ -296,9 +296,9 @@ Validation and design-time attributes remain future slices.
   - [x] persistent scalar property coverage
     - [x] numeric layout property foundation (signed/unsigned kinds; HBox/VBox/Grid/Form)
     - [x] RadioButton scalar property coverage (`text`, `selected`)
-  - [ ] collection/compound property coverage
+  - [x] collection/compound property coverage
     - [x] ComboBox collection and optional scalar coverage (`items`, `selectedIndex`; ADR 0183)
-    - [ ] compound authoring values (`Widget.sizeConstraints`)
+    - [x] Widget.sizeConstraints compound authoring value (ADR 0184)
   - [x] component ownership/reference graph description
     - [x] description-local node identity and ordered ownership snapshot (ADR 0180)
     - [x] built-in Component-to-Component cross-reference edge coverage (ADR 0181)

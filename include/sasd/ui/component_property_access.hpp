@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/geometry.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -102,5 +103,16 @@ namespace sasd::ui {
  * True means valid access, including same-value writes. Setter callbacks are never suppressed. */
 [[nodiscard]] bool writeBuiltInOptionalUnsignedIntegerProperty(
     Component& component, const ComponentPropertyMetadata& property, std::optional<std::uint64_t> value);
+
+/** Reads the existing backend-neutral public value by copy; invalid access returns nullopt.
+ * SizeConstraints is one atomic authoring value, not three independently writable size hints. */
+[[nodiscard]] std::optional<SizeConstraints> readBuiltInSizeConstraintsProperty(
+    const Component& component, const ComponentPropertyMetadata& property);
+
+/** Delegates atomically to setSizeConstraints(). True means compatible access, even for the same
+ * value. The setter owns validation and measurement invalidation; std::invalid_argument propagates.
+ * Preferred hints outside min/max and negative coordinates retain their existing public semantics. */
+[[nodiscard]] bool writeBuiltInSizeConstraintsProperty(
+    Component& component, const ComponentPropertyMetadata& property, SizeConstraints value);
 
 } // namespace sasd::ui

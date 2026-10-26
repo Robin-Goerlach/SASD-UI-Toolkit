@@ -8,6 +8,7 @@ add_executable(sasd_ui_tests
     component_property_metadata_tests.cpp
     component_property_numeric_tests.cpp
     component_property_combo_box_tests.cpp
+    component_property_size_constraints_tests.cpp
     component_property_snapshot_tests.cpp
     component_ownership_snapshot_tests.cpp
     component_reference_snapshot_tests.cpp

@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 14: Widget.sizeConstraints joins built-in property metadata with the concrete
+  size_constraints kind, typed access/defaults and owned snapshots using the existing public value.
+  Semantic setter validation, exceptions and measurement invalidation are preserved; no generic
+  compound carrier is introduced. The public API coverage review completes the current
+  collection/compound property milestone (ADR 0184); encoding and reconstruction remain open.
+
 - M8 Slice 13: concrete string_collection and optional_unsigned_integer property kinds cover
   ComboBox.items / selectedIndex through typed runtime access, effective defaults and owned snapshots.
   Checked integral conversions preserve semantic setter/domain exception and callback behavior.

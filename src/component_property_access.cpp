@@ -530,4 +530,33 @@ bool writeBuiltInOptionalUnsignedIntegerProperty(
     return true;
 }
 
+std::optional<SizeConstraints> readBuiltInSizeConstraintsProperty(
+    const Component& component, const ComponentPropertyMetadata& property) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::size_constraints ||
+        property.declaring_type_id != "sasd.ui.Widget" || property.property_id != "sizeConstraints") {
+        return std::nullopt;
+    }
+    const auto* widget = dynamic_cast<const Widget*>(&component);
+    return widget == nullptr ? std::nullopt : std::optional<SizeConstraints>{widget->sizeConstraints()};
+}
+
+bool writeBuiltInSizeConstraintsProperty(
+    Component& component, const ComponentPropertyMetadata& property, SizeConstraints value) {
+    if (!isBuiltInSchemaDescriptor(property) ||
+        property.value_kind != ComponentPropertyValueKind::size_constraints ||
+        property.declaring_type_id != "sasd.ui.Widget" || property.property_id != "sizeConstraints") {
+        return false;
+    }
+    auto* widget = dynamic_cast<Widget*>(&component);
+    if (widget == nullptr) {
+        return false;
+    }
+    // Keep range validation atomic in the semantic setter. In particular, preferred need not lie
+    // inside the range, and negative hints are not forbidden. Domain exceptions must propagate;
+    // false means an access mismatch, not a rejected domain value. No layout state is restored.
+    widget->setSizeConstraints(value);
+    return true;
+}
+
 } // namespace sasd::ui
