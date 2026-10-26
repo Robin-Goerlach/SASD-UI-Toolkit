@@ -289,7 +289,7 @@ Slice 10 ergänzt beschreibungslokale Node-Identität und geordnete Ownership-Sn
 Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Slice 12 ergänzt
 SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
 Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes Encoding bereit
-(ADR 0185). Encoding, Rekonstruktion und das separate Resource-System bleiben offen.
+(ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Rekonstruktion und das separate Resource-System bleiben offen.
 Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
@@ -314,7 +314,8 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
     - [x] Built-in-Component-zu-Component-Cross-Reference-Edges (ADR 0181)
     - [x] SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182)
   - [x] Heutiger inline TextStyle als dauerhafter Authoring-Wert (ADR 0185)
-  - [ ] Persistenzrepräsentation / Encoding
+  - [x] Persistenzrepräsentation / Encoding
+    - [x] Kanonischer JSON-v1-Writer (ADR 0186)
   - [ ] Deserialisierung / Rekonstruktion
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
@@ -325,7 +326,7 @@ Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein 
 
 Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179).
 Slice 13 deckt `ComboBox.items` und optionalen `selectedIndex` ab (ADR 0183); zukünftige
-Rekonstruktion muss items vor selectedIndex setzen. Encoding und Rekonstruktion bleiben offen.
+Rekonstruktion muss items vor selectedIndex setzen. Kanonisches JSON-v1-Encoding ist implementiert; Rekonstruktion bleibt offen.
 
 ## Bewusst später
 

@@ -281,7 +281,7 @@ Slice 10 adds description-local node identity and ordered ownership snapshots (A
 Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). Slice 12 adds
 SelectionModel Component lifecycle and association coverage (ADR 0182).
 Current built-in semantic coverage is ready for persisted encoding after the Slice-15 review
-(ADR 0185). Encoding, reconstruction and the separate resource system remain open.
+(ADR 0185). Slice 16 provides canonical JSON v1 encoding (ADR 0186); reconstruction and the separate resource system remain open.
 Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
@@ -306,7 +306,8 @@ Validation and design-time attributes remain future slices.
     - [x] built-in Component-to-Component cross-reference edge coverage (ADR 0181)
     - [x] SelectionModel Component lifecycle and association coverage (ADR 0182)
   - [x] current inline TextStyle authoring coverage (ADR 0185)
-  - [ ] persisted representation / encoding
+  - [x] persisted representation / encoding
+    - [x] canonical JSON v1 writer (ADR 0186)
   - [ ] deserialization / reconstruction
 - [ ] resource system
 - [ ] designer-friendly properties
@@ -315,7 +316,7 @@ Validation and design-time attributes remain future slices.
 
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
 Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); future reconstruction
-must restore items before selectedIndex. Encoding and reconstruction remain open.
+must restore items before selectedIndex. Canonical JSON v1 encoding is implemented; reconstruction remains open.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 

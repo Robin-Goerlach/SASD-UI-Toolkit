@@ -125,9 +125,18 @@ ComboBox ([ADR 0185](../adr/0185-m8-inline-text-style-authoring-persistence-cove
 Pfad nutzt den Public Value direkt mit TextStyle{}-Defaults, ohne Resource-Node oder Widget-weite Property. Writes ausschließlich
 über Setter erhalten Presentation-Invalidierung ohne Measurement-Invalidierung und Same-value-No-op.
 Keine Vererbung/Cascade; Backend-Fokus-/Disabled-/Selection-Overlays bleiben ausgeschlossen. Fonts,
-RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Dauerhaftes Color-Encoding muss symbolisch
-statt Enum-Ordinal sein; Encoding ist nicht implementiert. Der Review aller 29 Built-ins bestätigt
-Readiness der aktuellen Semantik für persistiertes Encoding; Serialisierung und Rekonstruktion fehlen.
+RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Kanonisches JSON v1 verwendet symbolische Color-Namen
+statt Enum-Ordinals (ADR 0186). Der Review aller 29 Built-ins bestätigte die semantische Readiness;
+Encoding ist implementiert, Deserialisierung/Rekonstruktion und Resources bleiben offen.
+
+### Kanonisches JSON-Description-Encoding
+
+`sasd/ui/ui_description_json.hpp` liegt oberhalb des eigenen Reference-Graph-Snapshots. Das Capture-
+Modell bleibt formatneutral; JSON ist ausschließlich externes Encoding. Der dependency-freie
+Component-Root-Writer erfasst einmal und erzeugt deterministisches kanonisches v1 mit allen
+persistenten Werten explizit. Capture-, UTF-8- und Symbolfehler liefern nullopt. Kein Parser,
+keine Rekonstruktion oder File-I/O. Siehe [Formatspezifikation](UI_DESCRIPTION_FORMAT.md) und
+[ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 
 ### Effektive Property-Defaults
 
@@ -153,8 +162,8 @@ Reihenfolge erhalten.
 
 Werte werden ausschließlich über die bestehende Runtime-Access-Schicht gelesen und mit dem Default
 für den exakten Zieltyp verglichen. Der Snapshot enthält jede aktuell im Schema vorhandene Property,
-auch wenn ihr Wert dem Default entspricht; das Weglassen von Defaults ist eine spätere Encoding-
-Policy eines Serializers und nicht Snapshot-Policy. Unbekannter Derived-Typ, ungültige
+auch wenn ihr Wert dem Default entspricht; kanonisches JSON v1 schreibt ebenfalls alle Werte
+explizit, ohne is_default-Metadaten zu persistieren. Unbekannter Derived-Typ, ungültige
 Metadaten-Kette, fehlender Runtime-Read oder fehlender Default-Lookup lehnt den vollständigen
 Snapshot ab, statt einen partiellen Zustand zurückzugeben.
 
@@ -243,7 +252,7 @@ Components ohne generische SelectionModel-Hierarchie.
 Normale Component-Ownership/-Identität erhält Sharing durch Node-IDs. View- und SelectionModel-Model-
 Bindings bleiben unabhängig, ohne neue Gleichheitsinvariante. Aktuelle Zeilen-/Zellen-/Node-Selection
 und Revision bleiben transient und ohne Scalar-Properties; siehe [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
-Encoding und Rekonstruktion bleiben spätere Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
+Kanonisches JSON-v1-Encoding ist implementiert; Rekonstruktion bleibt spätere Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership
 

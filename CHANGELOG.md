@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 16: dependency-free canonical JSON UI-description encoding v1 through
+  encodeBuiltInUiDescriptionJson; recommended `.sasd-ui.json` extension and stable format/version
+  markers independent of toolkit releases. Deterministic node/property/reference order, two-space
+  indentation and LF-only bytes; symbolic property kinds, references and Color names; all default
+  values explicit, is_default excluded. Invalid UTF-8 and unknown Color fail closed. No file I/O,
+  model payload persistence, parser, deserializer or reconstruction yet (ADR 0186).
+
 - M8 Slice 15: current inline TextStyle is covered as durable UI-description authoring state with
   the concrete text_style kind on Label, Button, TextField, CheckBox, RadioButton and ComboBox.
   Typed access, TextStyle{} defaults and owned snapshots preserve presentation-only setter behavior.
