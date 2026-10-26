@@ -180,7 +180,8 @@ unknown-value handling belong to the encoding ADR, with no Color string API intr
 A fresh review of all 29 built-in public APIs (documented in ADR 0185) found no durable state missing
 both technical coverage and an explicit resource/application/executable/transient/derived category.
 Current built-in UI-description semantic coverage is ready for a persisted representation/encoding
-slice. Serialization is not complete; encoding and deserialization/reconstruction remain open.
+slice. [ADR 0186](0186-m8-canonical-json-ui-description-encoding-v1.md) now provides persisted representation/encoding.
+Serialization is not complete; deserialization/reconstruction and the resource system remain open.
 
 ### Coverage-complete rule
 
@@ -297,7 +298,8 @@ Schreibweise und unbekannte Werte entscheidet erst das Encoding-ADR, ohne neue C
 Der erneute Review aller 29 Built-in-Public-APIs (ADR 0185) fand keine weitere dauerhafte Lücke ohne
 technische Abdeckung oder explizite Resource-/Application-/Executable-/Transient-/Derived-Kategorie.
 Die heutige Built-in-Semantik ist für einen Persistenzrepräsentations-/Encoding-Slice bereit.
-Serialisierung ist nicht abgeschlossen: Encoding und Deserialisierung/Rekonstruktion bleiben offen.
+[ADR 0186](0186-m8-canonical-json-ui-description-encoding-v1.md) liefert jetzt Persistenzrepräsentation/Encoding.
+Serialisierung ist nicht abgeschlossen: Deserialisierung/Rekonstruktion und Resource-System bleiben offen.
 
 ### Regel für vollständige Abdeckung
 

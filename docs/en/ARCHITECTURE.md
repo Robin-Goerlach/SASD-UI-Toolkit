@@ -119,9 +119,17 @@ ComboBox ([ADR 0185](../adr/0185-m8-inline-text-style-authoring-persistence-cove
 path reuses the public value with TextStyle{} defaults, not a resource node or Widget-wide property. Setter-only writes preserve
 presentation invalidation without measurement invalidation and same-value no-ops. No style inheritance
 or cascade exists; backend focus/disabled/selection overlays are excluded. Fonts, RGB/alpha, themes
-and shared resources remain future work. Future Color encoding must be symbolic, never enum ordinal;
-no encoding is implemented. The review of all 29 built-ins found current semantic coverage ready for
-persisted encoding; serialization and reconstruction remain open.
+and shared resources remain future work. Canonical JSON v1 uses symbolic Color names, never enum ordinals (ADR 0186).
+The review of all 29 built-ins established semantic readiness; encoding is implemented while
+deserialization/reconstruction and resources remain open.
+
+### Canonical JSON description encoding
+
+`sasd/ui/ui_description_json.hpp` sits above the owned reference graph snapshot. The capture model
+remains format-neutral: JSON is only an external encoding. The dependency-free Component-root writer
+captures once, emits deterministic canonical v1 with all persistent values explicit, and returns
+nullopt on capture, UTF-8 or symbolic-enum failure. No parser/reconstruction or file I/O is added.
+See the [format specification](UI_DESCRIPTION_FORMAT.md) and [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 
 ### Effective property defaults
 
@@ -144,8 +152,8 @@ the existing declaration order within each collection.
 
 The snapshot reads values only through the established runtime access layer and compares each value
 with the effective default for the exact target type. It includes every property currently present
-in the schema, including properties whose value is default; omission is an encoding policy for a
-later serializer, not a snapshot policy. Any unknown derived type, invalid metadata chain, failed
+in the schema, including properties whose value is default; canonical JSON v1 also writes every value explicitly
+without persisting is_default metadata. Any unknown derived type, invalid metadata chain, failed
 runtime read or failed default lookup rejects the complete snapshot rather than returning a partial
 description.
 
@@ -229,7 +237,7 @@ SelectionModels are separate non-visual Components, with no generic SelectionMod
 Normal Component ownership/identity preserves sharing through Node IDs. View and SelectionModel
 model bindings remain independent; capture imposes no equality invariant. Current selected row/cell/node
 and revision remain transient and have no scalar properties; see [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
-Encoding and reconstruction remain future work; see [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
+Canonical JSON v1 encoding is implemented; reconstruction remains future work; see [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
 
 ### Ownership
 

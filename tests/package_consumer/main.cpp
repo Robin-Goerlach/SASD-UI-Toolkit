@@ -1,4 +1,5 @@
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/ui_description_json.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
@@ -42,6 +43,10 @@ int main() {
      * Rendered headers, and link all exported targets without relying on the source-tree layout.
      */
     sasd::ui::Button button{"Package smoke"};
+    const auto json = sasd::ui::encodeBuiltInUiDescriptionJson(button);
+    if (!json || !json->starts_with("{\n  \"format\": \"sasd.ui-description\",")) {
+        return EXIT_FAILURE;
+    }
     sasd::ui::terminal::ScreenBuffer buffer{{2, 1}};
     sasd::ui::rendered::DisplayList display_list;
     sasd::ui::rendered::RenderedPresentationSink rendered_sink{display_list};
