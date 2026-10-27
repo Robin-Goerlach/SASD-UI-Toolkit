@@ -1,6 +1,7 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/ui_description_json.hpp>
 #include <sasd/ui/ui_description_document.hpp>
+#include <sasd/ui/ui_description_reconstruction.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
@@ -51,6 +52,11 @@ int main() {
     const auto parsed = sasd::ui::parseBuiltInUiDescriptionJson(*json);
     if (!parsed || parsed.error.code != sasd::ui::UiDescriptionJsonParseErrorCode::none ||
         parsed.document->nodes.size() != 1 || parsed.document->nodes[0].type_id != "sasd.ui.Button") {
+        return EXIT_FAILURE;
+    }
+    auto reconstructed = sasd::ui::reconstructBuiltInUiDescription(*parsed.document);
+    if (!reconstructed ||
+        sasd::ui::encodeBuiltInUiDescriptionJson(*reconstructed.root) != json) {
         return EXIT_FAILURE;
     }
     sasd::ui::terminal::ScreenBuffer buffer{{2, 1}};

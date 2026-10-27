@@ -290,7 +290,8 @@ Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Sl
 SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
 Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes Encoding bereit
 (ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Slice 17 ergänzt validiertes
-JSON-v1-Dokumentladen (ADR 0187). Live-Rekonstruktion und das separate Resource-System bleiben offen.
+JSON-v1-Dokumentladen (ADR 0187), und Slice 18 schließt die phasenbasierte Built-in-Graph-
+Rekonstruktion ab (ADR 0188). Das separate Resource-System bleibt offen.
 Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
@@ -301,7 +302,7 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
   - [ ] Validierung und Design-Time-Attribute
-- [ ] Serialisierung von UI-Beschreibungen
+- [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
   - [x] Abdeckung persistenter skalarer Properties
@@ -317,10 +318,10 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Heutiger inline TextStyle als dauerhafter Authoring-Wert (ADR 0185)
   - [x] Persistenzrepräsentation / Encoding
     - [x] Kanonischer JSON-v1-Writer (ADR 0186)
-  - [ ] Deserialisierung / Rekonstruktion
+  - [x] Deserialisierung / Rekonstruktion
     - [x] JSON-v1-Parser und validiertes formatneutrales Dokumentmodell (ADR 0187)
-    - [ ] Built-in-Component-Konstruktion und Property-Restore
-    - [ ] Ownership-/Reference-Rekonstruktion
+    - [x] Built-in-Component-Konstruktion und Property-Restore (ADR 0188)
+    - [x] Ownership-/Reference-Rekonstruktion (ADR 0188)
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
 - [ ] Design-Time-Validierungsmetadaten
@@ -329,8 +330,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 
 Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179).
-Slice 13 deckt `ComboBox.items` und optionalen `selectedIndex` ab (ADR 0183); zukünftige
-Rekonstruktion muss items vor selectedIndex setzen. Kanonisches JSON-v1-Encoding ist implementiert; Rekonstruktion bleibt offen.
+Slice 13 deckt `ComboBox.items` und optionalen `selectedIndex` ab (ADR 0183); Slice 18 restauriert
+beide in dieser Metadatenreihenfolge. Die aktuelle Built-in-Pipeline unterstützt nun Capture ->
+Encode -> Parse -> Reconstruct.
 
 ## Bewusst später
 

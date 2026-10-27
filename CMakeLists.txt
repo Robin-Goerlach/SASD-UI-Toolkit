@@ -35,6 +35,8 @@ add_library(sasd_ui_core
     src/component_reference_snapshot.cpp
     src/ui_description_json.cpp
     src/ui_description_json_parser.cpp
+    src/ui_description_document_validation.cpp
+    src/ui_description_reconstruction.cpp
     src/radio_button.cpp
     src/radio_group.cpp
     src/radio_group_navigation.cpp

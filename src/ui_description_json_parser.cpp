@@ -2,6 +2,8 @@
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
+#include "ui_description_document_validation.hpp"
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -48,16 +50,6 @@ constexpr std::array relations{
     Relation{"table-selection-model.model", Reference::table_selection_model_model, "sasd.ui.TableSelectionModel", "sasd.ui.TableModel"},
     Relation{"tree-selection-model.model", Reference::tree_selection_model_model, "sasd.ui.TreeSelectionModel", "sasd.ui.TreeModel"}};
 
-bool derivesFrom(std::string_view type, std::string_view base) {
-    for (std::size_t depth = 0; depth < builtInComponentTypes().size(); ++depth) {
-        if (type == base) { return true; }
-        const auto* metadata = findBuiltInComponentType(type);
-        if (!metadata || metadata->base_type_id.empty()) { return false; }
-        type = metadata->base_type_id;
-    }
-    return false;
-}
-
 class Parser final {
 public:
     explicit Parser(std::string_view input) : input_(input) {}
@@ -92,7 +84,22 @@ public:
         });
         whitespace();
         if (cursor_ != input_.size()) { fail(Error::syntax_error, cursor_); }
-        if (ok()) { validate(); }
+        if (ok()) {
+            const auto validation =
+                detail::validateAndNormalizeBuiltInUiDescriptionDocument(document_);
+            if (!validation) {
+                std::size_t offset = 0;
+                if (validation.location == detail::UiDescriptionValidationLocation::node &&
+                    validation.input_index < node_offsets_.size()) {
+                    offset = node_offsets_[validation.input_index];
+                } else if (validation.location ==
+                               detail::UiDescriptionValidationLocation::reference &&
+                           validation.input_index < reference_offsets_.size()) {
+                    offset = reference_offsets_[validation.input_index];
+                }
+                fail(validation.error, offset);
+            }
+        }
         if (!ok()) { return {std::nullopt, error_}; }
         return {std::move(document_), {}};
     }
@@ -398,135 +405,6 @@ private:
         document_.reference_edges.push_back(edge);
     }
 
-    template<class Properties>
-    void validateProperties(const BuiltInUiDescriptionNode& node, Properties& values, Kind kind,
-                            std::vector<const ComponentPropertyMetadata*>& seen, std::size_t at) {
-        for (const auto& value : values) {
-            const auto* descriptor = findBuiltInComponentProperty(node.type_id, value.property_id);
-            if (!descriptor || descriptor->declaring_type_id != value.declaring_type_id) {
-                fail(Error::unknown_property, at); return;
-            }
-            if (descriptor->value_kind != kind) { fail(Error::property_kind_mismatch, at); return; }
-            if (std::find(seen.begin(), seen.end(), descriptor) != seen.end()) {
-                fail(Error::unknown_property, at); return;
-            }
-            seen.push_back(descriptor);
-        }
-        // Typed collection order is deterministic but never prescribes setter/dependency order.
-        std::sort(values.begin(), values.end(), [](const auto& a, const auto& b) {
-            if (a.declaring_type_id != b.declaring_type_id) { return a.declaring_type_id < b.declaring_type_id; }
-            return a.property_id < b.property_id;
-        });
-    }
-    void validateNode(BuiltInUiDescriptionNode& node, std::size_t at) {
-        const auto* type = findBuiltInComponentType(node.type_id);
-        if (!type) { fail(Error::unknown_component_type, at); return; }
-        if (!node.owned_component_ids.empty() && type->kind != ComponentTypeKind::container) {
-            fail(Error::invalid_ownership, at); return;
-        }
-        std::vector<const ComponentPropertyMetadata*> seen;
-        validateProperties(node, node.boolean_properties, Kind::boolean, seen, at);
-        validateProperties(node, node.string_properties, Kind::string, seen, at);
-        validateProperties(node, node.signed_integer_properties, Kind::signed_integer, seen, at);
-        validateProperties(node, node.unsigned_integer_properties, Kind::unsigned_integer, seen, at);
-        validateProperties(node, node.string_collection_properties, Kind::string_collection, seen, at);
-        validateProperties(node, node.optional_unsigned_integer_properties, Kind::optional_unsigned_integer, seen, at);
-        validateProperties(node, node.size_constraints_properties, Kind::size_constraints, seen, at);
-        validateProperties(node, node.text_style_properties, Kind::text_style, seen, at);
-        std::size_t expected = 0;
-        for (const auto* current = type; current; current = findBuiltInComponentType(current->base_type_id)) {
-            expected += declaredBuiltInComponentProperties(current->type_id).size();
-        }
-        if (seen.size() != expected) { fail(Error::missing_member, at); }
-        if (!ok()) { return; }
-        // These runtime-reconstructability invariants are pure value checks. Constructing temporary
-        // controls would mix parse failures with setters, callbacks and platform-sized restoration.
-        if (node.type_id == "sasd.ui.ComboBox") {
-            const auto& index = node.optional_unsigned_integer_properties.front().value;
-            if (index && *index >= node.string_collection_properties.front().value.size()) {
-                fail(Error::invalid_property_value, at);
-            }
-        }
-        if (node.type_id == "sasd.ui.GridLayout" && node.unsigned_integer_properties.front().value == 0) {
-            fail(Error::invalid_property_value, at);
-        }
-        if (node.type_id == "sasd.ui.TextField") {
-            for (const auto& value : node.string_properties) {
-                if (value.property_id == "text" && utf8::sanitizeSingleLine(value.value) != value.value) {
-                    fail(Error::invalid_property_value, at);
-                }
-            }
-        }
-    }
-    void validate() {
-        auto& nodes = document_.nodes;
-        const auto count = nodes.size();
-        if (count == 0 || document_.root_node_id != 0) { fail(Error::invalid_ownership, 0); return; }
-        std::vector<std::size_t> offsets(count);
-        std::vector<bool> ids(count, false);
-        for (std::size_t i = 0; i < count; ++i) {
-            const auto id = nodes[i].node_id;
-            if (id >= count || ids[static_cast<std::size_t>(id)]) { fail(Error::invalid_ownership, node_offsets_[i]); return; }
-            ids[static_cast<std::size_t>(id)] = true;
-            offsets[static_cast<std::size_t>(id)] = node_offsets_[i];
-        }
-        std::sort(nodes.begin(), nodes.end(), [](const auto& a, const auto& b) { return a.node_id < b.node_id; });
-        std::vector<bool> owned(count, false);
-        for (auto& node : nodes) {
-            const auto at = offsets[static_cast<std::size_t>(node.node_id)];
-            validateNode(node, at);
-            if (!ok()) { return; }
-            for (const auto child : node.owned_component_ids) {
-                if (child == 0 || child >= count || child == node.node_id || owned[static_cast<std::size_t>(child)]) {
-                    fail(Error::invalid_ownership, at); return;
-                }
-                owned[static_cast<std::size_t>(child)] = true;
-            }
-        }
-        // Iterative ownership preorder checks reachability, cycles and the exact v1 ID sequence.
-        // No recursive graph walk: even a very deep valid component tree consumes only heap space.
-        std::vector<ComponentDescriptionNodeId> pending{0};
-        std::size_t next = 0;
-        while (!pending.empty()) {
-            const auto id = pending.back(); pending.pop_back();
-            if (id != next) { fail(Error::invalid_ownership, offsets[static_cast<std::size_t>(id)]); return; }
-            ++next;
-            const auto& children = nodes[static_cast<std::size_t>(id)].owned_component_ids;
-            pending.insert(pending.end(), children.rbegin(), children.rend());
-        }
-        if (next != count) { fail(Error::invalid_ownership, 0); return; }
-        std::vector<std::array<bool, relations.size()>> bound(count);
-        std::vector<bool> selected_group(count, false);
-        for (std::size_t i = 0; i < document_.reference_edges.size(); ++i) {
-            const auto& edge = document_.reference_edges[i];
-            const auto at = reference_offsets_[i];
-            if (edge.source_node_id >= count || edge.target_node_id >= count || edge.source_node_id == edge.target_node_id) {
-                fail(Error::invalid_reference, at); return;
-            }
-            const auto source = static_cast<std::size_t>(edge.source_node_id);
-            const auto target = static_cast<std::size_t>(edge.target_node_id);
-            const auto rule = std::find_if(relations.begin(), relations.end(), [&](const auto& r) { return r.kind == edge.kind; });
-            const auto index = static_cast<std::size_t>(rule - relations.begin());
-            if (bound[source][index] || !derivesFrom(nodes[source].type_id, rule->source) || !derivesFrom(nodes[target].type_id, rule->target)) {
-                fail(Error::invalid_reference, at); return;
-            }
-            bound[source][index] = true;
-            if (edge.kind == Reference::radio_button_group) {
-                const auto& values = nodes[source].boolean_properties;
-                const auto selected = std::find_if(values.begin(), values.end(), [](const auto& p) {
-                    return p.declaring_type_id == "sasd.ui.RadioButton" && p.property_id == "selected";
-                });
-                if (selected->value) {
-                    if (selected_group[target]) { fail(Error::invalid_reference, at); return; }
-                    selected_group[target] = true;
-                }
-            }
-        }
-        std::sort(document_.reference_edges.begin(), document_.reference_edges.end(), [](const auto& a, const auto& b) {
-            if (a.source_node_id != b.source_node_id) { return a.source_node_id < b.source_node_id; }
-            return a.kind < b.kind;
-        });
-    }
 };
 } // namespace
 

@@ -106,9 +106,10 @@ Backend-Handles, Callbacks, Observer und ausführbare Funktionen. Keine erfunden
 oder Resource-Identitäten.
 
 JSON ist ausschließlich externes Encoding, kein internes Component-/Property-/Ownership-/Reference-
-Modell. Der Reader erzeugt ein validiertes Dokument. Keine Live-Deserialisierung, Factory, Resolver,
-Rekonstruktion, Resource-System, Model-Payload-Persistence oder Datei-API. Alternative SASD-/Binary-/DFM-artige Encodings bleiben
-möglich. JSON Schema kann bei Bedarf für externes Tooling folgen.
+Modell. Der Reader erzeugt ein validiertes Dokument; die getrennte Built-in-Reconstruction-API
+konsumiert dieses Dokument. Kein Resource-System, keine Model-Payload-Persistence und keine Datei-API.
+Alternative SASD-/Binary-/DFM-artige Encodings bleiben möglich. JSON Schema kann bei Bedarf für
+externes Tooling folgen.
 
 ## Reader v1 und validiertes Dokument
 
@@ -150,6 +151,21 @@ der Fehlererkennung; EOF darf input.size() sein, semantische Fehler dürfen den 
 markieren. Allocation-Fehler propagieren. Keine Components, Factory, Property-Restore, Ownership-
 Adoption, Referenzauflösung, Callback-Suppression oder File-I/O. Siehe
 [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
+
+## Built-in-Rekonstruktion
+
+`reconstructBuiltInUiDescription(const BuiltInUiDescriptionDocument&)` kann erfolgreich geparste
+v1-Dokumente für alle unterstützten konkreten Built-in-Typen rekonstruieren. Das veränderliche
+Dokument wird vor Runtime-Konstruktion erneut validiert; der besitzende
+`std::unique_ptr<Component>`-Root wird erst nach vollständigem Property-, Reference- und geordnetem
+Ownership-Restore übergeben.
+
+Exakte Einträge `sasd.ui.ListModel`, `sasd.ui.TableModel` und `sasd.ui.TreeModel` bleiben bekannte
+Schema-Typen, sind aber abstrakt und nicht direkt konstruierbar. Ihre konkreten String-Model-Varianten
+werden leer konstruiert: Items, Rows, Headers und Tree Nodes bleiben ausgeschlossene Application-
+Payloads. Die Reconstruction-API parst kein JSON, führt kein File-I/O aus, lädt keine Resources,
+restauriert keinen transienten Zustand und überträgt Description-Node-Identität nicht in Runtime-
+Components. Siehe [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ## Vollständiges normatives Beispiel
 
