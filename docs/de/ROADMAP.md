@@ -289,7 +289,8 @@ Slice 10 ergänzt beschreibungslokale Node-Identität und geordnete Ownership-Sn
 Slice 11 ergänzt Built-in-Component-zu-Component-Reference-Edges (ADR 0181). Slice 12 ergänzt
 SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
 Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes Encoding bereit
-(ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Rekonstruktion und das separate Resource-System bleiben offen.
+(ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Slice 17 ergänzt validiertes
+JSON-v1-Dokumentladen (ADR 0187). Live-Rekonstruktion und das separate Resource-System bleiben offen.
 Validierung und Design-Time-Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
@@ -317,6 +318,9 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Persistenzrepräsentation / Encoding
     - [x] Kanonischer JSON-v1-Writer (ADR 0186)
   - [ ] Deserialisierung / Rekonstruktion
+    - [x] JSON-v1-Parser und validiertes formatneutrales Dokumentmodell (ADR 0187)
+    - [ ] Built-in-Component-Konstruktion und Property-Restore
+    - [ ] Ownership-/Reference-Rekonstruktion
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
 - [ ] Design-Time-Validierungsmetadaten

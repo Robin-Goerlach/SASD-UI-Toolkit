@@ -128,8 +128,26 @@ deserialization/reconstruction and resources remain open.
 `sasd/ui/ui_description_json.hpp` sits above the owned reference graph snapshot. The capture model
 remains format-neutral: JSON is only an external encoding. The dependency-free Component-root writer
 captures once, emits deterministic canonical v1 with all persistent values explicit, and returns
-nullopt on capture, UTF-8 or symbolic-enum failure. No parser/reconstruction or file I/O is added.
+nullopt on capture, UTF-8 or symbolic-enum failure. The writer bytes remain unchanged with the reader; reconstruction and file I/O remain excluded.
 See the [format specification](UI_DESCRIPTION_FORMAT.md) and [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
+
+### Validated description loading
+
+The pipelines deliberately have different value types:
+
+```text
+Runtime Components -> Capture Snapshot -> Canonical JSON Writer
+Canonical/valid v1 JSON -> JSON Parser -> Validated BuiltInUiDescriptionDocument -> future Reconstruction
+```
+
+The owning format-neutral document uses eight concrete property collections and the existing
+reference-kind enum. Capture snapshots include is_default tooling metadata; loaded documents omit
+it because it was never persisted. No default filling or recalculation occurs. The dependency-free
+reader accepts cosmetic JSON/member/array order differences while rejecting unknown/duplicate
+members, incomplete schemas, malformed UTF-8/escapes and inexact integers. Metadata/value-only
+validation checks ownership preorder, reference type compatibility and reconstructability invariants.
+No Components are constructed, no setters/callbacks run, and no resource or file layer is added.
+See [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
 
 ### Effective property defaults
 

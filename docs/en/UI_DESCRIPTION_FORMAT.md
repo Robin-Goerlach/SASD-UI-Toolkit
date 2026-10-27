@@ -12,9 +12,8 @@ See [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 Top-level keys, in order: `format`, `formatVersion`, `root`, `nodes`, `references`.
 `format` is exactly `sasd.ui-description`; `formatVersion` is the positive integer `1`.
 No additional metadata fields are emitted. Toolkit release and format versions are independent.
-Incompatible format changes require a new format version. A future reader must explicitly check
-versions and must not silently assume the meaning of an unknown version. No reader policy is
-implemented yet; no min/max version, schema URL or JSON Schema is provided.
+Incompatible format changes require a new format version. The v1 reader explicitly checks
+format/version and rejects unknown versions. No min/max version, schema URL or JSON Schema is provided.
 
 Canonical formatting uses two spaces per nesting level, multiline nonempty objects and arrays,
 empty arrays `[]`, one array element per line, comma followed by LF, one space after colons,
@@ -114,7 +113,7 @@ Every persisted string, including collection elements, must be valid UTF-8. Malf
 truncated, surrogate and out-of-range sequences reject the entire encoding; no replacement,
 byte dropping, normalization or Latin-1 fallback occurs. JSON escaping preserves controls exactly.
 Integers use locale-independent exact decimal text, without quotes, exponent, grouping or floating
-conversion. uint64 values are not restricted to JavaScript safe integers; future readers must parse
+conversion. uint64 values are not restricted to JavaScript safe integers; the reader parses
 uint64 exactly. Optional absence is `null`, never a sentinel.
 
 ## Exclusions and boundaries
@@ -127,9 +126,49 @@ dirty state, backend handles, callbacks, observers and executable functions. No 
 names or resource identities are invented.
 
 JSON is only an external encoding, never the internal Component/property/ownership/reference model.
-No parser, deserializer, factory, resolver, reconstruction, resource system, model-payload persistence
-or file API exists in this slice. Alternative SASD/binary/DFM-like encodings remain possible.
-A JSON Schema may follow when a reader or external tooling needs it.
+The reader produces a validated document. No live deserializer, factory, resolver, reconstruction,
+resource system, model-payload persistence or file API exists. Alternative SASD/binary/DFM-like encodings remain possible.
+A JSON Schema may follow when external tooling needs it.
+
+## Reader v1 and validated document
+
+`parseBuiltInUiDescriptionJson(std::string_view)` returns an owning, format-neutral
+`BuiltInUiDescriptionDocument` (public header `sasd/ui/ui_description_document.hpp`). Capture
+snapshots and loaded documents are distinct: no `is_default` information is invented or recomputed.
+All eight typed property collections own their values and strings independently of the input.
+Format/version markers belong only to this encoding, not the semantic document.
+
+Canonical output is a writer contract. The reader accepts permitted JSON whitespace, arbitrary
+object-member order and arbitrary property/node/reference array order. Nodes normalize by ascending
+ID without renumbering, references by source ID then fixed reference-kind order, and typed properties
+by declaring-type/property identity. Ownership child order and string-collection order are preserved.
+Every object rejects unknown and duplicate members; all members and all effective properties remain
+required. No defaults are filled. Only exact built-in type IDs, declaring identities, kind/color/
+reference symbols and version 1 are accepted.
+
+The full input must be valid UTF-8 without BOM. All JSON escapes, including surrogate pairs, decode
+to UTF-8 without replacement or normalization; lone surrogates and raw controls fail. Comments,
+trailing commas, single quotes, incomplete tokens and trailing garbage fail. Integers are exact
+int64/uint64/Coordinate decimal values without floating conversion, leading plus/zeros, fraction or
+exponent. There is no JavaScript safe-integer limit.
+
+Validation requires nonempty dense IDs 0..N-1, root 0, Container owners, a complete unique-owner
+acyclic reachable ownership tree and exact DFS preorder along owns. References require existing
+distinct endpoints, one edge per source/kind and metadata-compatible endpoint types, including model
+base chains. View/model and selection/model references remain independent. SizeConstraints must
+have a valid range; negative coordinates and preferred outside min/max remain valid. ComboBox
+selectedIndex must be null or in items, GridLayout columnCount positive, TextField text unchanged by
+sanitizeSingleLine, and each referenced RadioGroup may have at most one selected member.
+
+Success engages document with error.code == none. Failure returns no document and a stable
+`UiDescriptionJsonParseErrorCode`: invalid_utf8, syntax_error, duplicate_member, unknown_member,
+missing_member, wrong_value_type, unsupported_format, unsupported_format_version,
+unknown_component_type, unknown_property, property_kind_mismatch, invalid_property_value,
+invalid_ownership or invalid_reference. `byte_offset` is a zero-based input byte position at/near
+error detection; EOF may equal input.size(), and semantic errors may point to the containing
+node/edge. Allocation failures propagate. No Components, factory, property restoration, ownership
+adoption, reference resolution, callback suppression or file I/O are involved. See
+[ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
 
 ## Normative complete example
 
