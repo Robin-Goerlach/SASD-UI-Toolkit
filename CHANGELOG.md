@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 18: built-in UI-description reconstruction from a revalidated format-neutral document.
+  Phased concrete construction, constructor-based RadioGroup membership, Command pre-restore,
+  explicit reference ordering, final base-to-derived property restoration and ordered ownership
+  adoption produce one atomic owning root. The internal construction adapter covers all concrete
+  built-ins; abstract model bases fail explicitly. Canonical encode/parse/reconstruct roundtrips are
+  byte-identical while model payload and transient state remain excluded (ADR 0188).
+
 - M8 Slice 17: dependency-free JSON v1 reader and format-neutral owning document model with
   eight concrete property types, stable parse error codes and input byte offsets. Strict schema,
   required-property and unknown/duplicate-member validation; exact UTF-8/Unicode escapes and

@@ -1,4 +1,5 @@
 #include <sasd/ui/ui_description_json.hpp>
+#include <sasd/ui/ui_description_reconstruction.hpp>
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/window.hpp>
@@ -20,4 +21,10 @@ int main() {
               << "  root: " << document.root_node_id << '\n'
               << "  references: " << document.reference_edges.size() << '\n'
               << "  root type: " << document.nodes.front().type_id << '\n';
+    auto reconstructed = sasd::ui::reconstructBuiltInUiDescription(document);
+    if (!reconstructed) { return 3; }
+    const auto reconstructed_json =
+        sasd::ui::encodeBuiltInUiDescriptionJson(*reconstructed.root);
+    if (!reconstructed_json || *reconstructed_json != *json) { return 4; }
+    std::cout << "Reconstructed canonical UI description matches the original.\n";
 }

@@ -120,15 +120,16 @@ path reuses the public value with TextStyle{} defaults, not a resource node or W
 presentation invalidation without measurement invalidation and same-value no-ops. No style inheritance
 or cascade exists; backend focus/disabled/selection overlays are excluded. Fonts, RGB/alpha, themes
 and shared resources remain future work. Canonical JSON v1 uses symbolic Color names, never enum ordinals (ADR 0186).
-The review of all 29 built-ins established semantic readiness; encoding is implemented while
-deserialization/reconstruction and resources remain open.
+The review of all 29 built-ins established semantic readiness. Encoding, validated parsing and
+built-in reconstruction are implemented; resources remain open.
 
 ### Canonical JSON description encoding
 
 `sasd/ui/ui_description_json.hpp` sits above the owned reference graph snapshot. The capture model
 remains format-neutral: JSON is only an external encoding. The dependency-free Component-root writer
 captures once, emits deterministic canonical v1 with all persistent values explicit, and returns
-nullopt on capture, UTF-8 or symbolic-enum failure. The writer bytes remain unchanged with the reader; reconstruction and file I/O remain excluded.
+nullopt on capture, UTF-8 or symbolic-enum failure. The writer bytes remain unchanged with the reader;
+file I/O remains an application concern.
 See the [format specification](UI_DESCRIPTION_FORMAT.md) and [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 
 ### Validated description loading
@@ -136,8 +137,8 @@ See the [format specification](UI_DESCRIPTION_FORMAT.md) and [ADR 0186](../adr/0
 The pipelines deliberately have different value types:
 
 ```text
-Runtime Components -> Capture Snapshot -> Canonical JSON Writer
-Canonical/valid v1 JSON -> JSON Parser -> Validated BuiltInUiDescriptionDocument -> future Reconstruction
+Runtime Graph -> Capture Snapshot -> Canonical JSON v1
+Canonical/valid JSON v1 -> Parser -> Validated Document -> Reconstruction -> Runtime Graph
 ```
 
 The owning format-neutral document uses eight concrete property collections and the existing
@@ -148,6 +149,34 @@ members, incomplete schemas, malformed UTF-8/escapes and inexact integers. Metad
 validation checks ownership preorder, reference type compatibility and reconstructability invariants.
 No Components are constructed, no setters/callbacks run, and no resource or file layer is added.
 See [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
+
+### Built-in description reconstruction
+
+`sasd/ui/ui_description_reconstruction.hpp` reconstructs a complete owned built-in graph from an
+already decoded `BuiltInUiDescriptionDocument`; it neither parses JSON nor performs file I/O. Because
+the document is a mutable public aggregate, parser and reconstruction share one internal semantic
+validator. Reconstruction validates and normalizes a private copy before creating any Component.
+
+Construction is phased. All non-RadioButton instances are staged first, then grouped RadioButtons are
+constructed through `RadioButton(RadioGroup&, std::string)`; no serialization-only `setGroup()` exists.
+Command properties are restored before `Button::bindCommand()` snapshots them. SelectionModel-to-model,
+view-to-model, view-to-selection-model and Button-to-Command references follow an explicit semantic
+order independent of document array order. A final base-to-derived metadata pass restores every
+persisted property, including the Button's independent captured values and ComboBox `items` before
+`selectedIndex`.
+
+Every instance remains in flat `std::unique_ptr` staging until semantic restoration succeeds. Only
+then does `Container::adopt()` reproduce each ordered ownership list; final ownership, parenting,
+reference, group-membership and selected-group invariants are checked before the root is transferred.
+Failures return no partial graph. Description IDs exist only in the staging lookup and are not copied
+into runtime Components, so the source and reconstructed graphs have no identity carry-over.
+
+The internal closed construction adapter supports all 26 concrete catalog types. Exact abstract
+`ListModel`, `TableModel` and `TreeModel` nodes report an unconstructible type rather than being
+substituted. Concrete String models start empty because payload is application data. Fresh controls
+contain no application callbacks, so normal setters are used without a suppression mode. Focus,
+selection, viewport, expansion, bounds and other transient state remain excluded. See
+[ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ### Effective property defaults
 
@@ -205,8 +234,8 @@ relation, or an explicit exclusion.
 RadioButton scalar metadata/access/defaults/snapshots now cover `text` (empty string default)
 and `selected` (false default), using existing string/boolean paths (ADR 0179). Writes delegate
 to `setText()`/`setSelected()`, preserving group exclusivity and callbacks. RadioGroup membership
-remains a persistent graph/reference relation. A scalar snapshot does not imply reconstructable
-group semantics: membership/reference reconstruction and ordering must first be defined.
+is reconstructed through the existing constructor before restoring `selected`, so
+`RadioGroup::selectedButton()` remains normal derived runtime state.
 
 The current catalog has 29 built-in types and twenty-eight property descriptors. ADR 0177 records
 the coverage matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md) adds
@@ -225,9 +254,8 @@ M8 Slice 13 adds concrete `string_collection` / `optional_unsigned_integer` kind
 items / selectedIndex ([ADR 0183](../adr/0183-m8-combo-box-collection-and-optional-property-coverage.md)).
 Runtime reads and collection snapshots own all strings. Optional reads/defaults use two levels:
 outer failure versus valid inner absence/value. Semantic setters preserve callbacks and selection
-clearing; checked integer conversion precedes setter domain validation. Future reconstruction must
-restore items before selectedIndex; kind-separated vectors provide no global write order. This is
-only a documented dependency, with no reconstruction implementation. selectedText is derived;
+clearing; checked integer conversion precedes setter domain validation. Reconstruction traverses
+metadata declaration order and therefore restores items before selectedIndex. selectedText is derived;
 previewIndex/previewText/dropDownOpen/pressed and callbacks are excluded.
 
 ### Description-local identity and ownership snapshots
@@ -255,7 +283,9 @@ SelectionModels are separate non-visual Components, with no generic SelectionMod
 Normal Component ownership/identity preserves sharing through Node IDs. View and SelectionModel
 model bindings remain independent; capture imposes no equality invariant. Current selected row/cell/node
 and revision remain transient and have no scalar properties; see [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
-Canonical JSON v1 encoding is implemented; reconstruction remains future work; see [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
+Canonical JSON v1 encoding and built-in reconstruction are implemented; see
+[ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) and
+[ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ### Ownership
 

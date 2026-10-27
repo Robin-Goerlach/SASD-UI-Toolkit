@@ -126,8 +126,8 @@ Pfad nutzt den Public Value direkt mit TextStyle{}-Defaults, ohne Resource-Node 
 über Setter erhalten Presentation-Invalidierung ohne Measurement-Invalidierung und Same-value-No-op.
 Keine Vererbung/Cascade; Backend-Fokus-/Disabled-/Selection-Overlays bleiben ausgeschlossen. Fonts,
 RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Kanonisches JSON v1 verwendet symbolische Color-Namen
-statt Enum-Ordinals (ADR 0186). Der Review aller 29 Built-ins bestätigte die semantische Readiness;
-Encoding ist implementiert, Deserialisierung/Rekonstruktion und Resources bleiben offen.
+statt Enum-Ordinals (ADR 0186). Der Review aller 29 Built-ins bestätigte die semantische Readiness.
+Encoding, validiertes Parsing und Built-in-Rekonstruktion sind implementiert; Resources bleiben offen.
 
 ### Kanonisches JSON-Description-Encoding
 
@@ -135,7 +135,7 @@ Encoding ist implementiert, Deserialisierung/Rekonstruktion und Resources bleibe
 Modell bleibt formatneutral; JSON ist ausschließlich externes Encoding. Der dependency-freie
 Component-Root-Writer erfasst einmal und erzeugt deterministisches kanonisches v1 mit allen
 persistenten Werten explizit. Capture-, UTF-8- und Symbolfehler liefern nullopt. Writer-Bytes bleiben unverändert;
-Rekonstruktion und File-I/O bleiben ausgeschlossen. Siehe [Formatspezifikation](UI_DESCRIPTION_FORMAT.md) und
+File-I/O bleibt Aufgabe der Anwendung. Siehe [Formatspezifikation](UI_DESCRIPTION_FORMAT.md) und
 [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 
 ### Validiertes Laden von UI Descriptions
@@ -143,8 +143,8 @@ Rekonstruktion und File-I/O bleiben ausgeschlossen. Siehe [Formatspezifikation](
 Die Pipelines verwenden absichtlich verschiedene Werttypen:
 
 ```text
-Runtime Components -> Capture Snapshot -> Canonical JSON Writer
-Kanonisches/gültiges v1 JSON -> JSON Parser -> Validated BuiltInUiDescriptionDocument -> zukünftige Rekonstruktion
+Runtime Graph -> Capture Snapshot -> Canonical JSON v1
+Kanonisches/gültiges JSON v1 -> Parser -> Validated Document -> Rekonstruktion -> Runtime Graph
 ```
 
 Das besitzende formatneutrale Dokument nutzt acht konkrete Property-Collections und die vorhandene
@@ -155,6 +155,36 @@ doppelte Member, unvollständige Schemas, ungültiges UTF-8/Escapes und unexakte
 Metadaten-/Wertvalidierung prüft Ownership-Preorder, Referenztypkompatibilität und ohne Konstruktion
 prüfbare Rekonstruierbarkeit. Keine Component-Konstruktion, Setter/Callbacks, Resources oder Datei-API.
 Siehe [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
+
+### Rekonstruktion von Built-in-Descriptions
+
+`sasd/ui/ui_description_reconstruction.hpp` rekonstruiert einen vollständig besitzenden Built-in-
+Graphen aus einem bereits decodierten `BuiltInUiDescriptionDocument`; weder JSON-Parsing noch File-I/O
+gehören dazu. Weil das Dokument ein veränderliches öffentliches Aggregate ist, teilen Parser und
+Rekonstruktion einen internen semantischen Validator. Vor jeder Component-Konstruktion wird eine
+private Kopie validiert und normalisiert.
+
+Die Konstruktion erfolgt in Phasen. Zuerst entstehen alle Non-RadioButtons; gruppierte RadioButtons
+folgen über `RadioButton(RadioGroup&, std::string)`. Es gibt kein Serialization-only-`setGroup()`.
+Command-Properties werden vor dem Snapshot durch `Button::bindCommand()` restauriert. SelectionModel-
+zu-Model-, View-zu-Model-, View-zu-SelectionModel- und Button-zu-Command-References folgen einer
+expliziten semantischen Reihenfolge unabhängig von Document-Arrays. Ein finaler Base-to-Derived-
+Metadaten-Pass restauriert alle persistenten Properties, einschließlich des unabhängigen Button-
+Snapshots und ComboBox `items` vor `selectedIndex`.
+
+Alle Instanzen bleiben bis zum Erfolg der semantischen Wiederherstellung flach durch
+`std::unique_ptr` gestaged. Erst danach bildet `Container::adopt()` jede gespeicherte Ownership-
+Reihenfolge nach; Ownership, Parenting, References, Gruppenmitgliedschaft und abgeleitete Auswahl
+werden vor Root-Transfer geprüft. Fehler geben keinen partiellen Graphen zurück. Description-IDs
+existieren nur im Staging-Lookup und werden nicht in Runtime-Components gespeichert; zwischen
+Ausgangs- und Zielgraph gibt es kein Identity Carry-over.
+
+Der interne geschlossene Construction Adapter unterstützt alle 26 konkreten Katalogtypen. Exakte
+abstrakte `ListModel`-, `TableModel`- und `TreeModel`-Nodes melden einen nicht konstruierbaren Typ,
+statt substituiert zu werden. Konkrete String-Models starten leer, weil Payload Application Data ist.
+Fresh Controls besitzen keine Application Callbacks; normale Setter benötigen daher keinen
+Suppression-Modus. Fokus, Selection, Viewport, Expansion, Bounds und anderer transienter Zustand
+bleiben ausgeschlossen. Siehe [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ### Effektive Property-Defaults
 
@@ -216,9 +246,8 @@ Beziehung oder ausdrückliche Exklusion abgedeckt ist.
 RadioButton-Metadaten, Zugriff, Defaults und Snapshots decken jetzt `text` (Default leer)
 und `selected` (Default false) über bestehende String-/Boolean-Pfade ab (ADR 0179). Writes
 delegieren an `setText()`/`setSelected()` und erhalten Gruppenexklusivität und Callbacks.
-RadioGroup-Mitgliedschaft bleibt eine persistente Graph-/Referenzbeziehung. Ein skalarer Snapshot
-impliziert keine rekonstruierbare Gruppensemantik: Mitgliedschaft/Reference Reconstruction und
-deren Reihenfolge bleiben zu definieren.
+RadioGroup-Mitgliedschaft wird vor `selected` durch den bestehenden Konstruktor rekonstruiert;
+`RadioGroup::selectedButton()` bleibt normal abgeleiteter Runtime-Zustand.
 
 Der aktuelle Katalog enthält 29 Built-in-Typen und achtundzwanzig Property-Deskriptoren. ADR 0177
 enthält die Coverage-Matrix; ADR [0178](../adr/0178-m8-numeric-property-value-kind-foundation.md)
@@ -239,8 +268,7 @@ items / selectedIndex ([ADR 0183](../adr/0183-m8-combo-box-collection-and-option
 Runtime-Reads und Collection-Snapshots besitzen alle Strings. Optionale Reads/Defaults trennen mit
 zwei Ebenen äußeren Fehler von gültigem innerem none/Wert. Semantische Setter erhalten Callbacks
 und Selection-Clearing; geprüfte Integer-Konvertierung erfolgt vor Setter-Domain-Validierung.
-Zukünftige Rekonstruktion muss items vor selectedIndex setzen; getrennte Kind-Vektoren enthalten
-keine globale Write-Reihenfolge. Dies ist nur dokumentiert, keine Rekonstruktion implementiert.
+Rekonstruktion folgt der Metadaten-Deklarationsreihenfolge und restauriert daher items vor selectedIndex.
 selectedText bleibt abgeleitet; previewIndex/previewText/dropDownOpen/pressed und Callbacks sind ausgeschlossen.
 
 ### Beschreibungslokale Identität und Ownership-Snapshots
@@ -270,7 +298,9 @@ Components ohne generische SelectionModel-Hierarchie.
 Normale Component-Ownership/-Identität erhält Sharing durch Node-IDs. View- und SelectionModel-Model-
 Bindings bleiben unabhängig, ohne neue Gleichheitsinvariante. Aktuelle Zeilen-/Zellen-/Node-Selection
 und Revision bleiben transient und ohne Scalar-Properties; siehe [ADR 0182](../adr/0182-m8-selection-model-component-lifecycle-and-reference-coverage.md).
-Kanonisches JSON-v1-Encoding ist implementiert; Rekonstruktion bleibt spätere Arbeit; siehe [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md).
+Kanonisches JSON-v1-Encoding und Built-in-Rekonstruktion sind implementiert; siehe
+[ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) und
+[ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ### Ownership
 

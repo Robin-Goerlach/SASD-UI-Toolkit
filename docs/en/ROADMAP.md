@@ -282,7 +282,8 @@ Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). Slice 
 SelectionModel Component lifecycle and association coverage (ADR 0182).
 Current built-in semantic coverage is ready for persisted encoding after the Slice-15 review
 (ADR 0185). Slice 16 provides canonical JSON v1 encoding (ADR 0186); Slice 17 adds validated
-JSON v1 document loading (ADR 0187). Live reconstruction and the separate resource system remain open.
+JSON v1 document loading (ADR 0187), and Slice 18 completes phased built-in graph reconstruction
+(ADR 0188). The separate resource system remains open.
 Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
@@ -293,7 +294,7 @@ Validation and design-time attributes remain future slices.
   - [x] runtime property value-access contract
   - [x] effective property default metadata
   - [ ] validation and design-time attributes
-- [ ] serialization of UI descriptions
+- [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy
   - [x] persistent scalar property coverage
@@ -309,18 +310,18 @@ Validation and design-time attributes remain future slices.
   - [x] current inline TextStyle authoring coverage (ADR 0185)
   - [x] persisted representation / encoding
     - [x] canonical JSON v1 writer (ADR 0186)
-  - [ ] deserialization / reconstruction
+  - [x] deserialization / reconstruction
     - [x] JSON v1 parser and validated format-neutral document model (ADR 0187)
-    - [ ] built-in Component construction and property restoration
-    - [ ] ownership/reference reconstruction
+    - [x] built-in Component construction and property restoration (ADR 0188)
+    - [x] ownership/reference reconstruction (ADR 0188)
 - [ ] resource system
 - [ ] designer-friendly properties
 - [ ] design-time validation metadata
 - [ ] IDE/tooling integration points
 
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
-Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); future reconstruction
-must restore items before selectedIndex. Canonical JSON v1 encoding is implemented; reconstruction remains open.
+Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); Slice 18 restores them in
+that metadata order. The current built-in pipeline now supports capture -> encode -> parse -> reconstruct.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 

@@ -126,8 +126,9 @@ dirty state, backend handles, callbacks, observers and executable functions. No 
 names or resource identities are invented.
 
 JSON is only an external encoding, never the internal Component/property/ownership/reference model.
-The reader produces a validated document. No live deserializer, factory, resolver, reconstruction,
-resource system, model-payload persistence or file API exists. Alternative SASD/binary/DFM-like encodings remain possible.
+The reader produces a validated document, and the separate built-in reconstruction API consumes that
+document. No resource system, model-payload persistence or file API exists. Alternative
+SASD/binary/DFM-like encodings remain possible.
 A JSON Schema may follow when external tooling needs it.
 
 ## Reader v1 and validated document
@@ -169,6 +170,20 @@ error detection; EOF may equal input.size(), and semantic errors may point to th
 node/edge. Allocation failures propagate. No Components, factory, property restoration, ownership
 adoption, reference resolution, callback suppression or file I/O are involved. See
 [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
+
+## Built-in reconstruction
+
+`reconstructBuiltInUiDescription(const BuiltInUiDescriptionDocument&)` can reconstruct successfully
+parsed v1 documents for all supported concrete built-in types. It revalidates the mutable document
+before constructing runtime objects and returns one owning `std::unique_ptr<Component>` root only
+after property, reference and ordered ownership restoration all succeed.
+
+Exact `sasd.ui.ListModel`, `sasd.ui.TableModel` and `sasd.ui.TreeModel` entries remain known schema
+types but are abstract and not directly constructible. Their concrete String-model variants are
+constructed empty: items, rows, headers and tree nodes remain excluded application payload. The
+reconstruction API does not parse JSON, perform file I/O, load resources, restore transient state or
+carry description node identity into runtime Components. See
+[ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
 ## Normative complete example
 

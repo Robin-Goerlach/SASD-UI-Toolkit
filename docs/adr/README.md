@@ -204,6 +204,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0185](0185-m8-inline-text-style-authoring-persistence-coverage.md) | M8 Inline TextStyle Authoring Persistence Coverage | Accepted |
 | [0186](0186-m8-canonical-json-ui-description-encoding-v1.md) | M8 Canonical JSON UI Description Encoding v1 | Accepted |
 | [0187](0187-m8-json-v1-parser-validated-document-model.md) | M8 Canonical JSON v1 Parser and Validated UI Description Document Model | Accepted |
+| [0188](0188-m8-built-in-ui-description-reconstruction.md) | M8 Built-in UI Description Reconstruction | Accepted |
 
 ## ADR policy
 
