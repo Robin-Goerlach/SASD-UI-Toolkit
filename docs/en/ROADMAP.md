@@ -281,7 +281,8 @@ Slice 10 adds description-local node identity and ordered ownership snapshots (A
 Slice 11 adds built-in Component-to-Component reference edges (ADR 0181). Slice 12 adds
 SelectionModel Component lifecycle and association coverage (ADR 0182).
 Current built-in semantic coverage is ready for persisted encoding after the Slice-15 review
-(ADR 0185). Slice 16 provides canonical JSON v1 encoding (ADR 0186); reconstruction and the separate resource system remain open.
+(ADR 0185). Slice 16 provides canonical JSON v1 encoding (ADR 0186); Slice 17 adds validated
+JSON v1 document loading (ADR 0187). Live reconstruction and the separate resource system remain open.
 Validation and design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
@@ -309,6 +310,9 @@ Validation and design-time attributes remain future slices.
   - [x] persisted representation / encoding
     - [x] canonical JSON v1 writer (ADR 0186)
   - [ ] deserialization / reconstruction
+    - [x] JSON v1 parser and validated format-neutral document model (ADR 0187)
+    - [ ] built-in Component construction and property restoration
+    - [ ] ownership/reference reconstruction
 - [ ] resource system
 - [ ] designer-friendly properties
 - [ ] design-time validation metadata

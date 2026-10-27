@@ -134,9 +134,27 @@ Encoding ist implementiert, Deserialisierung/Rekonstruktion und Resources bleibe
 `sasd/ui/ui_description_json.hpp` liegt oberhalb des eigenen Reference-Graph-Snapshots. Das Capture-
 Modell bleibt formatneutral; JSON ist ausschließlich externes Encoding. Der dependency-freie
 Component-Root-Writer erfasst einmal und erzeugt deterministisches kanonisches v1 mit allen
-persistenten Werten explizit. Capture-, UTF-8- und Symbolfehler liefern nullopt. Kein Parser,
-keine Rekonstruktion oder File-I/O. Siehe [Formatspezifikation](UI_DESCRIPTION_FORMAT.md) und
+persistenten Werten explizit. Capture-, UTF-8- und Symbolfehler liefern nullopt. Writer-Bytes bleiben unverändert;
+Rekonstruktion und File-I/O bleiben ausgeschlossen. Siehe [Formatspezifikation](UI_DESCRIPTION_FORMAT.md) und
 [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
+
+### Validiertes Laden von UI Descriptions
+
+Die Pipelines verwenden absichtlich verschiedene Werttypen:
+
+```text
+Runtime Components -> Capture Snapshot -> Canonical JSON Writer
+Kanonisches/gültiges v1 JSON -> JSON Parser -> Validated BuiltInUiDescriptionDocument -> zukünftige Rekonstruktion
+```
+
+Das besitzende formatneutrale Dokument nutzt acht konkrete Property-Collections und die vorhandene
+Reference-Kind-Enum. Capture-Snapshots enthalten is_default als Tooling-Metadatum; geladene Dokumente
+lassen es weg, weil es nicht persistiert wurde. Keine Default-Ergänzung oder Neuberechnung. Der
+dependency-freie Reader akzeptiert kosmetische JSON-/Member-/Array-Reihenfolgen, lehnt aber unbekannte/
+doppelte Member, unvollständige Schemas, ungültiges UTF-8/Escapes und unexakte Integer ab.
+Metadaten-/Wertvalidierung prüft Ownership-Preorder, Referenztypkompatibilität und ohne Konstruktion
+prüfbare Rekonstruierbarkeit. Keine Component-Konstruktion, Setter/Callbacks, Resources oder Datei-API.
+Siehe [ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
 
 ### Effektive Property-Defaults
 

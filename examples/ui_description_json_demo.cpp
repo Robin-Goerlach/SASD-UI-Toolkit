@@ -12,4 +12,12 @@ int main() {
     const auto json = sasd::ui::encodeBuiltInUiDescriptionJson(root);
     if (!json) { return 1; }
     std::cout << *json;
+    const auto parsed = sasd::ui::parseBuiltInUiDescriptionJson(*json);
+    if (!parsed) { return 2; }
+    const auto& document = *parsed.document;
+    std::cout << "Parsed UI description:\n"
+              << "  nodes: " << document.nodes.size() << '\n'
+              << "  root: " << document.root_node_id << '\n'
+              << "  references: " << document.reference_edges.size() << '\n'
+              << "  root type: " << document.nodes.front().type_id << '\n';
 }

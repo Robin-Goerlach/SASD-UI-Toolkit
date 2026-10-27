@@ -203,6 +203,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0184](0184-m8-widget-size-constraints-compound-property-coverage.md) | M8 Widget SizeConstraints Compound Property Coverage | Accepted |
 | [0185](0185-m8-inline-text-style-authoring-persistence-coverage.md) | M8 Inline TextStyle Authoring Persistence Coverage | Accepted |
 | [0186](0186-m8-canonical-json-ui-description-encoding-v1.md) | M8 Canonical JSON UI Description Encoding v1 | Accepted |
+| [0187](0187-m8-json-v1-parser-validated-document-model.md) | M8 Canonical JSON v1 Parser and Validated UI Description Document Model | Accepted |
 
 ## ADR policy
 

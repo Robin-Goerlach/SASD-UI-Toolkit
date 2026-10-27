@@ -12,9 +12,8 @@ Siehe [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
 Top-Level-Key-Reihenfolge: `format`, `formatVersion`, `root`, `nodes`, `references`.
 `format` ist exakt `sasd.ui-description`, `formatVersion` die positive Ganzzahl `1`.
 Keine zusätzlichen Metadaten. Toolkit-Release und Formatversion sind unabhängig. Inkompatible
-Formatänderungen benötigen eine neue Version. Ein zukünftiger Reader muss Versionen ausdrücklich
-prüfen und darf unbekannte Versionen nicht still interpretieren. Noch keine Reader-Policy,
-min/max-Version, Schema-URL oder JSON Schema.
+Formatänderungen benötigen eine neue Version. Der v1-Reader prüft Format/Version ausdrücklich
+und lehnt unbekannte Versionen ab. Keine min/max-Version, Schema-URL oder JSON Schema.
 
 Pro Ebene zwei Leerzeichen; nichtleere Objekte/Arrays mehrzeilig; leere Arrays `[]`; pro Array-Wert
 eine Zeile; Komma gefolgt von LF; ein Leerzeichen nach Doppelpunkt; keine abschließenden Kommas
@@ -95,7 +94,7 @@ Ungültige, überlange, abgebrochene, Surrogat- oder Out-of-range-Sequenzen verw
 Ersetzung, Byte-Auslassung, Normalisierung oder Latin-1-Annahme. Controls bleiben durch Escapes exakt.
 Integer werden localeunabhängig als exakter Dezimaltext geschrieben: keine Quotes, Exponenten,
 Gruppierung oder Float-Konvertierung. uint64 wird nicht auf JavaScript-Safe-Integer beschränkt;
-ein zukünftiger Reader muss uint64 exakt lesen. Optionales Fehlen ist `null`, kein Sentinel.
+der Reader liest uint64 exakt. Optionales Fehlen ist `null`, kein Sentinel.
 
 ## Ausschlüsse und Grenzen
 
@@ -107,9 +106,50 @@ Backend-Handles, Callbacks, Observer und ausführbare Funktionen. Keine erfunden
 oder Resource-Identitäten.
 
 JSON ist ausschließlich externes Encoding, kein internes Component-/Property-/Ownership-/Reference-
-Modell. Kein Parser, Deserializer, Factory, Resolver, Rekonstruktion, Resource-System,
-Model-Payload-Persistence oder Datei-API. Alternative SASD-/Binary-/DFM-artige Encodings bleiben
-möglich. JSON Schema kann mit Reader oder echtem externem Tooling folgen.
+Modell. Der Reader erzeugt ein validiertes Dokument. Keine Live-Deserialisierung, Factory, Resolver,
+Rekonstruktion, Resource-System, Model-Payload-Persistence oder Datei-API. Alternative SASD-/Binary-/DFM-artige Encodings bleiben
+möglich. JSON Schema kann bei Bedarf für externes Tooling folgen.
+
+## Reader v1 und validiertes Dokument
+
+`parseBuiltInUiDescriptionJson(std::string_view)` liefert ein besitzendes, formatneutrales
+`BuiltInUiDescriptionDocument` (Public Header `sasd/ui/ui_description_document.hpp`). Capture-
+Snapshots und geladene Dokumente sind verschiedene Typen: keine erfundene oder neu berechnete
+`is_default`-Information. Alle acht konkreten Property-Collections besitzen Werte und Strings
+unabhängig vom Input. Format-/Versionsmarker gehören nur zum Encoding.
+
+Kanonische Ausgabe ist Writer-Vertrag. Der Reader akzeptiert erlaubten JSON-Whitespace, beliebige
+Object-Member-Reihenfolge und beliebige Property-/Node-/Reference-Array-Reihenfolge. Nodes werden
+nach ID ohne Umnummerierung normalisiert, References nach Source-ID und fester Kind-Reihenfolge,
+konkrete Properties nach deklarierendem Typ/Property-ID. Ownership-Children und String-Collections
+behalten ihre Reihenfolge. Jedes Object lehnt unbekannte und doppelte Member ab. Alle Member und
+alle effektiven Properties bleiben erforderlich; Defaults werden nicht ergänzt. Nur exakte Built-in-
+Typ-IDs, deklarierende Identitäten, Kind-/Color-/Reference-Symbole und Version 1 gelten.
+
+Der gesamte Input muss gültiges UTF-8 ohne BOM sein. Alle JSON-Escapes einschließlich Surrogat-
+Paaren werden ohne Ersatz oder Normalisierung zu UTF-8 decodiert; einzelne Surrogate und rohe
+Controls sind ungültig. Kommentare, Trailing Commas, Single Quotes, unvollständige Tokens und
+Trailing Garbage scheitern. Ganzzahlen sind exakt int64/uint64/Coordinate, ohne Float-Konvertierung,
+führendes Plus/Nullen, Fraction oder Exponent. Keine JavaScript-Safe-Integer-Grenze.
+
+Validierung verlangt nichtleere dichte IDs 0..N-1, Root 0, Container-Owner, einen erreichbaren,
+zyklusfreien Baum mit genau einem Owner pro Non-root und exakter DFS-Preorder entlang owns.
+References benötigen vorhandene verschiedene Endpunkte, höchstens eine Edge pro Source/Kind und
+metadatenkompatible Typen einschließlich Model-Base-Chains. View/model und selection/model bleiben
+unabhängig. SizeConstraints müssen eine gültige Range haben; negative Werte und Preferred außerhalb
+min/max bleiben gültig. ComboBox selectedIndex ist null oder in items, GridLayout columnCount positiv,
+TextField-Text unverändert durch sanitizeSingleLine; je referenzierter RadioGroup höchstens ein
+selected Member.
+
+Erfolg: document vorhanden und error.code == none. Fehler: kein Dokument und stabiler
+`UiDescriptionJsonParseErrorCode`: invalid_utf8, syntax_error, duplicate_member, unknown_member,
+missing_member, wrong_value_type, unsupported_format, unsupported_format_version,
+unknown_component_type, unknown_property, property_kind_mismatch, invalid_property_value,
+invalid_ownership oder invalid_reference. `byte_offset` ist ein 0-basierter Input-Byteoffset an/nahe
+der Fehlererkennung; EOF darf input.size() sein, semantische Fehler dürfen den enthaltenden Node/Edge
+markieren. Allocation-Fehler propagieren. Keine Components, Factory, Property-Restore, Ownership-
+Adoption, Referenzauflösung, Callback-Suppression oder File-I/O. Siehe
+[ADR 0187](../adr/0187-m8-json-v1-parser-validated-document-model.md).
 
 ## Vollständiges normatives Beispiel
 

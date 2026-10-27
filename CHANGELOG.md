@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 17: dependency-free JSON v1 reader and format-neutral owning document model with
+  eight concrete property types, stable parse error codes and input byte offsets. Strict schema,
+  required-property and unknown/duplicate-member validation; exact UTF-8/Unicode escapes and
+  integer parsing; ownership preorder, reference types and value-level semantic invariants.
+  Cosmetic input order is accepted; canonical writer bytes stay unchanged. No is_default,
+  Component construction/reconstruction or file I/O (ADR 0187).
+
 - M8 Slice 16: dependency-free canonical JSON UI-description encoding v1 through
   encodeBuiltInUiDescriptionJson; recommended `.sasd-ui.json` extension and stable format/version
   markers independent of toolkit releases. Deterministic node/property/reference order, two-space
