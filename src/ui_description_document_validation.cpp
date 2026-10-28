@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
 #include <algorithm>
@@ -35,6 +36,23 @@ constexpr std::array relations{
     Relation{Reference::table_selection_model_model, "sasd.ui.TableSelectionModel", "sasd.ui.TableModel"},
     Relation{Reference::tree_selection_model_model, "sasd.ui.TreeSelectionModel", "sasd.ui.TreeModel"},
 };
+
+template<class Property>
+bool hasValidStaticIntegerRange(const Property&, const ComponentPropertyMetadata&) noexcept {
+    return true;
+}
+
+bool hasValidStaticIntegerRange(const UiDescriptionSignedIntegerProperty& property,
+                                const ComponentPropertyMetadata& descriptor) noexcept {
+    const auto range = builtInSignedIntegerPropertyRange(descriptor);
+    return range.has_value() && range->contains(property.value);
+}
+
+bool hasValidStaticIntegerRange(const UiDescriptionUnsignedIntegerProperty& property,
+                                const ComponentPropertyMetadata& descriptor) noexcept {
+    const auto range = builtInUnsignedIntegerPropertyRange(descriptor);
+    return range.has_value() && range->contains(property.value);
+}
 
 bool derivesFrom(std::string_view type, std::string_view base) {
     for (std::size_t depth = 0; depth < builtInComponentTypes().size(); ++depth) {
@@ -234,6 +252,9 @@ private:
             if (descriptor->value_kind != kind) {
                 return failNodeId(Error::property_kind_mismatch, node.node_id);
             }
+            if (!hasValidStaticIntegerRange(value, *descriptor)) {
+                return failNodeId(Error::invalid_property_value, node.node_id);
+            }
             if (std::find(seen.begin(), seen.end(), descriptor) != seen.end()) {
                 return failNodeId(Error::unknown_property, node.node_id);
             }
@@ -307,10 +328,6 @@ private:
             if (index && *index >= node.string_collection_properties.front().value.size()) {
                 return failNodeId(Error::invalid_property_value, node.node_id);
             }
-        }
-        if (node.type_id == "sasd.ui.GridLayout" &&
-            node.unsigned_integer_properties.front().value == 0) {
-            return failNodeId(Error::invalid_property_value, node.node_id);
         }
         if (node.type_id == "sasd.ui.TextField") {
             for (const auto& property : node.string_properties) {

@@ -188,6 +188,24 @@ identity against inherited schema lookup and returns `std::nullopt` for unknown 
 requests. String defaults are immutable process-lifetime views; no Component is constructed to answer
 the query. This layer adds no reset operation, validation, serialization or designer metadata.
 
+### Static property validation metadata
+
+The separate `sasd/ui/component_property_validation_metadata.hpp` layer describes instance-free,
+inclusive integer domains for exact built-in property descriptors. Schema, effective defaults,
+static validation metadata and typed runtime access remain distinct: the metadata consumer does not
+construct a Component, while concrete setters remain the authoritative runtime enforcement boundary.
+Complete declaring-type/property/kind identity is compared by value rather than catalog address.
+
+All six signed layout spacing properties expose `[0, Coordinate::max]`; the fixed-width semantic
+property type, rather than the wider `int64_t` carrier, defines the usable maximum.
+`GridLayout.columnCount` exposes `[1, UINT64_MAX]`, not `[1, size_t::max]`, so portable semantic
+validation does not depend on the current host. Typed property access and reconstruction continue to
+reject a semantically valid value that the host cannot represent. The common format-neutral document
+validator reuses these ranges, so negative or out-of-Coordinate spacing is rejected before
+reconstruction. Runtime setters keep their independent checks. This is only the static integer
+foundation, not a generic rule engine; see
+[ADR 0189](../adr/0189-m8-static-integer-property-validation-metadata-foundation.md).
+
 ### Built-in component property snapshots
 
 The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that
@@ -243,8 +261,9 @@ numeric layout coverage. Six spacing properties (`HBox.spacing`, `VBox.spacing`,
 `columnSpacing` and `rowSpacing`) use `signed_integer` with `std::int64_t` tooling values;
 `GridLayout.columnCount` uses `unsigned_integer` with `std::uint64_t`. Both conversion directions
 are range-checked; unrepresentable writes return false without mutation. Semantic setter exceptions
-(negative spacing or zero columns) propagate unchanged. The property layer does not duplicate domain
-validation. Numeric defaults are immutable constants: spacing is zero except Form column spacing
+(negative spacing or zero columns) propagate unchanged. The runtime access layer does not replace
+setter validation; the separate static metadata layer described above exposes the same usable domains
+for tooling and document validation. Numeric defaults are immutable constants: spacing is zero except Form column spacing
 (one), and column count is one. No Component is constructed for default queries. Numeric snapshots
 own `signed_integer_properties` and `unsigned_integer_properties` with the same complete-snapshot
 failure contract. Current compound authoring values are covered by ADRs 0184/0185; reference edges use their separate layer. No serializer or generic
