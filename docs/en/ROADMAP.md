@@ -283,9 +283,11 @@ SelectionModel Component lifecycle and association coverage (ADR 0182).
 Current built-in semantic coverage is ready for persisted encoding after the Slice-15 review
 (ADR 0185). Slice 16 provides canonical JSON v1 encoding (ADR 0186); Slice 17 adds validated
 JSON v1 document loading (ADR 0187), and Slice 18 completes phased built-in graph reconstruction
-(ADR 0188). Slice 19 adds instance-free static integer range validation metadata and reuses it in
-format-neutral document validation (ADR 0189). The separate resource system remains open.
-Context-dependent validation and wider design-time attributes remain future slices.
+(ADR 0188). Slice 19 adds instance-free static integer range validation metadata (ADR 0189).
+Slice 20 adds explicit normalization policies for every current string descriptor and atomic
+`Widget.sizeConstraints` validation metadata, reused by format-neutral document validation
+(ADR 0190). The separate resource system remains open. Context-dependent cross-property/graph
+validation and wider design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -296,7 +298,8 @@ Context-dependent validation and wider design-time attributes remain future slic
   - [x] effective property default metadata
   - [ ] validation and design-time attributes
     - [x] static integer range validation metadata (ADR 0189)
-    - [ ] compound, cross-property and text validation metadata
+    - [x] single-property text normalization / compound validation metadata (ADR 0190)
+    - [ ] contextual cross-property / graph validation metadata
 - [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy

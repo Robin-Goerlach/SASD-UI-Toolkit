@@ -3,6 +3,7 @@
 #include <sasd/ui/ui_description_document.hpp>
 #include <sasd/ui/ui_description_json.hpp>
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/check_box.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/form_layout.hpp>
@@ -443,13 +444,40 @@ TEST_CASE("JSON reader ComboBox GridLayout SizeConstraints and TextField invaria
     rejects(replace(encoded(label), "\"width\": 0", "\"width\": 2147483648"), Error::invalid_property_value);
     rejects(replace(encoded(label), "\"height\": 2147483647", "\"height\": -1"), Error::invalid_property_value);
     rejects(replace(encoded(label), "\"width\": 2147483647", "\"width\": -1"), Error::invalid_property_value);
-    label.setSizeConstraints({{-10,-20}, {999,999}, {-1,-2}}); roundtrip(label);
+    label.setSizeConstraints({{-20,-10}, {500,-500}, {0,0}}); roundtrip(label);
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(
+        encoded(label), "sizeConstraints",
+        R"({"minimum":{"width":0,"height":0},"preferred":{"width":10,"height":10},"maximum":{"width":100,"height":100}})")));
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(
+        encoded(label), "sizeConstraints",
+        R"({"minimum":{"width":-20,"height":-10},"preferred":{"width":500,"height":-500},"maximum":{"width":0,"height":0}})")));
+    rejects(changeValue(
+        encoded(label), "sizeConstraints",
+        R"({"minimum":{"width":1,"height":0},"preferred":{"width":0,"height":0},"maximum":{"width":0,"height":0}})"),
+        Error::invalid_property_value);
+    rejects(changeValue(
+        encoded(label), "sizeConstraints",
+        R"({"minimum":{"width":0,"height":1},"preferred":{"width":0,"height":0},"maximum":{"width":0,"height":0}})"),
+        Error::invalid_property_value);
     TextField field;
-    for (const auto text : {R"("a\nb")", R"("a\tb")", R"("a\u0001b")", R"("a\u2028b")", R"("a\u0085b")"}) {
+    for (const auto text : {R"("a\nb")", R"("a\tb")", R"("a\u0001b")", R"("a\u0085b")",
+                            R"("a\u2028b")", R"("a\u2029b")"}) {
         rejects(changeValue(encoded(field), "text", text), Error::invalid_property_value);
     }
     CHECK(parseBuiltInUiDescriptionJson(changeValue(
         encoded(field), "text", "\"Gr\\u00fc\\u00dfe \\uD83D\\uDE00\"")));
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(encoded(field), "text", "\"e\\u0301\"")));
+
+    // Normalization belongs to the exact TextField.text descriptor. The other built-in text
+    // setters retain valid UTF-8 controls and line breaks, so persistence must retain them too.
+    Command command;
+    Button button;
+    CheckBox check_box;
+    RadioButton radio;
+    for (const auto& json : {encoded(command), encoded(label), encoded(button),
+                             encoded(check_box), encoded(radio)}) {
+        CHECK(parseBuiltInUiDescriptionJson(changeValue(json, "text", R"("line\n\u0001\u2028")")));
+    }
     const auto invalid = changeValue(encoded(grid), "columnCount", "0");
     const auto position = parseBuiltInUiDescriptionJson(invalid).error.byte_offset;
     CHECK(position >= invalid.find("\"nodes\""));

@@ -188,7 +188,7 @@ identity against inherited schema lookup and returns `std::nullopt` for unknown 
 requests. String defaults are immutable process-lifetime views; no Component is constructed to answer
 the query. This layer adds no reset operation, validation, serialization or designer metadata.
 
-### Static property validation metadata
+### Static property validation and normalization metadata
 
 The separate `sasd/ui/component_property_validation_metadata.hpp` layer describes instance-free,
 inclusive integer domains for exact built-in property descriptors. Schema, effective defaults,
@@ -205,6 +205,25 @@ validator reuses these ranges, so negative or out-of-Coordinate spacing is rejec
 reconstruction. Runtime setters keep their independent checks. This is only the static integer
 foundation, not a generic rule engine; see
 [ADR 0189](../adr/0189-m8-static-integer-property-validation-metadata-foundation.md).
+
+The same header now also exposes two deliberately concrete single-property policy families.
+`builtInStringPropertyNormalization()` returns explicit `identity` for Command, Label, Button,
+CheckBox and RadioButton text, and `single_line_utf8` for `TextField.text`.
+`builtInSizeConstraintsPropertyValidation()` identifies the exact
+`Widget.sizeConstraints` minimum-not-greater-than-maximum invariant. Preferred values outside the
+range and negative dimensions remain valid. An engaged identity policy is distinct from an invalid
+descriptor, so every future string descriptor must make a conscious choice.
+
+These metadata queries are instance-free descriptions, not setter implementations. TextField still
+normalizes through `utf8::sanitizeSingleLine()` and Widget still rejects an invalid range in its
+runtime setter. The format-neutral document validator first enforces general UTF-8 validity, then
+reuses exact-descriptor normalization/validation metadata and fails closed when a policy is missing.
+Its former hardcoded TextField branch and implicit rule for every `size_constraints` kind are gone.
+Schema, effective defaults, static numeric validation, single-property policies, typed runtime
+access, document validation and runtime enforcement remain separate layers. ComboBox selection is a
+cross-property rule and RadioGroup exclusivity a graph rule; neither is generalized here. No generic
+validation engine is introduced; see
+[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md).
 
 ### Built-in component property snapshots
 

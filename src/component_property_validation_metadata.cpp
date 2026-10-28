@@ -59,4 +59,43 @@ std::optional<UnsignedIntegerPropertyRange> builtInUnsignedIntegerPropertyRange(
     return UnsignedIntegerPropertyRange{1, std::numeric_limits<std::uint64_t>::max()};
 }
 
+std::optional<StringPropertyNormalizationKind> builtInStringPropertyNormalization(
+    const ComponentPropertyMetadata& property) noexcept {
+    if (property.value_kind != ComponentPropertyValueKind::string ||
+        !isExactBuiltInProperty(property)) {
+        return std::nullopt;
+    }
+
+    if (property.declaring_type_id == "sasd.ui.TextField" && property.property_id == "text") {
+        return StringPropertyNormalizationKind::single_line_utf8;
+    }
+
+    // Identity is listed explicitly for every current descriptor. A future string property must
+    // make a conscious policy choice instead of silently inheriting behavior from its value kind.
+    if (property.property_id == "text" &&
+        (property.declaring_type_id == "sasd.ui.Command" ||
+         property.declaring_type_id == "sasd.ui.Label" ||
+         property.declaring_type_id == "sasd.ui.Button" ||
+         property.declaring_type_id == "sasd.ui.CheckBox" ||
+         property.declaring_type_id == "sasd.ui.RadioButton")) {
+        return StringPropertyNormalizationKind::identity;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<SizeConstraintsPropertyValidationKind>
+builtInSizeConstraintsPropertyValidation(const ComponentPropertyMetadata& property) noexcept {
+    if (property.value_kind != ComponentPropertyValueKind::size_constraints ||
+        !isExactBuiltInProperty(property) ||
+        property.declaring_type_id != "sasd.ui.Widget" ||
+        property.property_id != "sizeConstraints") {
+        return std::nullopt;
+    }
+
+    // SizeConstraints is one atomic property. This policy mirrors hasValidRange() exactly: preferred
+    // and negative coordinates remain legal, while each minimum must not exceed its maximum.
+    return SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum;
+}
+
 } // namespace sasd::ui

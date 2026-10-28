@@ -9,6 +9,14 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 20: instance-free string normalization metadata for all six current built-in string
+  properties and atomic validation metadata for `Widget.sizeConstraints`. `TextField.text` declares
+  `single_line_utf8`; Command, Label, Button, CheckBox and RadioButton text explicitly declare
+  identity normalization. The format-neutral document validator now reuses both exact-descriptor
+  policy families, removing its hardcoded TextField branch and implicit all-size-constraints rule.
+  Runtime setters and JSON v1 remain unchanged; cross-property and graph rules are still concrete
+  validator concerns rather than a generic rule engine (ADR 0190).
+
 - M8 Slice 19: instance-free static integer property validation metadata with separate signed and
   unsigned inclusive range types. Six layout spacing properties expose `[0, Coordinate::max]` and
   `GridLayout.columnCount` exposes the host-independent `[1, UINT64_MAX]` semantic domain. Complete
