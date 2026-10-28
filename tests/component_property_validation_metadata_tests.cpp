@@ -35,6 +35,26 @@ constexpr std::array signed_properties{
     PropertyIdentity{"sasd.ui.FormLayout", "rowSpacing"},
 };
 
+struct StringPolicyExpectation final {
+    PropertyIdentity identity;
+    StringPropertyNormalizationKind policy;
+};
+
+constexpr std::array string_properties{
+    StringPolicyExpectation{{"sasd.ui.Command", "text"},
+                            StringPropertyNormalizationKind::identity},
+    StringPolicyExpectation{{"sasd.ui.Label", "text"},
+                            StringPropertyNormalizationKind::identity},
+    StringPolicyExpectation{{"sasd.ui.Button", "text"},
+                            StringPropertyNormalizationKind::identity},
+    StringPolicyExpectation{{"sasd.ui.TextField", "text"},
+                            StringPropertyNormalizationKind::single_line_utf8},
+    StringPolicyExpectation{{"sasd.ui.CheckBox", "text"},
+                            StringPropertyNormalizationKind::identity},
+    StringPolicyExpectation{{"sasd.ui.RadioButton", "text"},
+                            StringPropertyNormalizationKind::identity},
+};
+
 } // namespace
 
 TEST_CASE("all six signed layout ranges expose the Coordinate domain") {
@@ -119,4 +139,92 @@ TEST_CASE("integer validation metadata completely covers the current numeric cat
 
     CHECK(signed_count == 6);
     CHECK(unsigned_count == 1);
+}
+
+TEST_CASE("all current string descriptors expose explicit normalization policies") {
+    for (const auto& expectation : string_properties) {
+        const auto descriptor = property(expectation.identity.declaring_type_id,
+                                         expectation.identity.property_id);
+        CHECK(builtInStringPropertyNormalization(descriptor) == expectation.policy);
+        CHECK(!builtInSizeConstraintsPropertyValidation(descriptor));
+    }
+
+    const ComponentPropertyMetadata copied = property("sasd.ui.TextField", "text");
+    CHECK(builtInStringPropertyNormalization(copied) ==
+          StringPropertyNormalizationKind::single_line_utf8);
+
+    for (const ComponentPropertyMetadata malformed : {
+             ComponentPropertyMetadata{"sasd.ui.Label", "text",
+                                       ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "text",
+                                       ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.Label", "Text",
+                                       ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"SASD.UI.Label", "text",
+                                       ComponentPropertyValueKind::string},
+             ComponentPropertyMetadata{"sasd.ui.Label", "text",
+                                       static_cast<ComponentPropertyValueKind>(99)}}) {
+        CHECK(!builtInStringPropertyNormalization(malformed));
+    }
+    CHECK(!builtInStringPropertyNormalization(property("sasd.ui.Widget", "visible")));
+}
+
+TEST_CASE("Widget sizeConstraints exposes its exact compound validation policy") {
+    const auto descriptor = property("sasd.ui.Widget", "sizeConstraints");
+    CHECK(builtInSizeConstraintsPropertyValidation(descriptor) ==
+          SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum);
+
+    const ComponentPropertyMetadata copied = descriptor;
+    CHECK(builtInSizeConstraintsPropertyValidation(copied).has_value());
+    for (const ComponentPropertyMetadata malformed : {
+             ComponentPropertyMetadata{"sasd.ui.Widget", "sizeConstraints",
+                                       ComponentPropertyValueKind::boolean},
+             ComponentPropertyMetadata{"sasd.ui.Container", "sizeConstraints",
+                                       ComponentPropertyValueKind::size_constraints},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "SizeConstraints",
+                                       ComponentPropertyValueKind::size_constraints},
+             ComponentPropertyMetadata{"SASD.UI.Widget", "sizeConstraints",
+                                       ComponentPropertyValueKind::size_constraints},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "sizeConstraints",
+                                       static_cast<ComponentPropertyValueKind>(99)}}) {
+        CHECK(!builtInSizeConstraintsPropertyValidation(malformed));
+    }
+    CHECK(!builtInSizeConstraintsPropertyValidation(property("sasd.ui.Label", "text")));
+}
+
+TEST_CASE("string and size constraints policies completely cover their current catalogs") {
+    std::size_t string_count = 0;
+    std::size_t identity_count = 0;
+    std::size_t single_line_count = 0;
+    std::size_t size_constraints_count = 0;
+
+    for (const auto& type : builtInComponentTypes()) {
+        for (const auto& descriptor : declaredBuiltInComponentProperties(type.type_id)) {
+            const auto string_policy = builtInStringPropertyNormalization(descriptor);
+            const auto size_policy = builtInSizeConstraintsPropertyValidation(descriptor);
+            if (descriptor.value_kind == ComponentPropertyValueKind::string) {
+                ++string_count;
+                CHECK(string_policy.has_value());
+                CHECK(!size_policy.has_value());
+                if (string_policy == StringPropertyNormalizationKind::identity) {
+                    ++identity_count;
+                } else if (string_policy == StringPropertyNormalizationKind::single_line_utf8) {
+                    ++single_line_count;
+                }
+            } else if (descriptor.value_kind == ComponentPropertyValueKind::size_constraints) {
+                ++size_constraints_count;
+                CHECK(!string_policy.has_value());
+                CHECK(size_policy == SizeConstraintsPropertyValidationKind::
+                                         minimum_not_greater_than_maximum);
+            } else {
+                CHECK(!string_policy.has_value());
+                CHECK(!size_policy.has_value());
+            }
+        }
+    }
+
+    CHECK(string_count == string_properties.size());
+    CHECK(identity_count == 5);
+    CHECK(single_line_count == 1);
+    CHECK(size_constraints_count == 1);
 }

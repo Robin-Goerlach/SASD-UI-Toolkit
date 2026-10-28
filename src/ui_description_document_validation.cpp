@@ -54,6 +54,34 @@ bool hasValidStaticIntegerRange(const UiDescriptionUnsignedIntegerProperty& prop
     return range.has_value() && range->contains(property.value);
 }
 
+bool hasCanonicalStringValue(const UiDescriptionStringProperty& property,
+                             const ComponentPropertyMetadata& descriptor) {
+    const auto policy = builtInStringPropertyNormalization(descriptor);
+    if (!policy) {
+        return false;
+    }
+    switch (*policy) {
+    case StringPropertyNormalizationKind::identity:
+        return true;
+    case StringPropertyNormalizationKind::single_line_utf8:
+        return utf8::sanitizeSingleLine(property.value) == property.value;
+    }
+    return false;
+}
+
+bool hasValidSizeConstraintsValue(const UiDescriptionSizeConstraintsProperty& property,
+                                  const ComponentPropertyMetadata& descriptor) noexcept {
+    const auto policy = builtInSizeConstraintsPropertyValidation(descriptor);
+    if (!policy) {
+        return false;
+    }
+    switch (*policy) {
+    case SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum:
+        return property.value.hasValidRange();
+    }
+    return false;
+}
+
 bool derivesFrom(std::string_view type, std::string_view base) {
     for (std::size_t depth = 0; depth < builtInComponentTypes().size(); ++depth) {
         if (type == base) {
@@ -304,6 +332,11 @@ private:
             if (!validUtf8(property.value)) {
                 return failNodeId(Error::invalid_utf8, node.node_id);
             }
+            const auto* descriptor =
+                findBuiltInComponentProperty(node.type_id, property.property_id);
+            if (descriptor == nullptr || !hasCanonicalStringValue(property, *descriptor)) {
+                return failNodeId(Error::invalid_property_value, node.node_id);
+            }
         }
         for (const auto& property : node.string_collection_properties) {
             if (std::any_of(property.value.begin(), property.value.end(), [](const auto& value) {
@@ -313,7 +346,9 @@ private:
             }
         }
         for (const auto& property : node.size_constraints_properties) {
-            if (!property.value.hasValidRange()) {
+            const auto* descriptor =
+                findBuiltInComponentProperty(node.type_id, property.property_id);
+            if (descriptor == nullptr || !hasValidSizeConstraintsValue(property, *descriptor)) {
                 return failNodeId(Error::invalid_property_value, node.node_id);
             }
         }
@@ -327,14 +362,6 @@ private:
             const auto& index = node.optional_unsigned_integer_properties.front().value;
             if (index && *index >= node.string_collection_properties.front().value.size()) {
                 return failNodeId(Error::invalid_property_value, node.node_id);
-            }
-        }
-        if (node.type_id == "sasd.ui.TextField") {
-            for (const auto& property : node.string_properties) {
-                if (property.property_id == "text" &&
-                    utf8::sanitizeSingleLine(property.value) != property.value) {
-                    return failNodeId(Error::invalid_property_value, node.node_id);
-                }
             }
         }
         return {};

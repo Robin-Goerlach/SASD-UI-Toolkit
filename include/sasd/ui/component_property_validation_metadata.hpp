@@ -7,6 +7,17 @@
 
 namespace sasd::ui {
 
+/** Semantic normalization applied by the runtime setter of a string property. */
+enum class StringPropertyNormalizationKind {
+    identity,
+    single_line_utf8,
+};
+
+/** Atomic validity policy for a SizeConstraints property value. */
+enum class SizeConstraintsPropertyValidationKind {
+    minimum_not_greater_than_maximum,
+};
+
 /** Static inclusive domain for one signed_integer property. */
 struct SignedIntegerPropertyRange final {
     std::int64_t minimum{};
@@ -52,5 +63,26 @@ struct UnsignedIntegerPropertyRange final {
  */
 [[nodiscard]] std::optional<UnsignedIntegerPropertyRange> builtInUnsignedIntegerPropertyRange(
     const ComponentPropertyMetadata& property) noexcept;
+
+/**
+ * Returns the normalization policy of an exact built-in string property descriptor.
+ *
+ * An engaged identity result is deliberate: it distinguishes a known string property which adds no
+ * semantic normalization from an unknown, malformed or wrong-kind descriptor. The runtime setter
+ * remains authoritative; tooling may use this instance-free policy to compute the same canonical
+ * value without constructing a Component.
+ */
+[[nodiscard]] std::optional<StringPropertyNormalizationKind>
+builtInStringPropertyNormalization(const ComponentPropertyMetadata& property) noexcept;
+
+/**
+ * Returns the atomic validity policy of an exact built-in SizeConstraints property descriptor.
+ *
+ * This describes only invariants of the compound value itself. Contextual cross-property and graph
+ * rules deliberately remain outside this small metadata layer, and runtime setters continue to
+ * enforce their own contract.
+ */
+[[nodiscard]] std::optional<SizeConstraintsPropertyValidationKind>
+builtInSizeConstraintsPropertyValidation(const ComponentPropertyMetadata& property) noexcept;
 
 } // namespace sasd::ui

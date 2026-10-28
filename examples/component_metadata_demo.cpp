@@ -78,6 +78,25 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
     return "unknown";
 }
 
+const char* normalizationKindName(sasd::ui::StringPropertyNormalizationKind kind) noexcept {
+    switch (kind) {
+    case sasd::ui::StringPropertyNormalizationKind::identity:
+        return "identity";
+    case sasd::ui::StringPropertyNormalizationKind::single_line_utf8:
+        return "single-line-utf8";
+    }
+    return "unknown";
+}
+
+const char* sizeConstraintsValidationKindName(
+    sasd::ui::SizeConstraintsPropertyValidationKind kind) noexcept {
+    switch (kind) {
+    case sasd::ui::SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum:
+        return "minimum <= maximum";
+    }
+    return "unknown";
+}
+
 void printProperties(std::string_view type_id) {
     std::cout << type_id << " declared properties:\n";
     for (const auto& property : sasd::ui::declaredBuiltInComponentProperties(type_id)) {
@@ -88,6 +107,14 @@ void printProperties(std::string_view type_id) {
         }
         if (const auto range = sasd::ui::builtInUnsignedIntegerPropertyRange(property)) {
             std::cout << " range: " << range->minimum << " .. " << range->maximum;
+        }
+        if (const auto normalization =
+                sasd::ui::builtInStringPropertyNormalization(property)) {
+            std::cout << " normalization: " << normalizationKindName(*normalization);
+        }
+        if (const auto validation =
+                sasd::ui::builtInSizeConstraintsPropertyValidation(property)) {
+            std::cout << " validation: " << sizeConstraintsValidationKindName(*validation);
         }
         std::cout << '\n';
     }
@@ -133,6 +160,9 @@ int main() {
               << '\n';
 
     printProperties("sasd.ui.CheckBox");
+    printProperties("sasd.ui.Label");
+    printProperties("sasd.ui.TextField");
+    printProperties("sasd.ui.Widget");
     printProperties("sasd.ui.HBox");
     printProperties("sasd.ui.VBox");
     printProperties("sasd.ui.GridLayout");

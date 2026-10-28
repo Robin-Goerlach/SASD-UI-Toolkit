@@ -197,7 +197,7 @@ inkompatible Anfragen `std::nullopt`. String-Defaults sind unveränderliche View
 zur Abfrage wird keine Component konstruiert. Diese Schicht ergänzt weder Reset-Operationen noch
 Validierung, Serialisierung oder Designer-Metadaten.
 
-### Statische Property-Validation-Metadaten
+### Statische Property-Validation- und Normalization-Metadaten
 
 Die separate Schicht `sasd/ui/component_property_validation_metadata.hpp` beschreibt instanzfreie,
 inklusive Integer-Domänen für exakte Built-in-Property-Deskriptoren. Schema, effektive Defaults,
@@ -216,6 +216,26 @@ oder außerhalb von Coordinate liegendes Spacing vor der Rekonstruktion abgelehn
 behalten ihre unabhängigen Prüfungen. Dies ist nur die statische Integer-Grundlage und keine
 generische Rule Engine; siehe
 [ADR 0189](../adr/0189-m8-static-integer-property-validation-metadata-foundation.md).
+
+Der gleiche Header stellt nun außerdem zwei bewusst konkrete Single-Property-Policy-Familien bereit.
+`builtInStringPropertyNormalization()` liefert explizites `identity` für Command-, Label-, Button-,
+CheckBox- und RadioButton-Text sowie `single_line_utf8` für `TextField.text`.
+`builtInSizeConstraintsPropertyValidation()` identifiziert für den exakten Deskriptor
+`Widget.sizeConstraints` die Minimum-not-greater-than-Maximum-Invariante. Preferred-Werte außerhalb
+dieser Range und negative Dimensionen bleiben gültig. Eine vorhandene Identity-Policy unterscheidet
+sich von einem ungültigen Deskriptor; jede zukünftige String-Property muss daher bewusst entscheiden.
+
+Diese Metadata-Abfragen sind instanzfreie Beschreibungen und keine Setter-Implementierungen.
+TextField normalisiert weiterhin durch `utf8::sanitizeSingleLine()`, Widget lehnt eine ungültige
+Range weiterhin in seinem Runtime-Setter ab. Der formatneutrale Document Validator erzwingt zuerst
+allgemeine UTF-8-Gültigkeit, verwendet danach exakte Deskriptor-Normalization/-Validation-Metadata
+und arbeitet bei fehlender Policy fail-closed. Sein früherer hardcodierter TextField-Zweig und die
+implizite Regel für jeden `size_constraints`-Kind entfallen. Property Schema, effektive Defaults,
+statische numerische Validation, Single-Property-Policies, typisierter Runtime-Zugriff, Document
+Validation und Runtime-Enforcement bleiben getrennte Schichten. ComboBox-Selection ist eine Cross-
+Property-Regel, RadioGroup-Exklusivität eine Graph-Regel; beide werden hier nicht generalisiert.
+Es entsteht keine generische Validation Engine; siehe
+[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md).
 
 ### Built-in-Component-Property-Snapshots
 

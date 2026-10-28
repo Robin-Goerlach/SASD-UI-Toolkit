@@ -112,6 +112,16 @@ int main() {
     const bool validation_metadata_linked = column_count_range &&
         column_count_range->minimum == 1 &&
         column_count_range->maximum == std::numeric_limits<std::uint64_t>::max();
+    const auto* text_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.TextField", "text");
+    const auto* constraints_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Widget", "sizeConstraints");
+    const bool single_property_metadata_linked =
+        text_property != nullptr && constraints_property != nullptr &&
+        sasd::ui::builtInStringPropertyNormalization(*text_property) ==
+            sasd::ui::StringPropertyNormalizationKind::single_line_utf8 &&
+        sasd::ui::builtInSizeConstraintsPropertyValidation(*constraints_property) ==
+            sasd::ui::SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum;
 
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
@@ -123,8 +133,8 @@ int main() {
         package_device.stroke_count == 0 &&
         package_device.text_count == 0;
 
-    return style_linked && validation_metadata_linked && core_linked && terminal_linked &&
-            rendered_linked
+    return style_linked && validation_metadata_linked && single_property_metadata_linked &&
+            core_linked && terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
 }

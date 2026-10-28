@@ -292,9 +292,11 @@ Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes En
 (ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Slice 17 ergänzt validiertes
 JSON-v1-Dokumentladen (ADR 0187), und Slice 18 schließt die phasenbasierte Built-in-Graph-
 Rekonstruktion ab (ADR 0188). Slice 19 ergänzt instanzfreie statische Integer-Range-
-Validierungsmetadaten und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0189).
-Das separate Resource-System bleibt offen. Kontextabhängige Validierung und weitere Design-Time-
-Attribute bleiben spätere Slices.
+Validierungsmetadaten (ADR 0189). Slice 20 ergänzt explizite Normalisierungs-Policies für alle
+heutigen String-Deskriptoren sowie atomare Validation Metadata für `Widget.sizeConstraints` und
+verwendet beides in der formatneutralen Dokumentvalidierung (ADR 0190). Das separate Resource-System
+bleibt offen. Kontextabhängige Cross-Property-/Graph-Validierung und weitere Design-Time-Attribute
+bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -305,7 +307,8 @@ Attribute bleiben spätere Slices.
   - [x] Effektive Property-Default-Metadaten
   - [ ] Validierung und Design-Time-Attribute
     - [x] Statische Integer-Range-Validierungsmetadaten (ADR 0189)
-    - [ ] Compound-, Cross-Property- und Text-Validierungsmetadaten
+    - [x] Single-Property-Textnormalisierung / Compound-Validierungsmetadaten (ADR 0190)
+    - [ ] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
