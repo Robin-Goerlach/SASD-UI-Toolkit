@@ -291,8 +291,10 @@ SelectionModel-Component-Lifecycle und Assoziationsabdeckung (ADR 0182).
 Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes Encoding bereit
 (ADR 0185). Slice 16 ergänzt kanonisches JSON-v1-Encoding (ADR 0186); Slice 17 ergänzt validiertes
 JSON-v1-Dokumentladen (ADR 0187), und Slice 18 schließt die phasenbasierte Built-in-Graph-
-Rekonstruktion ab (ADR 0188). Das separate Resource-System bleibt offen.
-Validierung und Design-Time-Attribute bleiben spätere Slices.
+Rekonstruktion ab (ADR 0188). Slice 19 ergänzt instanzfreie statische Integer-Range-
+Validierungsmetadaten und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0189).
+Das separate Resource-System bleibt offen. Kontextabhängige Validierung und weitere Design-Time-
+Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -302,6 +304,8 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
   - [ ] Validierung und Design-Time-Attribute
+    - [x] Statische Integer-Range-Validierungsmetadaten (ADR 0189)
+    - [ ] Compound-, Cross-Property- und Text-Validierungsmetadaten
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
@@ -324,7 +328,6 @@ Validierung und Design-Time-Attribute bleiben spätere Slices.
     - [x] Ownership-/Reference-Rekonstruktion (ADR 0188)
 - [ ] Resource-System
 - [ ] Designer-freundliche Properties
-- [ ] Design-Time-Validierungsmetadaten
 - [ ] IDE-/Tooling-Schnittstellen
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.

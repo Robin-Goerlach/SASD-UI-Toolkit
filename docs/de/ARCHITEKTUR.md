@@ -197,6 +197,26 @@ inkompatible Anfragen `std::nullopt`. String-Defaults sind unveränderliche View
 zur Abfrage wird keine Component konstruiert. Diese Schicht ergänzt weder Reset-Operationen noch
 Validierung, Serialisierung oder Designer-Metadaten.
 
+### Statische Property-Validation-Metadaten
+
+Die separate Schicht `sasd/ui/component_property_validation_metadata.hpp` beschreibt instanzfreie,
+inklusive Integer-Domänen für exakte Built-in-Property-Deskriptoren. Schema, effektive Defaults,
+statische Validation Metadata und typisierter Runtime-Zugriff bleiben getrennt: Der Metadatenconsumer
+konstruiert keine Component, während konkrete Setter die autoritative Runtime-Enforcement-Grenze
+bleiben. Die vollständige Declaring-Type-/Property-/Kind-Identität wird als Wert statt über eine
+Katalogadresse verglichen.
+
+Alle sechs Signed-Layout-Spacing-Properties liefern `[0, Coordinate::max]`; der semantische Fixed-
+Width-Property-Typ und nicht der weitere `int64_t`-Carrier bestimmt das nutzbare Maximum.
+`GridLayout.columnCount` liefert `[1, UINT64_MAX]` statt `[1, size_t::max]`, damit portable
+semantische Validierung nicht vom aktuellen Host abhängt. Typisierter Property-Zugriff und
+Rekonstruktion lehnen weiterhin einen semantisch gültigen Wert ab, den der Host nicht darstellen
+kann. Der gemeinsame formatneutrale Document Validator verwendet diese Bereiche, sodass negatives
+oder außerhalb von Coordinate liegendes Spacing vor der Rekonstruktion abgelehnt wird. Runtime-Setter
+behalten ihre unabhängigen Prüfungen. Dies ist nur die statische Integer-Grundlage und keine
+generische Rule Engine; siehe
+[ADR 0189](../adr/0189-m8-static-integer-property-validation-metadata-foundation.md).
+
 ### Built-in-Component-Property-Snapshots
 
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der
@@ -256,7 +276,9 @@ Grid-/Form-`columnSpacing` und `rowSpacing`) verwenden `signed_integer` mit `std
 Tooling-Wert; `GridLayout.columnCount` verwendet `unsigned_integer` mit `std::uint64_t`.
 Beide Konvertierungsrichtungen prüfen den Wertebereich; nicht darstellbare Writes liefern false
 ohne Mutation. Semantische Setter-Exceptions für negatives Spacing bzw. null Spalten propagieren
-unverändert. Die Property-Schicht dupliziert keine Domain-Validierung. Numerische Defaults sind
+unverändert. Die Runtime-Access-Schicht ersetzt keine Setter-Validierung; die getrennte statische
+Metadatenschicht stellt dieselben nutzbaren Domänen für Tooling und Document Validation bereit.
+Numerische Defaults sind
 unveränderliche Konstanten: Spacing null außer Form-Spaltenabstand eins, Spaltenzahl eins.
 Default-Abfragen konstruieren keine Component. Numerische Snapshots besitzen getrennte
 `signed_integer_properties` und `unsigned_integer_properties`; jeder fehlende Read/Default verwirft

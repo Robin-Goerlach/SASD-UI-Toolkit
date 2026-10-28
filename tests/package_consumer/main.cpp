@@ -4,6 +4,7 @@
 #include <sasd/ui/ui_description_reconstruction.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
+#include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
@@ -14,6 +15,9 @@
 
 #include <cstdlib>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
 
 namespace {
 
@@ -100,6 +104,15 @@ int main() {
         snapshot->text_style_properties.front().value == style &&
         !snapshot->text_style_properties.front().is_default;
 
+    const auto* column_count =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.GridLayout", "columnCount");
+    const auto column_count_range = column_count == nullptr
+        ? std::optional<sasd::ui::UnsignedIntegerPropertyRange>{}
+        : sasd::ui::builtInUnsignedIntegerPropertyRange(*column_count);
+    const bool validation_metadata_linked = column_count_range &&
+        column_count_range->minimum == 1 &&
+        column_count_range->maximum == std::numeric_limits<std::uint64_t>::max();
+
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
     const bool rendered_linked =
@@ -110,5 +123,8 @@ int main() {
         package_device.stroke_count == 0 &&
         package_device.text_count == 0;
 
-    return style_linked && core_linked && terminal_linked && rendered_linked ? EXIT_SUCCESS : EXIT_FAILURE;
+    return style_linked && validation_metadata_linked && core_linked && terminal_linked &&
+            rendered_linked
+        ? EXIT_SUCCESS
+        : EXIT_FAILURE;
 }

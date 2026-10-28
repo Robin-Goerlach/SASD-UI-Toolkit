@@ -13,6 +13,7 @@ cmake_path(NORMAL_PATH SASD_UI_INSTALL_PREFIX OUTPUT_VARIABLE install_prefix)
 set(required_files
     "include/sasd/ui/application.hpp"
     "include/sasd/ui/button.hpp"
+    "include/sasd/ui/component_property_validation_metadata.hpp"
     "include/sasd/ui/terminal/terminal_backend.hpp"
     "include/sasd/ui/terminal/screen_buffer.hpp"
     "include/sasd/ui/rendered/display_list.hpp"

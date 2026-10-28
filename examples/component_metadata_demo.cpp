@@ -8,6 +8,7 @@
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/component_ownership_snapshot.hpp>
 #include <sasd/ui/component_reference_snapshot.hpp>
@@ -81,7 +82,14 @@ void printProperties(std::string_view type_id) {
     std::cout << type_id << " declared properties:\n";
     for (const auto& property : sasd::ui::declaredBuiltInComponentProperties(type_id)) {
         std::cout << "  " << property.property_id << " : "
-                  << valueKindName(property.value_kind) << '\n';
+                  << valueKindName(property.value_kind);
+        if (const auto range = sasd::ui::builtInSignedIntegerPropertyRange(property)) {
+            std::cout << " range: " << range->minimum << " .. " << range->maximum;
+        }
+        if (const auto range = sasd::ui::builtInUnsignedIntegerPropertyRange(property)) {
+            std::cout << " range: " << range->minimum << " .. " << range->maximum;
+        }
+        std::cout << '\n';
     }
 }
 

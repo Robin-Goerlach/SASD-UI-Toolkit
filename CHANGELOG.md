@@ -9,6 +9,14 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 19: instance-free static integer property validation metadata with separate signed and
+  unsigned inclusive range types. Six layout spacing properties expose `[0, Coordinate::max]` and
+  `GridLayout.columnCount` exposes the host-independent `[1, UINT64_MAX]` semantic domain. Complete
+  descriptor identity is validated by value. The common document validator now reuses the metadata,
+  rejecting negative or out-of-Coordinate spacing before reconstruction and replacing its hardcoded
+  zero-column special case. Runtime setters and host representability checks remain authoritative at
+  their existing layers; no generic validation engine is introduced (ADR 0189).
+
 - M8 Slice 18: built-in UI-description reconstruction from a revalidated format-neutral document.
   Phased concrete construction, constructor-based RadioGroup membership, Command pre-restore,
   explicit reference ordering, final base-to-derived property restoration and ordered ownership

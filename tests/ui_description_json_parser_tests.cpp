@@ -5,7 +5,9 @@
 #include <sasd/ui/button.hpp>
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/combo_box.hpp>
+#include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/grid_layout.hpp>
+#include <sasd/ui/hbox.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/list_selection_model.hpp>
@@ -305,7 +307,7 @@ TEST_CASE("JSON reader exact Unicode decoding and strict UTF-8") {
     CHECK(!parseBuiltInUiDescriptionJson(std::string{"\xef\xbb\xbf"} + golden));
     CHECK(!parseBuiltInUiDescriptionJson(changeValue(golden, "text", std::string(20000, '['))));
     // No normalization: decomposed and composed strings retain different byte sequences.
-    CHECK(parseBuiltInUiDescriptionJson(changeValue(golden, "text", R"("e\u0301")")).document->nodes[0].string_properties[0].value == "e\xcc\x81");
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(golden, "text", "\"e\\u0301\"")).document->nodes[0].string_properties[0].value == "e\xcc\x81");
 }
 
 TEST_CASE("JSON reader every property kind rejects wrong types and schema mismatches") {
@@ -336,28 +338,50 @@ TEST_CASE("JSON reader every property kind rejects wrong types and schema mismat
     rejects(changeValue(encoded(combo), "selectedIndex", "18446744073709551616"), Error::invalid_property_value);
 }
 
-TEST_CASE("JSON reader exact int64 uint64 and Coordinate boundaries") {
-    VBox box; GridLayout grid; Label label;
-    for (const auto number : {"-9223372036854775808", "9223372036854775807"}) {
-        const auto parsed = parseBuiltInUiDescriptionJson(changeValue(encoded(box), "spacing", number));
-        CHECK(parsed);
-        CHECK(std::to_string(parsed.document->nodes[0].signed_integer_properties[0].value) == number);
+TEST_CASE("JSON reader enforces static integer metadata at semantic boundaries") {
+    HBox hbox;
+    VBox vbox;
+    GridLayout grid;
+    FormLayout form;
+    const std::array signed_cases{
+        std::pair{encoded(hbox), std::string_view{"spacing"}},
+        std::pair{encoded(vbox), std::string_view{"spacing"}},
+        std::pair{encoded(grid), std::string_view{"columnSpacing"}},
+        std::pair{encoded(grid), std::string_view{"rowSpacing"}},
+        std::pair{encoded(form), std::string_view{"columnSpacing"}},
+        std::pair{encoded(form), std::string_view{"rowSpacing"}},
+    };
+    const auto coordinate_maximum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::max());
+    const auto coordinate_minimum =
+        static_cast<std::int64_t>(std::numeric_limits<Coordinate>::min());
+    const auto maximum_text = std::to_string(coordinate_maximum);
+    const auto above_maximum_text = std::to_string(coordinate_maximum + 1);
+    const auto minimum_text = std::to_string(coordinate_minimum);
+    for (const auto& [json, property_id] : signed_cases) {
+        CHECK(parseBuiltInUiDescriptionJson(changeValue(json, property_id, "0")));
+        CHECK(parseBuiltInUiDescriptionJson(changeValue(json, property_id, maximum_text)));
+        rejects(changeValue(json, property_id, "-1"), Error::invalid_property_value);
+        rejects(changeValue(json, property_id, minimum_text), Error::invalid_property_value);
+        rejects(changeValue(json, property_id, above_maximum_text), Error::invalid_property_value);
     }
+
+    // JSON integer carriers remain fixed-width even though each property's semantic domain is
+    // narrower. Values outside int64_t/uint64_t still fail during number parsing.
     for (const auto number : {"-9223372036854775809", "9223372036854775808"}) {
-        rejects(changeValue(encoded(box), "spacing", number), Error::invalid_property_value);
+        rejects(changeValue(encoded(vbox), "spacing", number), Error::invalid_property_value);
     }
-    const auto maximum = parseBuiltInUiDescriptionJson(changeValue(encoded(grid), "columnCount", "18446744073709551615"));
+    rejects(changeValue(encoded(grid), "columnCount", "0"), Error::invalid_property_value);
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(encoded(grid), "columnCount", "1")));
+    const auto maximum = parseBuiltInUiDescriptionJson(
+        changeValue(encoded(grid), "columnCount", "18446744073709551615"));
     CHECK(maximum);
     CHECK(maximum.document->nodes[0].unsigned_integer_properties[0].value == std::numeric_limits<std::uint64_t>::max());
     for (const auto number : {"-1", "18446744073709551616"}) {
         rejects(changeValue(encoded(grid), "columnCount", number), Error::invalid_property_value);
     }
     for (const auto number : {"01", "+1", "1.0", "1e0", "NaN", "Infinity"}) {
-        CHECK(!parseBuiltInUiDescriptionJson(changeValue(encoded(box), "spacing", number)));
-    }
-    CHECK(parseBuiltInUiDescriptionJson(replace(encoded(label), "\"width\": 0", "\"width\": -2147483648")));
-    for (const auto number : {"-2147483649", "2147483648"}) {
-        rejects(replace(encoded(label), "\"width\": 0", std::string{"\"width\": "} + number), Error::invalid_property_value);
+        CHECK(!parseBuiltInUiDescriptionJson(changeValue(encoded(vbox), "spacing", number)));
     }
 }
 
@@ -424,7 +448,8 @@ TEST_CASE("JSON reader ComboBox GridLayout SizeConstraints and TextField invaria
     for (const auto text : {R"("a\nb")", R"("a\tb")", R"("a\u0001b")", R"("a\u2028b")", R"("a\u0085b")"}) {
         rejects(changeValue(encoded(field), "text", text), Error::invalid_property_value);
     }
-    CHECK(parseBuiltInUiDescriptionJson(changeValue(encoded(field), "text", R"("Gr\u00fc\u00dfe \uD83D\uDE00")")));
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(
+        encoded(field), "text", "\"Gr\\u00fc\\u00dfe \\uD83D\\uDE00\"")));
     const auto invalid = changeValue(encoded(grid), "columnCount", "0");
     const auto position = parseBuiltInUiDescriptionJson(invalid).error.byte_offset;
     CHECK(position >= invalid.find("\"nodes\""));

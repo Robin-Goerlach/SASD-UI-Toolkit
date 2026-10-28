@@ -368,14 +368,14 @@ TEST_CASE("UI description reconstruction revalidates mutable aggregate documents
           UiDescriptionReconstructionErrorCode::invalid_document);
 }
 
-TEST_CASE("UI description reconstruction fails atomically for setter domain errors") {
+TEST_CASE("UI description reconstruction revalidates static integer domains before construction") {
     VBox original;
     auto document = parsed(original);
     document.nodes[0].signed_integer_properties[0].value = -1;
     const auto result = reconstructBuiltInUiDescription(document);
     CHECK(!result);
     CHECK(result.root == nullptr);
-    CHECK(result.error == UiDescriptionReconstructionErrorCode::property_restore_failed);
+    CHECK(result.error == UiDescriptionReconstructionErrorCode::invalid_document);
     CHECK(result.node_id == 0);
 }
 
