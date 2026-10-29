@@ -432,11 +432,33 @@ TEST_CASE("JSON reader property identity completeness and unsupported state") {
 }
 
 TEST_CASE("JSON reader ComboBox GridLayout SizeConstraints and TextField invariants") {
+    ComboBox empty_combo;
+    const auto empty = encoded(empty_combo);
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(empty, "selectedIndex", "null")));
+    rejects(changeValue(empty, "selectedIndex", "0"), Error::invalid_property_value);
+
     ComboBox combo{std::vector<std::string>{"A"}};
     const auto base = encoded(combo);
     CHECK(parseBuiltInUiDescriptionJson(changeValue(base, "selectedIndex", "null")));
     CHECK(parseBuiltInUiDescriptionJson(changeValue(base, "selectedIndex", "0")));
     rejects(changeValue(base, "selectedIndex", "1"), Error::invalid_property_value);
+    rejects(changeValue(base, "selectedIndex", "18446744073709551615"),
+            Error::invalid_property_value);
+
+    ComboBox three{std::vector<std::string>{"A", "B", "C"}};
+    const auto three_items = encoded(three);
+    CHECK(parseBuiltInUiDescriptionJson(changeValue(three_items, "selectedIndex", "2")));
+    rejects(changeValue(three_items, "selectedIndex", "3"), Error::invalid_property_value);
+
+    ComboBox duplicate_items{std::vector<std::string>{"A", "A", "B"}};
+    CHECK(parseBuiltInUiDescriptionJson(
+        changeValue(encoded(duplicate_items), "selectedIndex", "1")));
+
+    const auto selected_before_items = permuted(
+        changeValue(three_items, "selectedIndex", "2"));
+    CHECK(selected_before_items.find("selectedIndex") < selected_before_items.find("items"));
+    CHECK(parseBuiltInUiDescriptionJson(selected_before_items));
+
     GridLayout grid;
     rejects(changeValue(encoded(grid), "columnCount", "0"), Error::invalid_property_value);
     CHECK(parseBuiltInUiDescriptionJson(changeValue(encoded(grid), "columnCount", "1")));

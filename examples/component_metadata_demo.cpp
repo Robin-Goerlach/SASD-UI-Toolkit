@@ -1,7 +1,6 @@
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/button.hpp>
-#include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/grid_layout.hpp>
@@ -20,7 +19,6 @@
 #include <sasd/ui/vbox.hpp>
 #include <sasd/ui/window.hpp>
 
-#include <iomanip>
 #include <iostream>
 #include <string_view>
 
@@ -97,6 +95,16 @@ const char* sizeConstraintsValidationKindName(
     return "unknown";
 }
 
+const char* optionalUnsignedCrossPropertyValidationKindName(
+    sasd::ui::OptionalUnsignedIntegerCrossPropertyValidationKind kind) noexcept {
+    switch (kind) {
+    case sasd::ui::OptionalUnsignedIntegerCrossPropertyValidationKind::
+        index_within_string_collection:
+        return "index within";
+    }
+    return "unknown";
+}
+
 void printProperties(std::string_view type_id) {
     std::cout << type_id << " declared properties:\n";
     for (const auto& property : sasd::ui::declaredBuiltInComponentProperties(type_id)) {
@@ -116,6 +124,13 @@ void printProperties(std::string_view type_id) {
                 sasd::ui::builtInSizeConstraintsPropertyValidation(property)) {
             std::cout << " validation: " << sizeConstraintsValidationKindName(*validation);
         }
+        if (const auto validation =
+                sasd::ui::builtInOptionalUnsignedIntegerCrossPropertyValidation(property)) {
+            std::cout << " validation: "
+                      << optionalUnsignedCrossPropertyValidationKindName(validation->kind) << ' '
+                      << validation->dependency_property.declaring_type_id << '.'
+                      << validation->dependency_property.property_id;
+        }
         std::cout << '\n';
     }
 }
@@ -123,30 +138,6 @@ void printProperties(std::string_view type_id) {
 } // namespace
 
 int main() {
-    sasd::ui::ComboBox combo{{"One", "Two", "Three"}};
-    (void)combo.setSelectedIndex(1);
-    const auto combo_snapshot = sasd::ui::captureBuiltInComponentPropertySnapshot(combo);
-    if (!combo_snapshot.has_value()) {
-        return 1;
-    }
-    std::cout << "ComboBox snapshot:\n  items = [";
-    const auto& items = combo_snapshot->string_collection_properties.front();
-    for (std::size_t index = 0; index < items.value.size(); ++index) {
-        if (index != 0) {
-            std::cout << ", ";
-        }
-        std::cout << std::quoted(items.value[index]);
-    }
-    std::cout << "] [" << (items.is_default ? "default" : "non-default") << "]\n";
-    const auto& combo_selection = combo_snapshot->optional_unsigned_integer_properties.front();
-    std::cout << "  selectedIndex = ";
-    if (combo_selection.value.has_value()) {
-        std::cout << *combo_selection.value;
-    } else {
-        std::cout << "none";
-    }
-    std::cout << " [" << (combo_selection.is_default ? "default" : "non-default") << "]\n";
-
     for (const auto& metadata : sasd::ui::builtInComponentTypes()) {
         std::cout << metadata.type_id << " <- "
                   << (metadata.base_type_id.empty() ? "<none>" : metadata.base_type_id)
@@ -167,6 +158,7 @@ int main() {
     printProperties("sasd.ui.VBox");
     printProperties("sasd.ui.GridLayout");
     printProperties("sasd.ui.FormLayout");
+    printProperties("sasd.ui.ComboBox");
     for (const auto property_id : {"visible", "enabled", "focusable"}) {
         const auto* property =
             sasd::ui::findBuiltInComponentProperty("sasd.ui.CheckBox", property_id);

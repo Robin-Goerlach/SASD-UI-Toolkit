@@ -18,6 +18,33 @@ enum class SizeConstraintsPropertyValidationKind {
     minimum_not_greater_than_maximum,
 };
 
+/** Same-node relation supported for an optional unsigned integer property. */
+enum class OptionalUnsignedIntegerCrossPropertyValidationKind {
+    index_within_string_collection,
+};
+
+/**
+ * Contextual validity policy and its exact same-node dependency descriptor.
+ *
+ * The concrete type deliberately describes only the relation currently present in the built-in
+ * catalog. It is not a generic expression, predicate or dependency-graph vocabulary.
+ */
+struct OptionalUnsignedIntegerCrossPropertyValidation final {
+    OptionalUnsignedIntegerCrossPropertyValidationKind kind{
+        OptionalUnsignedIntegerCrossPropertyValidationKind::index_within_string_collection};
+    ComponentPropertyMetadata dependency_property;
+
+    friend constexpr bool operator==(
+        const OptionalUnsignedIntegerCrossPropertyValidation& left,
+        const OptionalUnsignedIntegerCrossPropertyValidation& right) noexcept {
+        return left.kind == right.kind &&
+               left.dependency_property.declaring_type_id ==
+                   right.dependency_property.declaring_type_id &&
+               left.dependency_property.property_id == right.dependency_property.property_id &&
+               left.dependency_property.value_kind == right.dependency_property.value_kind;
+    }
+};
+
 /** Static inclusive domain for one signed_integer property. */
 struct SignedIntegerPropertyRange final {
     std::int64_t minimum{};
@@ -79,10 +106,22 @@ builtInStringPropertyNormalization(const ComponentPropertyMetadata& property) no
  * Returns the atomic validity policy of an exact built-in SizeConstraints property descriptor.
  *
  * This describes only invariants of the compound value itself. Contextual cross-property and graph
- * rules deliberately remain outside this small metadata layer, and runtime setters continue to
- * enforce their own contract.
+ * rules use separate concrete contracts, and runtime setters continue to enforce their own
+ * contract.
  */
 [[nodiscard]] std::optional<SizeConstraintsPropertyValidationKind>
 builtInSizeConstraintsPropertyValidation(const ComponentPropertyMetadata& property) noexcept;
+
+/**
+ * Returns the same-node contextual policy of an exact optional-unsigned property descriptor.
+ *
+ * The dependency is the complete catalog descriptor rather than a loose property-name string.
+ * A copied valid input descriptor succeeds; malformed, wrong-kind and unknown descriptors return
+ * std::nullopt. No Component instance is constructed, and this metadata does not define property
+ * restoration order.
+ */
+[[nodiscard]] std::optional<OptionalUnsignedIntegerCrossPropertyValidation>
+builtInOptionalUnsignedIntegerCrossPropertyValidation(
+    const ComponentPropertyMetadata& property) noexcept;
 
 } // namespace sasd::ui

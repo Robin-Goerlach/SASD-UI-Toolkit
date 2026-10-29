@@ -192,6 +192,64 @@ TEST_CASE("Widget sizeConstraints exposes its exact compound validation policy")
     CHECK(!builtInSizeConstraintsPropertyValidation(property("sasd.ui.Label", "text")));
 }
 
+TEST_CASE("ComboBox selectedIndex exposes its exact string collection dependency") {
+    const auto descriptor = property("sasd.ui.ComboBox", "selectedIndex");
+    const auto validation =
+        builtInOptionalUnsignedIntegerCrossPropertyValidation(descriptor);
+    CHECK(validation.has_value());
+    CHECK(validation->kind == OptionalUnsignedIntegerCrossPropertyValidationKind::
+                                  index_within_string_collection);
+    CHECK(validation->dependency_property.declaring_type_id == "sasd.ui.ComboBox");
+    CHECK(validation->dependency_property.property_id == "items");
+    CHECK(validation->dependency_property.value_kind ==
+          ComponentPropertyValueKind::string_collection);
+
+    const auto copied = descriptor;
+    CHECK(builtInOptionalUnsignedIntegerCrossPropertyValidation(copied) == validation);
+
+    for (const ComponentPropertyMetadata malformed : {
+             ComponentPropertyMetadata{"sasd.ui.ComboBox", "selectedIndex",
+                                       ComponentPropertyValueKind::unsigned_integer},
+             ComponentPropertyMetadata{"sasd.ui.Widget", "selectedIndex",
+                                       ComponentPropertyValueKind::optional_unsigned_integer},
+             ComponentPropertyMetadata{"sasd.ui.ComboBox", "items",
+                                       ComponentPropertyValueKind::optional_unsigned_integer},
+             ComponentPropertyMetadata{"sasd.ui.ComboBox", "SelectedIndex",
+                                       ComponentPropertyValueKind::optional_unsigned_integer},
+             ComponentPropertyMetadata{"SASD.UI.ComboBox", "selectedIndex",
+                                       ComponentPropertyValueKind::optional_unsigned_integer},
+             ComponentPropertyMetadata{"sasd.ui.ComboBox", "selectedIndex",
+                                       static_cast<ComponentPropertyValueKind>(99)}}) {
+        CHECK(!builtInOptionalUnsignedIntegerCrossPropertyValidation(malformed));
+    }
+    CHECK(!builtInOptionalUnsignedIntegerCrossPropertyValidation(
+        property("sasd.ui.ComboBox", "items")));
+    CHECK(!builtInOptionalUnsignedIntegerCrossPropertyValidation(
+        property("sasd.ui.GridLayout", "columnCount")));
+}
+
+TEST_CASE("cross property validation metadata covers the optional unsigned catalog") {
+    std::size_t optional_unsigned_count = 0;
+
+    for (const auto& type : builtInComponentTypes()) {
+        for (const auto& descriptor : declaredBuiltInComponentProperties(type.type_id)) {
+            const auto validation =
+                builtInOptionalUnsignedIntegerCrossPropertyValidation(descriptor);
+            if (descriptor.value_kind ==
+                ComponentPropertyValueKind::optional_unsigned_integer) {
+                ++optional_unsigned_count;
+                CHECK(validation.has_value());
+                CHECK(validation->dependency_property.value_kind ==
+                      ComponentPropertyValueKind::string_collection);
+            } else {
+                CHECK(!validation.has_value());
+            }
+        }
+    }
+
+    CHECK(optional_unsigned_count == 1);
+}
+
 TEST_CASE("string and size constraints policies completely cover their current catalogs") {
     std::size_t string_count = 0;
     std::size_t identity_count = 0;

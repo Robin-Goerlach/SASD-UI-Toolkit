@@ -285,9 +285,10 @@ Current built-in semantic coverage is ready for persisted encoding after the Sli
 JSON v1 document loading (ADR 0187), and Slice 18 completes phased built-in graph reconstruction
 (ADR 0188). Slice 19 adds instance-free static integer range validation metadata (ADR 0189).
 Slice 20 adds explicit normalization policies for every current string descriptor and atomic
-`Widget.sizeConstraints` validation metadata, reused by format-neutral document validation
-(ADR 0190). The separate resource system remains open. Context-dependent cross-property/graph
-validation and wider design-time attributes remain future slices.
+`Widget.sizeConstraints` validation metadata (ADR 0190). Slice 21 adds the exact same-node
+`ComboBox.selectedIndex` -> `ComboBox.items` dependency and reuses it in format-neutral document
+validation (ADR 0191). The separate resource system remains open. Reference/graph validation and
+wider design-time attributes remain future slices.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -300,6 +301,8 @@ validation and wider design-time attributes remain future slices.
     - [x] static integer range validation metadata (ADR 0189)
     - [x] single-property text normalization / compound validation metadata (ADR 0190)
     - [ ] contextual cross-property / graph validation metadata
+      - [x] ComboBox same-node cross-property validation metadata (ADR 0191)
+      - [ ] reference / graph validation metadata
 - [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy

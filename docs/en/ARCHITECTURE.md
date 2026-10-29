@@ -219,11 +219,20 @@ normalizes through `utf8::sanitizeSingleLine()` and Widget still rejects an inva
 runtime setter. The format-neutral document validator first enforces general UTF-8 validity, then
 reuses exact-descriptor normalization/validation metadata and fails closed when a policy is missing.
 Its former hardcoded TextField branch and implicit rule for every `size_constraints` kind are gone.
-Schema, effective defaults, static numeric validation, single-property policies, typed runtime
-access, document validation and runtime enforcement remain separate layers. ComboBox selection is a
-cross-property rule and RadioGroup exclusivity a graph rule; neither is generalized here. No generic
-validation engine is introduced; see
-[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md).
+
+The concrete optional-unsigned cross-property metadata describes `ComboBox.selectedIndex` as an
+index into the exact same-node `ComboBox.items` string-collection descriptor. Null selection remains
+valid even for an empty collection. The format-neutral validator uses descriptor identity rather
+than node type, vector position or input order, and compares the persistent `uint64_t` safely with
+collection size. Missing metadata/dependencies fail closed. Runtime setters remain authoritative,
+and reconstruction still follows declaration order independently.
+
+Schema, effective defaults, static numeric domains, single-property normalization, atomic compound
+validation, same-node cross-property validation, typed runtime access, document validation and
+runtime enforcement remain separate layers. No generic validation engine or dependency DSL is
+introduced. RadioGroup exclusivity and reference compatibility remain separate concrete graph rules;
+see [ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md) and
+[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md).
 
 ### Built-in component property snapshots
 
