@@ -227,12 +227,27 @@ than node type, vector position or input order, and compares the persistent `uin
 collection size. Missing metadata/dependencies fail closed. Runtime setters remain authoritative,
 and reconstruction still follows declaration order independently.
 
+The separate `sasd/ui/component_reference_metadata.hpp` layer supplies one immutable source/target
+type contract for each of the eleven built-in reference kinds. Actual endpoints may match exactly or
+derive through the built-in metadata base chain, preserving String model polymorphism. Every kind is
+an optional singular relation per source and kind. JSON symbols remain encoding-specific and are not
+part of this format-neutral tooling catalog.
+
+Additional graph constraints use a separate zero-or-more metadata query. The sole current rule says
+that, per `radio_button_group` target, at most one incoming source may have the exact
+`RadioButton.selected` boolean descriptor set to true. Standalone RadioButtons and different group
+targets remain independent. The common document validator consumes both reference layers without
+constructing Components; runtime setters and binding APIs remain authoritative. Capture and
+reconstruction retain their concrete typed operations.
+
 Schema, effective defaults, static numeric domains, single-property normalization, atomic compound
-validation, same-node cross-property validation, typed runtime access, document validation and
-runtime enforcement remain separate layers. No generic validation engine or dependency DSL is
-introduced. RadioGroup exclusivity and reference compatibility remain separate concrete graph rules;
-see [ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md) and
-[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md).
+validation, same-node cross-property validation, reference endpoint contracts, graph constraints,
+typed runtime access, document validation and runtime enforcement remain separate layers. No generic
+validation engine, graph DSL, registry or reflection invocation mechanism is introduced. The current
+built-in validation-metadata coverage is complete; see
+[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md),
+[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md) and
+[ADR 0192](../adr/0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md).
 
 ### Built-in component property snapshots
 

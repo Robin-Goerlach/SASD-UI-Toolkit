@@ -72,6 +72,20 @@ std::string changeValue(std::string text, std::string_view property, std::string
     text.replace(start, valueEnd(text, start) - start, value);
     return text;
 }
+std::string changeReferenceId(std::string text, std::string_view symbol,
+                              std::string_view endpoint, std::uint64_t value) {
+    const auto symbol_at = text.find(std::string{"\"kind\": \""} + std::string{symbol} + '"');
+    CHECK(symbol_at != std::string::npos);
+    const auto edge_end = text.find('}', symbol_at);
+    const auto endpoint_at = text.find(
+        std::string{'"' + std::string{endpoint} + "\": "}, symbol_at);
+    CHECK(endpoint_at != std::string::npos);
+    CHECK(endpoint_at < edge_end);
+    const auto number_at = text.find_first_of("0123456789", endpoint_at);
+    const auto number_end = text.find_first_not_of("0123456789", number_at);
+    text.replace(number_at, number_end - number_at, std::to_string(value));
+    return text;
+}
 std::string node(std::string_view type, std::uint64_t id, std::string_view owns = "[]") {
     // Component/RadioGroup/model nodes have no properties; structural Widget nodes use the
     // Label golden's inherited properties, stripping both Label-specific properties.
@@ -536,6 +550,10 @@ TEST_CASE("JSON reader all eleven relation symbols types and normalization") {
         const auto& edges = parsed.document->reference_edges;
         CHECK(std::count_if(edges.begin(), edges.end(), [&](const auto& edge) { return edge.kind == kind; }) == 1);
     }
+    rejects(changeReferenceId(json, "button.command", "target", 3),
+            Error::invalid_reference); // Button -> RadioGroup
+    rejects(changeReferenceId(json, "radio-button.group", "target", 1),
+            Error::invalid_reference); // RadioButton -> Command
     // Mutate every relation independently, checking source/target compatibility for each kind.
     const auto refs = json.find("\"references\"");
     auto at = json.find('{', refs);
@@ -571,6 +589,45 @@ TEST_CASE("JSON reader all eleven relation symbols types and normalization") {
     rejects(graph(node("Window", 0), R"([{"source":0,"kind":"button.command","target":0}])"), Error::invalid_reference);
 }
 
+TEST_CASE("JSON reader reference metadata accepts model base chains and singular kinds") {
+    Window list_root;
+    auto& list_model_a = list_root.emplace<StringListModel>();
+    list_root.emplace<StringListModel>();
+    auto& list_view = list_root.emplace<ListView>();
+    list_view.setModel(&list_model_a);
+    auto list_json = encoded(list_root);
+    CHECK(parseBuiltInUiDescriptionJson(
+        replace(list_json, "sasd.ui.StringListModel", "sasd.ui.ListModel")));
+
+    const auto references_at = list_json.find("\"references\"");
+    const auto edge_at = list_json.find('{', references_at);
+    const auto edge_end = valueEnd(list_json, edge_at);
+    auto second_target_edge = list_json.substr(edge_at, edge_end - edge_at);
+    second_target_edge = replace(std::move(second_target_edge), "\"target\": 1", "\"target\": 2");
+    auto duplicate_kind = list_json;
+    duplicate_kind.insert(edge_at, second_target_edge + ',');
+    rejects(duplicate_kind, Error::invalid_reference);
+
+    Window table_root;
+    auto& table_model = table_root.emplace<StringTableModel>();
+    auto& table_view = table_root.emplace<TableView>();
+    table_view.setModel(&table_model);
+    CHECK(parseBuiltInUiDescriptionJson(replace(
+        encoded(table_root), "sasd.ui.StringTableModel", "sasd.ui.TableModel")));
+
+    Window tree_root;
+    auto& tree_model = tree_root.emplace<StringTreeModel>();
+    auto& tree_view = tree_root.emplace<TreeView>();
+    tree_view.setModel(&tree_model);
+    CHECK(parseBuiltInUiDescriptionJson(replace(
+        encoded(tree_root), "sasd.ui.StringTreeModel", "sasd.ui.TreeModel")));
+
+    auto wrong_model_family = encoded(list_root);
+    wrong_model_family = replace(std::move(wrong_model_family),
+                                 "sasd.ui.StringListModel", "sasd.ui.StringTableModel");
+    rejects(wrong_model_family, Error::invalid_reference);
+}
+
 TEST_CASE("JSON reader RadioGroup exclusivity and standalone selected values") {
     Window root;
     auto& group = root.emplace<RadioGroup>();
@@ -589,6 +646,19 @@ TEST_CASE("JSON reader RadioGroup exclusivity and standalone selected values") {
     standalone.emplace<RadioButton>("A").setSelected(true);
     standalone.emplace<RadioButton>("B").setSelected(true);
     roundtrip(standalone);
+
+    Window independent_groups;
+    auto& group_a = independent_groups.emplace<RadioGroup>();
+    auto& group_b = independent_groups.emplace<RadioGroup>();
+    independent_groups.emplace<RadioButton>(group_a, "A").setSelected(true);
+    independent_groups.emplace<RadioButton>(group_b, "B").setSelected(true);
+    roundtrip(independent_groups);
+
+    Window mixed;
+    auto& mixed_group = mixed.emplace<RadioGroup>();
+    mixed.emplace<RadioButton>(mixed_group, "Member").setSelected(true);
+    mixed.emplace<RadioButton>("Standalone").setSelected(true);
+    roundtrip(mixed);
 }
 
 TEST_CASE("JSON reader boolean kind mismatch escaped keys and iterative deep ownership") {

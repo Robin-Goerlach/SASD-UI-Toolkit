@@ -208,6 +208,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0189](0189-m8-static-integer-property-validation-metadata-foundation.md) | M8 Static Integer Property Validation Metadata Foundation | Accepted |
 | [0190](0190-m8-single-property-validation-normalization-metadata-foundation.md) | M8 Single-Property Validation and Normalization Metadata Foundation | Accepted |
 | [0191](0191-m8-combo-box-cross-property-validation-metadata-foundation.md) | M8 ComboBox Cross-Property Validation Metadata Foundation | Accepted |
+| [0192](0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md) | M8 Built-in Reference and Graph Validation Metadata Foundation | Accepted |
 
 ## ADR policy
 

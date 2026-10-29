@@ -374,6 +374,51 @@ TEST_CASE("UI description reconstruction revalidates mutable aggregate documents
     missing_items.nodes[0].string_collection_properties.clear();
     CHECK(reconstructBuiltInUiDescription(missing_items).error ==
           UiDescriptionReconstructionErrorCode::invalid_document);
+
+    Window radio_root;
+    auto& radio_group = radio_root.emplace<RadioGroup>();
+    radio_root.emplace<RadioButton>(radio_group, "A").setSelected(true);
+    radio_root.emplace<RadioButton>(radio_group, "B");
+    auto invalid_group = parsed(radio_root);
+    auto second_radio = std::find_if(invalid_group.nodes.begin(), invalid_group.nodes.end(),
+        [](const auto& node) {
+            return node.node_id == 3 && node.type_id == "sasd.ui.RadioButton";
+        });
+    CHECK(second_radio != invalid_group.nodes.end());
+    if (second_radio != invalid_group.nodes.end()) {
+        auto selected = std::find_if(second_radio->boolean_properties.begin(),
+            second_radio->boolean_properties.end(), [](const auto& property) {
+                return property.declaring_type_id == "sasd.ui.RadioButton" &&
+                       property.property_id == "selected";
+            });
+        CHECK(selected != second_radio->boolean_properties.end());
+        if (selected != second_radio->boolean_properties.end()) {
+            selected->value = true;
+            CHECK(reconstructBuiltInUiDescription(invalid_group).error ==
+                  UiDescriptionReconstructionErrorCode::invalid_document);
+            CHECK(selected->value); // Validation rejects; it never normalizes either member.
+        }
+    }
+
+    auto wrong_graph_property_identity = parsed(radio_root);
+    auto first_radio = std::find_if(wrong_graph_property_identity.nodes.begin(),
+        wrong_graph_property_identity.nodes.end(), [](const auto& node) {
+            return node.node_id == 2 && node.type_id == "sasd.ui.RadioButton";
+        });
+    CHECK(first_radio != wrong_graph_property_identity.nodes.end());
+    if (first_radio != wrong_graph_property_identity.nodes.end()) {
+        auto selected = std::find_if(first_radio->boolean_properties.begin(),
+            first_radio->boolean_properties.end(), [](const auto& property) {
+                return property.declaring_type_id == "sasd.ui.RadioButton" &&
+                       property.property_id == "selected";
+            });
+        CHECK(selected != first_radio->boolean_properties.end());
+        if (selected != first_radio->boolean_properties.end()) {
+            selected->declaring_type_id = "sasd.ui.CheckBox";
+            CHECK(reconstructBuiltInUiDescription(wrong_graph_property_identity).error ==
+                  UiDescriptionReconstructionErrorCode::invalid_document);
+        }
+    }
 }
 
 TEST_CASE("UI description reconstruction revalidates static integer domains before construction") {

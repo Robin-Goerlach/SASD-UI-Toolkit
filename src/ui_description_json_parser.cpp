@@ -30,25 +30,24 @@ constexpr std::array colors{Color::default_color, Color::black, Color::red, Colo
     Color::yellow, Color::blue, Color::magenta, Color::cyan, Color::white, Color::bright_black,
     Color::bright_red, Color::bright_green, Color::bright_yellow, Color::bright_blue,
     Color::bright_magenta, Color::bright_cyan, Color::bright_white};
-struct Relation final {
+struct ReferenceSymbol final {
     std::string_view symbol;
     Reference kind;
-    std::string_view source;
-    std::string_view target;
 };
-// This explicit table preserves the established semantic enum order without external ordinals.
-constexpr std::array relations{
-    Relation{"button.command", Reference::button_command, "sasd.ui.Button", "sasd.ui.Command"},
-    Relation{"radio-button.group", Reference::radio_button_group, "sasd.ui.RadioButton", "sasd.ui.RadioGroup"},
-    Relation{"list-view.model", Reference::list_view_model, "sasd.ui.ListView", "sasd.ui.ListModel"},
-    Relation{"table-view.model", Reference::table_view_model, "sasd.ui.TableView", "sasd.ui.TableModel"},
-    Relation{"tree-view.model", Reference::tree_view_model, "sasd.ui.TreeView", "sasd.ui.TreeModel"},
-    Relation{"list-view.selection-model", Reference::list_view_selection_model, "sasd.ui.ListView", "sasd.ui.ListSelectionModel"},
-    Relation{"table-view.selection-model", Reference::table_view_selection_model, "sasd.ui.TableView", "sasd.ui.TableSelectionModel"},
-    Relation{"tree-view.selection-model", Reference::tree_view_selection_model, "sasd.ui.TreeView", "sasd.ui.TreeSelectionModel"},
-    Relation{"list-selection-model.model", Reference::list_selection_model_model, "sasd.ui.ListSelectionModel", "sasd.ui.ListModel"},
-    Relation{"table-selection-model.model", Reference::table_selection_model_model, "sasd.ui.TableSelectionModel", "sasd.ui.TableModel"},
-    Relation{"tree-selection-model.model", Reference::tree_selection_model_model, "sasd.ui.TreeSelectionModel", "sasd.ui.TreeModel"}};
+// Symbols belong only to canonical JSON v1. Endpoint type contracts live in format-neutral
+// reference metadata so another encoding or a designer does not inherit these spelling choices.
+constexpr std::array reference_symbols{
+    ReferenceSymbol{"button.command", Reference::button_command},
+    ReferenceSymbol{"radio-button.group", Reference::radio_button_group},
+    ReferenceSymbol{"list-view.model", Reference::list_view_model},
+    ReferenceSymbol{"table-view.model", Reference::table_view_model},
+    ReferenceSymbol{"tree-view.model", Reference::tree_view_model},
+    ReferenceSymbol{"list-view.selection-model", Reference::list_view_selection_model},
+    ReferenceSymbol{"table-view.selection-model", Reference::table_view_selection_model},
+    ReferenceSymbol{"tree-view.selection-model", Reference::tree_view_selection_model},
+    ReferenceSymbol{"list-selection-model.model", Reference::list_selection_model_model},
+    ReferenceSymbol{"table-selection-model.model", Reference::table_selection_model_model},
+    ReferenceSymbol{"tree-selection-model.model", Reference::tree_selection_model_model}};
 
 class Parser final {
 public:
@@ -397,8 +396,9 @@ private:
             else {
                 const auto at = cursor_;
                 const auto symbol = string();
-                const auto found = std::find_if(relations.begin(), relations.end(), [&](const auto& r) { return r.symbol == symbol; });
-                if (found == relations.end()) { fail(Error::invalid_reference, at); }
+                const auto found = std::find_if(reference_symbols.begin(), reference_symbols.end(),
+                    [&](const auto& candidate) { return candidate.symbol == symbol; });
+                if (found == reference_symbols.end()) { fail(Error::invalid_reference, at); }
                 else { edge.kind = found->kind; }
             }
         });

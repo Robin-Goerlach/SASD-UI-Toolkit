@@ -6,6 +6,7 @@
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
+#include <sasd/ui/component_reference_metadata.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
@@ -138,6 +139,25 @@ int main() {
         cross_property_validation->dependency_property.property_id == "items" &&
         cross_property_validation->dependency_property.value_kind ==
             sasd::ui::ComponentPropertyValueKind::string_collection;
+    const auto* list_model_reference =
+        sasd::ui::findBuiltInComponentReferenceMetadata(
+            sasd::ui::BuiltInComponentReferenceKind::list_view_model);
+    const auto radio_group_validations =
+        sasd::ui::builtInComponentReferenceGraphValidations(
+            sasd::ui::BuiltInComponentReferenceKind::radio_button_group);
+    const bool reference_metadata_linked =
+        list_model_reference != nullptr &&
+        list_model_reference->source_type_id == "sasd.ui.ListView" &&
+        list_model_reference->target_type_id == "sasd.ui.ListModel" &&
+        radio_group_validations.size() == 1 &&
+        radio_group_validations.front().kind ==
+            sasd::ui::BuiltInComponentReferenceGraphValidationKind::
+                at_most_one_source_boolean_true_per_target &&
+        radio_group_validations.front().source_property.declaring_type_id ==
+            "sasd.ui.RadioButton" &&
+        radio_group_validations.front().source_property.property_id == "selected" &&
+        radio_group_validations.front().source_property.value_kind ==
+            sasd::ui::ComponentPropertyValueKind::boolean;
 
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
@@ -150,7 +170,8 @@ int main() {
         package_device.text_count == 0;
 
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
-            cross_property_metadata_linked && core_linked && terminal_linked && rendered_linked
+            cross_property_metadata_linked && reference_metadata_linked && core_linked &&
+            terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
 }

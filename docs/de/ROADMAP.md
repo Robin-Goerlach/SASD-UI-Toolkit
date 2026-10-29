@@ -295,9 +295,10 @@ Rekonstruktion ab (ADR 0188). Slice 19 ergänzt instanzfreie statische Integer-R
 Validierungsmetadaten (ADR 0189). Slice 20 ergänzt explizite Normalisierungs-Policies für alle
 heutigen String-Deskriptoren sowie atomare Validation Metadata für `Widget.sizeConstraints`
 (ADR 0190). Slice 21 ergänzt die exakte Same-Node-Dependency `ComboBox.selectedIndex` ->
-`ComboBox.items` und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0191). Das
-separate Resource-System bleibt offen. Reference-/Graph-Validierung und weitere Design-Time-
-Attribute bleiben spätere Slices.
+`ComboBox.items` und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0191). Slice 22
+ergänzt unveränderliche Source-/Target-Verträge für alle elf Built-in Reference Kinds und die
+RadioGroup-Graph-Constraint (ADR 0192) und schließt damit die heutige Validation-Metadata-Abdeckung.
+Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -306,12 +307,12 @@ Attribute bleiben spätere Slices.
   - [x] Property-Schema-/Katalog-Grundlage
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
-  - [ ] Validierung und Design-Time-Attribute
+  - [x] Validierung und Design-Time-Attribute
     - [x] Statische Integer-Range-Validierungsmetadaten (ADR 0189)
     - [x] Single-Property-Textnormalisierung / Compound-Validierungsmetadaten (ADR 0190)
-    - [ ] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
+    - [x] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
       - [x] ComboBox-Same-Node-Cross-Property-Validierungsmetadaten (ADR 0191)
-      - [ ] Reference-/Graph-Validierungsmetadaten
+      - [x] Reference-/Graph-Validierungsmetadaten (ADR 0192)
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand

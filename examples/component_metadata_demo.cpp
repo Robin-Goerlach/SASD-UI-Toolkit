@@ -11,6 +11,7 @@
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/component_ownership_snapshot.hpp>
 #include <sasd/ui/component_reference_snapshot.hpp>
+#include <sasd/ui/component_reference_metadata.hpp>
 #include <sasd/ui/radio_group.hpp>
 #include <sasd/ui/list_selection_model.hpp>
 #include <sasd/ui/list_view.hpp>
@@ -52,6 +53,32 @@ const char* referenceKindName(sasd::ui::BuiltInComponentReferenceKind kind) noex
     case Kind::tree_selection_model_model: return "tree_selection_model_model";
     }
     return "unknown";
+}
+
+const char* graphValidationKindName(
+    sasd::ui::BuiltInComponentReferenceGraphValidationKind kind) noexcept {
+    switch (kind) {
+    case sasd::ui::BuiltInComponentReferenceGraphValidationKind::
+        at_most_one_source_boolean_true_per_target:
+        return "at most one source boolean true per target";
+    }
+    return "unknown";
+}
+
+void printReferenceMetadata(sasd::ui::BuiltInComponentReferenceKind kind) {
+    const auto* metadata = sasd::ui::findBuiltInComponentReferenceMetadata(kind);
+    if (metadata == nullptr) {
+        return;
+    }
+    std::cout << referenceKindName(kind) << "\n  source: " << metadata->source_type_id
+              << "\n  target: " << metadata->target_type_id << '\n';
+    for (const auto& validation :
+         sasd::ui::builtInComponentReferenceGraphValidations(kind)) {
+        std::cout << "  graph validation: " << graphValidationKindName(validation.kind)
+                  << "\n    source property: "
+                  << validation.source_property.declaring_type_id << '.'
+                  << validation.source_property.property_id << '\n';
+    }
 }
 
 const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
@@ -149,6 +176,11 @@ int main() {
     const auto* unknown = sasd::ui::findBuiltInComponentType("sasd.ui.DoesNotExist");
     std::cout << "lookup sasd.ui.DoesNotExist: " << (unknown != nullptr ? "found" : "not found")
               << '\n';
+
+    std::cout << "Built-in reference metadata:\n";
+    printReferenceMetadata(sasd::ui::BuiltInComponentReferenceKind::button_command);
+    printReferenceMetadata(sasd::ui::BuiltInComponentReferenceKind::radio_button_group);
+    printReferenceMetadata(sasd::ui::BuiltInComponentReferenceKind::list_view_model);
 
     printProperties("sasd.ui.CheckBox");
     printProperties("sasd.ui.Label");
