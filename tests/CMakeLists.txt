@@ -13,6 +13,7 @@ add_executable(sasd_ui_tests
     component_property_text_style_tests.cpp
     component_property_snapshot_tests.cpp
     component_ownership_snapshot_tests.cpp
+    component_reference_metadata_tests.cpp
     component_reference_snapshot_tests.cpp
     ui_description_json_tests.cpp
     ui_description_json_parser_tests.cpp

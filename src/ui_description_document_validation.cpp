@@ -3,10 +3,10 @@
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
+#include <sasd/ui/component_reference_metadata.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
 #include <algorithm>
-#include <array>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -16,27 +16,6 @@ namespace {
 
 using Error = UiDescriptionJsonParseErrorCode;
 using Kind = ComponentPropertyValueKind;
-using Reference = BuiltInComponentReferenceKind;
-
-struct Relation final {
-    Reference kind;
-    std::string_view source;
-    std::string_view target;
-};
-
-constexpr std::array relations{
-    Relation{Reference::button_command, "sasd.ui.Button", "sasd.ui.Command"},
-    Relation{Reference::radio_button_group, "sasd.ui.RadioButton", "sasd.ui.RadioGroup"},
-    Relation{Reference::list_view_model, "sasd.ui.ListView", "sasd.ui.ListModel"},
-    Relation{Reference::table_view_model, "sasd.ui.TableView", "sasd.ui.TableModel"},
-    Relation{Reference::tree_view_model, "sasd.ui.TreeView", "sasd.ui.TreeModel"},
-    Relation{Reference::list_view_selection_model, "sasd.ui.ListView", "sasd.ui.ListSelectionModel"},
-    Relation{Reference::table_view_selection_model, "sasd.ui.TableView", "sasd.ui.TableSelectionModel"},
-    Relation{Reference::tree_view_selection_model, "sasd.ui.TreeView", "sasd.ui.TreeSelectionModel"},
-    Relation{Reference::list_selection_model_model, "sasd.ui.ListSelectionModel", "sasd.ui.ListModel"},
-    Relation{Reference::table_selection_model_model, "sasd.ui.TableSelectionModel", "sasd.ui.TableModel"},
-    Relation{Reference::tree_selection_model_model, "sasd.ui.TreeSelectionModel", "sasd.ui.TreeModel"},
-};
 
 template<class Property>
 bool hasValidStaticIntegerRange(const Property&, const ComponentPropertyMetadata&) noexcept {
@@ -233,44 +212,82 @@ public:
             return fail(Error::invalid_ownership);
         }
 
-        std::vector<std::array<bool, relations.size()>> bound(count);
-        std::vector<bool> selected_group(count, false);
+        const auto reference_metadata = builtInComponentReferenceMetadata();
+        std::vector<std::vector<bool>> bound(
+            count, std::vector<bool>(reference_metadata.size(), false));
+
+        // Phase A validates the fundamental optional-singular relation contract. Metadata supplies
+        // format-neutral endpoint types; JSON symbols and typed runtime binding operations remain
+        // concerns of their respective encoding and reconstruction layers.
         for (std::size_t input_index = 0; input_index < document_.reference_edges.size(); ++input_index) {
             const auto& edge = document_.reference_edges[input_index];
             if (edge.source_node_id >= count || edge.target_node_id >= count ||
                 edge.source_node_id == edge.target_node_id) {
                 return failReference(Error::invalid_reference, input_index, edge.source_node_id);
             }
-            const auto rule = std::find_if(relations.begin(), relations.end(), [&](const auto& relation) {
-                return relation.kind == edge.kind;
-            });
-            if (rule == relations.end()) {
+            const auto* metadata = findBuiltInComponentReferenceMetadata(edge.kind);
+            if (metadata == nullptr) {
                 return failReference(Error::invalid_reference, input_index, edge.source_node_id);
             }
             const auto source = static_cast<std::size_t>(edge.source_node_id);
             const auto target = static_cast<std::size_t>(edge.target_node_id);
-            const auto relation_index = static_cast<std::size_t>(rule - relations.begin());
+            const auto relation_index =
+                static_cast<std::size_t>(metadata - reference_metadata.data());
             if (bound[source][relation_index] ||
-                !derivesFrom(nodes[source].type_id, rule->source) ||
-                !derivesFrom(nodes[target].type_id, rule->target)) {
+                !derivesFrom(nodes[source].type_id, metadata->source_type_id) ||
+                !derivesFrom(nodes[target].type_id, metadata->target_type_id)) {
                 return failReference(Error::invalid_reference, input_index, edge.source_node_id);
             }
             bound[source][relation_index] = true;
+        }
 
-            if (edge.kind == Reference::radio_button_group) {
-                const auto& values = nodes[source].boolean_properties;
-                const auto selected = std::find_if(values.begin(), values.end(), [](const auto& property) {
-                    return property.declaring_type_id == "sasd.ui.RadioButton" &&
-                           property.property_id == "selected";
-                });
-                if (selected == values.end()) {
-                    return failReference(Error::invalid_reference, input_index, edge.source_node_id);
+        // Phase B applies zero-or-more additional graph rules only after every edge is structurally
+        // and type valid. RadioGroup exclusivity is graph context: standalone RadioButtons never
+        // participate, and distinct target groups have independent true-value counts.
+        for (const auto& metadata : reference_metadata) {
+            for (const auto& validation :
+                 builtInComponentReferenceGraphValidations(metadata.kind)) {
+                const auto& source_property = validation.source_property;
+                const auto* catalog_property = findBuiltInComponentProperty(
+                    source_property.declaring_type_id, source_property.property_id);
+                if (validation.reference_kind != metadata.kind ||
+                    source_property.value_kind != Kind::boolean || catalog_property == nullptr ||
+                    catalog_property->declaring_type_id != source_property.declaring_type_id ||
+                    catalog_property->property_id != source_property.property_id ||
+                    catalog_property->value_kind != source_property.value_kind ||
+                    !derivesFrom(metadata.source_type_id,
+                                 source_property.declaring_type_id)) {
+                    return fail(Error::invalid_reference);
                 }
-                if (selected->value) {
-                    if (selected_group[target]) {
-                        return failReference(Error::invalid_reference, input_index, edge.source_node_id);
+
+                switch (validation.kind) {
+                case BuiltInComponentReferenceGraphValidationKind::
+                    at_most_one_source_boolean_true_per_target: {
+                    std::vector<bool> target_has_true_source(count, false);
+                    for (std::size_t input_index = 0;
+                         input_index < document_.reference_edges.size(); ++input_index) {
+                        const auto& edge = document_.reference_edges[input_index];
+                        if (edge.kind != validation.reference_kind) {
+                            continue;
+                        }
+                        const auto source = static_cast<std::size_t>(edge.source_node_id);
+                        const auto target = static_cast<std::size_t>(edge.target_node_id);
+                        const auto* value = findProperty(
+                            nodes[source].boolean_properties, source_property);
+                        if (value == nullptr) {
+                            return failReference(
+                                Error::invalid_reference, input_index, edge.source_node_id);
+                        }
+                        if (value->value && target_has_true_source[target]) {
+                            return failReference(
+                                Error::invalid_reference, input_index, edge.source_node_id);
+                        }
+                        if (value->value) {
+                            target_has_true_source[target] = true;
+                        }
                     }
-                    selected_group[target] = true;
+                    break;
+                }
                 }
             }
         }

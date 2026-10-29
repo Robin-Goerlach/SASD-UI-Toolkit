@@ -287,8 +287,9 @@ JSON v1 document loading (ADR 0187), and Slice 18 completes phased built-in grap
 Slice 20 adds explicit normalization policies for every current string descriptor and atomic
 `Widget.sizeConstraints` validation metadata (ADR 0190). Slice 21 adds the exact same-node
 `ComboBox.selectedIndex` -> `ComboBox.items` dependency and reuses it in format-neutral document
-validation (ADR 0191). The separate resource system remains open. Reference/graph validation and
-wider design-time attributes remain future slices.
+validation (ADR 0191). Slice 22 adds immutable source/target contracts for all eleven built-in
+reference kinds and the RadioGroup graph constraint (ADR 0192), completing the current validation-
+metadata coverage. The separate resource system and wider design-time attributes remain open.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -297,12 +298,12 @@ wider design-time attributes remain future slices.
   - [x] property schema/catalog foundation
   - [x] runtime property value-access contract
   - [x] effective property default metadata
-  - [ ] validation and design-time attributes
+  - [x] validation and design-time attributes
     - [x] static integer range validation metadata (ADR 0189)
     - [x] single-property text normalization / compound validation metadata (ADR 0190)
-    - [ ] contextual cross-property / graph validation metadata
+    - [x] contextual cross-property / graph validation metadata
       - [x] ComboBox same-node cross-property validation metadata (ADR 0191)
-      - [ ] reference / graph validation metadata
+      - [x] reference / graph validation metadata (ADR 0192)
 - [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy

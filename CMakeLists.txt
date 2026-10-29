@@ -33,6 +33,7 @@ add_library(sasd_ui_core
     src/component_property_validation_metadata.cpp
     src/component_property_snapshot.cpp
     src/component_ownership_snapshot.cpp
+    src/component_reference_metadata.cpp
     src/component_reference_snapshot.cpp
     src/ui_description_json.cpp
     src/ui_description_json_parser.cpp

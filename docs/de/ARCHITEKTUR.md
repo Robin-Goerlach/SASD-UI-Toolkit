@@ -239,13 +239,28 @@ statt Nodetyp, Vectorposition oder Input-Reihenfolge und vergleicht den persiste
 sicher mit der Collection-Größe. Fehlende Metadata oder Dependencies arbeiten fail-closed. Runtime-
 Setter bleiben autoritativ; die Rekonstruktion folgt weiterhin unabhängig der Deklarationsreihenfolge.
 
+Die separate Schicht `sasd/ui/component_reference_metadata.hpp` stellt für jeden der elf Built-in
+Reference Kinds genau einen unveränderlichen Source-/Target-Typvertrag bereit. Tatsächliche Endpoints
+dürfen exakt entsprechen oder über die Built-in-Metadata-Base-Chain ableiten; dadurch bleibt die
+String-Model-Polymorphie erhalten. Jeder Kind ist pro Source und Kind eine optionale singuläre
+Relation. JSON-Symbole bleiben encoding-spezifisch und gehören nicht in diesen formatneutralen
+Tooling-Katalog.
+
+Zusätzliche Graph-Constraints verwenden eine getrennte Null-bis-Viele-Metadata-Abfrage. Die einzige
+heutige Regel besagt, dass pro `radio_button_group`-Target höchstens eine eingehende Source den
+exakten Boolean-Deskriptor `RadioButton.selected` auf true setzen darf. Standalone RadioButtons und
+verschiedene Group-Targets bleiben unabhängig. Der gemeinsame Document Validator verwendet beide
+Reference-Ebenen ohne Component-Konstruktion; Runtime-Setter und Binding-APIs bleiben autoritativ.
+Capture und Reconstruction behalten ihre konkreten typisierten Operationen.
+
 Property Schema, effektive Defaults, statische numerische Domains, Single-Property-Normalisierung,
-atomare Compound-Validierung, Same-Node-Cross-Property-Validierung, typisierter Runtime-Zugriff,
-Document Validation und Runtime-Enforcement bleiben getrennte Schichten. Es entsteht weder eine
-generische Validation Engine noch eine Dependency-DSL. RadioGroup-Exklusivität und Reference-
-Kompatibilität bleiben separate konkrete Graphregeln; siehe
-[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md) und
-[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md).
+atomare Compound-Validierung, Same-Node-Cross-Property-Validierung, Reference-Endpoint-Verträge,
+Graph-Constraints, typisierter Runtime-Zugriff, Document Validation und Runtime-Enforcement bleiben
+getrennte Schichten. Es entsteht weder eine generische Validation Engine noch Graph-DSL, Registry
+oder Reflection-Invocation. Die heutige Built-in-Validation-Metadata-Abdeckung ist vollständig;
+siehe [ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md),
+[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md) und
+[ADR 0192](../adr/0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md).
 
 ### Built-in-Component-Property-Snapshots
 

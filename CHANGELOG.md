@@ -9,6 +9,15 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 22: immutable, instance-free reference metadata defines source/target type contracts for
+  all eleven built-in reference kinds, including model base-chain compatibility and the optional
+  singular source-plus-kind contract. The format-neutral document validator consumes this catalog
+  and separate RadioGroup graph-validation metadata, removing its hardcoded relation table and
+  selected-group branch. The JSON parser no longer duplicates endpoint types; all JSON v1 symbols,
+  writer bytes, capture and runtime reconstruction semantics remain unchanged. The current built-in
+  validation-metadata coverage is complete; designer-friendly attributes, resources and IDE
+  integration remain open (ADR 0192).
+
 - M8 Slice 21: instance-free same-node cross-property validation metadata describes
   `ComboBox.selectedIndex` as an optional index into the exact `ComboBox.items`
   `string_collection` descriptor. The format-neutral document validator now resolves and evaluates
