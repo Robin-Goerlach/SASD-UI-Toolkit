@@ -9,6 +9,14 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 21: instance-free same-node cross-property validation metadata describes
+  `ComboBox.selectedIndex` as an optional index into the exact `ComboBox.items`
+  `string_collection` descriptor. The format-neutral document validator now resolves and evaluates
+  this descriptor dependency, removing its hardcoded ComboBox type branch while preserving null
+  selection, safe `uint64_t`/collection-size comparison and input-order independence. Runtime
+  ComboBox behavior, reconstruction order and JSON v1 remain unchanged; reference/graph validation
+  is still separate (ADR 0191).
+
 - M8 Slice 20: instance-free string normalization metadata for all six current built-in string
   properties and atomic validation metadata for `Widget.sizeConstraints`. `TextField.text` declares
   `single_line_utf8`; Command, Label, Button, CheckBox and RadioButton text explicitly declare

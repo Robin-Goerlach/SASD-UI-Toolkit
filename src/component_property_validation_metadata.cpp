@@ -98,4 +98,29 @@ builtInSizeConstraintsPropertyValidation(const ComponentPropertyMetadata& proper
     return SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum;
 }
 
+std::optional<OptionalUnsignedIntegerCrossPropertyValidation>
+builtInOptionalUnsignedIntegerCrossPropertyValidation(
+    const ComponentPropertyMetadata& property) noexcept {
+    if (property.value_kind != ComponentPropertyValueKind::optional_unsigned_integer ||
+        !isExactBuiltInProperty(property) ||
+        property.declaring_type_id != "sasd.ui.ComboBox" ||
+        property.property_id != "selectedIndex") {
+        return std::nullopt;
+    }
+
+    const auto* dependency = findBuiltInComponentProperty("sasd.ui.ComboBox", "items");
+    if (dependency == nullptr ||
+        dependency->declaring_type_id != property.declaring_type_id ||
+        dependency->property_id != "items" ||
+        dependency->value_kind != ComponentPropertyValueKind::string_collection) {
+        return std::nullopt;
+    }
+
+    // The exact catalog descriptor gives tooling stable type/property/kind identity. It avoids a
+    // loose "items" dependency which could be mistaken for an inherited or future sibling property.
+    return OptionalUnsignedIntegerCrossPropertyValidation{
+        OptionalUnsignedIntegerCrossPropertyValidationKind::index_within_string_collection,
+        *dependency};
+}
+
 } // namespace sasd::ui

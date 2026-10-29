@@ -366,6 +366,14 @@ TEST_CASE("UI description reconstruction revalidates mutable aggregate documents
     invalid_index.nodes[0].optional_unsigned_integer_properties[0].value = 1;
     CHECK(reconstructBuiltInUiDescription(invalid_index).error ==
           UiDescriptionReconstructionErrorCode::invalid_document);
+    CHECK(invalid_index.nodes[0].optional_unsigned_integer_properties[0].value == 1);
+    CHECK(invalid_index.nodes[0].string_collection_properties[0].value ==
+          std::vector<std::string>{"Only"});
+
+    auto missing_items = parsed(combo);
+    missing_items.nodes[0].string_collection_properties.clear();
+    CHECK(reconstructBuiltInUiDescription(missing_items).error ==
+          UiDescriptionReconstructionErrorCode::invalid_document);
 }
 
 TEST_CASE("UI description reconstruction revalidates static integer domains before construction") {

@@ -122,6 +122,22 @@ int main() {
             sasd::ui::StringPropertyNormalizationKind::single_line_utf8 &&
         sasd::ui::builtInSizeConstraintsPropertyValidation(*constraints_property) ==
             sasd::ui::SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum;
+    const auto* selected_index_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.ComboBox", "selectedIndex");
+    const auto cross_property_validation = selected_index_property == nullptr
+        ? std::optional<sasd::ui::OptionalUnsignedIntegerCrossPropertyValidation>{}
+        : sasd::ui::builtInOptionalUnsignedIntegerCrossPropertyValidation(
+              *selected_index_property);
+    const bool cross_property_metadata_linked =
+        cross_property_validation &&
+        cross_property_validation->kind ==
+            sasd::ui::OptionalUnsignedIntegerCrossPropertyValidationKind::
+                index_within_string_collection &&
+        cross_property_validation->dependency_property.declaring_type_id ==
+            "sasd.ui.ComboBox" &&
+        cross_property_validation->dependency_property.property_id == "items" &&
+        cross_property_validation->dependency_property.value_kind ==
+            sasd::ui::ComponentPropertyValueKind::string_collection;
 
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
@@ -134,7 +150,7 @@ int main() {
         package_device.text_count == 0;
 
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
-            core_linked && terminal_linked && rendered_linked
+            cross_property_metadata_linked && core_linked && terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
 }

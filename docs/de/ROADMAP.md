@@ -293,10 +293,11 @@ Die heutige Built-in-Semantik ist nach dem Slice-15-Review für persistiertes En
 JSON-v1-Dokumentladen (ADR 0187), und Slice 18 schließt die phasenbasierte Built-in-Graph-
 Rekonstruktion ab (ADR 0188). Slice 19 ergänzt instanzfreie statische Integer-Range-
 Validierungsmetadaten (ADR 0189). Slice 20 ergänzt explizite Normalisierungs-Policies für alle
-heutigen String-Deskriptoren sowie atomare Validation Metadata für `Widget.sizeConstraints` und
-verwendet beides in der formatneutralen Dokumentvalidierung (ADR 0190). Das separate Resource-System
-bleibt offen. Kontextabhängige Cross-Property-/Graph-Validierung und weitere Design-Time-Attribute
-bleiben spätere Slices.
+heutigen String-Deskriptoren sowie atomare Validation Metadata für `Widget.sizeConstraints`
+(ADR 0190). Slice 21 ergänzt die exakte Same-Node-Dependency `ComboBox.selectedIndex` ->
+`ComboBox.items` und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0191). Das
+separate Resource-System bleibt offen. Reference-/Graph-Validierung und weitere Design-Time-
+Attribute bleiben spätere Slices.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -309,6 +310,8 @@ bleiben spätere Slices.
     - [x] Statische Integer-Range-Validierungsmetadaten (ADR 0189)
     - [x] Single-Property-Textnormalisierung / Compound-Validierungsmetadaten (ADR 0190)
     - [ ] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
+      - [x] ComboBox-Same-Node-Cross-Property-Validierungsmetadaten (ADR 0191)
+      - [ ] Reference-/Graph-Validierungsmetadaten
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand

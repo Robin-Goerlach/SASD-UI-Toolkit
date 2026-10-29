@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace sasd::ui::detail {
@@ -78,6 +79,49 @@ bool hasValidSizeConstraintsValue(const UiDescriptionSizeConstraintsProperty& pr
     switch (*policy) {
     case SizeConstraintsPropertyValidationKind::minimum_not_greater_than_maximum:
         return property.value.hasValidRange();
+    }
+    return false;
+}
+
+template<class Properties>
+const typename Properties::value_type* findProperty(
+    const Properties& properties, const ComponentPropertyMetadata& descriptor) noexcept {
+    const auto found = std::find_if(properties.begin(), properties.end(), [&](const auto& property) {
+        return property.declaring_type_id == descriptor.declaring_type_id &&
+               property.property_id == descriptor.property_id;
+    });
+    return found == properties.end() ? nullptr : &*found;
+}
+
+bool hasValidOptionalUnsignedIntegerCrossPropertyValue(
+    const BuiltInUiDescriptionNode& node,
+    const UiDescriptionOptionalUnsignedIntegerProperty& property,
+    const ComponentPropertyMetadata& descriptor) noexcept {
+    const auto validation =
+        builtInOptionalUnsignedIntegerCrossPropertyValidation(descriptor);
+    if (!validation) {
+        // Every current optional-unsigned descriptor requires an explicit contextual decision.
+        // Missing metadata is a catalog coverage defect, not permission to accept any value.
+        return false;
+    }
+
+    switch (validation->kind) {
+    case OptionalUnsignedIntegerCrossPropertyValidationKind::
+        index_within_string_collection: {
+        if (validation->dependency_property.value_kind != Kind::string_collection) {
+            return false;
+        }
+        const auto* dependency =
+            findProperty(node.string_collection_properties, validation->dependency_property);
+        if (dependency == nullptr) {
+            return false;
+        }
+
+        // Absence is the semantic "no selection" value and is valid for every collection size.
+        // Compare uint64_t directly and safely with the host collection size: metadata describes an
+        // existing element, not whether narrowing the persistent value to size_t would succeed.
+        return !property.value || std::cmp_less(*property.value, dependency->value.size());
+    }
     }
     return false;
 }
@@ -352,18 +396,21 @@ private:
                 return failNodeId(Error::invalid_property_value, node.node_id);
             }
         }
+        for (const auto& property : node.optional_unsigned_integer_properties) {
+            const auto* descriptor =
+                findBuiltInComponentProperty(node.type_id, property.property_id);
+            if (descriptor == nullptr ||
+                !hasValidOptionalUnsignedIntegerCrossPropertyValue(
+                    node, property, *descriptor)) {
+                return failNodeId(Error::invalid_property_value, node.node_id);
+            }
+        }
         for (const auto& property : node.text_style_properties) {
             if (!validColor(property.value.foreground)) {
                 return failNodeId(Error::invalid_property_value, node.node_id);
             }
         }
 
-        if (node.type_id == "sasd.ui.ComboBox") {
-            const auto& index = node.optional_unsigned_integer_properties.front().value;
-            if (index && *index >= node.string_collection_properties.front().value.size()) {
-                return failNodeId(Error::invalid_property_value, node.node_id);
-            }
-        }
         return {};
     }
 };

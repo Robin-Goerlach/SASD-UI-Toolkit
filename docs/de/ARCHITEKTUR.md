@@ -230,12 +230,22 @@ TextField normalisiert weiterhin durch `utf8::sanitizeSingleLine()`, Widget lehn
 Range weiterhin in seinem Runtime-Setter ab. Der formatneutrale Document Validator erzwingt zuerst
 allgemeine UTF-8-Gültigkeit, verwendet danach exakte Deskriptor-Normalization/-Validation-Metadata
 und arbeitet bei fehlender Policy fail-closed. Sein früherer hardcodierter TextField-Zweig und die
-implizite Regel für jeden `size_constraints`-Kind entfallen. Property Schema, effektive Defaults,
-statische numerische Validation, Single-Property-Policies, typisierter Runtime-Zugriff, Document
-Validation und Runtime-Enforcement bleiben getrennte Schichten. ComboBox-Selection ist eine Cross-
-Property-Regel, RadioGroup-Exklusivität eine Graph-Regel; beide werden hier nicht generalisiert.
-Es entsteht keine generische Validation Engine; siehe
-[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md).
+implizite Regel für jeden `size_constraints`-Kind entfallen.
+
+Die konkrete Optional-Unsigned-Cross-Property-Metadata beschreibt `ComboBox.selectedIndex` als
+Index in den exakten Same-Node-String-Collection-Deskriptor `ComboBox.items`. Null-Selection bleibt
+auch für eine leere Collection gültig. Der formatneutrale Validator verwendet Deskriptoridentität
+statt Nodetyp, Vectorposition oder Input-Reihenfolge und vergleicht den persistenten `uint64_t`
+sicher mit der Collection-Größe. Fehlende Metadata oder Dependencies arbeiten fail-closed. Runtime-
+Setter bleiben autoritativ; die Rekonstruktion folgt weiterhin unabhängig der Deklarationsreihenfolge.
+
+Property Schema, effektive Defaults, statische numerische Domains, Single-Property-Normalisierung,
+atomare Compound-Validierung, Same-Node-Cross-Property-Validierung, typisierter Runtime-Zugriff,
+Document Validation und Runtime-Enforcement bleiben getrennte Schichten. Es entsteht weder eine
+generische Validation Engine noch eine Dependency-DSL. RadioGroup-Exklusivität und Reference-
+Kompatibilität bleiben separate konkrete Graphregeln; siehe
+[ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadata-foundation.md) und
+[ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md).
 
 ### Built-in-Component-Property-Snapshots
 
