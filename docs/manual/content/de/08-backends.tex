@@ -1,0 +1,162 @@
+% SPDX-License-Identifier: MIT
+\chapter{Terminal, Rendered und Portabilität}\label{chap:backends}
+\ChapterSummary{Dieses Kapitel hilft bei der Auswahl eines
+Ausgabebackends. Sie lernen die praktischen Unterschiede
+zwischen Terminalzellen, Grafikpixeln und nativen Widgets
+kennen sowie die Sicherheits- und Testfragen, die gerade
+für Administrationssoftware entscheidend sind.}
+
+\section{Terminal als vollwertiges Ziel}
+Die Terminalfamilie ist nicht lediglich ein
+schlechter Ersatz für eine Desktop-GUI.
+Sie bietet Bedienung über SSH, geringe
+grafische Abhängigkeiten, klare Tastaturwege
+und Möglichkeiten für Systeme ohne
+Desktop-Umgebung. Genau das ist für
+Remoteadministration und Wartung
+interessant.
+
+Die aktuelle Terminal-Schicht enthält
+unter anderem \term{ScreenBuffer},
+\term{TextMetrics}, \term{AnsiFrameEncoder},
+\term{TerminalSession},
+\term{TerminalDevice},
+\term{TerminalBackend} und
+\term{TerminalPresentationSink}.
+Die normale Widget-Semantik bleibt im Core.
+
+\section{Der Weg von Eingabe zu Bild}
+\begin{enumerate}
+\item Ein Terminal liefert Bytes oder eine
+plattformabhängige Konsoleneingabe.
+\item Der Backend-Adapter ordnet daraus
+Tasten-, Text-, Resize- und gegebenenfalls
+Pointer-Ereignisse zu.
+\item Fokus, Eventrouting, Command oder Widget
+ändern den semantischen Zustand.
+\item Messung und Präsentation erzeugen
+einen Bildschirmzustand im \term{ScreenBuffer}.
+\item Der \term{AnsiFrameEncoder} wandelt
+den fertigen Frame in ANSI/VT-Bytes um;
+das Device sendet sie an das Terminal.
+\end{enumerate}
+Die Trennung ist absichtlich:
+Ein Widget darf aus beliebigem Anwendungstext
+nicht direkt rohe Terminal-Control-Sequenzen
+an das Gerät senden. Sicherheitskritischer
+Text muss Dateninhalt bleiben.
+
+\section{Zeichenzellen sind keine Bytes}
+Ein UTF-8-String kann aus vielen Bytes,
+weniger Unicode-Scalars und einer ganz
+anderen Anzahl Terminalzellen bestehen.
+Besonders breite ostasiatische Zeichen,
+kombinierende Zeichen und unterschiedliche
+Terminal-Font-/Breitenregeln sind relevant.
+\term{TextMetrics} besitzt dafür eine
+explizite Breitenpolitik und
+Wide-Cell-Belegung.
+Eine Anwendung sollte niemals mit
+\texttt{string.size()} die sichtbare
+Terminalbreite berechnen.
+
+\section{RAII-Sitzung und Wiederherstellung}
+Während einer Terminalanwendung können
+Raw-Modus, alternativer Bildschirm,
+VT-Modi und gegebenenfalls xterm-
+Pointer-Reporting aktiviert werden.
+Die \term{TerminalSession} kapselt
+Erwerb und Freigabe dieser Geräteressourcen.
+Das reduziert die Gefahr, nach regularem
+Programmende eine unbrauchbare Konsole
+zurückzulassen.
+
+\Important{Wenn Sie eine Anwendung mit einem
+harten Kill abbrechen, etwa bei einem
+Systemabsturz oder einem nicht abfangbaren
+Signal, kann keine C++-Destruktion garantiert
+werden. Testen Sie deshalb auch den
+Wiederherstellungspfad Ihres konkreten Hosts,
+und verwenden Sie sichere Fallbacks für
+Notfallsituationen.}
+
+\section{Pointer-Protokolle und Tastatur-Fallback}
+Moderne Terminals können Mauspositionen,
+Klicks, Bewegung und Scrollsignale über
+xterm-kompatible Protokolle liefern.
+Die Terminal-Demo kann
+\term{TerminalPointerTrackingMode}
+bewusst setzen. Alte VT-artige Terminals
+müssen das jedoch nicht unterstützen.
+Kernaktionen sollen deshalb über
+Fokus, Enter/Space, Escape oder
+erreichbare Commands möglich bleiben.
+Die reine Existenz eines PointerHandlers
+ist keine portable Bediengarantie.
+
+\section{Rendered: Befehlsliste statt SDL in Core}
+\term{DisplayList} und \term{RenderDevice}
+ermöglichen es, Grafikoperationen
+deterministisch zu beschreiben und
+zu wiederholen. Die
+\term{RenderedMeasurementContext}
+liefert dazu Schriftmetriken.
+\term{RenderedPresentationSink}
+übersetzt semantische Widget-Zustände
+in Zeichenvorgänge. Diese API ist
+nicht gleich SDL3 und kann ohne
+graphische Sitzung getestet werden.
+
+Der optionale \term{SDL3}-Adapter stellt die
+konkrete Grafikanbindung bereit: im Fenster
+oder ohne sichtbares Fenster. Er verwendet
+SDL3 und SDL\_ttf, ist experimentell,
+muss bewusst aktiviert werden und
+noch kein garantiert installierbarer
+externer Adapter für beliebige Projekte.
+Ein Anwendungsautor sollte einen
+Backendwechsel nicht als
+ungetesteten Umschalter behandeln.
+
+\section{Native Peers sind später vorgesehen}
+Eine native Win32-, GTK- oder AppKit-
+Implementierung wäre eine weitere
+Darstellung derselben Widgets,
+nicht eine neue Semantik. Es ist aber
+\emph{kein} fertiger Paritätsstand
+vorhanden. Plattformintegration,
+Barrierefreiheit, Text-Input-
+Methoden, HiDPI, Fensterlebensdauer
+und native Menüs sind eigene
+Entwicklungsaufgaben.
+
+\section{Testmatrix für portable Programme}
+
+\noindent\begin{tabularx}{\linewidth}{@{}p{35mm}X@{}}
+\toprule
+Testbereich & Zu prüfendes Verhalten\\\midrule
+Terminal klein/groß & Umbruch, Clipping,
+Fokus, Popup-Position, Resize.\\
+UTF-8 & Mehrbyte-Zeichen, breite
+Zellen, Auswahl, Cursor, Löschen.\\
+Tastatur & Tab, Shift+Tab, Escape,
+Funktionstasten, Modifikatoren.\\
+Pointer & Capture, Fenster verlassen,
+Popup-Ziel, Doppelklick und Ziehen.\\
+Lebensdauer & Widget entfernt, Model
+reset, Subscription getrennt, Callback-
+Zerstörung.\\
+Backend & Headless-Core-Tests,
+Terminal-PTY/ConPTY, bei Bedarf SDL3.\\
+\bottomrule
+\end{tabularx}
+Die vorhandene CI und die manuellen
+Smoke-Test-Protokolle unter
+\filepath{docs/de/} und \filepath{docs/en/}
+sind dafür Referenzen.
+
+\PracticalTip{Für ein Administrationsprogramm
+ist ein vollständiger, tastaturbedienbarer
+Terminalpfad oft wertvoller als eine
+visuell beeindruckende, aber noch
+unvollständige SDL3-Version.}
