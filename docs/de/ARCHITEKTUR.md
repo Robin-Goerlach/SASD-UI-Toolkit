@@ -262,6 +262,25 @@ siehe [ADR 0190](../adr/0190-m8-single-property-validation-normalization-metadat
 [ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md) und
 [ADR 0192](../adr/0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md).
 
+### Property-Authoring-Kategorie-Metadaten
+
+Die getrennte Schicht `sasd/ui/component_property_authoring_metadata.hpp` ordnet jedem exakten
+Built-in-Property-Deskriptor eine stabile, nicht lokalisierte Authoring-Kategorie zu: Appearance,
+Behavior, Content, Layout oder State. Das Property Schema bleibt die einzige öffentliche
+Enumerationsquelle und beschreibt technische Identität/Value Kind. Defaults beschreiben
+Konstruktionspolitik, Validation Metadata gültige Werte und Relationen, typisierter Runtime-Zugriff
+liest/schreibt tatsächliche Werte und Authoring Metadata gruppiert Deskriptoren ausschließlich für
+Tooling.
+
+Die Abfrage validiert den vollständigen Declaring-Type-/Property-/Value-Kind-Deskriptor als Wert und
+arbeitet bei fehlerhafter oder unbekannter Eingabe fail-closed. Geerbter Lookup behält den
+deklarierenden Deskriptor; `Button.visible` verwendet deshalb die Behavior-Kategorie von
+`Widget.visible` ohne Derived-Duplikat. Kategorien sind explizit statt aus Namen abgeleitet und
+benötigen keine Component-Konstruktion. Sie sind weder lokalisierte Labels noch Property-Grid-
+Reihenfolge oder Persistenzdaten; Display-/Help-Text, Editor Kind und Browsable-/Read-only-/Advanced-
+Flags werden nicht definiert. Siehe
+[ADR 0193](../adr/0193-m8-property-authoring-category-metadata-foundation.md).
+
 ### Built-in-Component-Property-Snapshots
 
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der

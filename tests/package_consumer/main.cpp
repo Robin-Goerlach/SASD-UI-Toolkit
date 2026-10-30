@@ -3,6 +3,7 @@
 #include <sasd/ui/ui_description_document.hpp>
 #include <sasd/ui/ui_description_reconstruction.hpp>
 #include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/component_property_authoring_metadata.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
@@ -158,6 +159,23 @@ int main() {
         radio_group_validations.front().source_property.property_id == "selected" &&
         radio_group_validations.front().source_property.value_kind ==
             sasd::ui::ComponentPropertyValueKind::boolean;
+    const auto* button_text_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Button", "text");
+    const auto* grid_column_count_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.GridLayout", "columnCount");
+    const auto button_text_authoring = button_text_property == nullptr
+        ? std::optional<sasd::ui::ComponentPropertyAuthoringMetadata>{}
+        : sasd::ui::builtInComponentPropertyAuthoringMetadata(*button_text_property);
+    const auto grid_column_count_authoring = grid_column_count_property == nullptr
+        ? std::optional<sasd::ui::ComponentPropertyAuthoringMetadata>{}
+        : sasd::ui::builtInComponentPropertyAuthoringMetadata(*grid_column_count_property);
+    const bool authoring_metadata_linked =
+        button_text_authoring &&
+        button_text_authoring->category ==
+            sasd::ui::ComponentPropertyAuthoringCategory::content &&
+        grid_column_count_authoring &&
+        grid_column_count_authoring->category ==
+            sasd::ui::ComponentPropertyAuthoringCategory::layout;
 
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
@@ -170,8 +188,8 @@ int main() {
         package_device.text_count == 0;
 
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
-            cross_property_metadata_linked && reference_metadata_linked && core_linked &&
-            terminal_linked && rendered_linked
+            cross_property_metadata_linked && reference_metadata_linked &&
+            authoring_metadata_linked && core_linked && terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
 }

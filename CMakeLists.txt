@@ -28,6 +28,7 @@ add_library(sasd_ui_core
     src/component_metadata.cpp
     src/component_runtime_metadata.cpp
     src/component_property_access.cpp
+    src/component_property_authoring_metadata.cpp
     src/component_property_defaults.cpp
     src/component_property_metadata.cpp
     src/component_property_validation_metadata.cpp

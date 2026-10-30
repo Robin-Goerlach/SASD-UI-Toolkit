@@ -313,6 +313,9 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
     - [x] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
       - [x] ComboBox-Same-Node-Cross-Property-Validierungsmetadaten (ADR 0191)
       - [x] Reference-/Graph-Validierungsmetadaten (ADR 0192)
+  - [ ] Designer-freundliche Properties
+    - [x] Nicht lokalisierte Property-Authoring-Kategorien (ADR 0193)
+    - [ ] Verbleibende menschenlesbare/Tooling-Authoring-Attribute
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
@@ -334,7 +337,6 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
     - [x] Built-in-Component-Konstruktion und Property-Restore (ADR 0188)
     - [x] Ownership-/Reference-Rekonstruktion (ADR 0188)
 - [ ] Resource-System
-- [ ] Designer-freundliche Properties
 - [ ] IDE-/Tooling-Schnittstellen
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.

@@ -249,6 +249,23 @@ built-in validation-metadata coverage is complete; see
 [ADR 0191](../adr/0191-m8-combo-box-cross-property-validation-metadata-foundation.md) and
 [ADR 0192](../adr/0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md).
 
+### Property authoring category metadata
+
+The separate `sasd/ui/component_property_authoring_metadata.hpp` layer assigns every exact built-in
+property descriptor one stable, non-localized authoring category: appearance, behavior, content,
+layout or state. Property schema remains the only public enumeration source and describes technical
+identity/value kind. Defaults describe construction policy, validation metadata describes valid
+values and relations, typed runtime access reads/writes actual values, and authoring metadata only
+groups descriptors for tooling.
+
+The query validates the complete declaring-type/property/value-kind descriptor by value and fails
+closed for malformed or unknown input. Inherited lookup retains the declaring descriptor, so
+`Button.visible` uses the `Widget.visible` behavior category without a derived duplicate. Categories
+are explicit rather than inferred from names and require no Component construction. They are not
+localized labels, Property Grid order or persistence data; no display/help text, editor kind or
+browsable/read-only/advanced flag is defined. See
+[ADR 0193](../adr/0193-m8-property-authoring-category-metadata-foundation.md).
+
 ### Built-in component property snapshots
 
 The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that
