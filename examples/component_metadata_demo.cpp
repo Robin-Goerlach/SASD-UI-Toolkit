@@ -5,6 +5,7 @@
 #include <sasd/ui/label.hpp>
 #include <sasd/ui/grid_layout.hpp>
 #include <sasd/ui/component_property_access.hpp>
+#include <sasd/ui/component_property_authoring_metadata.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
@@ -103,6 +104,19 @@ const char* valueKindName(sasd::ui::ComponentPropertyValueKind kind) noexcept {
     return "unknown";
 }
 
+const char* authoringCategoryName(
+    sasd::ui::ComponentPropertyAuthoringCategory category) noexcept {
+    using Category = sasd::ui::ComponentPropertyAuthoringCategory;
+    switch (category) {
+    case Category::appearance: return "appearance";
+    case Category::behavior: return "behavior";
+    case Category::content: return "content";
+    case Category::layout: return "layout";
+    case Category::state: return "state";
+    }
+    return "unknown";
+}
+
 const char* normalizationKindName(sasd::ui::StringPropertyNormalizationKind kind) noexcept {
     switch (kind) {
     case sasd::ui::StringPropertyNormalizationKind::identity:
@@ -137,6 +151,10 @@ void printProperties(std::string_view type_id) {
     for (const auto& property : sasd::ui::declaredBuiltInComponentProperties(type_id)) {
         std::cout << "  " << property.property_id << " : "
                   << valueKindName(property.value_kind);
+        if (const auto authoring =
+                sasd::ui::builtInComponentPropertyAuthoringMetadata(property)) {
+            std::cout << " category: " << authoringCategoryName(authoring->category);
+        }
         if (const auto range = sasd::ui::builtInSignedIntegerPropertyRange(property)) {
             std::cout << " range: " << range->minimum << " .. " << range->maximum;
         }

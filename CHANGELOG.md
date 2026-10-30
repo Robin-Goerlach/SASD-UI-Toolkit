@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 23: instance-free property authoring metadata classifies all 28 current built-in
+  descriptors as appearance, behavior, content, layout or state. Complete descriptor identity is
+  compared by value; copied descriptors and inherited declaring-property categories work while
+  malformed/unknown descriptors fail closed. Categories are non-localized tooling IDs rather than
+  persistence values or Property Grid order. No display/help text, editor contract, speculative
+  browsable/read-only/advanced flag, runtime behavior or JSON format change is introduced (ADR 0193).
+
 - M8 Slice 22: immutable, instance-free reference metadata defines source/target type contracts for
   all eleven built-in reference kinds, including model base-chain compatibility and the optional
   singular source-plus-kind contract. The format-neutral document validator consumes this catalog

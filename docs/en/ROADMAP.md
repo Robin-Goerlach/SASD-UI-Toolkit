@@ -304,6 +304,9 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] contextual cross-property / graph validation metadata
       - [x] ComboBox same-node cross-property validation metadata (ADR 0191)
       - [x] reference / graph validation metadata (ADR 0192)
+  - [ ] designer-friendly properties
+    - [x] non-localized property authoring categories (ADR 0193)
+    - [ ] remaining human-facing/tooling authoring attributes
 - [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy
@@ -325,7 +328,6 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] built-in Component construction and property restoration (ADR 0188)
     - [x] ownership/reference reconstruction (ADR 0188)
 - [ ] resource system
-- [ ] designer-friendly properties
 - [ ] IDE/tooling integration points
 
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
