@@ -12,6 +12,8 @@
 #include <sasd/ui/rendered/display_list_executor.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
+#include <sasd/ui/resource_dictionary.hpp>
+#include <sasd/ui/resource_key.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/window.hpp>
 
@@ -177,6 +179,19 @@ int main() {
         grid_column_count_authoring->category ==
             sasd::ui::ComponentPropertyAuthoringCategory::layout;
 
+    // Exercise both new installed headers and the non-inline Core implementation. The dictionary
+    // is intentionally independent from Button's existing inline TextStyle authoring value.
+    sasd::ui::ResourceDictionary resources;
+    const auto heading_key = sasd::ui::ResourceKey::create("theme.heading");
+    const sasd::ui::TextStyle heading_style{
+        sasd::ui::Color::bright_cyan, true, false, true, false};
+    const bool resource_dictionary_linked = heading_key &&
+        resources.addTextStyle(*heading_key, heading_style) &&
+        resources.findTextStyle("theme.heading") != nullptr &&
+        *resources.findTextStyle("theme.heading") == heading_style &&
+        resources.textStyles().size() == 1 &&
+        resources.textStyles().front().key.value() == "theme.heading";
+
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
     const bool rendered_linked =
@@ -189,7 +204,8 @@ int main() {
 
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
             cross_property_metadata_linked && reference_metadata_linked &&
-            authoring_metadata_linked && core_linked && terminal_linked && rendered_linked
+            authoring_metadata_linked && resource_dictionary_linked && core_linked &&
+            terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
 }

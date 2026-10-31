@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 24: stable owning, case-sensitive ASCII `ResourceKey` and an explicitly owned typed
+  `TextStyle` `ResourceDictionary` foundation. Text-style resources enumerate in insertion order;
+  exact duplicate keys fail closed without replacement, and exact lookup has no fallback. The
+  dictionary is a normal copyable/movable value with documented borrowed lookup lifetimes, not a
+  global registry or generic payload variant. Runtime control binding, scopes/cascade, additional
+  resource families and JSON/persistence remain deliberately deferred (ADR 0194).
+
 - M8 Slice 23: instance-free property authoring metadata classifies all 28 current built-in
   descriptors as appearance, behavior, content, layout or state. Complete descriptor identity is
   compared by value; copied descriptors and inherited declaring-property categories work while
