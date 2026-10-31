@@ -366,6 +366,25 @@ Canonical JSON v1 encoding and built-in reconstruction are implemented; see
 [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) and
 [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
+### Resource system foundation
+
+`sasd/ui/resource_key.hpp` defines `ResourceKey`, an owning, case-sensitive machine identity with a
+small non-empty ASCII grammar. It is not a label, file path, URL or runtime pointer. Dots and slashes
+are opaque permitted characters and do not imply hierarchy or scope. This keeps identity stable and
+format/backend-neutral while human-facing localized names remain a separate future tooling concern.
+
+`sasd/ui/resource_dictionary.hpp` adds an explicitly owned, copyable/movable `ResourceDictionary`.
+Its first concrete family is an insertion-ordered bucket of owned `TextStyleResource` values. Exact
+duplicate keys fail without replacing the first value; lookup has no fallback, normalization or
+case folding. Returned pointers and enumeration spans borrow dictionary storage only until its next
+mutation. There is no global registry, generic payload variant/type erasure or backend handle.
+
+This foundation does not bind the six controls' existing inline `TextStyle` values to resources.
+References, Application/Window/local scopes, inheritance/cascade, resolution, resource-description
+encoding/reconstruction and richer families require later contracts
+([ADR 0194](../adr/0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md)).
+JSON v1 and current property snapshots therefore remain unchanged.
+
 ### Ownership
 
 Initial core rules:

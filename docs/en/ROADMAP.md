@@ -328,7 +328,14 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] built-in Component construction and property restoration (ADR 0188)
     - [x] ownership/reference reconstruction (ADR 0188)
 - [ ] resource system
+  - [x] stable resource-key and typed TextStyle dictionary foundation (ADR 0194)
+  - [ ] resource references and explicit resolution/scoping
+  - [ ] durable resource description, encoding and reconstruction
+  - [ ] richer resource families when justified by real backend consumers
 - [ ] IDE/tooling integration points
+
+Further human-facing authoring attributes remain deferred until a real designer/tooling consumer
+defines concrete localization, presentation and editing requirements.
 
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
 Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); Slice 18 restores them in

@@ -337,7 +337,14 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
     - [x] Built-in-Component-Konstruktion und Property-Restore (ADR 0188)
     - [x] Ownership-/Reference-Rekonstruktion (ADR 0188)
 - [ ] Resource-System
+  - [x] Stabiler Resource-Key und typisierte TextStyle-Dictionary-Grundlage (ADR 0194)
+  - [ ] Resource References und explizite Resolution/Scopes
+  - [ ] Dauerhafte Resource-Beschreibung, Encoding und Rekonstruktion
+  - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer
 - [ ] IDE-/Tooling-Schnittstellen
+
+Weitere menschenlesbare Authoring-Attribute bleiben aufgeschoben, bis ein realer Designer-/Tooling-
+Consumer konkrete Anforderungen an Lokalisierung, Darstellung und Bearbeitung definiert.
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 

@@ -36,6 +36,28 @@ else()
     endif()
 endif()
 
+# Resource identity and ownership are Core semantics. This small headless consumer demonstrates the
+# public API without suggesting that resources already bind to controls or require a backend.
+add_executable(sasd_ui_resource_dictionary_demo resource_dictionary_demo.cpp)
+target_link_libraries(sasd_ui_resource_dictionary_demo PRIVATE SASD::UI)
+target_compile_features(sasd_ui_resource_dictionary_demo PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(sasd_ui_resource_dictionary_demo PRIVATE /W4 /permissive-)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_resource_dictionary_demo PRIVATE /WX)
+    endif()
+else()
+    target_compile_options(sasd_ui_resource_dictionary_demo PRIVATE -Wall -Wextra -Wpedantic)
+    if(SASD_UI_WARNINGS_AS_ERRORS)
+        target_compile_options(sasd_ui_resource_dictionary_demo PRIVATE -Werror)
+    endif()
+endif()
+if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
+    target_compile_options(sasd_ui_resource_dictionary_demo PRIVATE -fsanitize=address,undefined
+        -fno-omit-frame-pointer)
+    target_link_options(sasd_ui_resource_dictionary_demo PRIVATE -fsanitize=address,undefined)
+endif()
+
 if(SASD_UI_ENABLE_SANITIZERS AND NOT MSVC)
     target_compile_options(sasd_ui_component_metadata_demo
         PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)

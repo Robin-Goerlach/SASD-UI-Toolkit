@@ -43,6 +43,8 @@ add_library(sasd_ui_core
     src/radio_button.cpp
     src/radio_group.cpp
     src/radio_group_navigation.cpp
+    src/resource_dictionary.cpp
+    src/resource_key.cpp
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp

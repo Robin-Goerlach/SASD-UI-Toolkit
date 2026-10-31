@@ -16,6 +16,8 @@ set(required_files
     "include/sasd/ui/component_property_authoring_metadata.hpp"
     "include/sasd/ui/component_property_validation_metadata.hpp"
     "include/sasd/ui/component_reference_metadata.hpp"
+    "include/sasd/ui/resource_dictionary.hpp"
+    "include/sasd/ui/resource_key.hpp"
     "include/sasd/ui/terminal/terminal_backend.hpp"
     "include/sasd/ui/terminal/screen_buffer.hpp"
     "include/sasd/ui/rendered/display_list.hpp"

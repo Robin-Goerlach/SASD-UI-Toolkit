@@ -388,6 +388,27 @@ Kanonisches JSON-v1-Encoding und Built-in-Rekonstruktion sind implementiert; sie
 [ADR 0181](../adr/0181-m8-built-in-component-cross-reference-edge-snapshot-foundation.md) und
 [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
 
+### Resource-System-Grundlage
+
+`sasd/ui/resource_key.hpp` definiert `ResourceKey` als besitzende, case-sensitive Maschinenidentität
+mit kleiner, nicht leerer ASCII-Grammatik. Ein Key ist weder Label, Dateipfad, URL noch Runtime-
+Pointer. Punkt und Slash sind lediglich erlaubte opake Zeichen und bedeuten keine Hierarchie oder
+Scope. Damit bleibt die Identität format- und backendneutral stabil; lokalisierte menschenlesbare
+Namen bleiben eine getrennte spätere Tooling-Frage.
+
+`sasd/ui/resource_dictionary.hpp` ergänzt ein explizit besitzendes, kopier- und verschiebbares
+`ResourceDictionary`. Seine erste konkrete Familie ist ein in Einfügereihenfolge gehaltener Bucket
+aus besitzenden `TextStyleResource`-Werten. Exakte Duplicate Keys schlagen fehl, ohne den ersten Wert
+zu ersetzen; Lookup besitzt weder Fallback noch Normalisierung oder Case Folding. Zurückgegebene
+Pointer und Enumeration-Spans leihen Dictionary-Storage nur bis zur nächsten Mutation. Es gibt keine
+globale Registry, generische Payload-Variante/Typerasure oder Backend Handles.
+
+Diese Grundlage bindet die vorhandenen inline `TextStyle`-Werte der sechs Controls noch nicht an
+Resources. References, Application-/Window-/lokale Scopes, Vererbung/Cascade, Resolution,
+Resource-Description-Encoding/-Rekonstruktion und weitere Familien brauchen spätere Verträge
+([ADR 0194](../adr/0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md)).
+JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
+
 ### Ownership
 
 Für den Core gilt als Startpunkt:
