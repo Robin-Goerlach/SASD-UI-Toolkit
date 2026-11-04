@@ -339,6 +339,8 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
 - [ ] Resource-System
   - [x] Stabiler Resource-Key und typisierte TextStyle-Dictionary-Grundlage (ADR 0194)
   - [ ] Resource References und explizite Resolution/Scopes
+    - [x] Resource-Reference-Metadaten und Authoring-Vertrag (ADR 0195)
+    - [ ] Explizite Resource Resolution und Scopes
   - [ ] Dauerhafte Resource-Beschreibung, Encoding und Rekonstruktion
   - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer
 - [ ] IDE-/Tooling-Schnittstellen

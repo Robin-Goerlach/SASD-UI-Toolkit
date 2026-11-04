@@ -28,8 +28,9 @@ struct TextStyleResource final {
  *
  * M8.24 stores TextStyle directly instead of introducing std::variant, std::any or type erasure
  * before another resource family exists. Future families can add their own typed buckets. Keys are
- * nevertheless reserved as globally unique within one dictionary across all such families, so a
- * future reference need not carry an additional runtime payload-kind discriminator.
+ * nevertheless reserved as globally unique within one dictionary across all such families. A
+ * ResourceReference still carries its expected kind as fail-closed property-slot type information;
+ * the kind disambiguates types, not otherwise-colliding dictionary keys.
  */
 class ResourceDictionary final {
 public:

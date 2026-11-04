@@ -211,6 +211,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0192](0192-m8-built-in-reference-and-graph-validation-metadata-foundation.md) | M8 Built-in Reference and Graph Validation Metadata Foundation | Accepted |
 | [0193](0193-m8-property-authoring-category-metadata-foundation.md) | M8 Property Authoring Category Metadata Foundation | Accepted |
 | [0194](0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md) | M8 Resource Key and Typed TextStyle Resource Dictionary Foundation | Accepted |
+| [0195](0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md) | M8 Resource Reference Metadata and Authoring Contract Foundation | Accepted |
 
 ## ADR policy
 
