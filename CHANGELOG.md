@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 25: typed owning `ResourceReference` authoring identity combines the first explicit
+  `ResourceKind::text_style` with a validated `ResourceKey`. Separate fail-closed property-resource
+  metadata opts in exactly the six current `Label`, `Button`, `TextField`, `CheckBox`, `RadioButton`
+  and `ComboBox` `textStyle` descriptors by full descriptor identity, without name heuristics.
+  Inline TextStyle runtime behavior remains authoritative; binding, resolution/scopes, JSON,
+  persistence and reconstruction remain deliberately deferred (ADR 0195).
+
 - M8 Slice 24: stable owning, case-sensitive ASCII `ResourceKey` and an explicitly owned typed
   `TextStyle` `ResourceDictionary` foundation. Text-style resources enumerate in insertion order;
   exact duplicate keys fail closed without replacement, and exact lookup has no fallback. The

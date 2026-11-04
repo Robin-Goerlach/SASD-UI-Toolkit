@@ -29,6 +29,7 @@ add_library(sasd_ui_core
     src/component_runtime_metadata.cpp
     src/component_property_access.cpp
     src/component_property_authoring_metadata.cpp
+    src/component_property_resource_metadata.cpp
     src/component_property_defaults.cpp
     src/component_property_metadata.cpp
     src/component_property_validation_metadata.cpp
@@ -45,6 +46,7 @@ add_library(sasd_ui_core
     src/radio_group_navigation.cpp
     src/resource_dictionary.cpp
     src/resource_key.cpp
+    src/resource_reference.cpp
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp

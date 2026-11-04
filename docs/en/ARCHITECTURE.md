@@ -379,10 +379,16 @@ duplicate keys fail without replacing the first value; lookup has no fallback, n
 case folding. Returned pointers and enumeration spans borrow dictionary storage only until its next
 mutation. There is no global registry, generic payload variant/type erasure or backend handle.
 
-This foundation does not bind the six controls' existing inline `TextStyle` values to resources.
-References, Application/Window/local scopes, inheritance/cascade, resolution, resource-description
-encoding/reconstruction and richer families require later contracts
-([ADR 0194](../adr/0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md)).
+`sasd/ui/resource_reference.hpp` adds the next layer: `ResourceKind::text_style` is explicit family
+type information, while an owning `ResourceReference` combines that kind with a `ResourceKey` as
+stable authoring identity. Separate property-resource metadata opts in exactly the six current
+`Label`, `Button`, `TextField`, `CheckBox`, `RadioButton` and `ComboBox` `textStyle` descriptors.
+The mapping compares complete descriptor identity and is explicit rather than a name/value-kind
+heuristic ([ADR 0195](../adr/0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md)).
+
+These layers still do not bind the controls' existing inline `TextStyle` values to resources. A
+future resolver owns dictionary lookup and Application/Window/local scope policy. Inheritance,
+cascade, resource-description encoding/reconstruction and richer families require later contracts.
 JSON v1 and current property snapshots therefore remain unchanged.
 
 ### Ownership

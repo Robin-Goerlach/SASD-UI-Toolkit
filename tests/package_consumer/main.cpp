@@ -4,6 +4,7 @@
 #include <sasd/ui/ui_description_reconstruction.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_authoring_metadata.hpp>
+#include <sasd/ui/component_property_resource_metadata.hpp>
 #include <sasd/ui/component_property_defaults.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
@@ -14,6 +15,7 @@
 #include <sasd/ui/rendered/rendered_presentation_sink.hpp>
 #include <sasd/ui/resource_dictionary.hpp>
 #include <sasd/ui/resource_key.hpp>
+#include <sasd/ui/resource_reference.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/window.hpp>
 
@@ -192,6 +194,25 @@ int main() {
         resources.textStyles().size() == 1 &&
         resources.textStyles().front().key.value() == "theme.heading";
 
+    // Resource authoring is instance-free: the exact Label descriptor declares the expected kind,
+    // and the reference owns its key without binding or resolving against the dictionary above.
+    const auto* label_style_property =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.Label", "textStyle");
+    const auto resource_metadata = label_style_property == nullptr
+        ? std::optional<sasd::ui::ComponentPropertyResourceMetadata>{}
+        : sasd::ui::builtInComponentPropertyResourceMetadata(*label_style_property);
+    const auto heading_reference = heading_key
+        ? sasd::ui::ResourceReference::create(
+              sasd::ui::ResourceKind::text_style, *heading_key)
+        : std::optional<sasd::ui::ResourceReference>{};
+    const bool resource_reference_linked =
+        sasd::ui::isBuiltInResourceKind(sasd::ui::ResourceKind::text_style) &&
+        resource_metadata &&
+        resource_metadata->resource_kind == sasd::ui::ResourceKind::text_style &&
+        heading_reference &&
+        heading_reference->kind() == sasd::ui::ResourceKind::text_style &&
+        heading_reference->key().value() == "theme.heading";
+
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
     const bool rendered_linked =
@@ -204,7 +225,8 @@ int main() {
 
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
             cross_property_metadata_linked && reference_metadata_linked &&
-            authoring_metadata_linked && resource_dictionary_linked && core_linked &&
+            authoring_metadata_linked && resource_dictionary_linked &&
+            resource_reference_linked && core_linked &&
             terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;

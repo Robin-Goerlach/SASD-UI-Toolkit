@@ -5,6 +5,7 @@ add_executable(sasd_ui_tests
     component_runtime_metadata_tests.cpp
     component_property_access_tests.cpp
     component_property_authoring_metadata_tests.cpp
+    component_property_resource_metadata_tests.cpp
     component_property_defaults_tests.cpp
     component_property_metadata_tests.cpp
     component_property_validation_metadata_tests.cpp
@@ -18,6 +19,7 @@ add_executable(sasd_ui_tests
     component_reference_snapshot_tests.cpp
     resource_dictionary_tests.cpp
     resource_key_tests.cpp
+    resource_reference_tests.cpp
     ui_description_json_tests.cpp
     ui_description_json_parser_tests.cpp
     ui_description_reconstruction_tests.cpp

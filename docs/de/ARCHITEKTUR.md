@@ -403,11 +403,18 @@ zu ersetzen; Lookup besitzt weder Fallback noch Normalisierung oder Case Folding
 Pointer und Enumeration-Spans leihen Dictionary-Storage nur bis zur nächsten Mutation. Es gibt keine
 globale Registry, generische Payload-Variante/Typerasure oder Backend Handles.
 
-Diese Grundlage bindet die vorhandenen inline `TextStyle`-Werte der sechs Controls noch nicht an
-Resources. References, Application-/Window-/lokale Scopes, Vererbung/Cascade, Resolution,
-Resource-Description-Encoding/-Rekonstruktion und weitere Familien brauchen spätere Verträge
-([ADR 0194](../adr/0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md)).
-JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
+`sasd/ui/resource_reference.hpp` ergänzt die nächste Schicht: `ResourceKind::text_style` ist
+explizite Familien-Typinformation; eine besitzende `ResourceReference` verbindet diesen Kind mit
+einem `ResourceKey` als stabile Authoring-Identität. Getrennte Property-Resource-Metadaten lassen
+exakt die sechs heutigen `textStyle`-Deskriptoren von `Label`, `Button`, `TextField`, `CheckBox`,
+`RadioButton` und `ComboBox` teilnehmen. Das Mapping vergleicht die vollständige Deskriptor-
+Identität und ist explizit statt einer Namens-/Value-Kind-Heuristik
+([ADR 0195](../adr/0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md)).
+
+Diese Schichten binden die vorhandenen inline `TextStyle`-Werte der Controls weiterhin nicht an
+Resources. Ein künftiger Resolver besitzt Dictionary-Lookup und Application-/Window-/lokale Scope-
+Policy. Vererbung, Cascade, Resource-Description-Encoding/-Rekonstruktion und weitere Familien
+brauchen spätere Verträge. JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
 
 ### Ownership
 
