@@ -47,6 +47,7 @@ add_library(sasd_ui_core
     src/resource_dictionary.cpp
     src/resource_key.cpp
     src/resource_reference.cpp
+    src/resource_resolution.cpp
     src/container.cpp
     src/event_dispatcher.cpp
     src/event_queue.cpp

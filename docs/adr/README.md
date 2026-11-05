@@ -212,6 +212,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0193](0193-m8-property-authoring-category-metadata-foundation.md) | M8 Property Authoring Category Metadata Foundation | Accepted |
 | [0194](0194-m8-resource-key-and-typed-text-style-resource-dictionary-foundation.md) | M8 Resource Key and Typed TextStyle Resource Dictionary Foundation | Accepted |
 | [0195](0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md) | M8 Resource Reference Metadata and Authoring Contract Foundation | Accepted |
+| [0196](0196-m8-explicit-resource-resolution-and-scoping-foundation.md) | M8 Explicit Resource Resolution and Scoping Foundation | Accepted |
 
 ## ADR policy
 

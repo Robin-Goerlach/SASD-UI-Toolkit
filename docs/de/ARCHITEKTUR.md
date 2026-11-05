@@ -411,10 +411,17 @@ exakt die sechs heutigen `textStyle`-Deskriptoren von `Label`, `Button`, `TextFi
 Identität und ist explizit statt einer Namens-/Value-Kind-Heuristik
 ([ADR 0195](../adr/0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md)).
 
+`sasd/ui/resource_resolution.hpp` komponiert eine Reference mit einer vom Caller bereitgestellten,
+nearest-first geordneten Sequenz geliehener `ResourceDictionary`-Scopes. Index 0 hat höchste
+Priorität; der erste exakte Key-Treffer gewinnt. Das konkrete `TextStyle`-Ergebnis wird kopiert und
+trägt den gewinnenden Sequenzindex, sodass spätere Dictionary-Mutation es nicht verändert. Der Core
+leitet keine Scopes aus Application, Component-Ownership oder visuellem Parenting ab und nutzt keine
+globale Registry ([ADR 0196](../adr/0196-m8-explicit-resource-resolution-and-scoping-foundation.md)).
+
 Diese Schichten binden die vorhandenen inline `TextStyle`-Werte der Controls weiterhin nicht an
-Resources. Ein künftiger Resolver besitzt Dictionary-Lookup und Application-/Window-/lokale Scope-
-Policy. Vererbung, Cascade, Resource-Description-Encoding/-Rekonstruktion und weitere Familien
-brauchen spätere Verträge. JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
+Resources. Es gibt weder Cascade, Merge noch Live-Rebinding; die Inline-vs.-Resource-Priorität bleibt
+offen. Resource-Description-Persistenz/-Encoding/-Rekonstruktion und weitere Familien benötigen
+spätere Verträge. JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
 
 ### Ownership
 

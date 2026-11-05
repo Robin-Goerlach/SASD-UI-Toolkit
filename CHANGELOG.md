@@ -9,6 +9,12 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 26: explicit caller-ordered, nearest-first `TextStyle` resource resolution over borrowed
+  `ResourceDictionary` scopes. The first exact key match wins and returns an owned style copy plus
+  its caller-sequence `scope_index`; empty/missing lookups fail closed. No global registry,
+  Component-tree traversal, cascade/merge, live binding, inline-value precedence, JSON, persistence
+  or reconstruction change is introduced (ADR 0196).
+
 - M8 Slice 25: typed owning `ResourceReference` authoring identity combines the first explicit
   `ResourceKind::text_style` with a validated `ResourceKey`. Separate fail-closed property-resource
   metadata opts in exactly the six current `Label`, `Button`, `TextField`, `CheckBox`, `RadioButton`
