@@ -329,9 +329,9 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] ownership/reference reconstruction (ADR 0188)
 - [ ] resource system
   - [x] stable resource-key and typed TextStyle dictionary foundation (ADR 0194)
-  - [ ] resource references and explicit resolution/scoping
+  - [x] resource references and explicit resolution/scoping
     - [x] resource-reference metadata and authoring contract (ADR 0195)
-    - [ ] explicit resource resolution and scoping
+    - [x] explicit resource resolution and scoping (ADR 0196)
   - [ ] durable resource description, encoding and reconstruction
   - [ ] richer resource families when justified by real backend consumers
 - [ ] IDE/tooling integration points

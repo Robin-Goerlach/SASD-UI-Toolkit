@@ -20,6 +20,7 @@ add_executable(sasd_ui_tests
     resource_dictionary_tests.cpp
     resource_key_tests.cpp
     resource_reference_tests.cpp
+    resource_resolution_tests.cpp
     ui_description_json_tests.cpp
     ui_description_json_parser_tests.cpp
     ui_description_reconstruction_tests.cpp

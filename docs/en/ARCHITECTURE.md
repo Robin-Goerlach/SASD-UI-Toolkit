@@ -386,10 +386,16 @@ stable authoring identity. Separate property-resource metadata opts in exactly t
 The mapping compares complete descriptor identity and is explicit rather than a name/value-kind
 heuristic ([ADR 0195](../adr/0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md)).
 
-These layers still do not bind the controls' existing inline `TextStyle` values to resources. A
-future resolver owns dictionary lookup and Application/Window/local scope policy. Inheritance,
-cascade, resource-description encoding/reconstruction and richer families require later contracts.
-JSON v1 and current property snapshots therefore remain unchanged.
+`sasd/ui/resource_resolution.hpp` composes a reference with a caller-supplied nearest-first sequence
+of borrowed `ResourceDictionary` scopes. Index 0 has highest priority; the first exact key match
+wins. The concrete `TextStyle` result is copied and carries its winning sequence index, so it remains
+independent from later dictionary mutation. Core derives no scopes from Application, Component
+ownership or visual parenting and consults no global registry ([ADR 0196](../adr/0196-m8-explicit-resource-resolution-and-scoping-foundation.md)).
+
+These layers still do not bind controls' existing inline `TextStyle` values to resources. There is
+no cascade, merge or live rebinding, and inline-versus-resource precedence remains undecided.
+Resource-description persistence/encoding/reconstruction and richer families require later
+contracts. JSON v1 and current property snapshots therefore remain unchanged.
 
 ### Ownership
 

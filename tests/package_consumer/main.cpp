@@ -16,12 +16,15 @@
 #include <sasd/ui/resource_dictionary.hpp>
 #include <sasd/ui/resource_key.hpp>
 #include <sasd/ui/resource_reference.hpp>
+#include <sasd/ui/resource_resolution.hpp>
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <array>
 #include <cstdlib>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <optional>
 
@@ -195,7 +198,7 @@ int main() {
         resources.textStyles().front().key.value() == "theme.heading";
 
     // Resource authoring is instance-free: the exact Label descriptor declares the expected kind,
-    // and the reference owns its key without binding or resolving against the dictionary above.
+    // the reference owns its key, and the external consumer explicitly supplies lookup order.
     const auto* label_style_property =
         sasd::ui::findBuiltInComponentProperty("sasd.ui.Label", "textStyle");
     const auto resource_metadata = label_style_property == nullptr
@@ -213,6 +216,20 @@ int main() {
         heading_reference->kind() == sasd::ui::ResourceKind::text_style &&
         heading_reference->key().value() == "theme.heading";
 
+    sasd::ui::ResourceDictionary outer_resources;
+    const sasd::ui::TextStyle outer_heading{sasd::ui::Color::blue};
+    const bool outer_resource_added = heading_key &&
+        outer_resources.addTextStyle(*heading_key, outer_heading);
+    const std::array<sasd::ui::ResourceScope, 2> resource_scopes{
+        std::cref(resources), std::cref(outer_resources)};
+    const auto resource_resolution = heading_reference
+        ? sasd::ui::resolveTextStyleResource(*heading_reference, resource_scopes)
+        : std::optional<sasd::ui::TextStyleResourceResolution>{};
+    const bool resource_resolution_linked =
+        outer_resource_added && resource_resolution &&
+        resource_resolution->value == heading_style &&
+        resource_resolution->scope_index == 0;
+
     const bool core_linked = button.text() == "Package smoke";
     const bool terminal_linked = buffer.at({0, 0}).code_point == U'X';
     const bool rendered_linked =
@@ -226,7 +243,7 @@ int main() {
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
             cross_property_metadata_linked && reference_metadata_linked &&
             authoring_metadata_linked && resource_dictionary_linked &&
-            resource_reference_linked && core_linked &&
+            resource_reference_linked && resource_resolution_linked && core_linked &&
             terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;
