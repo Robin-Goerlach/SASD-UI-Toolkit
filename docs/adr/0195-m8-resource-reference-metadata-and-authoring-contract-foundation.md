@@ -80,6 +80,62 @@ reconstruction are unchanged. No Component-node reference collection or inline-v
 precedence is defined. M8.26 is the explicit next boundary for resource resolution and scoping;
 durable description/encoding and reconstruction remain later slices.
 
+### Implementation and validation record
+
+This work session started from the fetched and externally verified `origin/main` commit
+`5b15dd7ce9df5622236abdb86fecd58f4d36906d`, which contained M8 Slice 24 through PR #98. The
+dedicated implementation branch was `codex/m8-resource-reference-metadata-foundation`. SSH
+authentication was unavailable in the environment, so affected fetches and remote writes used
+temporary HTTPS plus GitHub CLI credentials without changing the permanent SSH `origin`
+configuration.
+
+The implementation added the public `ResourceKind::text_style` identity and fail-closed
+`isBuiltInResourceKind()` query. The owning `ResourceReference` factory rejects fabricated kinds
+and combines one validated `ResourceKey` with its expected resource family without retaining caller,
+dictionary, Component or backend addresses. Separate `ComponentPropertyResourceMetadata` and
+`builtInComponentPropertyResourceMetadata()` use an explicit private six-entry policy table. The
+query compares complete declaring-type/property/value-kind identity by value, so copied exact
+descriptors work while malformed, unknown, wrong-case, wrong-kind and fabricated descriptors fail
+closed. Complete-catalog tests establish exactly six resource-capable descriptors and 22
+non-resource-capable descriptors.
+
+The headless resource demo now distinguishes a typed dictionary lookup from reference resolution,
+shows `sasd.ui.Label.textStyle` as TextStyle-resource-capable and prints `theme.heading` as reference
+identity while explicitly deferring resolution and scoping to M8.26. The installed package consumer,
+an independent installed public-API consumer and release-install verification exercise both new
+public headers and the non-inline Core implementation. Existing inline TextStyle runtime behavior,
+ResourceDictionary duplicate handling, property validation and reference metadata, snapshots, canonical
+JSON v1 bytes, parser, reconstruction and every backend remain unchanged.
+
+Local validation used the existing WSL GCC 12.2 toolchain. Strict warnings-as-errors Debug and
+Release builds succeeded. The Core suite passed 541/541 cases, including the new ResourceKind,
+ResourceReference ownership/copy/move, fabricated-kind and complete property-resource-metadata
+coverage plus all existing ResourceKey, ResourceDictionary, inline TextStyle, snapshot, JSON writer,
+JSON parser and reconstruction cases. The complete configured suite passed 4/4 targets in both
+configurations, including Core, Terminal, Rendered and the native POSIX PTY smoke test. The resource
+demo, repository package consumer, independent installed public-API consumer, Release install and
+source-tree hygiene checks passed. All 420 relative links in 224 Markdown files resolved, and
+`git diff --check` passed. Clang and MSVC were not locally available; CI provided the corresponding
+cross-platform coverage.
+
+The implementation commit was
+[`f2d96cee0fffcf8dad34de165ae60b4cea102334`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/f2d96cee0fffcf8dad34de165ae60b4cea102334)
+on [PR #99](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/99); it was also the final PR head.
+All eleven required gates passed for that exact head: Linux GCC, Linux Clang, Linux Clang ASan/UBSan,
+Linux SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native and Linux, Windows and macOS
+Release. The PR was merged normally as `0b04f1ebed8d63a75148fe9984d92de5b2618b57`. The complete
+post-merge Main CI, GTK Native CI and AppKit Native CI workflows, including the full Release matrix,
+then passed for that exact merge commit.
+
+After post-merge CI succeeded, the remote and local feature branches were deleted, local `main` was
+fast-forwarded to the merge commit and the remote was pruned. Seven Slice-25-specific build, install,
+consumer and link-check artifacts were removed; unrelated build directories were retained. Fourteen
+pre-existing modified ADR files, including the additionally detected ADR 0194 change, plus the
+untracked `..Codex.txt` remained byte-for-byte equal to all 15 pre-work SHA-256 records. Historical
+PRs #30, #32 and #63 remained open and were inspected read-only. No old remote branch was deleted,
+and no release or tag was created. The visible macOS/Cocoa M3 gate remains open. M8 Slice 25 is
+complete; M8.26 resource resolution and scoping was not started.
+
 ## Deutsch
 
 ### Kontext
@@ -159,3 +215,63 @@ UI Description JSON v1, Formatversion, kanonische Bytes, Parser, Dokumentmodell,
 Rekonstruktion bleiben unverändert. Es entsteht keine Component-Node-Reference-Collection und keine
 Inline-vs.-Resource-Prioritätsregel. M8.26 ist die explizite nächste Grenze für Resource Resolution
 und Scoping; dauerhafte Description/Encoding und Rekonstruktion bleiben spätere Slices.
+
+### Implementierungs- und Validierungsprotokoll
+
+Dieser Arbeitsabschnitt begann auf dem gefetchten und extern verifizierten `origin/main`-Commit
+`5b15dd7ce9df5622236abdb86fecd58f4d36906d`, der M8 Slice 24 über PR #98 enthielt. Der dedizierte
+Implementierungsbranch hieß `codex/m8-resource-reference-metadata-foundation`. Da in der Umgebung
+keine SSH-Authentifizierung verfügbar war, verwendeten betroffene Fetches und Remote-Schreibvorgänge
+temporäres HTTPS mit GitHub-CLI-Credentials, ohne die permanente SSH-`origin`-Konfiguration zu
+verändern.
+
+Die Implementierung ergänzte die öffentliche Identität `ResourceKind::text_style` und die
+fail-closed Query `isBuiltInResourceKind()`. Die besitzende `ResourceReference`-Factory lehnt
+fabrizierte Kinds ab und verbindet einen validierten `ResourceKey` mit seiner erwarteten Resource-
+Familie, ohne Caller-, Dictionary-, Component- oder Backend-Adressen zu speichern. Getrennte
+`ComponentPropertyResourceMetadata` und `builtInComponentPropertyResourceMetadata()` verwenden eine
+explizite private Policy-Tabelle mit sechs Einträgen. Die Query vergleicht die vollständige
+Declaring-Type-/Property-/Value-Kind-Identität per Value. Kopierte exakte Deskriptoren funktionieren;
+malformed, unbekannte, wrong-case, wrong-kind und fabrizierte Deskriptoren arbeiten fail-closed.
+Complete-Catalog-Tests belegen exakt sechs resource-capable und 22 non-resource-capable
+Deskriptoren.
+
+Die headless Resource-Demo unterscheidet nun einen typisierten Dictionary-Lookup von Reference-
+Resolution, zeigt `sasd.ui.Label.textStyle` als TextStyle-resource-capable und gibt `theme.heading`
+als Reference-Identität aus, während Resolution und Scoping ausdrücklich auf M8.26 verschoben
+bleiben. Der installierte Package-Consumer, ein unabhängiger installierter Public-API-Consumer und
+die Release-Install-Prüfung verwenden beide neuen öffentlichen Header und die nicht-inline Core-
+Implementierung. Bestehendes Inline-TextStyle-Runtime-Verhalten, ResourceDictionary-Duplicate-
+Semantik, Property-Validation- und Reference-Metadaten, Snapshots, kanonische JSON-v1-Bytes, Parser,
+Rekonstruktion und sämtliche Backends blieben unverändert.
+
+Die lokale Validierung verwendete die vorhandene WSL-GCC-12.2-Toolchain. Strikte Warnings-as-errors-
+Debug- und -Release-Builds waren erfolgreich. Die Core-Suite bestand 541/541 Fälle einschließlich
+der neuen ResourceKind-, ResourceReference-Ownership-/Copy-/Move-, Fabricated-Kind- und vollständigen
+Property-Resource-Metadaten-Abdeckung sowie aller bestehenden ResourceKey-, ResourceDictionary-,
+Inline-TextStyle-, Snapshot-, JSON-Writer-, JSON-Parser- und Rekonstruktionsfälle. Die vollständige
+konfigurierte Suite bestand in beiden Konfigurationen 4/4 Targets einschließlich Core, Terminal,
+Rendered und nativem POSIX-PTY-Smoke-Test. Resource-Demo, Repository-Package-Consumer, unabhängiger
+installierter Public-API-Consumer, Release-Install- und Source-Tree-Hygiene-Prüfung bestanden. Alle
+420 relativen Links in 224 Markdown-Dateien wurden aufgelöst; `git diff --check` bestand. Clang und
+MSVC waren lokal nicht verfügbar; CI lieferte die entsprechende Cross-Platform-Abdeckung.
+
+Der Implementierungscommit war
+[`f2d96cee0fffcf8dad34de165ae60b4cea102334`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/f2d96cee0fffcf8dad34de165ae60b4cea102334)
+auf [PR #99](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/99); er war zugleich der finale
+PR-Head. Alle elf erforderlichen Gates bestanden für exakt diesen Head: Linux GCC, Linux Clang,
+Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native sowie
+Linux-, Windows- und macOS-Release. Der PR wurde regulär als
+`0b04f1ebed8d63a75148fe9984d92de5b2618b57` gemergt. Die vollständigen Post-Merge-Workflows Main CI,
+GTK Native CI und AppKit Native CI einschließlich kompletter Release-Matrix bestanden anschließend
+für exakt diesen Merge-Commit.
+
+Nach grüner Post-Merge-CI wurden Remote- und lokaler Feature-Branch gelöscht, der lokale `main` auf
+den Merge-Commit fast-forwarded und der Remote geprunt. Sieben Slice-25-spezifische Build-, Install-,
+Consumer- und Linkprüfungsartefakte wurden entfernt; unabhängige Buildverzeichnisse blieben erhalten.
+Vierzehn bereits veränderte ADR-Dateien einschließlich der zusätzlich erkannten Änderung an ADR 0194
+sowie das ungetrackte `..Codex.txt` stimmten weiterhin bytegenau mit allen 15 vor Arbeitsbeginn
+erfassten SHA-256-Werten überein. Die historischen PRs #30, #32 und #63 blieben offen und wurden nur
+read-only geprüft. Kein alter Remote-Branch wurde gelöscht und weder Release noch Tag erzeugt. Das
+sichtbare macOS/Cocoa-M3-Gate bleibt offen. M8 Slice 25 ist vollständig abgeschlossen; M8.26 Resource
+Resolution und Scoping wurde nicht begonnen.
