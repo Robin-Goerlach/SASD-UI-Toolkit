@@ -119,9 +119,10 @@ ComboBox ([ADR 0185](../adr/0185-m8-inline-text-style-authoring-persistence-cove
 path reuses the public value with TextStyle{} defaults, not a resource node or Widget-wide property. Setter-only writes preserve
 presentation invalidation without measurement invalidation and same-value no-ops. No style inheritance
 or cascade exists; backend focus/disabled/selection overlays are excluded. Fonts, RGB/alpha, themes
-and shared resources remain future work. Canonical JSON v1 uses symbolic Color names, never enum ordinals (ADR 0186).
+and shared runtime resources remain separate. Canonical JSON v1 uses symbolic Color names, never enum ordinals (ADR 0186).
 The review of all 29 built-ins established semantic readiness. Encoding, validated parsing and
-built-in reconstruction are implemented; resources remain open.
+built-in reconstruction are implemented. Durable resource authoring uses the separate v2 contract;
+runtime resource reconstruction remains open.
 
 ### Canonical JSON description encoding
 
@@ -392,10 +393,21 @@ wins. The concrete `TextStyle` result is copied and carries its winning sequence
 independent from later dictionary mutation. Core derives no scopes from Application, Component
 ownership or visual parenting and consults no global registry ([ADR 0196](../adr/0196-m8-explicit-resource-resolution-and-scoping-foundation.md)).
 
-These layers still do not bind controls' existing inline `TextStyle` values to resources. There is
-no cascade, merge or live rebinding, and inline-versus-resource precedence remains undecided.
-Resource-description persistence/encoding/reconstruction and richer families require later
-contracts. JSON v1 and current property snapshots therefore remain unchanged.
+M8 Slice 27 extends the format-neutral document with owned `TextStyleResource` definitions and exact
+property `ResourceReference` authoring values. Canonical JSON v2 adds one closed document-local
+scope; every reference must resolve locally with matching kind, inline and referenced values are
+mutually exclusive, and resources are emitted in exact key-byte order. JSON v1 remains byte-for-byte
+unchanged ([ADR 0197](../adr/0197-m8-resource-aware-ui-description-json-v2.md),
+[format v2](UI_DESCRIPTION_FORMAT_V2.md)). The resource pipeline is now:
+
+```text
+ResourceKey -> ResourceDictionary -> ResourceReference -> Property Resource Metadata
+            -> Explicit Resolution -> Durable Resource Description / JSON v2
+```
+
+These layers still do not bind controls' existing inline `TextStyle` runtime values to resources.
+There is no cascade, merge or live rebinding. JSON v2 persists no external scope chain or
+`scope_index`; resource-aware reconstruction/materialization remains the explicit M8.28 boundary.
 
 ### Ownership
 

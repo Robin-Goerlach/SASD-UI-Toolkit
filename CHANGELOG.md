@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 27: format-neutral durable `TextStyleResource` definitions and typed property
+  `ResourceReference` authoring values, with strict canonical UI Description JSON v2 writing and
+  validated loading. v1 bytes and its exact five-member schema remain unchanged. v2 uses one
+  self-contained document-local scope, inline-XOR-reference completeness, local kind-safe target
+  validation and canonical case-sensitive key ordering. Existing runtime reconstruction rejects
+  resource-bearing documents until M8.28 materialization (ADR 0197).
+
 - M8 Slice 26: explicit caller-ordered, nearest-first `TextStyle` resource resolution over borrowed
   `ResourceDictionary` scopes. The first exact key match wins and returns an owned style copy plus
   its caller-sequence `scope_index`; empty/missing lookups fail closed. No global registry,

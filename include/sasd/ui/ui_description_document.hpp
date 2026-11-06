@@ -2,6 +2,8 @@
 
 #include <sasd/ui/component_reference_snapshot.hpp>
 #include <sasd/ui/geometry.hpp>
+#include <sasd/ui/resource_dictionary.hpp>
+#include <sasd/ui/resource_reference.hpp>
 #include <sasd/ui/style.hpp>
 
 #include <cstdint>
@@ -89,7 +91,24 @@ struct UiDescriptionTextStyleProperty final {
                            const UiDescriptionTextStyleProperty&) = default;
 };
 
-/** Ordered ownership and eight concrete property collections; no reconstruction order implied. */
+/**
+ * Durable authoring value for one resource-capable property.
+ *
+ * This value deliberately sits beside, rather than inside, the concrete inline property
+ * collections. The document validator enforces that an exact descriptor occurs either inline or
+ * here, never in both places. ResourceReference remains a typed identity rather than becoming a
+ * generic payload variant.
+ */
+struct UiDescriptionResourceReferenceProperty final {
+    std::string declaring_type_id;
+    std::string property_id;
+    ResourceReference reference;
+
+    friend bool operator==(const UiDescriptionResourceReferenceProperty&,
+                           const UiDescriptionResourceReferenceProperty&) = default;
+};
+
+/** Ordered ownership, eight inline collections and durable references; no reconstruction order implied. */
 struct BuiltInUiDescriptionNode final {
     ComponentDescriptionNodeId node_id{};
     std::string type_id;
@@ -102,6 +121,7 @@ struct BuiltInUiDescriptionNode final {
     std::vector<UiDescriptionOptionalUnsignedIntegerProperty> optional_unsigned_integer_properties;
     std::vector<UiDescriptionSizeConstraintsProperty> size_constraints_properties;
     std::vector<UiDescriptionTextStyleProperty> text_style_properties;
+    std::vector<UiDescriptionResourceReferenceProperty> resource_reference_properties;
 
     friend bool operator==(const BuiltInUiDescriptionNode&, const BuiltInUiDescriptionNode&) = default;
 };
@@ -121,6 +141,10 @@ struct UiDescriptionReferenceEdge final {
  */
 struct BuiltInUiDescriptionDocument final {
     ComponentDescriptionNodeId root_node_id{};
+    // M8.27 intentionally persists one closed document-local scope. Reusing the existing concrete
+    // TextStyleResource keeps runtime dictionaries and durable descriptions on the same value
+    // semantics without introducing a generic ResourceValue framework before a second family exists.
+    std::vector<TextStyleResource> text_style_resources;
     std::vector<BuiltInUiDescriptionNode> nodes;
     std::vector<UiDescriptionReferenceEdge> reference_edges;
 

@@ -4,6 +4,9 @@
 #include <sasd/ui/component_reference_snapshot.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
+#include "ui_description_document_validation.hpp"
+
+#include <algorithm>
 #include <charconv>
 #include <string_view>
 #include <system_error>
@@ -245,6 +248,224 @@ private:
         output_ += "]\n    }";
     }
 };
+
+// v2 writes the public format-neutral document rather than a runtime snapshot. It is intentionally
+// separate from Writer above: preserving the v1 byte stream is more important than deduplicating a
+// modest amount of fixed-schema JSON plumbing across two independently versioned contracts.
+class V2Writer final {
+public:
+    std::optional<std::string> encode(BuiltInUiDescriptionDocument document) {
+        if (!detail::validateAndNormalizeBuiltInUiDescriptionDocument(document)) {
+            return std::nullopt;
+        }
+        output_ = "{\n  \"format\": \"sasd.ui-description\",\n  \"formatVersion\": 2,\n  \"resources\": ";
+        array(document.text_style_resources, 2, [this](const auto& resource) {
+            writeResource(resource);
+        });
+        output_ += ",\n  \"root\": "; integer(document.root_node_id);
+        output_ += ",\n  \"nodes\": ";
+        array(document.nodes, 2, [this](const auto& node) { writeNode(node); });
+        output_ += ",\n  \"references\": ";
+        array(document.reference_edges, 2, [this](const auto& edge) { writeReference(edge); });
+        output_ += "\n}\n";
+        if (!valid_) { return std::nullopt; }
+        return std::move(output_);
+    }
+
+private:
+    std::string output_;
+    bool valid_{true};
+
+    void indent(std::size_t spaces) { output_.append(spaces, ' '); }
+
+    template<class Integer>
+    void integer(Integer value) {
+        char buffer[32];
+        const auto result = std::to_chars(buffer, buffer + sizeof(buffer), value);
+        if (result.ec != std::errc{}) { valid_ = false; return; }
+        output_.append(buffer, result.ptr);
+    }
+
+    void string(std::string_view value) {
+        for (std::size_t offset = 0; offset < value.size();) {
+            const auto scalar = utf8::decodeOne(value, offset);
+            if (!scalar.valid || scalar.consumed == 0) { valid_ = false; return; }
+            offset += scalar.consumed;
+        }
+        constexpr std::string_view hex = "0123456789abcdef";
+        output_ += '"';
+        for (const char byte : value) {
+            switch (byte) {
+            case '"': output_ += "\\\""; break;
+            case '\\': output_ += "\\\\"; break;
+            case '\b': output_ += "\\b"; break;
+            case '\f': output_ += "\\f"; break;
+            case '\n': output_ += "\\n"; break;
+            case '\r': output_ += "\\r"; break;
+            case '\t': output_ += "\\t"; break;
+            default: {
+                const auto code = static_cast<unsigned char>(byte);
+                if (code < 0x20) {
+                    output_ += "\\u00";
+                    output_ += hex[code >> 4];
+                    output_ += hex[code & 0x0f];
+                } else { output_ += byte; }
+                break;
+            }
+            }
+        }
+        output_ += '"';
+    }
+
+    template<class Values, class Emit>
+    void array(const Values& values, std::size_t spaces, Emit emit) {
+        output_ += '[';
+        bool first = true;
+        for (const auto& value : values) {
+            if (!first) { output_ += ','; }
+            output_ += '\n'; indent(spaces + 2); emit(value); first = false;
+        }
+        if (!first) { output_ += '\n'; indent(spaces); }
+        output_ += ']';
+    }
+
+    void value(bool value) { output_ += value ? "true" : "false"; }
+    void value(const std::string& value) { string(value); }
+    void value(std::int64_t value) { integer(value); }
+    void value(std::uint64_t value) { integer(value); }
+    void value(const std::optional<std::uint64_t>& value) {
+        if (value) { integer(*value); } else { output_ += "null"; }
+    }
+    void value(const std::vector<std::string>& values) {
+        array(values, 10, [this](const auto& text) { string(text); });
+    }
+    void size(Size value) {
+        output_ += "{\n              \"width\": "; integer(value.width);
+        output_ += ",\n              \"height\": "; integer(value.height);
+        output_ += "\n            }";
+    }
+    void value(const SizeConstraints& value) {
+        output_ += "{\n            \"minimum\": "; size(value.minimum);
+        output_ += ",\n            \"preferred\": "; size(value.preferred);
+        output_ += ",\n            \"maximum\": "; size(value.maximum);
+        output_ += "\n          }";
+    }
+    void value(const TextStyle& value) {
+        const auto symbol = colorSymbol(value.foreground);
+        if (symbol.empty()) { valid_ = false; }
+        output_ += "{\n            \"foreground\": "; string(symbol);
+        output_ += ",\n            \"bold\": "; this->value(value.bold);
+        output_ += ",\n            \"dim\": "; this->value(value.dim);
+        output_ += ",\n            \"underline\": "; this->value(value.underline);
+        output_ += ",\n            \"inverse\": "; this->value(value.inverse);
+        output_ += "\n          }";
+    }
+
+    void writeResource(const TextStyleResource& resource) {
+        const auto symbol = colorSymbol(resource.value.foreground);
+        if (symbol.empty()) { valid_ = false; }
+        output_ += "{\n      \"kind\": \"text-style\",\n      \"key\": ";
+        string(resource.key.value());
+        output_ += ",\n      \"value\": {\n        \"foreground\": "; string(symbol);
+        output_ += ",\n        \"bold\": "; value(resource.value.bold);
+        output_ += ",\n        \"dim\": "; value(resource.value.dim);
+        output_ += ",\n        \"underline\": "; value(resource.value.underline);
+        output_ += ",\n        \"inverse\": "; value(resource.value.inverse);
+        output_ += "\n      }\n    }";
+    }
+
+    template<class Properties>
+    void writeInlineProperty(const Properties& properties,
+                             const ComponentPropertyMetadata& descriptor,
+                             std::string_view kind) {
+        const auto found = std::find_if(properties.begin(), properties.end(), [&](const auto& item) {
+            return item.declaring_type_id == descriptor.declaring_type_id &&
+                   item.property_id == descriptor.property_id;
+        });
+        if (found == properties.end()) { valid_ = false; return; }
+        output_ += "{\n          \"declaringType\": "; string(descriptor.declaring_type_id);
+        output_ += ",\n          \"propertyId\": "; string(descriptor.property_id);
+        output_ += ",\n          \"kind\": "; string(kind);
+        output_ += ",\n          \"value\": "; value(found->value);
+        output_ += "\n        }";
+    }
+
+    void writeProperty(const BuiltInUiDescriptionNode& node,
+                       const ComponentPropertyMetadata& descriptor) {
+        const auto reference = std::find_if(
+            node.resource_reference_properties.begin(), node.resource_reference_properties.end(),
+            [&](const auto& item) {
+                return item.declaring_type_id == descriptor.declaring_type_id &&
+                       item.property_id == descriptor.property_id;
+            });
+        if (reference != node.resource_reference_properties.end()) {
+            if (reference->reference.kind() != ResourceKind::text_style) { valid_ = false; return; }
+            output_ += "{\n          \"declaringType\": "; string(descriptor.declaring_type_id);
+            output_ += ",\n          \"propertyId\": "; string(descriptor.property_id);
+            output_ += ",\n          \"kind\": \"resource-reference\",\n          \"value\": {\n";
+            output_ += "            \"resourceKind\": \"text-style\",\n            \"key\": ";
+            string(reference->reference.key().value());
+            output_ += "\n          }\n        }";
+            return;
+        }
+        switch (descriptor.value_kind) {
+        case ComponentPropertyValueKind::boolean:
+            writeInlineProperty(node.boolean_properties, descriptor, "boolean"); break;
+        case ComponentPropertyValueKind::string:
+            writeInlineProperty(node.string_properties, descriptor, "string"); break;
+        case ComponentPropertyValueKind::signed_integer:
+            writeInlineProperty(node.signed_integer_properties, descriptor, "signed-integer"); break;
+        case ComponentPropertyValueKind::unsigned_integer:
+            writeInlineProperty(node.unsigned_integer_properties, descriptor, "unsigned-integer"); break;
+        case ComponentPropertyValueKind::string_collection:
+            writeInlineProperty(node.string_collection_properties, descriptor, "string-collection"); break;
+        case ComponentPropertyValueKind::optional_unsigned_integer:
+            writeInlineProperty(node.optional_unsigned_integer_properties, descriptor,
+                                "optional-unsigned-integer"); break;
+        case ComponentPropertyValueKind::size_constraints:
+            writeInlineProperty(node.size_constraints_properties, descriptor, "size-constraints"); break;
+        case ComponentPropertyValueKind::text_style:
+            writeInlineProperty(node.text_style_properties, descriptor, "text-style"); break;
+        default: valid_ = false; break;
+        }
+    }
+
+    void writeProperties(const BuiltInUiDescriptionNode& node, std::string_view type,
+                         bool& first, std::size_t depth = 0) {
+        if (depth >= builtInComponentTypes().size()) { valid_ = false; return; }
+        const auto* metadata = findBuiltInComponentType(type);
+        if (!metadata) { valid_ = false; return; }
+        if (!metadata->base_type_id.empty()) {
+            writeProperties(node, metadata->base_type_id, first, depth + 1);
+        }
+        for (const auto& descriptor : declaredBuiltInComponentProperties(type)) {
+            if (!first) { output_ += ','; }
+            output_ += "\n        "; first = false;
+            writeProperty(node, descriptor);
+        }
+    }
+
+    void writeNode(const BuiltInUiDescriptionNode& node) {
+        output_ += "{\n      \"id\": "; integer(node.node_id);
+        output_ += ",\n      \"type\": "; string(node.type_id);
+        output_ += ",\n      \"owns\": ";
+        array(node.owned_component_ids, 6, [this](auto id) { integer(id); });
+        output_ += ",\n      \"properties\": [";
+        bool first = true;
+        writeProperties(node, node.type_id, first);
+        if (!first) { output_ += "\n      "; }
+        output_ += "]\n    }";
+    }
+
+    void writeReference(const UiDescriptionReferenceEdge& edge) {
+        const auto symbol = referenceSymbol(edge.kind);
+        if (symbol.empty()) { valid_ = false; }
+        output_ += "{\n      \"source\": "; integer(edge.source_node_id);
+        output_ += ",\n      \"kind\": "; string(symbol);
+        output_ += ",\n      \"target\": "; integer(edge.target_node_id);
+        output_ += "\n    }";
+    }
+};
 } // namespace
 
 std::optional<std::string> encodeBuiltInUiDescriptionJson(const Component& root) {
@@ -253,6 +474,11 @@ std::optional<std::string> encodeBuiltInUiDescriptionJson(const Component& root)
     const auto graph = captureBuiltInComponentReferenceGraphSnapshot(root);
     if (!graph) { return std::nullopt; }
     return Writer{}.encode(*graph);
+}
+
+std::optional<std::string>
+encodeBuiltInUiDescriptionJsonV2(const BuiltInUiDescriptionDocument& document) {
+    return V2Writer{}.encode(document);
 }
 
 } // namespace sasd::ui

@@ -39,6 +39,8 @@ enum class UiDescriptionJsonParseErrorCode {
     invalid_property_value,
     invalid_ownership,
     invalid_reference,
+    invalid_resource,
+    invalid_resource_reference,
 };
 
 struct UiDescriptionJsonParseError final {
@@ -62,5 +64,26 @@ struct BuiltInUiDescriptionJsonParseResult final {
  * No default completion, file I/O or runtime restoration occurs. Allocation failures propagate.
  */
 [[nodiscard]] BuiltInUiDescriptionJsonParseResult parseBuiltInUiDescriptionJson(std::string_view json);
+
+/**
+ * Validates and canonically encodes an explicit format-neutral document as UI Description JSON v2.
+ *
+ * Runtime Components do not carry resource authoring references, so v2 accepts a document rather
+ * than guessing bindings from live controls. Resources are ordered by exact ResourceKey bytes and
+ * resource-backed properties retain normal base-to-derived descriptor order. Invalid documents
+ * return nullopt atomically; allocation failures propagate.
+ */
+[[nodiscard]] std::optional<std::string>
+encodeBuiltInUiDescriptionJsonV2(const BuiltInUiDescriptionDocument& document);
+
+/**
+ * Parses strict UI Description JSON v2 and returns a validated, normalized owning document.
+ *
+ * This separate entry point keeps the historical v1 reader's accepted top-level schema and error
+ * behavior unchanged. v2 is self-contained: every property resource reference must resolve to the
+ * document-local resource collection with the expected concrete ResourceKind.
+ */
+[[nodiscard]] BuiltInUiDescriptionJsonParseResult
+parseBuiltInUiDescriptionJsonV2(std::string_view json);
 
 } // namespace sasd::ui
