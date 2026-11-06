@@ -127,7 +127,8 @@ Pfad nutzt den Public Value direkt mit TextStyle{}-Defaults, ohne Resource-Node 
 Keine Vererbung/Cascade; Backend-Fokus-/Disabled-/Selection-Overlays bleiben ausgeschlossen. Fonts,
 RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Kanonisches JSON v1 verwendet symbolische Color-Namen
 statt Enum-Ordinals (ADR 0186). Der Review aller 29 Built-ins bestätigte die semantische Readiness.
-Encoding, validiertes Parsing und Built-in-Rekonstruktion sind implementiert; Resources bleiben offen.
+Encoding, validiertes Parsing und Built-in-Rekonstruktion sind implementiert. Dauerhaftes Resource
+Authoring nutzt den getrennten v2-Vertrag; Runtime-Resource-Rekonstruktion bleibt offen.
 
 ### Kanonisches JSON-Description-Encoding
 
@@ -418,10 +419,23 @@ trägt den gewinnenden Sequenzindex, sodass spätere Dictionary-Mutation es nich
 leitet keine Scopes aus Application, Component-Ownership oder visuellem Parenting ab und nutzt keine
 globale Registry ([ADR 0196](../adr/0196-m8-explicit-resource-resolution-and-scoping-foundation.md)).
 
-Diese Schichten binden die vorhandenen inline `TextStyle`-Werte der Controls weiterhin nicht an
-Resources. Es gibt weder Cascade, Merge noch Live-Rebinding; die Inline-vs.-Resource-Priorität bleibt
-offen. Resource-Description-Persistenz/-Encoding/-Rekonstruktion und weitere Familien benötigen
-spätere Verträge. JSON v1 und heutige Property-Snapshots bleiben daher unverändert.
+M8 Slice 27 erweitert das formatneutrale Dokument um besitzende `TextStyleResource`-Definitionen und
+exakte Property-`ResourceReference`-Authoring-Values. Kanonisches JSON v2 ergänzt einen geschlossenen
+dokumentlokalen Scope; jede Reference muss lokal mit passendem Kind auflösen, Inline- und Reference-
+Values schließen einander aus, und Resources werden in exakter Key-Byte-Reihenfolge ausgegeben.
+JSON v1 bleibt byte-identisch unverändert
+([ADR 0197](../adr/0197-m8-resource-aware-ui-description-json-v2.md),
+[Format v2](UI_DESCRIPTION_FORMAT_V2.md)). Die Resource-Pipeline lautet nun:
+
+```text
+ResourceKey -> ResourceDictionary -> ResourceReference -> Property Resource Metadata
+            -> Explicit Resolution -> Durable Resource Description / JSON v2
+```
+
+Diese Schichten binden die vorhandenen inline `TextStyle`-Runtime-Werte der Controls weiterhin nicht
+an Resources. Es gibt weder Cascade, Merge noch Live-Rebinding. JSON v2 persistiert weder externe
+Scope Chain noch `scope_index`; Resource-aware Rekonstruktion/Materialisierung bleibt ausdrücklich
+die M8.28-Grenze.
 
 ### Ownership
 

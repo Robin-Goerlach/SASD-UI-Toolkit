@@ -21,6 +21,8 @@ set(required_files
     "include/sasd/ui/resource_key.hpp"
     "include/sasd/ui/resource_reference.hpp"
     "include/sasd/ui/resource_resolution.hpp"
+    "include/sasd/ui/ui_description_document.hpp"
+    "include/sasd/ui/ui_description_json.hpp"
     "include/sasd/ui/terminal/terminal_backend.hpp"
     "include/sasd/ui/terminal/screen_buffer.hpp"
     "include/sasd/ui/rendered/display_list.hpp"

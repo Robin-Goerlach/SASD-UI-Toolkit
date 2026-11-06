@@ -11,6 +11,7 @@ enum class UiDescriptionValidationLocation {
     document,
     node,
     reference,
+    resource,
 };
 
 struct UiDescriptionValidationResult final {

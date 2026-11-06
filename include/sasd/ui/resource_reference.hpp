@@ -33,8 +33,8 @@ enum class ResourceKind {
  * caller memory and stores no dictionary, Component or backend address. In particular, this value
  * is not a runtime binding: creating it does not alter a control's inline TextStyle, perform lookup,
  * select a scope, observe dictionary changes or define inline-versus-resource precedence.
- * Explicit resolution/scoping is a separate caller-supplied transaction; durable encoding remains
- * a later contract.
+ * Explicit resolution/scoping is a separate caller-supplied transaction. UI Description JSON v2
+ * can persist this identity, but parsing it still does not create a runtime binding.
  *
  * Construction uses create() rather than a public aggregate constructor so fabricated enum values
  * cannot produce a formally valid reference. ResourceKey has already validated and copied its

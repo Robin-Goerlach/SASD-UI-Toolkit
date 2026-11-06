@@ -23,6 +23,7 @@ add_executable(sasd_ui_tests
     resource_resolution_tests.cpp
     ui_description_json_tests.cpp
     ui_description_json_parser_tests.cpp
+    ui_description_json_v2_tests.cpp
     ui_description_reconstruction_tests.cpp
     presentation_anchored_popup_layout_tests.cpp
     component_tests.cpp

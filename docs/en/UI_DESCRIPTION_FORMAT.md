@@ -6,6 +6,8 @@ Recommended extension: `.sasd-ui.json`. The dependency-free public function
 reference graph once and encodes its owned values. It performs no file I/O. Allocation failures
 propagate; capture/encoding failures return `nullopt`, never partial JSON.
 See [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
+Resource-aware durable authoring is a deliberately incompatible extension documented separately as
+[UI Description JSON v2](UI_DESCRIPTION_FORMAT_V2.md); nothing in that contract changes v1.
 
 ## Document and canonical bytes
 
@@ -127,7 +129,8 @@ names or resource identities are invented.
 
 JSON is only an external encoding, never the internal Component/property/ownership/reference model.
 The reader produces a validated document, and the separate built-in reconstruction API consumes that
-document. No resource system, model-payload persistence or file API exists. Alternative
+document. v1 carries no resource definitions or identities; those belong exclusively to the
+separate v2 contract. No model-payload persistence or file API exists. Alternative
 SASD/binary/DFM-like encodings remain possible.
 A JSON Schema may follow when external tooling needs it.
 
@@ -184,6 +187,7 @@ constructed empty: items, rows, headers and tree nodes remain excluded applicati
 reconstruction API does not parse JSON, perform file I/O, load resources, restore transient state or
 carry description node identity into runtime Components. See
 [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
+Resource-bearing v2 documents are rejected until M8.28 adds explicit materialization.
 
 ## Normative complete example
 

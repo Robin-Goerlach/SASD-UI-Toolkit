@@ -6,6 +6,8 @@ Empfohlene Endung: `.sasd-ui.json`. Die dependency-freie Public API
 Referenzgraphen und codiert ausschließlich dessen eigene Werte. Keine File-I/O. Allocation-Fehler
 propagieren; Capture-/Encoding-Fehler ergeben `nullopt`, niemals partielles JSON.
 Siehe [ADR 0186](../adr/0186-m8-canonical-json-ui-description-encoding-v1.md).
+Resource-aware dauerhaftes Authoring ist eine bewusst inkompatible Erweiterung und separat als
+[UI Description JSON v2](UI_DESCRIPTION_FORMAT_V2.md) dokumentiert; dieser Vertrag ändert v1 nicht.
 
 ## Dokument und kanonische Bytes
 
@@ -107,7 +109,8 @@ oder Resource-Identitäten.
 
 JSON ist ausschließlich externes Encoding, kein internes Component-/Property-/Ownership-/Reference-
 Modell. Der Reader erzeugt ein validiertes Dokument; die getrennte Built-in-Reconstruction-API
-konsumiert dieses Dokument. Kein Resource-System, keine Model-Payload-Persistence und keine Datei-API.
+konsumiert dieses Dokument. v1 trägt weder Resource-Definitionen noch -Identitäten; diese gehören
+ausschließlich in den getrennten v2-Vertrag. Keine Model-Payload-Persistence und keine Datei-API.
 Alternative SASD-/Binary-/DFM-artige Encodings bleiben möglich. JSON Schema kann bei Bedarf für
 externes Tooling folgen.
 
@@ -166,6 +169,7 @@ werden leer konstruiert: Items, Rows, Headers und Tree Nodes bleiben ausgeschlos
 Payloads. Die Reconstruction-API parst kein JSON, führt kein File-I/O aus, lädt keine Resources,
 restauriert keinen transienten Zustand und überträgt Description-Node-Identität nicht in Runtime-
 Components. Siehe [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
+Resource-tragende v2-Dokumente werden abgelehnt, bis M8.28 die explizite Materialisierung ergänzt.
 
 ## Vollständiges normatives Beispiel
 

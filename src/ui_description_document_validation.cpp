@@ -2,6 +2,7 @@
 
 #include <sasd/ui/component_metadata.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_property_resource_metadata.hpp>
 #include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_reference_metadata.hpp>
 #include <sasd/ui/text/utf8.hpp>
@@ -159,6 +160,9 @@ public:
     explicit Validator(BuiltInUiDescriptionDocument& document) : document_{document} {}
 
     UiDescriptionValidationResult validate() {
+        if (const auto result = validateResources(); !result) {
+            return result;
+        }
         auto& nodes = document_.nodes;
         const auto count = nodes.size();
         if (count == 0 || document_.root_node_id != 0) {
@@ -324,6 +328,48 @@ private:
         return {error, UiDescriptionValidationLocation::reference, input_index, source_node_id};
     }
 
+    static UiDescriptionValidationResult failResource(Error error, std::size_t input_index) {
+        return {error, UiDescriptionValidationLocation::resource, input_index, 0};
+    }
+
+    UiDescriptionValidationResult validateResources() {
+        auto& resources = document_.text_style_resources;
+        for (std::size_t index = 0; index < resources.size(); ++index) {
+            const auto& resource = resources[index];
+            // ResourceKey construction already enforces the durable ASCII grammar. Re-checking via
+            // the public factory documents that this validator does not trust a mutable public
+            // aggregate or a future alternative construction path.
+            if (!ResourceKey::create(resource.key.value()) || !validColor(resource.value.foreground)) {
+                return failResource(Error::invalid_resource, index);
+            }
+            for (std::size_t previous = 0; previous < index; ++previous) {
+                if (resources[previous].key == resource.key) {
+                    // Persisted resource identity is global within the document. Rejecting rather
+                    // than overwriting prevents input order from selecting a hidden winner.
+                    return failResource(Error::invalid_resource, index);
+                }
+            }
+        }
+        std::sort(resources.begin(), resources.end(), [](const auto& left, const auto& right) {
+            return left.key.value() < right.key.value();
+        });
+        return {};
+    }
+
+    [[nodiscard]] bool hasResource(const ResourceReference& reference) const noexcept {
+        if (!isBuiltInResourceKind(reference.kind())) {
+            return false;
+        }
+        switch (reference.kind()) {
+        case ResourceKind::text_style:
+            return std::any_of(document_.text_style_resources.begin(),
+                               document_.text_style_resources.end(), [&](const auto& resource) {
+                return resource.key == reference.key();
+            });
+        }
+        return false;
+    }
+
     template<class Properties>
     UiDescriptionValidationResult validateProperties(
         const BuiltInUiDescriptionNode& node,
@@ -379,6 +425,36 @@ private:
         if (auto result = validateProperties(node, node.optional_unsigned_integer_properties, Kind::optional_unsigned_integer, seen); !result) return result;
         if (auto result = validateProperties(node, node.size_constraints_properties, Kind::size_constraints, seen); !result) return result;
         if (auto result = validateProperties(node, node.text_style_properties, Kind::text_style, seen); !result) return result;
+
+        for (const auto& value : node.resource_reference_properties) {
+            if (!validUtf8(value.declaring_type_id) || !validUtf8(value.property_id)) {
+                return failNodeId(Error::invalid_utf8, node.node_id);
+            }
+            const auto* descriptor = findBuiltInComponentProperty(node.type_id, value.property_id);
+            if (descriptor == nullptr || descriptor->declaring_type_id != value.declaring_type_id) {
+                return failNodeId(Error::unknown_property, node.node_id);
+            }
+            const auto resource_metadata = builtInComponentPropertyResourceMetadata(*descriptor);
+            if (!resource_metadata || !isBuiltInResourceKind(value.reference.kind()) ||
+                resource_metadata->resource_kind != value.reference.kind() ||
+                !ResourceKey::create(value.reference.key().value()) ||
+                !hasResource(value.reference)) {
+                return failNodeId(Error::invalid_resource_reference, node.node_id);
+            }
+            if (std::find(seen.begin(), seen.end(), descriptor) != seen.end()) {
+                // The same descriptor appearing inline and by reference would create two competing
+                // authoring truths. The shared seen set also rejects duplicate references.
+                return failNodeId(Error::invalid_resource_reference, node.node_id);
+            }
+            seen.push_back(descriptor);
+        }
+        std::sort(node.resource_reference_properties.begin(),
+                  node.resource_reference_properties.end(), [](const auto& left, const auto& right) {
+            if (left.declaring_type_id != right.declaring_type_id) {
+                return left.declaring_type_id < right.declaring_type_id;
+            }
+            return left.property_id < right.property_id;
+        });
 
         std::size_t expected = 0;
         for (const auto* current = type; current != nullptr;

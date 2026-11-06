@@ -210,6 +210,18 @@ public:
             return failure(Error::invalid_document, validation.node_id);
         }
 
+        // M8.27 makes resource authoring durable but intentionally does not materialize it into
+        // runtime controls. Refuse the whole transaction before constructing a single Component;
+        // silently ignoring definitions or substituting a current inline value would lose the
+        // document's sole authoring truth. M8.28 owns the later resolution/materialization step.
+        const bool has_resource_reference =
+            std::any_of(document_.nodes.begin(), document_.nodes.end(), [](const auto& node) {
+                return !node.resource_reference_properties.empty();
+            });
+        if (!document_.text_style_resources.empty() || has_resource_reference) {
+            return failure(Error::invalid_document, document_.root_node_id);
+        }
+
         if (auto result = constructComponents(); !result) return failure(result.error, result.node_id);
         if (auto result = restoreCommandProperties(); !result) return failure(result.error, result.node_id);
         if (auto result = restoreReferences(); !result) return failure(result.error, result.node_id);

@@ -1,4 +1,5 @@
 #include <sasd/ui/button.hpp>
+#include <sasd/ui/label.hpp>
 #include <sasd/ui/ui_description_json.hpp>
 #include <sasd/ui/ui_description_document.hpp>
 #include <sasd/ui/ui_description_reconstruction.hpp>
@@ -20,6 +21,7 @@
 #include <sasd/ui/terminal/screen_buffer.hpp>
 #include <sasd/ui/window.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <cstddef>
@@ -216,6 +218,42 @@ int main() {
         heading_reference->kind() == sasd::ui::ResourceKind::text_style &&
         heading_reference->key().value() == "theme.heading";
 
+    // Exercise the complete installed M8.27 authoring path without pretending that parsing also
+    // reconstructs a live binding. Start from a complete inline Label document, replace its exact
+    // textStyle slot with the typed reference, then prove the v2 writer/reader preserve both values.
+    sasd::ui::Label consumer_label{"Heading"};
+    const auto consumer_label_v1 = sasd::ui::encodeBuiltInUiDescriptionJson(consumer_label);
+    auto consumer_label_document = consumer_label_v1
+        ? sasd::ui::parseBuiltInUiDescriptionJson(*consumer_label_v1)
+        : sasd::ui::BuiltInUiDescriptionJsonParseResult{};
+    bool resource_description_linked = false;
+    if (consumer_label_document && heading_key && heading_reference) {
+        auto& description = *consumer_label_document.document;
+        description.text_style_resources.push_back({*heading_key, heading_style});
+        auto& label_node = description.nodes.front();
+        const auto inline_style = std::find_if(
+            label_node.text_style_properties.begin(), label_node.text_style_properties.end(),
+            [](const auto& property) {
+                return property.declaring_type_id == "sasd.ui.Label" &&
+                       property.property_id == "textStyle";
+            });
+        if (inline_style != label_node.text_style_properties.end()) {
+            label_node.text_style_properties.erase(inline_style);
+            label_node.resource_reference_properties.push_back(
+                {"sasd.ui.Label", "textStyle", *heading_reference});
+            const auto v2 = sasd::ui::encodeBuiltInUiDescriptionJsonV2(description);
+            const auto loaded = v2
+                ? sasd::ui::parseBuiltInUiDescriptionJsonV2(*v2)
+                : sasd::ui::BuiltInUiDescriptionJsonParseResult{};
+            resource_description_linked = loaded &&
+                loaded.document->text_style_resources.size() == 1 &&
+                loaded.document->text_style_resources.front().key.value() == "theme.heading" &&
+                loaded.document->nodes.front().resource_reference_properties.size() == 1 &&
+                loaded.document->nodes.front().resource_reference_properties.front().reference ==
+                    *heading_reference;
+        }
+    }
+
     sasd::ui::ResourceDictionary outer_resources;
     const sasd::ui::TextStyle outer_heading{sasd::ui::Color::blue};
     const bool outer_resource_added = heading_key &&
@@ -243,7 +281,8 @@ int main() {
     return style_linked && validation_metadata_linked && single_property_metadata_linked &&
             cross_property_metadata_linked && reference_metadata_linked &&
             authoring_metadata_linked && resource_dictionary_linked &&
-            resource_reference_linked && resource_resolution_linked && core_linked &&
+            resource_reference_linked && resource_description_linked &&
+            resource_resolution_linked && core_linked &&
             terminal_linked && rendered_linked
         ? EXIT_SUCCESS
         : EXIT_FAILURE;

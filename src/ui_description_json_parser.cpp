@@ -1,5 +1,6 @@
 #include <sasd/ui/ui_description_json.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/resource_reference.hpp>
 #include <sasd/ui/text/utf8.hpp>
 
 #include "ui_description_document_validation.hpp"
@@ -51,7 +52,8 @@ constexpr std::array reference_symbols{
 
 class Parser final {
 public:
-    explicit Parser(std::string_view input) : input_(input) {}
+    explicit Parser(std::string_view input, bool version_two)
+        : input_(input), version_two_{version_two} {}
 
     BuiltInUiDescriptionJsonParseResult parse() {
         // Validate the entire byte stream first, including bytes after an otherwise valid root.
@@ -64,23 +66,15 @@ public:
             }
             offset += scalar.consumed;
         }
-        object({"format", "formatVersion", "root", "nodes", "references"}, [&](std::size_t member) {
-            const auto at = cursor_;
-            switch (member) {
-            case 0:
-                if (string() != "sasd.ui-description") { fail(Error::unsupported_format, at); }
-                break;
-            case 1:
-                if (integer<std::int64_t>(Error::unsupported_format_version) != 1) {
-                    fail(Error::unsupported_format_version, at);
-                }
-                break;
-            case 2: document_.root_node_id = integer<ComponentDescriptionNodeId>(Error::invalid_ownership); break;
-            case 3: array([&] { parseNode(); }); break;
-            case 4: array([&] { parseReference(); }); break;
-            default: break;
-            }
-        });
+        if (version_two_) {
+            object({"format", "formatVersion", "resources", "root", "nodes", "references"},
+                   [&](std::size_t member) { parseTopLevelMember(member); });
+        } else {
+            // Keep the historical v1 member vocabulary exact. In particular, a v2 resources
+            // member is unknown here rather than being silently ignored by an old-reader path.
+            object({"format", "formatVersion", "root", "nodes", "references"},
+                   [&](std::size_t member) { parseTopLevelMember(member); });
+        }
         whitespace();
         if (cursor_ != input_.size()) { fail(Error::syntax_error, cursor_); }
         if (ok()) {
@@ -95,6 +89,10 @@ public:
                                detail::UiDescriptionValidationLocation::reference &&
                            validation.input_index < reference_offsets_.size()) {
                     offset = reference_offsets_[validation.input_index];
+                } else if (validation.location ==
+                               detail::UiDescriptionValidationLocation::resource &&
+                           validation.input_index < resource_offsets_.size()) {
+                    offset = resource_offsets_[validation.input_index];
                 }
                 fail(validation.error, offset);
             }
@@ -108,9 +106,40 @@ private:
     std::size_t cursor_{0};
     UiDescriptionJsonParseError error_{};
     BuiltInUiDescriptionDocument document_;
+    bool version_two_{false};
     // Positions travel with input nodes until normalization; semantic failures retain input offsets.
     std::vector<std::size_t> node_offsets_;
     std::vector<std::size_t> reference_offsets_;
+    std::vector<std::size_t> resource_offsets_;
+
+    void parseTopLevelMember(std::size_t member) {
+        const auto at = cursor_;
+        if (member == 0) {
+            if (string() != "sasd.ui-description") { fail(Error::unsupported_format, at); }
+            return;
+        }
+        if (member == 1) {
+            const auto expected = version_two_ ? 2 : 1;
+            if (integer<std::int64_t>(Error::unsupported_format_version) != expected) {
+                fail(Error::unsupported_format_version, at);
+            }
+            return;
+        }
+        // v2 inserts resources before the three v1 graph members. Mapping here keeps the entire
+        // strict JSON machinery shared without changing any v1 nested schema.
+        if (version_two_) {
+            if (member == 2) { array([&] { parseResource(); }); }
+            else if (member == 3) {
+                document_.root_node_id = integer<ComponentDescriptionNodeId>(Error::invalid_ownership);
+            } else if (member == 4) { array([&] { parseNode(); }); }
+            else { array([&] { parseReference(); }); }
+        } else {
+            if (member == 2) {
+                document_.root_node_id = integer<ComponentDescriptionNodeId>(Error::invalid_ownership);
+            } else if (member == 3) { array([&] { parseNode(); }); }
+            else { array([&] { parseReference(); }); }
+        }
+    }
 
     bool ok() const { return error_.code == Error::none; }
     void fail(Error code, std::size_t at) {
@@ -318,14 +347,14 @@ private:
         if (!result.hasValidRange()) { fail(Error::invalid_property_value, at); }
         return result;
     }
-    TextStyle style() {
+    TextStyle style(Error invalid_value = Error::invalid_property_value) {
         TextStyle result;
         object({"foreground", "bold", "dim", "underline", "inverse"}, [&](std::size_t member) {
             if (member == 0) {
                 const auto at = cursor_;
                 const auto symbol = string();
                 const auto found = std::find(color_symbols.begin(), color_symbols.end(), symbol);
-                if (found == color_symbols.end()) { fail(Error::invalid_property_value, at); }
+                if (found == color_symbols.end()) { fail(invalid_value, at); }
                 else { result.foreground = colors[static_cast<std::size_t>(found - color_symbols.begin())]; }
             } else {
                 const bool value = boolean();
@@ -336,6 +365,59 @@ private:
             }
         });
         return result;
+    }
+
+    void parseResource() {
+        resource_offsets_.push_back(cursor_);
+        const auto resource_at = cursor_;
+        std::string kind_symbol;
+        std::string key_text;
+        std::size_t value_at = cursor_;
+        object({"kind", "key", "value"}, [&](std::size_t member) {
+            if (member == 0) { kind_symbol = string(); }
+            else if (member == 1) { key_text = string(); }
+            else { value_at = cursor_; locatePropertyValue(); }
+        });
+        if (!ok()) { return; }
+        if (kind_symbol != "text-style") {
+            fail(Error::invalid_resource, resource_at);
+            return;
+        }
+        auto key = ResourceKey::create(key_text);
+        if (!key) {
+            fail(Error::invalid_resource, resource_at);
+            return;
+        }
+        const auto resume = cursor_;
+        cursor_ = value_at;
+        auto value = style(Error::invalid_resource);
+        cursor_ = resume;
+        if (ok()) {
+            document_.text_style_resources.push_back({std::move(*key), value});
+        }
+    }
+
+    std::optional<ResourceReference> resourceReference() {
+        const auto at = cursor_;
+        std::string kind_symbol;
+        std::string key_text;
+        object({"resourceKind", "key"}, [&](std::size_t member) {
+            if (member == 0) { kind_symbol = string(); }
+            else { key_text = string(); }
+        });
+        if (!ok()) { return std::nullopt; }
+        if (kind_symbol != "text-style") {
+            fail(Error::invalid_resource_reference, at);
+            return std::nullopt;
+        }
+        auto key = ResourceKey::create(key_text);
+        if (!key) {
+            fail(Error::invalid_resource_reference, at);
+            return std::nullopt;
+        }
+        auto reference = ResourceReference::create(ResourceKind::text_style, std::move(*key));
+        if (!reference) { fail(Error::invalid_resource_reference, at); }
+        return reference;
     }
     void property(BuiltInUiDescriptionNode& node) {
         const auto at = cursor_;
@@ -348,6 +430,17 @@ private:
             else { value_at = cursor_; locatePropertyValue(); }
         });
         if (!ok()) { return; }
+        if (version_two_ && symbol == "resource-reference") {
+            const auto resume = cursor_;
+            cursor_ = value_at;
+            auto reference = resourceReference();
+            cursor_ = resume;
+            if (reference) {
+                node.resource_reference_properties.push_back(
+                    {std::move(declaring), std::move(id), std::move(*reference)});
+            }
+            return;
+        }
         const auto found = std::find(property_symbols.begin(), property_symbols.end(), symbol);
         if (found == property_symbols.end()) { fail(Error::property_kind_mismatch, at); return; }
         const auto kind = property_kinds[static_cast<std::size_t>(found - property_symbols.begin())];
@@ -409,6 +502,10 @@ private:
 } // namespace
 
 BuiltInUiDescriptionJsonParseResult parseBuiltInUiDescriptionJson(std::string_view json) {
-    return Parser{json}.parse();
+    return Parser{json, false}.parse();
+}
+
+BuiltInUiDescriptionJsonParseResult parseBuiltInUiDescriptionJsonV2(std::string_view json) {
+    return Parser{json, true}.parse();
 }
 } // namespace sasd::ui

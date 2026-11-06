@@ -59,8 +59,8 @@ public:
      * Enumerates entries in exact insertion order.
      *
      * The span borrows this dictionary and is invalidated by the next mutating operation. No
-     * sorting is performed: deterministic authoring order and canonical persisted order are
-     * intentionally separate future decisions.
+     * sorting is performed: deterministic dictionary authoring order and JSON v2's canonical
+     * key-byte order are intentionally separate contracts.
      */
     [[nodiscard]] std::span<const TextStyleResource> textStyles() const noexcept {
         return text_styles_;
