@@ -122,7 +122,7 @@ or cascade exists; backend focus/disabled/selection overlays are excluded. Fonts
 and shared runtime resources remain separate. Canonical JSON v1 uses symbolic Color names, never enum ordinals (ADR 0186).
 The review of all 29 built-ins established semantic readiness. Encoding, validated parsing and
 built-in reconstruction are implemented. Durable resource authoring uses the separate v2 contract;
-runtime resource reconstruction remains open.
+resource references are materialized once into concrete runtime values during reconstruction.
 
 ### Canonical JSON description encoding
 
@@ -403,11 +403,15 @@ unchanged ([ADR 0197](../adr/0197-m8-resource-aware-ui-description-json-v2.md),
 ```text
 ResourceKey -> ResourceDictionary -> ResourceReference -> Property Resource Metadata
             -> Explicit Resolution -> Durable Resource Description / JSON v2
+            -> Validated Parse -> One-time Runtime Materialization
 ```
 
-These layers still do not bind controls' existing inline `TextStyle` runtime values to resources.
-There is no cascade, merge or live rebinding. JSON v2 persists no external scope chain or
-`scope_index`; resource-aware reconstruction/materialization remains the explicit M8.28 boundary.
+M8 Slice 28 reuses the existing format-neutral reconstruction entry point. After validation it
+builds one private document-local dictionary, resolves each reference through the M8.26 resolver's
+single explicit scope, and writes the copied concrete value through the existing property writer
+([ADR 0198](../adr/0198-m8-resource-aware-reconstruction-and-materialization.md)). Components retain
+no resource identity, dictionary, scope or binding. There is no cascade, merge or live rebinding;
+runtime recapture consequently emits v1 inline values and cannot recover v2 authoring identity.
 
 ### Ownership
 

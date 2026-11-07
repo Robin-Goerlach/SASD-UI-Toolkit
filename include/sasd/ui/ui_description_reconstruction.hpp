@@ -36,6 +36,11 @@ struct BuiltInUiDescriptionReconstructionResult final {
  * adopted only afterwards. A failure therefore returns no partial graph. Allocation and other
  * system failures propagate, while document/domain failures are reported through the result.
  * Description node IDs are temporary lookup identity and are never stored in Components.
+ *
+ * Document-local TextStyle resource references are resolved during the normal property-restore
+ * phase and copied into concrete runtime TextStyle properties. This is one-time materialization:
+ * Components retain no ResourceReference, ResourceDictionary, scope or live binding. Resource-free
+ * v1 documents continue through the same entry point and preserve their existing semantics.
  */
 [[nodiscard]] BuiltInUiDescriptionReconstructionResult
 reconstructBuiltInUiDescription(const BuiltInUiDescriptionDocument& document);

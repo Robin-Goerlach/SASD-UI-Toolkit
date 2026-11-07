@@ -371,11 +371,17 @@ TEST_CASE("JSON v2 retains strict JSON and exact member vocabulary") {
     rejectsV2(invalid_utf8, UiDescriptionJsonParseErrorCode::invalid_utf8);
 }
 
-TEST_CASE("M8.27 reconstruction rejects resource-bearing v2 documents atomically") {
+TEST_CASE("JSON v2 resource references reconstruct into concrete runtime values") {
     auto document = inlineLabelDocument();
     document.text_style_resources.push_back(resource("theme.heading"));
     makeLabelTextStyleResourceBacked(document);
-    const auto reconstructed = reconstructBuiltInUiDescription(document);
-    CHECK(!reconstructed);
-    CHECK(reconstructed.error == UiDescriptionReconstructionErrorCode::invalid_document);
+    const auto json = encodeBuiltInUiDescriptionJsonV2(document);
+    CHECK(json.has_value());
+    const auto parsed = parseBuiltInUiDescriptionJsonV2(*json);
+    CHECK(parsed);
+    const auto reconstructed = reconstructBuiltInUiDescription(*parsed.document);
+    CHECK(reconstructed);
+    const auto* label = dynamic_cast<const Label*>(reconstructed.root.get());
+    CHECK(label != nullptr);
+    CHECK(label->textStyle() == document.text_style_resources.front().value);
 }

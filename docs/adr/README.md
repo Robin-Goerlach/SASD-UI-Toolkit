@@ -214,6 +214,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0195](0195-m8-resource-reference-metadata-and-authoring-contract-foundation.md) | M8 Resource Reference Metadata and Authoring Contract Foundation | Accepted |
 | [0196](0196-m8-explicit-resource-resolution-and-scoping-foundation.md) | M8 Explicit Resource Resolution and Scoping Foundation | Accepted |
 | [0197](0197-m8-resource-aware-ui-description-json-v2.md) | M8 Resource-Aware UI Description JSON v2 | Accepted |
+| [0198](0198-m8-resource-aware-reconstruction-and-materialization.md) | M8 Resource-Aware Reconstruction and Materialization | Accepted |
 
 ## ADR policy
 

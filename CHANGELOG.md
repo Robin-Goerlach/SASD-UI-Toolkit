@@ -9,12 +9,18 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 28: resource-aware reconstruction now materializes validated v2 `TextStyle` references
+  into concrete runtime properties through one private document-local `ResourceDictionary`, the
+  existing explicit resolver and the existing property writer. Reconstruction remains atomic and
+  resource-free v1 behavior is unchanged. Components retain no resource identity, scope or live
+  binding; JSON v1/v2 formats and canonical bytes are unchanged (ADR 0198).
+
 - M8 Slice 27: format-neutral durable `TextStyleResource` definitions and typed property
   `ResourceReference` authoring values, with strict canonical UI Description JSON v2 writing and
   validated loading. v1 bytes and its exact five-member schema remain unchanged. v2 uses one
   self-contained document-local scope, inline-XOR-reference completeness, local kind-safe target
-  validation and canonical case-sensitive key ordering. Existing runtime reconstruction rejects
-  resource-bearing documents until M8.28 materialization (ADR 0197).
+  validation and canonical case-sensitive key ordering. At the Slice-27 boundary, runtime
+  reconstruction still rejected resource-bearing documents pending M8.28 materialization (ADR 0197).
 
 - M8 Slice 26: explicit caller-ordered, nearest-first `TextStyle` resource resolution over borrowed
   `ResourceDictionary` scopes. The first exact key match wins and returns an owned style copy plus
