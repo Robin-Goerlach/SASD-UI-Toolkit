@@ -106,14 +106,22 @@ speichert keinen Inline-Fallback. Ihr Kind muss den Resource-Metadaten des Slots
 Key muss auf eine gleichartige Definition in diesem Dokument auflösen. Dangling, externe,
 Unknown-Kind- und Wrong-Property-References schlagen fail-closed fehl.
 
-## Scope- und Rekonstruktionsgrenze
+## Scope und Rekonstruktion
 
 v2 persistiert weder Application-/Window-/Container-Scopes noch Parent Scopes, eine geordnete externe
 Scope Chain oder M8.26-`scope_index`-Provenienz. Es gibt keine URLs, Imports, Filesystem-Pfade,
 Cascade, Merge, Fallbacks oder Live Bindings. Alle referenzierten Values sind vollständig und
 self-contained.
 
-M8.27 ist ausschließlich ein Dokumentformat-Roundtrip. Die bestehende Built-in-Component-
-Rekonstruktion lehnt jedes Resource-tragende Dokument vor der Konstruktion von Runtime-Objekten ab;
-sie verwirft niemals Definitionen oder References. Resource-aware Resolution und Materialisierung
-bilden ausdrücklich die M8.28-Grenze.
+`reconstructBuiltInUiDescription()` revalidiert das veränderliche Dokument vor jeder Component-
+Konstruktion, baut aus den dokumentlokalen Definitionen genau ein privates Dictionary und löst jede
+Reference über den bestehenden expliziten Resolver mit diesem einzelnen Scope auf. Der vollständige
+aufgelöste `TextStyle` wird über den bestehenden Writer in die Runtime Property kopiert. Ungültig
+mutierte Dokumente schlagen atomar fehl; ungenutzte gültige Definitionen sind erlaubt.
+
+Dies ist einmalige Materialisierung und kein Binding. Runtime Components halten weder Resource Key,
+Reference, Dictionary noch Scope und beobachten spätere Resource-Änderungen nicht. Ein erneuter
+Capture des Runtime-Graphen über den Component-Root-v1-Writer schreibt deshalb konkrete inline
+`TextStyle`-Werte, kann aber die ursprüngliche v2-Resource-Identität nicht wiederherstellen. Tooling,
+das Resource Authoring bewahren muss, hält und bearbeitet das `BuiltInUiDescriptionDocument`. Siehe
+[ADR 0198](../adr/0198-m8-resource-aware-reconstruction-and-materialization.md).

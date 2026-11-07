@@ -166,10 +166,11 @@ Ownership-Restore übergeben.
 Exakte Einträge `sasd.ui.ListModel`, `sasd.ui.TableModel` und `sasd.ui.TreeModel` bleiben bekannte
 Schema-Typen, sind aber abstrakt und nicht direkt konstruierbar. Ihre konkreten String-Model-Varianten
 werden leer konstruiert: Items, Rows, Headers und Tree Nodes bleiben ausgeschlossene Application-
-Payloads. Die Reconstruction-API parst kein JSON, führt kein File-I/O aus, lädt keine Resources,
-restauriert keinen transienten Zustand und überträgt Description-Node-Identität nicht in Runtime-
-Components. Siehe [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
-Resource-tragende v2-Dokumente werden abgelehnt, bis M8.28 die explizite Materialisierung ergänzt.
+Payloads. Die Reconstruction-API parst kein JSON, führt kein File-I/O aus, lädt keine externen
+Resources, restauriert keinen transienten Zustand und überträgt Description-Node-Identität nicht
+in Runtime-Components. Siehe [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
+Resource-tragende v2-Dokumente verwenden denselben formatneutralen Reconstruction Entry Point;
+M8.28 materialisiert ihre References einmalig in konkrete Runtime-Werte.
 
 ## Vollständiges normatives Beispiel
 

@@ -34,7 +34,7 @@ struct ComponentPropertyResourceMetadata final {
  * Unknown, malformed, wrong-kind and fabricated descriptors return std::nullopt. An engaged result
  * is only authoring metadata; it neither attaches a ResourceReference to a Component nor changes
  * the six controls' authoritative inline TextStyle runtime values. Resolution, scopes, persistence
- * and reconstruction remain later layers.
+ * and one-time reconstruction materialization remain separate layers.
  */
 [[nodiscard]] std::optional<ComponentPropertyResourceMetadata>
 builtInComponentPropertyResourceMetadata(

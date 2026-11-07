@@ -32,9 +32,9 @@ int main() {
     if (!reconstructed_json || *reconstructed_json != *json) { return 4; }
     std::cout << "Reconstructed canonical UI description matches the original.\n";
 
-    // Runtime controls still expose concrete inline values in M8.27. Build the durable authoring
-    // document explicitly, replace exactly one inline descriptor with a ResourceReference, and do
-    // not claim that parsing the document has established a live runtime binding.
+    // Build the durable v2 authoring document explicitly and replace exactly one inline descriptor
+    // with a ResourceReference. Reconstruction resolves that reference once; the runtime Label
+    // receives a normal concrete TextStyle and retains no binding or resource identity.
     sasd::ui::Label heading{"Heading"};
     const auto inline_json = sasd::ui::encodeBuiltInUiDescriptionJson(heading);
     if (!inline_json) { return 5; }
@@ -63,9 +63,22 @@ int main() {
     if (!v2_json) { return 10; }
     const auto loaded_v2 = sasd::ui::parseBuiltInUiDescriptionJsonV2(*v2_json);
     if (!loaded_v2) { return 11; }
+    const auto reconstructed_v2 =
+        sasd::ui::reconstructBuiltInUiDescription(*loaded_v2.document);
+    if (!reconstructed_v2) { return 12; }
+    const auto* materialized_label =
+        dynamic_cast<const sasd::ui::Label*>(reconstructed_v2.root.get());
+    const sasd::ui::TextStyle expected_style{
+        sasd::ui::Color::bright_cyan, true, false, false, false};
+    if (materialized_label == nullptr || materialized_label->textStyle() != expected_style) {
+        return 13;
+    }
     std::cout << "\nDocument-local resource: theme.heading\n"
               << "Property: sasd.ui.Label.textStyle -> theme.heading\n"
               << "JSON formatVersion: 2\n"
-              << "Durable description only; runtime resource reconstruction is not active.\n"
+              << "Parse: PASS\n"
+              << "Reconstruct: PASS\n"
+              << "Materialized Label.textStyle: bright-cyan / bold\n"
+              << "Resource binding retained: no\n"
               << *v2_json;
 }

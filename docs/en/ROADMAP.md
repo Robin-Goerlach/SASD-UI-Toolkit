@@ -332,10 +332,10 @@ metadata coverage. The separate resource system and wider design-time attributes
   - [x] resource references and explicit resolution/scoping
     - [x] resource-reference metadata and authoring contract (ADR 0195)
     - [x] explicit resource resolution and scoping (ADR 0196)
-  - [ ] durable resource description, encoding and reconstruction
+  - [x] durable resource description, encoding and reconstruction
     - [x] resource-aware format-neutral description and canonical JSON v2 encoding/validated
       loading (ADR 0197)
-    - [ ] resource-aware reconstruction/materialization
+    - [x] resource-aware reconstruction/materialization (ADR 0198)
   - [ ] richer resource families when justified by real backend consumers
 - [ ] IDE/tooling integration points
 
