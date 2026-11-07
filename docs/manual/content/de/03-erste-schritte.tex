@@ -1,0 +1,133 @@
+% SPDX-License-Identifier: MIT
+\chapter{Die erste eigene Oberfläche}\label{chap:first}
+\ChapterSummary{An einem kleinen Formular lernen Sie, wie Widgets
+erzeugt, besessen und verschachtelt werden. Sie binden einen Button
+an eine Aktion und verstehen, welche Aufgaben eine reale
+Anwendungshülle außerhalb dieses bewusst kleinen Beispiels erledigt.}
+
+\section{Vom Formular zum Komponentenbaum}
+Bei SASD UI Toolkit schreiben Sie die sichtbare Oberfläche als
+C++-Objekte. Der \term{Window}-Container ist eine Wurzel,
+\term{VBox} ordnet Elemente untereinander an, und \term{Label},
+\term{TextField} sowie \term{Button} bilden die sichtbaren Teile.
+Eine \term{Container::emplace}-Operation erzeugt eine Komponente,
+übernimmt ihr Eigentum und gibt eine Referenz auf sie zurück.
+
+\begin{lstlisting}[language=SASDCpp,caption={Ein kleiner Formularbaum, bewusst ohne Host/Eventloop}]
+#include <sasd/ui/window.hpp>
+#include <sasd/ui/vbox.hpp>
+#include <sasd/ui/label.hpp>
+#include <sasd/ui/text_field.hpp>
+#include <sasd/ui/button.hpp>
+
+void buildGreetingForm(sasd::ui::Window& window) {
+    using namespace sasd::ui;
+    auto& column = window.emplace<VBox>();
+    column.setSpacing(1);
+
+    column.emplace<Label>("Wie heißen Sie?");
+    auto& name = column.emplace<TextField>();
+    auto& message = column.emplace<Label>("Bereit");
+    auto& hello = column.emplace<Button>("Begrüßen");
+
+    hello.setOnActivated([&name, &message] {
+        message.setText("Hallo, " + std::string{name.text()});
+    });
+}
+\end{lstlisting}
+
+Das ist \textbf{ein syntaktisch nutzbarer Formularbaustein},
+aber absichtlich \emph{keine vollständige Anwendung}.
+Eine laufende Terminalanwendung muss zusätzlich das
+\term{TerminalBackend} öffnen, Eingaben abholen,
+Fokus und Pointer-Routing betreiben, Layout ausführen
+und die Darstellung aktualisieren. Diese Verantwortung
+zeigt das ausführlich kommentierte
+\filepath{examples/terminal_form_demo.cpp}; es ist der
+richtige Ausgangspunkt für einen eigenen Host.
+
+\section{Was die paar Zeilen wirklich tun}
+Die Referenz \texttt{column} ist kein Besitzer.
+Die \texttt{Window}-Wurzel besitzt ihre \texttt{VBox},
+und die \texttt{VBox} besitzt wiederum ihre Kinder.
+Die Referenzen \texttt{name}, \texttt{message} und
+\texttt{hello} sind gültig, solange die Komponenten im
+Baum verbleiben. Beim Freigeben des Fensters endet auch
+ihre Lebensdauer.
+
+Der Lambda-Callback liest den aktuellen Text des
+\term{TextField} und ersetzt die Beschriftung des Labels.
+Die sichtbare Aktualisierung wird durch die
+Invalidierungs-/Präsentationsmechanik der laufenden
+Anwendung verarbeitet. Der Callback allein öffnet
+keine Terminal-Session und pumpt keine Ereignisse.
+
+\section{Eine naheliegende Erweiterung}
+Ein zweiter Button kann die Eingabe zurücksetzen:
+\begin{lstlisting}[language=SASDCpp]
+auto& clear = column.emplace<Button>("Leeren");
+clear.setOnActivated([&name, &message] {
+    name.setText("");
+    message.setText("Bereit");
+});
+\end{lstlisting}
+Die gezeigten Zeilen gehören \emph{innerhalb} von
+\texttt{buildGreetingForm}, nach dem Aufbau der zuvor
+verwendeten Variablen. Die Reihenfolge ist bedeutsam:
+Sie müssen den referenzierten Widgets längeres Leben
+garantieren als den installierten Callbacks.
+
+\section{Der nächste Schritt: ein vollständiger Host}
+In der realen Terminal-Demo folgen auf den Widget-Aufbau
+die Einrichtung von \term{FocusManager}, \term{PointerRouter},
+Präsentations-Sink und den Callback-Bindungen.
+Der Host pollt Events, vermittelt sie an die
+zuständigen Controls und präsentiert den geänderten
+Frame. Das ist kein Versehen und keine fehlende
+magische \texttt{Application::run}-Methode:
+\term{Application} bietet derzeit unter anderem
+\texttt{processEvents()} und
+\texttt{processRoutedEvents()}, aber keinen versteckten
+universellen Desktop-Message-Loop.
+
+\section{Was Sie aus dem Beispiel mitnehmen}
+Der Anwendungsautor beschreibt \emph{Bedeutung und Verhalten}.
+Er verwaltet eine eindeutige Eigentumshierarchie und
+reagiert auf Ereignisse. Backend, Eingabegeräte, Messung
+und Darstellung werden bewusst als separate Teile
+komponiert, damit die gleiche Semantik später auf
+mehreren Ausgabegeräten tragfähig bleibt.
+
+\section{Vom Quellausschnitt zur laufenden Demo}
+Die mitgelieferte Demo ist eine praktische Vorlage, aber nicht
+durch bloßes Kopieren des obigen Widget-Baums ersetzbar.
+Suchen Sie in \filepath{examples/terminal_form_demo.cpp}
+nacheinander die folgenden Verantwortlichkeiten:
+\begin{enumerate}
+\item \textbf{Aufbau:} Hier entstehen Window, Layout-Container,
+Controls, Commands und Menüs. Neue Widgets sollten im richtigen
+Besitzbaum erzeugt werden.
+\item \textbf{Messung und Platzierung:} Nach dem Aufbau und bei
+Größenänderungen wird der verfügbare Anzeigebereich neu vermessen
+und angeordnet. Eine reine Textänderung benötigt eventuell eine
+neue Messung.
+\item \textbf{Eingabe:} Die Host-Schleife fragt das Terminal-Backend
+nach Ereignissen. Fokuswechsel, Textverarbeitung, Menüinteraktion
+und Pointer-Routing sind unterschiedliche Schritte.
+\item \textbf{Präsentation:} Der Präsentationspfad erzeugt den
+sichtbaren Zustand und übergibt den Terminal-Frame zur Ausgabe.
+\item \textbf{Lebensdauer:} Beim normalen Beenden muss die
+Terminal-Sitzung ihre Geräteeinstellungen zurücksetzen.
+\end{enumerate}
+Für den ersten eigenen Versuch genügt es, einen zusätzlichen
+Button innerhalb des vorhandenen Demo-Baums anzulegen,
+dessen Aktion zunächst nur einen Label-Text verändert.
+Prüfen Sie anschließend Tab-Navigation, Bildschirmaktualisierung
+und Verhalten nach Vergrößerung beziehungsweise Verkleinerung
+des Terminalfensters. Erst danach sollten Sie neue
+Menüs oder Systemoperationen hinzufügen.
+
+\PracticalTip{Ersetzen Sie zuerst in der Terminal-Demo nur
+den Formulartitel und einen Button-Callback. Vergleichen Sie
+danach, was beim Hinzufügen eines Widgets an Fokusfolge,
+Layout und Darstellung ebenfalls betroffen ist.}

@@ -1,0 +1,92 @@
+% SPDX-License-Identifier: MIT
+\chapter{Kurznachschlagewerk}\label{chap:appendix}
+\ChapterSummary{Zum schnellen Nachschlagen finden Sie
+hier die wichtigsten Einstiegspunkte, Build-Befehle,
+Header-Dateien und eine kompakte Begriffsliste.
+Die Aufstellung ist bewusst keine unveränderliche,
+vollständige API-Spezifikation.}
+
+\section{Kompakte Orientierungsübersicht}
+
+\noindent\begin{tabularx}{\dimexpr\linewidth-14pt\relax}{@{}p{39mm}X@{}}
+\toprule
+Sie suchen & Beginnen Sie hier\\\midrule
+Terminal-Beispiel & \filepath{examples/terminal_form_demo.cpp}\\
+Grafik-Beispiel & \filepath{examples/rendered_sdl3_form_demo.cpp}\\
+Core-API & \filepath{include/sasd/ui/}\\
+Terminal-API & \filepath{include/sasd/ui/terminal/}\\
+Rendered-API & \filepath{include/sasd/ui/rendered/}\\
+CMake-Paket & \filepath{CMakeLists.txt} und \filepath{cmake/}\\
+Entscheidungen & \filepath{docs/adr/README.md}\\
+Roadmap & \filepath{docs/de/ROADMAP.md}\\
+Tests & \filepath{tests/}\\
+\bottomrule
+\end{tabularx}
+
+\section{Übliche Build-Kommandos}
+\begin{lstlisting}[language=bash]
+cmake -S . -B build -DSASD_UI_BUILD_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+Für Debug/Release/Visual-Studio-Besonderheiten
+siehe Kapitel \ref{chap:install}.
+
+\section{Ausgewählte Klassen und Header}
+
+\noindent\begin{tabularx}{\dimexpr\linewidth-14pt\relax}{@{}p{42mm}X@{}}
+\toprule
+Klasse / Thema & Header relativ zu include/\\\midrule
+Window / Container & \filepath{sasd/ui/window.hpp}, \filepath{sasd/ui/container.hpp}\\
+Label / Button / TextField & \filepath{sasd/ui/label.hpp},
+ \filepath{sasd/ui/button.hpp}, \filepath{sasd/ui/text_field.hpp}\\
+Checkbox / Radio & \filepath{sasd/ui/check_box.hpp}, \filepath{sasd/ui/radio_button.hpp}\\
+ComboBox & \filepath{sasd/ui/combo_box.hpp}\\
+VBox / HBox & \filepath{sasd/ui/vbox.hpp}, \filepath{sasd/ui/hbox.hpp}\\
+Weitere Layouts & \filepath{sasd/ui/grid_layout.hpp}, \filepath{sasd/ui/form_layout.hpp}\\
+Command / Shortcut & \filepath{sasd/ui/command.hpp}, \filepath{sasd/ui/shortcut.hpp}\\
+Menüs & \filepath{sasd/ui/menu_model.hpp}\\
+Listen / Tabellen & \filepath{sasd/ui/list_model.hpp}, \filepath{sasd/ui/table_model.hpp}\\
+Baum & \filepath{sasd/ui/tree_model.hpp}, \filepath{sasd/ui/tree_view.hpp}\\
+\bottomrule
+\end{tabularx}
+
+\section{Begriffsliste}
+\begin{description}[style=nextline]
+\item[Backend] Bindeglied zu einem konkreten
+Eingabe- und Ausgabesystem.
+\item[Component] Objekt mit ausdrücklicher
+Besitz- und Lebensdauersemantik.
+\item[Container] Besitzt Komponenten; sichtbare
+Widgets bilden einen untergeordneten Baum.
+\item[Command] Nichtvisuelle Aktion, die
+von mehreren UI-Auslösern genutzt werden kann.
+\item[Event] Eingangsereignis, etwa Key,
+TextInput, Pointer oder Resize.
+\item[MeasurementContext] Liefert Metriken
+einer konkreten Präsentationsumgebung.
+\item[Model] Stellt Daten bereit und meldet Änderungen.
+\item[SelectionModel] Hält die aktuelle Auswahl
+getrennt von der Darstellung.
+\item[PresentationSink] Erzeugt darstellbare
+Information aus Widget-Zuständen.
+\item[Viewport] Sichtbarer Ausschnitt einer
+größeren Datenmenge.
+\item[Widget] Sichtbares semantisches
+Bedienelement im Core.
+\end{description}
+
+\section{Hinweise zur Pflege des Handbuchs}
+Neue oder umbenannte APIs müssen gegen
+Header und Tests abgeglichen werden.
+Für jede Änderung an dieser deutschen
+Ausgabe kann eine Sprachversion ein
+entsprechendes Kapitel unter
+\filepath{docs/manual/content/<lang>/}
+erhalten. Ausstehende Übersetzungen
+sollen sichtbar bleiben; eine
+automatische Rückfall-Übersetzung
+ist kein Ersatz für fachliche
+Prüfung. Ein Kapitel darf nicht
+eine M5-Planung als bereits
+lieferfähige M2-Funktion ausgeben.

@@ -1,0 +1,173 @@
+% SPDX-License-Identifier: MIT
+\chapter{Praxis: eine administrative Bedienoberfläche}\label{chap:practice}
+\ChapterSummary{Sie planen eine kleine Administrationstool-
+Oberfläche nach den Prinzipien des SASD UI Toolkit:
+ein Datenmodell für den Zustand, eine kontrollierte Auswahl,
+Commands für Änderungen und eine Darstellung, die
+den Benutzer nicht über ihre Berechtigungen täuscht.}
+
+\section{Beispielaufgabe und Grundsätze}
+Angenommen, eine Anwendung soll eine Liste
+von Diensten anzeigen, deren Status lesen
+und einen ausgewählten Dienst neu laden.
+Für SASD Gatehold wäre dieselbe
+Struktur für Firewallregeln oder
+Netzwerkschnittstellen geeignet.
+Wir unterscheiden vier Ebenen:
+\begin{enumerate}
+\item Die \term{Domäne} kennt den wirklichen
+Zustand des Systems und validiert Aktionen.
+\item Das \term{Model} liefert einen
+lesbaren Ausschnitt der Domänendaten.
+\item Die \term{View} verwaltet Darstellung
+und aktuelle Auswahl.
+\item Ein \term{Command} beschreibt
+eine anforderungsgesteuerte Aktion.
+\end{enumerate}
+Die UI darf anzeigen, dass ein Command
+nicht verfügbar ist. Das ist eine
+wichtige Rückmeldung, aber keine
+Authentisierung oder Autorisierung.
+
+\section{Schritt eins: nur lesen}
+Beginnen Sie mit einem \term{StringTableModel}
+aus \texttt{Dienst} und \texttt{Status}.
+Füllung und Erneuerung des Modells
+geschehen getrennt vom Renderer.
+Eine beispielhafte Quelle könnte einen
+Snapshot nach erfolgreicher Statusabfrage
+zurückgeben. Ein \term{TableView}
+zeigt die ersten sichtbaren Zeilen;
+das \term{TableSelectionModel}
+identifiziert die aktuell gewählte Zelle.
+
+\begin{lstlisting}[language=SASDCpp]
+StringTableModel services(
+    {"Dienst", "Status"},
+    {{"dns", "aktiv"}, {"proxy", "aktiv"}});
+TableSelectionModel selection;
+selection.setModel(&services);
+
+TableView view;
+view.setModel(&services);
+view.setSelectionModel(&selection);
+view.setViewport(0, 10, 0, 2);
+\end{lstlisting}
+In einem realen Fenster muss die View in
+einen Container aufgenommen werden.
+Dieser Ausschnitt demonstriert den
+Datenvertrag unabhängig vom Host.
+Er ersetzt weder den Eventloop
+noch die Terminal-Integration.
+
+\section{Schritt zwei: Aktion mit Guard}
+Ein \term{Command} namens
+\emph{Dienst neu laden} soll nur bei
+einem passenden Datensatz aktiviert werden.
+Dabei müssen mindestens folgende
+Fragen fachlich beantwortet sein:
+Existiert der Datensatz noch?
+Ist der Status frisch?
+Ist die Aktion für diesen Dienst erlaubt?
+Hat der Ausführende die Berechtigung?
+Ist eine Bestätigung erforderlich?
+
+Die UI kann \texttt{setEnabled(false)}
+setzen, bis alle sichtbaren Vorbedingungen
+gegeben sind. Unmittelbar vor der
+tatsächlichen Änderung müssen die
+sicherheitsrelevanten Bedingungen im
+zustandstragenden Dienst \emph{erneut}
+geprüft werden. Ein alter Viewport
+oder ein verzögertes Tastaturereignis
+darf nicht zum unkontrollierten
+Neustart eines anderen Dienstes führen.
+
+\section{Schritt drei: Rückmeldung und Fehlerbild}
+Aus einer administrativen Aktion
+müssen für Benutzer erkennbare
+Zustände hervorgehen: \emph{angefordert},
+\emph{in Arbeit}, \emph{erfolgreich},
+\emph{fehlgeschlagen} und gegebenenfalls
+\emph{zurückgenommen}.
+Ein \term{Label} kann den aktuellen
+Status anzeigen; eine
+\term{ListView} könnte eine
+kleine Ereignisliste darstellen.
+Die echte Protokollierung und
+Auditierung verbleiben außerhalb
+der UI-Bibliothek.
+
+\section{Schritt vier: robuste Eingabe}
+Testen Sie nicht nur den Glücksfall.
+Was passiert beim Resize während
+eines offenen Popupmenüs?
+Was bei einem Model-Reset genau nach
+der Zeilenauswahl?
+Was bei einer Aktion, die das aktuelle
+Fenster schließt?
+Was bei einem Terminal ohne Maus?
+Was passiert nach Verlust des
+Terminal-/SSH-Kanals?
+Eine nützliche Verwaltungsoberfläche
+erhält für solche Fragen explizite
+Antworten und automatisierte Tests.
+
+\section{Reale Projektreihenfolge}
+Für ein erstes wartbares Werkzeug ist
+diese Reihenfolge sinnvoll:
+\begin{enumerate}
+\item \textbf{Lesepfad:} Daten korrekt
+laden und ohne Veränderung anzeigen.
+\item \textbf{Fokuspfad:} Vollständige
+Tastaturbedienung nachweisen.
+\item \textbf{Selektion:} Datensatz
+und Auswahl sichtbar abgleichen.
+\item \textbf{Commands:} Erst lokale
+Simulation, dann echte, abgesicherte
+Systemoperation.
+\item \textbf{Fehlerpfad:} Status,
+Auditlog und Wiederherstellbarkeit.
+\item \textbf{Zweiter Backend-Pfad:}
+Wenn erforderlich dieselbe Semantik
+mit Rendered testen.
+\end{enumerate}
+
+\section{Abnahme eines sicheren Administrationsdialogs}
+Ein erster erfolgreicher Klick ist kein ausreichender
+Abnahmetest für eine Verwaltungsoberfläche. Definieren
+Sie vor der Freigabe beobachtbare Ergebnisse für
+mindestens die folgenden Situationen:
+
+\begin{itemize}
+\item \textbf{Nur lesen:} Das Anzeigen und Navigieren der
+Dienstliste verändert den Systemzustand nicht.
+\item \textbf{Keine Auswahl:} Der Änderungs-Command ist
+deaktiviert; auch ein manuell ausgelöster Aufruf ändert nichts.
+\item \textbf{Veralteter Datensatz:} Nach Modell-Reset wird
+eine alte Auswahl nicht stillschweigend auf den nun an
+derselben Position stehenden Dienst übertragen.
+\item \textbf{Fehlende Berechtigung:} Der zuständige
+Systemdienst lehnt die Operation unabhängig vom
+Enabled-Zustand des sichtbaren Buttons ab.
+\item \textbf{Fehler und Wiederholung:} Ein fehlgeschlagener
+Aufruf liefert nachvollziehbare Rückmeldung und führt
+nicht zu unkontrollierten Mehrfachausführungen.
+\item \textbf{Schwaches Terminal:} Alle Kernfunktionen sind
+ohne Maus erreichbar; Escape und Tab bleiben vorhersagbar.
+\end{itemize}
+
+Beziehen Sie die Fehlerfälle in automatisierte Domänentests
+ein. UI-Tests untersuchen ergänzend die sichtbaren Zustände
+und das Eventrouting. Verwechseln Sie diese beiden
+Verantwortlichkeiten nicht: Eine gesperrte Schaltfläche
+ist eine Bedienhilfe, keine Sicherheitsgrenze.
+
+\PracticalTip{Nehmen Sie zum Start eine
+\emph{read-only} Bildschirmseite,
+beispielsweise eine Dienstliste.
+Die Kombination aus TableModel,
+SelectionModel und einem deaktivierten
+Command reicht aus, um den
+gesamten Daten- und Interaktionsweg
+ohne Risiko zu proben.}

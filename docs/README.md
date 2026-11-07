@@ -4,6 +4,15 @@ This directory contains the project documentation in **German** and **English**.
 
 > **Project status:** M2 Terminal Preview / v0.1.0 is complete and published. M3 rendered desktop validation is in progress. The documented API remains pre-1.0 and is not yet a long-term source-compatibility promise.
 
+## Anwenderhandbuch / User guide
+
+- **[Anwenderhandbuch (Deutsch, LaTeX)](manual/README.md)** — ausführliches,
+  modular aufgebautes Entwicklerhandbuch mit zehn Kapiteln, Kapitel-Summaries,
+  Beispielen, Model/View, Commands, Backends und Fehlersuche.
+- **[LaTeX-Hauptdatei](manual/main.tex)** — Druckvorlage und
+  Sprachauswahl. Die vollständige Ausgabe liegt gegenwärtig auf Deutsch
+  vor; Englisch ist für spätere Übersetzung vorbereitet.
+
 ## Content
 
 ### English

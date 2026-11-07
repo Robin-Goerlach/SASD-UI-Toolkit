@@ -1,0 +1,47 @@
+name: LaTeX User Manual
+
+on:
+  pull_request:
+    paths:
+      - 'docs/manual/**'
+      - '.github/workflows/manual.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/manual/**'
+      - '.github/workflows/manual.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  german-manual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LuaLaTeX and PDF QA tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk texlive-luatex texlive-latex-extra \
+            texlive-lang-german texlive-fonts-recommended poppler-utils
+      - name: Build reading and duplex-print PDFs
+        run: |
+          make -C docs/manual pdf
+          make -C docs/manual pdf-print
+      - name: Check extracted PDF text and metadata
+        run: |
+          set -euo pipefail
+          for pdf in docs/manual/build/main.pdf docs/manual/build/print.pdf; do
+            pdfinfo "$pdf" | grep -q 'Pages:'
+            pdftotext "$pdf" - | grep -q 'Willkommen beim SASD UI Toolkit'
+            pdftotext "$pdf" - | grep -q 'Fehlersuche und bewusste Grenzen'
+          done
+      - name: Publish PDF build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sasd-ui-manual-de
+          path: |
+            docs/manual/build/main.pdf
+            docs/manual/build/print.pdf
+          if-no-files-found: error
