@@ -327,6 +327,13 @@ See the full [English roadmap](docs/en/ROADMAP.md) or [German roadmap](docs/de/R
 
 Documentation is maintained in German and English.
 
+**For AI coding assistants creating applications WITH this library:** use the
+[consumer Agent Skill](.agents/skills/sasd-ui-toolkit/SKILL.md). It includes a
+version-aware workflow, focused references, and a compiled example against the
+installed CMake package. Agents **developing the toolkit itself** must follow
+the separate [maintainer instructions](AGENTS.md). The skill does not replace
+the public headers, tests or human documentation.
+
 ### English
 
 - [Goals and scope](docs/en/GOALS_AND_SCOPE.md)
