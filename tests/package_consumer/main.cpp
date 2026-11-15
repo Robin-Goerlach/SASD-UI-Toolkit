@@ -218,9 +218,9 @@ int main() {
         heading_reference->kind() == sasd::ui::ResourceKind::text_style &&
         heading_reference->key().value() == "theme.heading";
 
-    // Exercise the complete installed M8.27 authoring path without pretending that parsing also
-    // reconstructs a live binding. Start from a complete inline Label document, replace its exact
-    // textStyle slot with the typed reference, then prove the v2 writer/reader preserve both values.
+    // Exercise the complete installed resource pipeline. Start from a complete inline Label
+    // document, replace its exact textStyle slot with the typed reference, encode/parse v2, and
+    // reconstruct through the same format-neutral public entry point used by v1 documents.
     sasd::ui::Label consumer_label{"Heading"};
     const auto consumer_label_v1 = sasd::ui::encodeBuiltInUiDescriptionJson(consumer_label);
     auto consumer_label_document = consumer_label_v1
@@ -245,12 +245,19 @@ int main() {
             const auto loaded = v2
                 ? sasd::ui::parseBuiltInUiDescriptionJsonV2(*v2)
                 : sasd::ui::BuiltInUiDescriptionJsonParseResult{};
-            resource_description_linked = loaded &&
+            auto materialized = loaded
+                ? sasd::ui::reconstructBuiltInUiDescription(*loaded.document)
+                : sasd::ui::BuiltInUiDescriptionReconstructionResult{};
+            const auto* materialized_label =
+                dynamic_cast<const sasd::ui::Label*>(materialized.root.get());
+            resource_description_linked = loaded && materialized &&
                 loaded.document->text_style_resources.size() == 1 &&
                 loaded.document->text_style_resources.front().key.value() == "theme.heading" &&
                 loaded.document->nodes.front().resource_reference_properties.size() == 1 &&
                 loaded.document->nodes.front().resource_reference_properties.front().reference ==
-                    *heading_reference;
+                    *heading_reference &&
+                materialized_label != nullptr &&
+                materialized_label->textStyle() == heading_style;
         }
     }
 

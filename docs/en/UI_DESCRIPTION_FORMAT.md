@@ -184,10 +184,11 @@ after property, reference and ordered ownership restoration all succeed.
 Exact `sasd.ui.ListModel`, `sasd.ui.TableModel` and `sasd.ui.TreeModel` entries remain known schema
 types but are abstract and not directly constructible. Their concrete String-model variants are
 constructed empty: items, rows, headers and tree nodes remain excluded application payload. The
-reconstruction API does not parse JSON, perform file I/O, load resources, restore transient state or
-carry description node identity into runtime Components. See
+reconstruction API does not parse JSON, perform file I/O, load external resources, restore transient
+state or carry description node identity into runtime Components. See
 [ADR 0188](../adr/0188-m8-built-in-ui-description-reconstruction.md).
-Resource-bearing v2 documents are rejected until M8.28 adds explicit materialization.
+Resource-bearing v2 documents use the same format-neutral reconstruction entry point; M8.28
+materializes their references once into concrete runtime values.
 
 ## Normative complete example
 

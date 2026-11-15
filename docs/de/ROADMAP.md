@@ -341,10 +341,10 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
   - [x] Resource References und explizite Resolution/Scopes
     - [x] Resource-Reference-Metadaten und Authoring-Vertrag (ADR 0195)
     - [x] Explizite Resource Resolution und Scopes (ADR 0196)
-  - [ ] Dauerhafte Resource-Beschreibung, Encoding und Rekonstruktion
+  - [x] Dauerhafte Resource-Beschreibung, Encoding und Rekonstruktion
     - [x] Resource-aware formatneutrale Beschreibung und kanonisches JSON-v2-Encoding/validiertes
       Laden (ADR 0197)
-    - [ ] Resource-aware Rekonstruktion/Materialisierung
+    - [x] Resource-aware Rekonstruktion/Materialisierung (ADR 0198)
   - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer
 - [ ] IDE-/Tooling-Schnittstellen
 

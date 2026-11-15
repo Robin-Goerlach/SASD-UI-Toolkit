@@ -103,12 +103,21 @@ stores no inline fallback. Its kind must equal the slot's resource metadata and 
 to a same-kind definition in this document. Dangling, external, unknown-kind and wrong-property
 references fail closed.
 
-## Scope and reconstruction boundary
+## Scope and reconstruction
 
 v2 does not persist application/window/container scopes, parent scopes, an ordered external scope
 chain or M8.26 `scope_index` provenance. It has no URLs, imports, filesystem paths, cascade, merge,
 fallback or live binding. All referenced values are complete and self-contained.
 
-M8.27 is a document-format roundtrip only. Existing built-in Component reconstruction rejects any
-resource-bearing document before constructing runtime objects; it never drops definitions or
-references. Resource-aware resolution and materialization are the explicit M8.28 boundary.
+`reconstructBuiltInUiDescription()` revalidates the mutable document before constructing any
+Component, builds one private dictionary from the document-local definitions, and resolves each
+reference through the existing explicit resolver with that single scope. The resolved complete
+`TextStyle` is copied into the runtime property through its existing writer. Invalid mutated
+documents fail atomically; unused valid definitions are allowed.
+
+This is one-time materialization, not a binding. Runtime Components retain no resource key,
+reference, dictionary or scope and do not observe later resource changes. Consequently recapturing
+the runtime graph through the Component-root v1 writer records concrete inline `TextStyle` values but
+cannot recreate the original v2 resource identity. Tooling that must preserve resource authoring
+must retain and edit the `BuiltInUiDescriptionDocument`. See
+[ADR 0198](../adr/0198-m8-resource-aware-reconstruction-and-materialization.md).

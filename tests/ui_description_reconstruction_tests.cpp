@@ -16,6 +16,8 @@
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/resource_key.hpp>
+#include <sasd/ui/resource_reference.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/table_model.hpp>
 #include <sasd/ui/table_selection_model.hpp>
@@ -98,6 +100,38 @@ std::unique_ptr<Component> reconstruct(const Component& root) {
     return std::move(result.root);
 }
 
+ResourceKey resourceKey(std::string_view value) {
+    auto key = ResourceKey::create(value);
+    CHECK(key.has_value());
+    return std::move(*key);
+}
+
+TextStyle replaceTextStyleWithResource(BuiltInUiDescriptionDocument& document,
+                                       std::string_view component_type,
+                                       std::string_view resource_key) {
+    const auto node = std::find_if(document.nodes.begin(), document.nodes.end(),
+                                   [&](const auto& candidate) {
+        return candidate.type_id == component_type;
+    });
+    CHECK(node != document.nodes.end());
+    const auto property = std::find_if(
+        node->text_style_properties.begin(), node->text_style_properties.end(),
+        [&](const auto& candidate) {
+            return candidate.declaring_type_id == component_type &&
+                   candidate.property_id == "textStyle";
+        });
+    CHECK(property != node->text_style_properties.end());
+    const TextStyle previous = property->value;
+    node->text_style_properties.erase(property);
+
+    auto reference = ResourceReference::create(
+        ResourceKind::text_style, resourceKey(resource_key));
+    CHECK(reference.has_value());
+    node->resource_reference_properties.push_back(
+        {std::string{component_type}, "textStyle", std::move(*reference)});
+    return previous;
+}
+
 } // namespace
 
 TEST_CASE("UI description reconstruction preserves a styled standalone Label byte for byte") {
@@ -124,6 +158,150 @@ TEST_CASE("UI description reconstruction preserves a styled standalone Label byt
     CHECK(label->sizeConstraints() == original.sizeConstraints());
     CHECK(label->textStyle() == style);
     CHECK(encoded(*result.root) == before);
+}
+
+TEST_CASE("UI description reconstruction materializes a resource-backed Label once") {
+    const TextStyle heading_style{Color::bright_cyan, true, false, false, false};
+    std::unique_ptr<Component> runtime;
+    {
+        Label heading{"Heading"};
+        auto document = parsed(heading);
+        document.text_style_resources.push_back(
+            {resourceKey("theme.heading"), heading_style});
+        replaceTextStyleWithResource(document, "sasd.ui.Label", "theme.heading");
+
+        const auto v2 = encodeBuiltInUiDescriptionJsonV2(document);
+        CHECK(v2.has_value());
+        const auto loaded = parseBuiltInUiDescriptionJsonV2(*v2);
+        CHECK(loaded);
+        auto result = reconstructBuiltInUiDescription(*loaded.document);
+        CHECK(result);
+        runtime = std::move(result.root);
+        // v2 JSON, document and the Reconstructor's private dictionary all die at this scope.
+    }
+
+    const auto* label = dynamic_cast<const Label*>(runtime.get());
+    CHECK(label != nullptr);
+    CHECK(label->textStyle() == heading_style);
+
+    // Runtime capture remains the established v1 concrete-value path. It cannot and must not
+    // reverse-engineer the discarded authoring key/reference identity.
+    const auto recaptured = encodeBuiltInUiDescriptionJson(*runtime);
+    CHECK(recaptured.has_value());
+    CHECK(recaptured->find("\"formatVersion\": 1") != std::string::npos);
+    CHECK(recaptured->find("theme.heading") == std::string::npos);
+    CHECK(recaptured->find("resource-reference") == std::string::npos);
+}
+
+TEST_CASE("UI description reconstruction materializes all six resource-capable controls") {
+    Window original;
+    original.emplace<Label>("Heading");
+    original.emplace<Button>("Action");
+    original.emplace<TextField>("Input");
+    original.emplace<CheckBox>("Check");
+    original.emplace<RadioButton>();
+    original.emplace<ComboBox>(std::vector<std::string>{"One", "Two"});
+
+    auto document = parsed(original);
+    const TextStyle heading_style{Color::bright_cyan, true, false, true, false};
+    const TextStyle control_style{Color::bright_yellow, false, true, false, true};
+    document.text_style_resources.push_back(
+        {resourceKey("theme.heading"), heading_style});
+    document.text_style_resources.push_back(
+        {resourceKey("theme.controls"), control_style});
+    replaceTextStyleWithResource(document, "sasd.ui.Label", "theme.heading");
+    replaceTextStyleWithResource(document, "sasd.ui.Button", "theme.controls");
+    replaceTextStyleWithResource(document, "sasd.ui.TextField", "theme.heading");
+    replaceTextStyleWithResource(document, "sasd.ui.CheckBox", "theme.controls");
+    replaceTextStyleWithResource(document, "sasd.ui.RadioButton", "theme.heading");
+    replaceTextStyleWithResource(document, "sasd.ui.ComboBox", "theme.controls");
+
+    const auto json = encodeBuiltInUiDescriptionJsonV2(document);
+    CHECK(json.has_value());
+    const auto loaded = parseBuiltInUiDescriptionJsonV2(*json);
+    CHECK(loaded);
+    auto result = reconstructBuiltInUiDescription(*loaded.document);
+    CHECK(result);
+    auto components = flatten(*result.root);
+    auto* label = firstExact<Label>(components);
+    auto* button = firstExact<Button>(components);
+    auto* field = firstExact<TextField>(components);
+    auto* check = firstExact<CheckBox>(components);
+    auto* radio = firstExact<RadioButton>(components);
+    auto* combo = firstExact<ComboBox>(components);
+    CHECK(label && button && field && check && radio && combo);
+    CHECK(label->textStyle() == heading_style);
+    CHECK(button->textStyle() == control_style);
+    CHECK(field->textStyle() == heading_style);
+    CHECK(check->textStyle() == control_style);
+    CHECK(radio->textStyle() == heading_style);
+    CHECK(combo->textStyle() == control_style);
+
+    // Three controls resolved the same resource, but each owns an ordinary TextStyle value.
+    label->setTextStyle({Color::red});
+    CHECK(field->textStyle() == heading_style);
+    CHECK(radio->textStyle() == heading_style);
+}
+
+TEST_CASE("UI description reconstruction keeps inline and unused-resource semantics") {
+    Window original;
+    auto& inline_label = original.emplace<Label>("Inline");
+    const TextStyle inline_style{Color::green, false, true, false, false};
+    inline_label.setTextStyle(inline_style);
+    original.emplace<Button>("Resource");
+
+    auto document = parsed(original);
+    const TextStyle button_style{Color::bright_red, true, false, false, true};
+    document.text_style_resources.push_back(
+        {resourceKey("theme.button"), button_style});
+    document.text_style_resources.push_back(
+        {resourceKey("theme.unused"), {Color::blue}});
+    replaceTextStyleWithResource(document, "sasd.ui.Button", "theme.button");
+
+    auto result = reconstructBuiltInUiDescription(document);
+    CHECK(result);
+    auto components = flatten(*result.root);
+    CHECK(firstExact<Label>(components)->textStyle() == inline_style);
+    CHECK(firstExact<Button>(components)->textStyle() == button_style);
+}
+
+TEST_CASE("UI description reconstruction rejects mutated resource documents atomically") {
+    Label original{"Heading"};
+    auto valid = parsed(original);
+    const TextStyle original_inline = replaceTextStyleWithResource(
+        valid, "sasd.ui.Label", "theme.heading");
+    valid.text_style_resources.push_back(
+        {resourceKey("theme.heading"), {Color::bright_cyan, true}});
+
+    auto missing_target = valid;
+    missing_target.text_style_resources.clear();
+    const auto missing_result = reconstructBuiltInUiDescription(missing_target);
+    CHECK(!missing_result);
+    CHECK(missing_result.root == nullptr);
+    CHECK(missing_result.error == UiDescriptionReconstructionErrorCode::invalid_document);
+
+    auto duplicate_resource = valid;
+    duplicate_resource.text_style_resources.push_back(
+        {resourceKey("theme.heading"), {Color::red}});
+    const auto duplicate_result = reconstructBuiltInUiDescription(duplicate_resource);
+    CHECK(!duplicate_result);
+    CHECK(duplicate_result.root == nullptr);
+    CHECK(duplicate_result.error == UiDescriptionReconstructionErrorCode::invalid_document);
+
+    auto wrong_property = valid;
+    wrong_property.nodes.front().resource_reference_properties.front().property_id = "text";
+    const auto wrong_result = reconstructBuiltInUiDescription(wrong_property);
+    CHECK(!wrong_result);
+    CHECK(wrong_result.root == nullptr);
+    CHECK(wrong_result.error == UiDescriptionReconstructionErrorCode::invalid_document);
+
+    auto inline_and_reference = valid;
+    inline_and_reference.nodes.front().text_style_properties.push_back(
+        {"sasd.ui.Label", "textStyle", original_inline});
+    const auto competing_result = reconstructBuiltInUiDescription(inline_and_reference);
+    CHECK(!competing_result);
+    CHECK(competing_result.root == nullptr);
+    CHECK(competing_result.error == UiDescriptionReconstructionErrorCode::invalid_document);
 }
 
 TEST_CASE("UI description reconstruction knows every concrete and abstract catalog type") {

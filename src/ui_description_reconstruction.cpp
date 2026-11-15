@@ -8,6 +8,7 @@
 #include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/component_property_access.hpp>
 #include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_property_resource_metadata.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/form_layout.hpp>
@@ -19,6 +20,7 @@
 #include <sasd/ui/list_view.hpp>
 #include <sasd/ui/radio_button.hpp>
 #include <sasd/ui/radio_group.hpp>
+#include <sasd/ui/resource_resolution.hpp>
 #include <sasd/ui/stack_layout.hpp>
 #include <sasd/ui/table_model.hpp>
 #include <sasd/ui/table_selection_model.hpp>
@@ -121,7 +123,8 @@ StepResult stepFailure(Error error, ComponentDescriptionNodeId node_id) {
 
 RestoreResult restoreProperty(Component& component,
                               const BuiltInUiDescriptionNode& node,
-                              const ComponentPropertyMetadata& descriptor) {
+                              const ComponentPropertyMetadata& descriptor,
+                              std::span<const ResourceScope> resource_scopes) {
     switch (descriptor.value_kind) {
     case Kind::boolean: {
         const auto* property = findProperty(node.boolean_properties, descriptor);
@@ -168,9 +171,33 @@ RestoreResult restoreProperty(Component& component,
     }
     case Kind::text_style: {
         const auto* property = findProperty(node.text_style_properties, descriptor);
-        return {property != nullptr &&
-                    writeBuiltInTextStyleProperty(component, descriptor, property->value),
-                true};
+        if (property != nullptr) {
+            // Inline authoring remains the original v1 path. Resource presence elsewhere in the
+            // document must not change either its precedence or its writer semantics.
+            return {writeBuiltInTextStyleProperty(component, descriptor, property->value), true};
+        }
+
+        const auto* resource_property =
+            findProperty(node.resource_reference_properties, descriptor);
+        const auto resource_metadata = builtInComponentPropertyResourceMetadata(descriptor);
+        if (resource_property == nullptr || !resource_metadata ||
+            resource_metadata->resource_kind != resource_property->reference.kind()) {
+            // Validation has already established this invariant. Re-check it here because the
+            // materializer must fail closed if validation and reconstruction ever drift apart;
+            // property spelling alone is deliberately not resource capability policy.
+            return {};
+        }
+
+        const auto resolution =
+            resolveTextStyleResource(resource_property->reference, resource_scopes);
+        if (!resolution) {
+            return {};
+        }
+
+        // Resolution owns a TextStyle copy. The normal property writer then copies that concrete
+        // value into the control, so neither the reference, scope nor dictionary survives this
+        // reconstruction transaction.
+        return {writeBuiltInTextStyleProperty(component, descriptor, resolution->value), true};
     }
     }
     return {};
@@ -210,15 +237,11 @@ public:
             return failure(Error::invalid_document, validation.node_id);
         }
 
-        // M8.27 makes resource authoring durable but intentionally does not materialize it into
-        // runtime controls. Refuse the whole transaction before constructing a single Component;
-        // silently ignoring definitions or substituting a current inline value would lose the
-        // document's sole authoring truth. M8.28 owns the later resolution/materialization step.
-        const bool has_resource_reference =
-            std::any_of(document_.nodes.begin(), document_.nodes.end(), [](const auto& node) {
-                return !node.resource_reference_properties.empty();
-            });
-        if (!document_.text_style_resources.empty() || has_resource_reference) {
+        // Build the one closed, document-local scope only after complete validation and before the
+        // first Component exists. addTextStyle() should therefore be infallible for this input, but
+        // treating an unexpected rejection as an invalid transaction keeps correctness independent
+        // of assertions and preserves the no-partial-runtime guarantee.
+        if (!materializeResourceDictionary()) {
             return failure(Error::invalid_document, document_.root_node_id);
         }
 
@@ -232,8 +255,18 @@ public:
 
 private:
     BuiltInUiDescriptionDocument document_;
+    ResourceDictionary resources_;
     std::vector<std::unique_ptr<Component>> instances_;
     std::vector<Component*> nodes_;
+
+    bool materializeResourceDictionary() {
+        for (const auto& resource : document_.text_style_resources) {
+            if (!resources_.addTextStyle(resource.key, resource.value)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     StepResult constructComponents() {
         // Groups and all other targets must exist before RadioButton's constructor-only membership
@@ -357,8 +390,13 @@ private:
     StepResult restoreNodeProperties(
         const BuiltInUiDescriptionNode& node) {
         try {
+            // M8.28 deliberately has exactly one scope. Keeping the nearest-first sequence explicit
+            // consumes the shared M8.26 resolver contract without retaining a scope chain in the
+            // reconstructed graph or inventing direct dictionary lookup semantics here.
+            const std::array<ResourceScope, 1> resource_scopes{std::cref(resources_)};
             const auto restored = forPropertiesBaseToDerived(node.type_id, [&](const auto& descriptor) {
-                return restoreProperty(*nodes_[index(node.node_id)], node, descriptor);
+                return restoreProperty(
+                    *nodes_[index(node.node_id)], node, descriptor, resource_scopes);
             });
             if (!restored.restored) {
                 return stepFailure(restored.representable ? Error::property_restore_failed

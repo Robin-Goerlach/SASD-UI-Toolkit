@@ -47,7 +47,9 @@ struct TextStyleResourceResolution final {
  * This function is intentionally a stateless lookup transaction. It traverses no Component tree,
  * consults no Application/global registry, stores no binding and observes no future mutation. The
  * caller supplies both lifetime and precedence for this lookup. Neither the scope index nor the
- * result establishes a persistence, reconstruction or inline-versus-resource precedence contract.
+ * result establishes a persistence or inline-versus-resource precedence contract. Reconstruction
+ * may use the owned result for one-time materialization, but doing so does not turn this stateless
+ * lookup into a live binding or extend any supplied dictionary's lifetime.
  */
 [[nodiscard]] std::optional<TextStyleResourceResolution>
 resolveTextStyleResource(const ResourceReference& reference,

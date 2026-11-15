@@ -128,7 +128,8 @@ Keine Vererbung/Cascade; Backend-Fokus-/Disabled-/Selection-Overlays bleiben aus
 RGB/Alpha, Themes und Shared Resources bleiben Zukunft. Kanonisches JSON v1 verwendet symbolische Color-Namen
 statt Enum-Ordinals (ADR 0186). Der Review aller 29 Built-ins bestätigte die semantische Readiness.
 Encoding, validiertes Parsing und Built-in-Rekonstruktion sind implementiert. Dauerhaftes Resource
-Authoring nutzt den getrennten v2-Vertrag; Runtime-Resource-Rekonstruktion bleibt offen.
+Authoring nutzt den getrennten v2-Vertrag; Resource References werden bei der Rekonstruktion einmalig
+in konkrete Runtime-Werte materialisiert.
 
 ### Kanonisches JSON-Description-Encoding
 
@@ -430,12 +431,17 @@ JSON v1 bleibt byte-identisch unverändert
 ```text
 ResourceKey -> ResourceDictionary -> ResourceReference -> Property Resource Metadata
             -> Explicit Resolution -> Durable Resource Description / JSON v2
+            -> Validated Parse -> One-time Runtime Materialization
 ```
 
-Diese Schichten binden die vorhandenen inline `TextStyle`-Runtime-Werte der Controls weiterhin nicht
-an Resources. Es gibt weder Cascade, Merge noch Live-Rebinding. JSON v2 persistiert weder externe
-Scope Chain noch `scope_index`; Resource-aware Rekonstruktion/Materialisierung bleibt ausdrücklich
-die M8.28-Grenze.
+M8 Slice 28 verwendet den bestehenden formatneutralen Reconstruction Entry Point wieder. Nach der
+Validierung baut er ein privates dokumentlokales Dictionary, löst jede Reference über den einzelnen
+expliziten Scope des M8.26-Resolvers auf und schreibt den kopierten konkreten Wert über den
+bestehenden Property Writer
+([ADR 0198](../adr/0198-m8-resource-aware-reconstruction-and-materialization.md)). Components halten
+weder Resource-Identität noch Dictionary, Scope oder Binding. Es gibt weder Cascade, Merge noch Live-
+Rebinding; Runtime Recapture erzeugt daher v1-Inline-Werte und kann v2-Authoring-Identität nicht
+wiederherstellen.
 
 ### Ownership
 

@@ -138,10 +138,13 @@ struct UiDescriptionReferenceEdge final {
  * Format-neutral document value. Successful JSON parsing validates this value, but public
  * aggregate mutation does not preserve that guarantee automatically. Encoding/version markers
  * belong to adapters, not this semantic model. No Components or backend state are retained.
+ * Reconstruction treats document-local resources as input and materializes references into
+ * concrete property values; resource authoring identity remains in this document rather than in
+ * runtime Components.
  */
 struct BuiltInUiDescriptionDocument final {
     ComponentDescriptionNodeId root_node_id{};
-    // M8.27 intentionally persists one closed document-local scope. Reusing the existing concrete
+    // v2 intentionally persists one closed document-local scope. Reusing the existing concrete
     // TextStyleResource keeps runtime dictionaries and durable descriptions on the same value
     // semantics without introducing a generic ResourceValue framework before a second family exists.
     std::vector<TextStyleResource> text_style_resources;
