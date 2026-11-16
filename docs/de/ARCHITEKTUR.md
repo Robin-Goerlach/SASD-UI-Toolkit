@@ -283,6 +283,28 @@ Reihenfolge oder Persistenzdaten; Display-/Help-Text, Editor Kind und Browsable-
 Flags werden nicht definiert. Siehe
 [ADR 0193](../adr/0193-m8-property-authoring-category-metadata-foundation.md).
 
+### Headless-Tooling-Komposition
+
+Die installierte Core API bildet zusammen einen instanzfreien Authoring-Vertrag:
+
+```text
+Typkatalog -> Type Authoring Metadata -> Property Schema
+           -> Authoring-/Default-/Validation-/Reference-/Resource-Metadaten
+           -> formatneutrales Dokument -> JSON v1/v2 -> optionale Reconstruction Preview
+```
+
+`component_type_authoring_metadata.hpp` erkennt die 26 aktuellen konstruierbaren Node-Typen und die
+drei abstrakten Modellverträge über den vollständigen Deskriptorwert. Tools leiten effektive
+Properties selbst her, indem sie `base_type_id` traversieren und die bestehenden Declared-Property-
+Spans Base-to-Derived anhängen; geerbte Deskriptoren werden nicht dupliziert. Der installierte
+Package Consumer beweist diese Komposition nur mit öffentlichen Headern und `SASD::UI`, ohne während
+der Discovery eine Component zu konstruieren.
+
+Dies ist der Core-Integrationspunkt für externe Authoring-/IDE-Consumer, kein IDE-Plugin, keine
+Factory und keine Designer Runtime. Lokalisierte Labels, Beschreibungen, Icons sowie Editing- und
+Presentation-Policy bleiben Consumer-Aufgabe. Siehe [Tooling-Integrationsleitfaden](TOOLING_INTEGRATION.md)
+und [ADR 0199](../adr/0199-m8-headless-tooling-integration-contract.md).
+
 ### Built-in-Component-Property-Snapshots
 
 Die separate Schicht `sasd/ui/component_property_snapshot.hpp` ist der erste kleine Consumer, der

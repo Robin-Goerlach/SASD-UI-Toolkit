@@ -267,6 +267,27 @@ localized labels, Property Grid order or persistence data; no display/help text,
 browsable/read-only/advanced flag is defined. See
 [ADR 0193](../adr/0193-m8-property-authoring-category-metadata-foundation.md).
 
+### Headless tooling composition
+
+The installed Core API composes into one instance-free authoring contract:
+
+```text
+Type catalog -> Type authoring metadata -> Property schema
+             -> Authoring / default / validation / reference / resource metadata
+             -> Format-neutral document -> JSON v1/v2 -> optional reconstruction preview
+```
+
+`component_type_authoring_metadata.hpp` identifies the 26 current constructible node types and the
+three abstract model contracts by complete descriptor value. Tools derive effective properties by
+walking `base_type_id` and appending the existing declared-property spans base-to-derived; inherited
+descriptors are not duplicated. The installed package consumer proves this composition using only
+public headers and `SASD::UI`, without constructing a Component during discovery.
+
+This is the Core integration point for external authoring and IDE consumers, not an IDE plugin,
+factory or designer runtime. Localized labels, descriptions, icons and editing/presentation policy
+remain consumer-owned. See [the tooling integration guide](TOOLING_INTEGRATION.md) and
+[ADR 0199](../adr/0199-m8-headless-tooling-integration-contract.md).
+
 ### Built-in component property snapshots
 
 The separate `sasd/ui/component_property_snapshot.hpp` layer is the first small consumer that

@@ -289,12 +289,14 @@ Slice 20 adds explicit normalization policies for every current string descripto
 `ComboBox.selectedIndex` -> `ComboBox.items` dependency and reuses it in format-neutral document
 validation (ADR 0191). Slice 22 adds immutable source/target contracts for all eleven built-in
 reference kinds and the RadioGroup graph constraint (ADR 0192), completing the current validation-
-metadata coverage. The separate resource system and wider design-time attributes remain open.
+metadata coverage. Slices 23–28 complete property categories and the typed resource pipeline.
+Slice 29 proves the installed headless tooling composition contract and adds exact type
+constructibility metadata (ADR 0199). M8.30 remains the explicit milestone exit review.
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
   - [x] exact built-in runtime instance identification
-- [ ] property metadata and design-time attributes
+- [x] property metadata and design-time attributes
   - [x] property schema/catalog foundation
   - [x] runtime property value-access contract
   - [x] effective property default metadata
@@ -304,9 +306,9 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] contextual cross-property / graph validation metadata
       - [x] ComboBox same-node cross-property validation metadata (ADR 0191)
       - [x] reference / graph validation metadata (ADR 0192)
-  - [ ] designer-friendly properties
+  - [x] machine-readable designer/tooling authoring contract
     - [x] non-localized property authoring categories (ADR 0193)
-    - [ ] remaining human-facing/tooling authoring attributes
+    - [x] type constructibility and tooling composition contract (ADR 0199)
 - [x] serialization of UI descriptions
   - [x] owned built-in component property snapshot foundation
   - [x] serializable UI-description state coverage policy
@@ -336,11 +338,14 @@ metadata coverage. The separate resource system and wider design-time attributes
     - [x] resource-aware format-neutral description and canonical JSON v2 encoding/validated
       loading (ADR 0197)
     - [x] resource-aware reconstruction/materialization (ADR 0198)
-  - [ ] richer resource families when justified by real backend consumers
-- [ ] IDE/tooling integration points
+  - [ ] richer resource families when justified by real backend consumers (deferred until a real
+    backend/tooling consumer requires another family; formal M8 parent review belongs to M8.30)
+- [x] IDE/tooling integration points
+  - [x] installed headless metadata/document consumer contract (ADR 0199)
 
-Further human-facing authoring attributes remain deferred until a real designer/tooling consumer
-defines concrete localization, presentation and editing requirements.
+Human-facing localized presentation/editor attributes remain deferred until a real designer/tooling
+consumer defines concrete localization, presentation and editing requirements. This is a deliberate
+consumer-owned scope decision, not an open M8 blocker.
 
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
 Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); Slice 18 restores them in
