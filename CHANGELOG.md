@@ -9,6 +9,13 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 29: explicit instance-free built-in type authoring metadata classifies all 29 exact
+  descriptors as 26 constructible nodes or the three abstract model contracts. Complete descriptor
+  value identity fails closed; a headless demo and installed public-package consumer compose the
+  existing property categories, defaults, validation, references, resource capability, document
+  model and unchanged JSON v1/v2 APIs without a duplicate tooling descriptor. Display/localization/
+  editor policy, IDE plugins and designer runtime remain deliberately consumer-owned (ADR 0199).
+
 - M8 Slice 28: resource-aware reconstruction now materializes validated v2 `TextStyle` references
   into concrete runtime properties through one private document-local `ResourceDictionary`, the
   existing explicit resolver and the existing property writer. Reconstruction remains atomic and

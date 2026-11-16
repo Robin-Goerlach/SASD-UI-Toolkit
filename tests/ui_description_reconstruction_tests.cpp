@@ -5,6 +5,7 @@
 #include <sasd/ui/command.hpp>
 #include <sasd/ui/combo_box.hpp>
 #include <sasd/ui/component_runtime_metadata.hpp>
+#include <sasd/ui/component_type_authoring_metadata.hpp>
 #include <sasd/ui/container.hpp>
 #include <sasd/ui/form_layout.hpp>
 #include <sasd/ui/focus_manager.hpp>
@@ -336,6 +337,10 @@ TEST_CASE("UI description reconstruction knows every concrete and abstract catal
     for (const auto& original : concrete) {
         const auto* expected_type = builtInComponentTypeOf(*original);
         CHECK(expected_type != nullptr);
+        const auto authoring = builtInComponentTypeAuthoringMetadata(*expected_type);
+        CHECK(authoring.has_value());
+        CHECK(authoring->instantiation ==
+              ComponentTypeAuthoringInstantiationKind::constructible);
         auto rebuilt = reconstruct(*original);
         const auto* rebuilt_type = builtInComponentTypeOf(*rebuilt);
         CHECK(rebuilt_type != nullptr);
@@ -346,6 +351,12 @@ TEST_CASE("UI description reconstruction knows every concrete and abstract catal
     constexpr std::array abstract_types{
         "sasd.ui.ListModel", "sasd.ui.TableModel", "sasd.ui.TreeModel"};
     for (const auto type : abstract_types) {
+        const auto* descriptor = findBuiltInComponentType(type);
+        CHECK(descriptor != nullptr);
+        const auto authoring = builtInComponentTypeAuthoringMetadata(*descriptor);
+        CHECK(authoring.has_value());
+        CHECK(authoring->instantiation ==
+              ComponentTypeAuthoringInstantiationKind::abstract_contract);
         const std::string json = std::string{
             "{\n  \"format\": \"sasd.ui-description\",\n  \"formatVersion\": 1,\n"
             "  \"root\": 0,\n  \"nodes\": [{\"id\":0,\"type\":\""} + type +

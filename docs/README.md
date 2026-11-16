@@ -10,6 +10,7 @@ This directory contains the project documentation in **German** and **English**.
 
 - [Goals and scope](en/GOALS_AND_SCOPE.md)
 - [Architecture](en/ARCHITECTURE.md)
+- [Headless tooling integration](en/TOOLING_INTEGRATION.md)
 - [UI Description JSON v1](en/UI_DESCRIPTION_FORMAT.md)
 - [UI Description JSON v2](en/UI_DESCRIPTION_FORMAT_V2.md)
 - [Backend and platform strategy](en/BACKENDS.md)
@@ -25,6 +26,7 @@ This directory contains the project documentation in **German** and **English**.
 
 - [Projektziele und Umfang](de/ZIELE_UND_UMFANG.md)
 - [Architektur](de/ARCHITEKTUR.md)
+- [Headless-Tooling-Integration](de/TOOLING_INTEGRATION.md)
 - [UI Description JSON v1](de/UI_DESCRIPTION_FORMAT.md)
 - [UI Description JSON v2](de/UI_DESCRIPTION_FORMAT_V2.md)
 - [Backend- und Plattformstrategie](de/BACKENDS.md)

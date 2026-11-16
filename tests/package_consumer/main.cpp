@@ -10,6 +10,9 @@
 #include <sasd/ui/component_property_validation_metadata.hpp>
 #include <sasd/ui/component_property_snapshot.hpp>
 #include <sasd/ui/component_reference_metadata.hpp>
+#include <sasd/ui/component_metadata.hpp>
+#include <sasd/ui/component_property_metadata.hpp>
+#include <sasd/ui/component_type_authoring_metadata.hpp>
 #include <sasd/ui/rendered/display_list.hpp>
 #include <sasd/ui/rendered/display_list_executor.hpp>
 #include <sasd/ui/rendered/render_device.hpp>
@@ -27,10 +30,185 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace {
+
+bool toolingFailure(const char* reason) {
+    std::cerr << "Installed tooling contract failed: " << reason << '\n';
+    return false;
+}
+
+std::vector<sasd::ui::ComponentPropertyMetadata> effectiveProperties(
+    const sasd::ui::ComponentTypeMetadata& type) {
+    std::vector<const sasd::ui::ComponentTypeMetadata*> reverse_chain;
+    const sasd::ui::ComponentTypeMetadata* current = &type;
+    for (std::size_t depth = 0;
+         current != nullptr && depth < sasd::ui::builtInComponentTypes().size(); ++depth) {
+        reverse_chain.push_back(current);
+        current = current->base_type_id.empty()
+            ? nullptr
+            : sasd::ui::findBuiltInComponentType(current->base_type_id);
+    }
+    std::reverse(reverse_chain.begin(), reverse_chain.end());
+
+    std::vector<sasd::ui::ComponentPropertyMetadata> result;
+    for (const auto* declaring_type : reverse_chain) {
+        const auto declared =
+            sasd::ui::declaredBuiltInComponentProperties(declaring_type->type_id);
+        result.insert(result.end(), declared.begin(), declared.end());
+    }
+    return result;
+}
+
+bool verifyHeadlessToolingContract() {
+    using Instantiation = sasd::ui::ComponentTypeAuthoringInstantiationKind;
+
+    // Everything in this function is descriptor/document work. No Component is constructed, no
+    // resource is resolved and no backend is initialized. Keeping it before the package's separate
+    // runtime smoke checks makes that instance-free boundary visible to external consumers.
+    std::size_t constructible_count = 0;
+    std::size_t abstract_count = 0;
+    std::size_t property_count = 0;
+    std::size_t resource_capable_count = 0;
+    for (const auto& type : sasd::ui::builtInComponentTypes()) {
+        const auto authoring = sasd::ui::builtInComponentTypeAuthoringMetadata(type);
+        if (!authoring) {
+            return toolingFailure("missing type authoring metadata");
+        }
+        if (authoring->instantiation == Instantiation::constructible) {
+            ++constructible_count;
+        } else {
+            ++abstract_count;
+        }
+
+        for (const auto& property :
+             sasd::ui::declaredBuiltInComponentProperties(type.type_id)) {
+            ++property_count;
+            if (!sasd::ui::builtInComponentPropertyAuthoringMetadata(property)) {
+                return toolingFailure("missing property authoring category");
+            }
+            if (sasd::ui::builtInComponentPropertyResourceMetadata(property)) {
+                ++resource_capable_count;
+            }
+        }
+    }
+    if (sasd::ui::builtInComponentTypes().size() != 29 || constructible_count != 26 ||
+        abstract_count != 3 || property_count != 28 || resource_capable_count != 6) {
+        return toolingFailure("catalog coverage counts changed");
+    }
+
+    const auto* button_type = sasd::ui::findBuiltInComponentType("sasd.ui.Button");
+    if (button_type == nullptr) {
+        return toolingFailure("Button type is missing");
+    }
+    const auto properties = effectiveProperties(*button_type);
+    const auto visible = std::find_if(properties.begin(), properties.end(), [](const auto& property) {
+        return property.property_id == "visible";
+    });
+    if (properties.size() != 6 || visible == properties.end() ||
+        visible->declaring_type_id != "sasd.ui.Widget") {
+        return toolingFailure("effective Button property traversal is inconsistent");
+    }
+
+    const auto* column_count =
+        sasd::ui::findBuiltInComponentProperty("sasd.ui.GridLayout", "columnCount");
+    const auto column_range = column_count == nullptr
+        ? std::optional<sasd::ui::UnsignedIntegerPropertyRange>{}
+        : sasd::ui::builtInUnsignedIntegerPropertyRange(*column_count);
+    const auto column_default = column_count == nullptr
+        ? std::optional<std::uint64_t>{}
+        : sasd::ui::builtInUnsignedIntegerPropertyDefault("sasd.ui.GridLayout", *column_count);
+    if (!column_range || column_range->minimum != 1 || !column_default || *column_default != 1) {
+        return toolingFailure("integer default or validation metadata is unavailable");
+    }
+
+    const auto* list_reference = sasd::ui::findBuiltInComponentReferenceMetadata(
+        sasd::ui::BuiltInComponentReferenceKind::list_view_model);
+    if (list_reference == nullptr || list_reference->target_type_id != "sasd.ui.ListModel") {
+        return toolingFailure("reference endpoint metadata is unavailable");
+    }
+
+    // Build a complete Button document exclusively from the effective descriptors and their
+    // instance-free defaults. This proves the format-neutral model and JSON v2 adapter are usable
+    // by an installed headless tool without borrowing private validation or reconstruction code.
+    sasd::ui::BuiltInUiDescriptionDocument document;
+    sasd::ui::BuiltInUiDescriptionNode node;
+    node.node_id = 0;
+    node.type_id = "sasd.ui.Button";
+    for (const auto& property : properties) {
+        switch (property.value_kind) {
+        case sasd::ui::ComponentPropertyValueKind::boolean: {
+            const auto value = sasd::ui::builtInBooleanPropertyDefault(node.type_id, property);
+            if (!value) {
+                return toolingFailure("boolean default is unavailable");
+            }
+            node.boolean_properties.push_back(
+                {std::string{property.declaring_type_id}, std::string{property.property_id}, *value});
+            break;
+        }
+        case sasd::ui::ComponentPropertyValueKind::string: {
+            const auto value = sasd::ui::builtInStringPropertyDefault(node.type_id, property);
+            if (!value) {
+                return toolingFailure("string default is unavailable");
+            }
+            node.string_properties.push_back(
+                {std::string{property.declaring_type_id}, std::string{property.property_id},
+                 std::string{*value}});
+            break;
+        }
+        case sasd::ui::ComponentPropertyValueKind::size_constraints: {
+            const auto value =
+                sasd::ui::builtInSizeConstraintsPropertyDefault(node.type_id, property);
+            if (!value) {
+                return toolingFailure("SizeConstraints default is unavailable");
+            }
+            node.size_constraints_properties.push_back(
+                {std::string{property.declaring_type_id}, std::string{property.property_id}, *value});
+            break;
+        }
+        case sasd::ui::ComponentPropertyValueKind::text_style: {
+            const auto value = sasd::ui::builtInTextStylePropertyDefault(node.type_id, property);
+            if (!value) {
+                return toolingFailure("TextStyle default is unavailable");
+            }
+            node.text_style_properties.push_back(
+                {std::string{property.declaring_type_id}, std::string{property.property_id}, *value});
+            break;
+        }
+        case sasd::ui::ComponentPropertyValueKind::signed_integer:
+        case sasd::ui::ComponentPropertyValueKind::unsigned_integer:
+        case sasd::ui::ComponentPropertyValueKind::string_collection:
+        case sasd::ui::ComponentPropertyValueKind::optional_unsigned_integer:
+            return toolingFailure("Button exposed an unexpected property value kind");
+        }
+    }
+    document.nodes.push_back(std::move(node));
+    const auto json_v2 = sasd::ui::encodeBuiltInUiDescriptionJsonV2(document);
+    const auto parsed_v2 = json_v2
+        ? sasd::ui::parseBuiltInUiDescriptionJsonV2(*json_v2)
+        : sasd::ui::BuiltInUiDescriptionJsonParseResult{};
+    if (!json_v2) {
+        return toolingFailure("metadata-authored document failed JSON v2 encoding");
+    }
+    if (!parsed_v2) {
+        return toolingFailure("metadata-authored JSON v2 failed parsing");
+    }
+    const auto canonical_v2 =
+        sasd::ui::encodeBuiltInUiDescriptionJsonV2(*parsed_v2.document);
+    if (!canonical_v2 || canonical_v2 != json_v2 || parsed_v2.document->nodes.size() != 1 ||
+        parsed_v2.document->nodes.front().type_id != "sasd.ui.Button") {
+        // Parsers are allowed to normalize a mutable public aggregate. Canonical re-encoding, not
+        // byte-for-byte aggregate preservation of incidental ordering, is the durable contract.
+        return toolingFailure("JSON v2 canonical document roundtrip is inconsistent");
+    }
+    return true;
+}
 
 class PackageRenderDevice final : public sasd::ui::rendered::RenderDevice {
 public:
@@ -59,6 +237,11 @@ int main() {
      * that an external project can discover the installed package, include public Core/Terminal/
      * Rendered headers, and link all exported targets without relying on the source-tree layout.
      */
+    if (!verifyHeadlessToolingContract()) {
+        return EXIT_FAILURE;
+    }
+
+    // Runtime smoke coverage begins only after the metadata/document-only tooling proof above.
     sasd::ui::Button button{"Package smoke"};
     const auto json = sasd::ui::encodeBuiltInUiDescriptionJson(button);
     if (!json || !json->starts_with("{\n  \"format\": \"sasd.ui-description\",")) {

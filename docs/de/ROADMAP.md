@@ -298,12 +298,14 @@ heutigen String-Deskriptoren sowie atomare Validation Metadata für `Widget.size
 `ComboBox.items` und verwendet sie in der formatneutralen Dokumentvalidierung (ADR 0191). Slice 22
 ergänzt unveränderliche Source-/Target-Verträge für alle elf Built-in Reference Kinds und die
 RadioGroup-Graph-Constraint (ADR 0192) und schließt damit die heutige Validation-Metadata-Abdeckung.
-Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
+Slices 23–28 schließen Property-Kategorien und die typisierte Resource-Pipeline ab. Slice 29 weist
+den installierten Headless-Tooling-Kompositionsvertrag nach und ergänzt exakte Typkonstruierbarkeits-
+Metadaten (ADR 0199). M8.30 bleibt der explizite Milestone-Exit-Review.
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
   - [x] Exakte Runtime-Identifikation von Built-in-Instanzen
-- [ ] Property-Metadaten und Design-Time-Attribute
+- [x] Property-Metadaten und Design-Time-Attribute
   - [x] Property-Schema-/Katalog-Grundlage
   - [x] Runtime-Vertrag für Property-Wertzugriff
   - [x] Effektive Property-Default-Metadaten
@@ -313,9 +315,9 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
     - [x] Kontextabhängige Cross-Property-/Graph-Validierungsmetadaten
       - [x] ComboBox-Same-Node-Cross-Property-Validierungsmetadaten (ADR 0191)
       - [x] Reference-/Graph-Validierungsmetadaten (ADR 0192)
-  - [ ] Designer-freundliche Properties
+  - [x] Maschinenlesbarer Designer-/Tooling-Authoring-Vertrag
     - [x] Nicht lokalisierte Property-Authoring-Kategorien (ADR 0193)
-    - [ ] Verbleibende menschenlesbare/Tooling-Authoring-Attribute
+    - [x] Typkonstruierbarkeit und Tooling-Kompositionsvertrag (ADR 0199)
 - [x] Serialisierung von UI-Beschreibungen
   - [x] Besitzender Built-in-Component-Property-Snapshot
   - [x] Coverage-Policy für serialisierbaren UI-Description-Zustand
@@ -345,11 +347,15 @@ Das separate Resource-System und weitere Design-Time-Attribute bleiben offen.
     - [x] Resource-aware formatneutrale Beschreibung und kanonisches JSON-v2-Encoding/validiertes
       Laden (ADR 0197)
     - [x] Resource-aware Rekonstruktion/Materialisierung (ADR 0198)
-  - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer
-- [ ] IDE-/Tooling-Schnittstellen
+  - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer (aufgeschoben, bis ein
+    realer Backend-/Tooling-Consumer eine weitere Familie benötigt; formaler M8-Parent-Review in
+    M8.30)
+- [x] IDE-/Tooling-Schnittstellen
+  - [x] Installierter Headless-Metadaten-/Dokument-Consumer-Vertrag (ADR 0199)
 
-Weitere menschenlesbare Authoring-Attribute bleiben aufgeschoben, bis ein realer Designer-/Tooling-
-Consumer konkrete Anforderungen an Lokalisierung, Darstellung und Bearbeitung definiert.
+Menschenlesbare lokalisierte Presentation-/Editor-Attribute bleiben aufgeschoben, bis ein realer
+Designer-/Tooling-Consumer konkrete Anforderungen an Lokalisierung, Darstellung und Bearbeitung
+definiert. Dies ist eine bewusste consumer-owned Scope-Entscheidung und kein offener M8-Blocker.
 
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
 
