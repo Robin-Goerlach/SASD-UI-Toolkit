@@ -99,7 +99,7 @@ SDL3-Form-Demo verwendet denselben Frame-/Interaktionspfad mit Actions-, Edit- u
 SDL3-Host reserviert die finale Menüzeile für den Formularinhalt, gibt dem Menü-Overlay Vorrang vor
 ComboBox/Widgets und hält Command-Ausführung zweiphasig.
 
-**Status: begonnen am 30.09.2026.** Die noch ausstehende sichtbare macOS-/Cocoa-Validierung von M3 bleibt als externe Plattformprüfung offen und blockiert die backendneutrale M4-Weiterentwicklung nicht. Die semantische Zwei-Zustands-`CheckBox` sowie der `RadioButton`-/`RadioGroup`-Slice sind in Core, Terminal und Rendered Presentation implementiert und in die Beispielanwendungen integriert; eigene SDL3-Integrationspfade prüfen ihr Verhalten vom nativen Pointer-Event bis zur Frame-Presentation. Die in Button, CheckBox und RadioButton nachgewiesene identische Primary-Pointer-Press/Capture/Release-Mechanik wurde in einen privaten Core-Helper ausgelagert, ohne eine öffentliche Control-Basisklasse einzuführen. `RadioGroupNavigation` stellt explizite zyklische Links/Hoch- bzw. Rechts/Runter-Navigation in stabiler Gruppenreihenfolge bereit, überspringt effektiv unerreichbare Mitglieder und überschreitet keinen Top-Level-Visual-Root. Der initiale `ComboBox`-Vertikalschnitt ist nun über Core, Terminal und Rendered Presentation vollständig: Open-State-Preview-/Commit-/Cancel-Semantik, festes Snapshot-Popup-Placement, Keyboard-Bedienung, Öffnen per collapsed Pointer sowie snapshot-exakte Popup-Hover-/Click-/Outside-Dismiss-Interaktion sind integriert, ohne Popup-Geometrie in den Core zu verschieben.
+**Status: für den aktuell definierten Umfang abgeschlossen am 08.10.2026.** Die noch ausstehende sichtbare macOS-/Cocoa-Validierung von M3 bleibt als externe Plattformprüfung offen und blockierte die backendneutrale M4-Entwicklung nicht. Die semantische Zwei-Zustands-`CheckBox` sowie der `RadioButton`-/`RadioGroup`-Slice sind in Core, Terminal und Rendered Presentation implementiert und in die Beispielanwendungen integriert; eigene SDL3-Integrationspfade prüfen ihr Verhalten vom nativen Pointer-Event bis zur Frame-Presentation. Die in Button, CheckBox und RadioButton nachgewiesene identische Primary-Pointer-Press/Capture/Release-Mechanik wurde in einen privaten Core-Helper ausgelagert, ohne eine öffentliche Control-Basisklasse einzuführen. `RadioGroupNavigation` stellt explizite zyklische Links/Hoch- bzw. Rechts/Runter-Navigation in stabiler Gruppenreihenfolge bereit, überspringt effektiv unerreichbare Mitglieder und überschreitet keinen Top-Level-Visual-Root. Der initiale `ComboBox`-Vertikalschnitt ist über Core, Terminal und Rendered Presentation vollständig: Open-State-Preview-/Commit-/Cancel-Semantik, festes Snapshot-Popup-Placement, Keyboard-Bedienung, Öffnen per collapsed Pointer sowie snapshot-exakte Popup-Hover-/Click-/Outside-Dismiss-Interaktion sind integriert, ohne Popup-Geometrie in den Core zu verschieben.
 
 Die erste M4-Layoutfamilie ist nun implementiert und stabilisiert. `GridLayout` bietet eine feste positive Spaltenzahl, dichtes Row-Major-Placement sichtbarer Kinder, intrinsische Spalten-/Zeilenmaxima, getrenntes Row-/Column-Spacing sowie deterministisches Clipping bei Platzmangel. Track-Belegung ist strukturell: Eine belegte Spalte mit Breite null existiert weiterhin und erhält die Spacing-Grenze zur vorherigen belegten Spalte. `FormLayout` ist eine getrennte Implementierung mit stabiler Label-/Field-Paarung nach visueller Adoption Order, gemeinsamer intrinsischer Label-Spalte, expandierender Field-Spalte, label-only letzter Zeile, Behandlung versteckter Zeilen und deterministischem Clipping. Visibility packt die strukturellen Paare niemals neu; ein explizites `release()` mit erneuter Adoption ist dagegen eine strukturelle Änderung und folgt deshalb der daraus entstehenden Child-Reihenfolge. `StackLayout` legt jedes sichtbare Kind in dasselbe Client-Rechteck; die gewünschte Größe ist das komponentenweise Maximum, die Adoption Order bestimmt die Paint-Reihenfolge und spätere Kinder liegen daher oben. Terminal- und Rendered-Presentation behandeln Grid/Form/Stack explizit als strukturelle Container, während unbekannte konkrete `Container`-Unterklassen `deferred` bleiben, damit spätere Composite Controls ihren Presentation-State nicht still verlieren. Visibility-Änderungen fordern konservativ ein Subtree-Replay an; beim erzwungenen Replay werden versteckte Widgets ausgespart, sodass eine wieder freigelegte untere Stack-Schicht korrekt restauriert wird.
 
@@ -278,7 +278,7 @@ Langfristige Themen:
 
 ## M8 – Grundlagen für Entwicklerkomfort
 
-**Status: aktiv (gestartet am 21.10.2026).** Slice 1 schafft die backendneutrale Typidentität und
+**Status: abgeschlossen am 17.11.2026.** Slice 1 schafft die backendneutrale Typidentität und
 den unveränderlichen Built-in-Katalog. Slice 2 ergänzt die unveränderliche Property-Schema-Grundlage,
 Slice 3 den typisierten Runtime-Wertzugriff bei getrennter Schema-/Instanzschicht, Slice 4
 typenbezogene effektive Property-Defaults und Slice 5 die exakte Runtime-Identifikation vorhandener
@@ -300,7 +300,9 @@ ergänzt unveränderliche Source-/Target-Verträge für alle elf Built-in Refere
 RadioGroup-Graph-Constraint (ADR 0192) und schließt damit die heutige Validation-Metadata-Abdeckung.
 Slices 23–28 schließen Property-Kategorien und die typisierte Resource-Pipeline ab. Slice 29 weist
 den installierten Headless-Tooling-Kompositionsvertrag nach und ergänzt exakte Typkonstruierbarkeits-
-Metadaten (ADR 0199). M8.30 bleibt der explizite Milestone-Exit-Review.
+Metadaten (ADR 0199). Slice 30 schließt Milestone-Exit-Review und Scope-Konsolidierung ab
+([ADR 0200](../adr/0200-m8-developer-productivity-foundations-exit-decision.md) und
+[M8 Exit Review](M8_EXIT_REVIEW.md)).
 
 - [x] Komponenten-Typidentität und Built-in-Katalog-Grundlage
   - [x] Unveränderlicher Built-in-Typkatalog
@@ -338,7 +340,7 @@ Metadaten (ADR 0199). M8.30 bleibt der explizite Milestone-Exit-Review.
     - [x] JSON-v1-Parser und validiertes formatneutrales Dokumentmodell (ADR 0187)
     - [x] Built-in-Component-Konstruktion und Property-Restore (ADR 0188)
     - [x] Ownership-/Reference-Rekonstruktion (ADR 0188)
-- [ ] Resource-System
+- [x] Resource-System für den heutigen M8-Umfang
   - [x] Stabiler Resource-Key und typisierte TextStyle-Dictionary-Grundlage (ADR 0194)
   - [x] Resource References und explizite Resolution/Scopes
     - [x] Resource-Reference-Metadaten und Authoring-Vertrag (ADR 0195)
@@ -347,9 +349,6 @@ Metadaten (ADR 0199). M8.30 bleibt der explizite Milestone-Exit-Review.
     - [x] Resource-aware formatneutrale Beschreibung und kanonisches JSON-v2-Encoding/validiertes
       Laden (ADR 0197)
     - [x] Resource-aware Rekonstruktion/Materialisierung (ADR 0198)
-  - [ ] Weitere Resource-Familien bei Begründung durch reale Backend-Consumer (aufgeschoben, bis ein
-    realer Backend-/Tooling-Consumer eine weitere Familie benötigt; formaler M8-Parent-Review in
-    M8.30)
 - [x] IDE-/Tooling-Schnittstellen
   - [x] Installierter Headless-Metadaten-/Dokument-Consumer-Vertrag (ADR 0199)
 
@@ -357,7 +356,17 @@ Menschenlesbare lokalisierte Presentation-/Editor-Attribute bleiben aufgeschoben
 Designer-/Tooling-Consumer konkrete Anforderungen an Lokalisierung, Darstellung und Bearbeitung
 definiert. Dies ist eine bewusste consumer-owned Scope-Entscheidung und kein offener M8-Blocker.
 
+Jenseits von M8 zurückgestellt:
+
+- reichere Resource-Familien, sobald ein realer Backend-/Tooling-Consumer sie begründet;
+- lokalisierte Display-/Help-Texte, Icons, Editor Kinds und Property-Grid-/Palette-Policy; und
+- visueller RAD Designer oder konkrete IDE-Integration als separater Consumer beziehungsweise
+  Schwesterprojekt.
+
 Ein vollständiger visueller Designer bzw. eine RAD-Umgebung bleibt bewusst ein **separates Schwesterprojekt** und gehört nicht zum Toolkit-Core.
+
+Derzeit ist kein M9 definiert. Weitere Meilensteine werden erst nach dem heutigen Release-Zyklus aus
+konkreten Produkt- und Consumer-Anforderungen abgeleitet.
 
 Slice 9 deckt `RadioButton.text` und `selected` ab (ADR 0179).
 Slice 13 deckt `ComboBox.items` und optionalen `selectedIndex` ab (ADR 0183); Slice 18 restauriert

@@ -9,6 +9,14 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- M8 Slice 30: reviewed and formally closed M8 Developer Productivity Foundations without changing
+  runtime, public API, JSON formats or package semantics. Roadmaps, README and documentation indexes
+  now reflect the completed machine-readable type/property, validation, UI-description,
+  reconstruction, resource and installed headless-tooling contracts. The current `TextStyle`
+  identity-to-materialization resource pipeline completes the M8 resource-system scope; richer
+  resource families and human-facing designer/editor policy remain consumer-driven work beyond M8.
+  The visible macOS/Cocoa M3 gate and v0.2.0 release readiness remain separate and open (ADR 0200).
+
 - M8 Slice 29: explicit instance-free built-in type authoring metadata classifies all 29 exact
   descriptors as 26 constructible nodes or the three abstract model contracts. Complete descriptor
   value identity fails closed; a headless demo and installed public-package consumer compose the
