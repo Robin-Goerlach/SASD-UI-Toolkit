@@ -10,6 +10,20 @@
 > planned M0–M8 technical roadmap to its endpoint. Version 0.2.0 is not released: the visible
 > macOS/Cocoa M3 validation remains open, followed by a separate release-readiness review.
 
+## SASD Development Standard
+
+- **Primary quality level:** SASD Recommended
+- **Assessment:** Pilot Alignment Self-Assessment – Partially Aligned
+- **Formal profile:** Core
+- **Reference:** SASD Development Standard Version 1.0 Specification Candidate at immutable commit
+  `f12e2c038205892107440b4a58bfd41f21214036`
+- **Details:** [Alignment declaration](docs/en/SASD_COMPLIANCE.md),
+  [canonical requirement matrix](docs/SASD_CORE_REQUIREMENT_MATRIX.md) and
+  [Security Policy](SECURITY.md)
+
+This is a project self-assessment, not certification or a claim of stable SASD 1.0 alignment. The
+remaining open alignment gap is the absence of a verified confidential security-reporting route.
+
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 
 The project is inspired by proven ideas from **Delphi VCL, Java AWT/Swing, Qt, wxWidgets, FLTK, FTXUI and Turbo Vision**, while deliberately remaining an independent modern C++ design.

@@ -1,6 +1,9 @@
 # Contributing to SASD UI Toolkit
 
-SASD UI Toolkit is in pre-1.0 development. M2 Terminal Preview is complete and v0.1.0 is being prepared. Contributions are welcome, but early changes should protect the core design rather than maximize feature count.
+SASD UI Toolkit is in pre-1.0 development. Version 0.1.0 is published, M8 is complete, and version
+0.2.0 remains Unreleased. The visible macOS/Cocoa M3 gate is still open; release readiness is a
+separate next review. Contributions are welcome, but early changes should protect the core design
+rather than maximize feature count.
 
 ## English
 
@@ -59,6 +62,9 @@ Important project documentation is maintained in German and English. A change do
 
 Start at [docs/README.md](docs/README.md).
 
+Contributors must follow the [Code of Conduct](CODE_OF_CONDUCT.md). Potential vulnerabilities should
+follow the [Security Policy](SECURITY.md); do not put sensitive details in public issues.
+
 ### Commit messages
 
 Use short, descriptive commit messages. Conventional prefixes are encouraged but not required, for example:
@@ -74,7 +80,10 @@ test: add layout contract cases
 
 ## Deutsch
 
-Das SASD UI Toolkit befindet sich in der Pre-1.0-Entwicklung. M2 Terminal Preview ist abgeschlossen und v0.1.0 wird vorbereitet. Beiträge sind willkommen; in dieser frühen Phase ist eine saubere Kernarchitektur wichtiger als eine möglichst lange Featureliste.
+Das SASD UI Toolkit befindet sich in der Pre-1.0-Entwicklung. Version 0.1.0 ist veröffentlicht, M8 ist
+abgeschlossen und Version 0.2.0 bleibt Unreleased. Der sichtbare macOS/Cocoa-M3-Gate ist weiterhin
+offen; die Release Readiness folgt als eigener Review. Beiträge sind willkommen; in dieser frühen
+Phase ist eine saubere Kernarchitektur wichtiger als eine möglichst lange Featureliste.
 
 ### Vor der Implementierung
 
@@ -132,3 +141,6 @@ Wichtige Regeln:
 Wichtige Projektdokumente werden auf Deutsch und Englisch gepflegt. Die Texte müssen keine wörtlichen Übersetzungen sein, sollen aber dieselben Architekturentscheidungen wiedergeben.
 
 Einstieg: [docs/README.md](docs/README.md).
+
+Für Beiträge gelten die [Verhaltensregeln](CODE_OF_CONDUCT.md). Mögliche Schwachstellen sollen der
+[Security Policy](SECURITY.md) folgen; sensible Details gehören nicht in öffentliche Issues.
