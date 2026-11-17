@@ -1,12 +1,14 @@
 # SASD UI Toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Project status](https://img.shields.io/badge/status-M6%20native%20host%20preview-orange)
+![Project status](https://img.shields.io/badge/status-M8%20foundations%20complete-brightgreen)
 ![C++ target](https://img.shields.io/badge/C%2B%2B-20-blue)
 
 **Open-source C++ UI toolkit for building portable desktop and terminal applications across Windows, Linux and macOS.**
 
-> **Current status:** M5 Model/View is complete and M6 has started with an experimental Win32 native-host slice. M3's visible macOS validation remains an external gate; the Win32 host keeps Core, Terminal and Rendered APIs backend-neutral.
+> **Current status:** M8 Developer Productivity Foundations is complete, bringing the currently
+> planned M0–M8 technical roadmap to its endpoint. Version 0.2.0 is not released: the visible
+> macOS/Cocoa M3 validation remains open, followed by a separate release-readiness review.
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 
@@ -31,7 +33,7 @@ The goal is **not** to clone VCL, Swing, Qt or wxWidgets. The goal is to learn f
 
 ## Current foundation
 
-The repository now contains the first working implementation slice:
+The repository now contains the current working foundation:
 
 - CMake-based C++20 library target `SASD::UI`;
 - `Application`, `Component`, `Widget` and `Container` foundations;
@@ -68,6 +70,13 @@ The repository now contains the first working implementation slice:
 - `TerminalEventPump` and concrete `TerminalBackend : Backend` integrating resize, input timing and terminal session lifecycle with the normal `Application` event path;
 - buildable `sasd_ui_terminal_demo` exercising real terminal input/output, resize, TextField editing, Tab/Shift+Tab focus, Buttons and RAII terminal restoration;
 - minimal backend-neutral `Color` / `TextStyle` support for Label/Button/TextField with 16 portable foreground colors plus bold/dim/underline/inverse, carried through terminal cells into ANSI SGR;
+- form controls, Grid/Form/Stack layouts, commands, menus, shortcuts and UTF-8 clipboard foundations across the documented Core/Terminal/Rendered boundaries;
+- virtualized List, Table and Tree Model/View contracts with owned, stale-safe Terminal and Rendered presentation snapshots;
+- optional native Win32, GTK4 and AppKit top-level host consumers that reuse the Core/Rendered contracts without exposing platform types through Core;
+- immutable built-in type/property catalogs, typed property access/defaults, validation and authoring metadata;
+- owning UI Description documents with strict canonical JSON v1, resource-aware JSON v2 and atomic built-in reconstruction;
+- a typed `TextStyle` resource pipeline covering key, dictionary ownership, references, property capability, explicit resolution/scoping, persistence and one-time materialization;
+- instance-free headless tooling discovery and document editing through installed public headers and `SASD::UI`;
 - deterministic `MockBackend` for headless contract testing;
 - dependency-free unit-test harness integrated with CTest;
 - warnings-as-errors support;
@@ -75,7 +84,12 @@ The repository now contains the first working implementation slice:
 - native process-level terminal smoke tests: real POSIX PTY coverage on Linux/macOS and real Windows ConPTY coverage for session mode/code-page changes, size discovery, raw VT input, frame output and RAII restoration;
 - GitHub Actions matrix for GCC, Clang, MSVC and AppleClang.
 
-The terminal backend is the completed v0.1.0 reference implementation for a visible backend. M3 now adds a rendered desktop path while keeping the same semantic widgets, layout, focus, events and presentation coordination. `RenderedPresentationSink` translates Window refreshes, Labels and Buttons into deterministic clipped drawing commands and can render TextFields when supplied with a `RenderedMeasurementContext`. `DisplayListExecutor` replays those commands through the SDL/native-free `RenderDevice` boundary. The concrete adapter now covers both headless SDL3 software rendering and a real window-backed SDL3 host. The window path reuses the existing semantic Widgets and Rendered pipeline, performs complete-frame replay, translates close/resize/key/committed-text events, and separates logical size from physical pixel size/display scale. It remains experimental and build-tree-only. Pointer events, hit-testing, handler-owned capture, Button press/release semantics and rendered TextField click-to-caret are now implemented; wider visible Windows/Linux/macOS validation and later richer pointer interactions are the next M3 work. Without usable caret metrics, a field deliberately remains `deferred` instead of being approximated silently.
+The Terminal backend is the completed v0.1.0 visible reference implementation. The backend-neutral
+Rendered layer now supports the documented widget, form-control, menu and data-view paths through
+deterministic display lists and shared measurement. SDL3 remains an experimental opt-in,
+build-tree-only adapter. Optional Win32, GTK4 and AppKit hosts validate native top-level integration;
+native child-control peers remain deferred. Automated Windows/Linux/macOS CI is green, while the
+visible human macOS/Cocoa M3 validation is still an external platform/release gate.
 
 ## Build and test
 
@@ -166,7 +180,10 @@ are recorded in [`docs/third-party/`](docs/third-party/README.md).
 
 ### Install and consume as a CMake package
 
-The current development line installs public headers, Core, Terminal and Rendered libraries plus CMake package metadata. The published v0.1.0 tag contains the Core/Terminal baseline; `main` now targets v0.2.0/M3. A typical Release installation is:
+The current development line installs public headers, Core, Terminal and Rendered libraries plus
+CMake package metadata. The published v0.1.0 tag contains the Core/Terminal baseline; `main` uses
+the unreleased 0.2.0 development version and includes the completed M8 public tooling contract. A
+typical Release installation is:
 
 ```bash
 cmake -S . -B build-release \
@@ -300,24 +317,32 @@ A terminal does not have pixels, native buttons or desktop window chrome. Instea
 
 M1 includes a deterministic **headless/mock backend**. It validates component trees, ownership, events, focus, layout/lifecycle behavior and backend contracts without requiring a terminal or window system. The terminal remains the first user-visible backend.
 
-## Planned target environments
+## Target environments
 
 | Environment | Intended strategy | Status |
 |---|---|---|
-| Headless / Mock | Deterministic contract and core testing | Implemented foundation |
+| Headless / Mock | Deterministic contract, Core and tooling testing | Implemented |
 | Terminal / ANSI / VT | Rendered terminal backend | M2 complete; v0.1.0 release baseline validated |
-| Windows | Rendered backend first, native Win32 peers later | Planned |
-| Linux | Rendered backend first, native GTK peers later | Planned |
-| macOS | Rendered backend first, native AppKit peers later | Planned |
-| SDL3 | Optional rendered desktop adapter, hidden behind SASD API | M3 foundation in progress; deterministic DisplayList implemented |
+| Rendered | Backend-neutral measurement, display lists and presentation | Implemented and headless-testable |
+| SDL3 | Optional rendered desktop adapter, hidden behind SASD API | Experimental; opt-in and build-tree-only |
+| Windows | Rendered path plus optional native Win32 host | Implemented host consumer; native child peers deferred |
+| Linux | Rendered path plus optional native GTK4 host | Implemented host consumer with Xvfb CI |
+| macOS | Rendered path plus optional native AppKit host | Automated AppKit CI passes; visible M3 validation remains open |
 
 ## Roadmap at a glance
 
-1. **M0 – Architecture and repository foundation** – complete enough to begin implementation.
-2. **M1 – Core skeleton and headless validation** – complete; core contracts are validated headlessly across the compiler/OS matrix.
-3. **M2 – Terminal Preview / v0.1.0** – complete; first user-visible backend with `Window`, `Label`, `Button`, `TextField`, `VBox`, `HBox`, focus, input and validated native terminal sessions.
-4. **M3 – Rendered Desktop Preview / v0.2.0** – in progress; deterministic `SASD::UI::Rendered` DisplayList foundation is implemented before the optional SDL3 adapter.
-5. **Later milestones** – more controls, commands/actions, Model/View widgets, native Win32/GTK/AppKit peers, desktop integration and designer-oriented metadata/tooling foundations.
+1. **M0 – Architecture and repository foundation** – complete.
+2. **M1 – Core skeleton and headless validation** – complete.
+3. **M2 – Terminal Preview / v0.1.0** – complete and released.
+4. **M3 – Rendered Desktop Preview / v0.2.0** – technically implemented; the visible macOS/Cocoa validation remains an external platform gate.
+5. **M4 – Layout, commands and form controls** – complete for the currently defined scope; speculative binding/action/IME extensions are deferred.
+6. **M5 – Model/View and data-heavy widgets** – complete for the documented List/Table/Tree scope.
+7. **M6 – Native desktop hosts** – complete for the Win32/GTK4/AppKit top-level-host scope; native child peers are deferred.
+8. **M7 – Desktop integration** – complete for native menus and the documented file-dialog scope.
+9. **M8 – Developer productivity foundations** – complete; metadata, UI descriptions, resources, reconstruction and the installed headless tooling contract are reviewed and closed.
+
+No M9 is currently defined. Further milestones will be chosen only from concrete product or consumer
+requirements after the current release cycle.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
 
@@ -331,9 +356,13 @@ Documentation is maintained in German and English.
 
 - [Goals and scope](docs/en/GOALS_AND_SCOPE.md)
 - [Architecture](docs/en/ARCHITECTURE.md)
+- [Headless tooling integration](docs/en/TOOLING_INTEGRATION.md)
+- [UI Description JSON v1](docs/en/UI_DESCRIPTION_FORMAT.md)
+- [UI Description JSON v2](docs/en/UI_DESCRIPTION_FORMAT_V2.md)
 - [Backend and platform strategy](docs/en/BACKENDS.md)
 - [Development guidelines](docs/en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](docs/en/ROADMAP.md)
+- [M8 exit review](docs/en/M8_EXIT_REVIEW.md)
 - [v0.1.0 release notes](docs/en/V0_1_0_RELEASE_NOTES.md)
 - [Inspirations and references](docs/en/REFERENCES.md)
 
@@ -341,9 +370,13 @@ Documentation is maintained in German and English.
 
 - [Projektziele und Umfang](docs/de/ZIELE_UND_UMFANG.md)
 - [Architektur](docs/de/ARCHITEKTUR.md)
+- [Headless-Tooling-Integration](docs/de/TOOLING_INTEGRATION.md)
+- [UI Description JSON v1](docs/de/UI_DESCRIPTION_FORMAT.md)
+- [UI Description JSON v2](docs/de/UI_DESCRIPTION_FORMAT_V2.md)
 - [Backend- und Plattformstrategie](docs/de/BACKENDS.md)
 - [Entwicklungsrichtlinien](docs/de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](docs/de/ROADMAP.md)
+- [M8 Exit Review](docs/de/M8_EXIT_REVIEW.md)
 - [v0.1.0-Release-Notes](docs/de/V0_1_0_RELEASE_NOTES.md)
 - [Vorbilder und Referenzen](docs/de/REFERENZEN.md)
 

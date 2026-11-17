@@ -98,7 +98,7 @@ snapshot-exact hit testing are implemented. Rendered pointer interaction delegat
 Actions, Edit and Help menus. The SDL3 host reserves the final menu-bar row for form content, gives the
 menu overlay priority over ComboBox/widgets, and keeps Command execution two-phase.
 
-**Status: started 2026-09-30.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and does not block backend-neutral M4 development. The semantic two-state `CheckBox` and the `RadioButton`/`RadioGroup` slice are implemented across Core, Terminal and Rendered presentation and are integrated into the sample applications; dedicated SDL3 integration paths exercise their native-pointer-to-frame behavior. The identical primary-pointer press/capture/release mechanics proven across Button, CheckBox and RadioButton have been factored into a private Core helper without introducing a public control base class. `RadioGroupNavigation` provides explicit cyclic Left/Up and Right/Down navigation in stable group order, skips effectively unreachable members, and never crosses a top-level visual root. The initial `ComboBox` vertical slice is now complete across Core, Terminal and Rendered presentation: open-state preview/commit/cancel semantics, fixed snapshot popup placement, keyboard operation, collapsed pointer opening and snapshot-exact popup hover/click/outside-dismiss interaction are integrated without putting popup geometry into Core.
+**Status: completed for the currently defined scope on 2026-10-08.** The outstanding visible macOS/Cocoa M3 validation remains an external platform check and did not block backend-neutral M4 development. The semantic two-state `CheckBox` and the `RadioButton`/`RadioGroup` slice are implemented across Core, Terminal and Rendered presentation and are integrated into the sample applications; dedicated SDL3 integration paths exercise their native-pointer-to-frame behavior. The identical primary-pointer press/capture/release mechanics proven across Button, CheckBox and RadioButton have been factored into a private Core helper without introducing a public control base class. `RadioGroupNavigation` provides explicit cyclic Left/Up and Right/Down navigation in stable group order, skips effectively unreachable members, and never crosses a top-level visual root. The initial `ComboBox` vertical slice is complete across Core, Terminal and Rendered presentation: open-state preview/commit/cancel semantics, fixed snapshot popup placement, keyboard operation, collapsed pointer opening and snapshot-exact popup hover/click/outside-dismiss interaction are integrated without putting popup geometry into Core.
 
 The first M4 layout family is now implemented and stabilized. `GridLayout` provides a fixed positive column count, dense row-major placement of visible children, intrinsic column/row maxima, independent row/column spacing and deterministic clipping under shortage. Track occupancy is structural: an occupied zero-width column still exists and keeps the spacing boundary to the preceding occupied column. `FormLayout` is a separate implementation with stable label/field pairing by visual adoption order, a shared intrinsic label column, an expanding field column, label-only final rows, hidden-row handling and deterministic clipping. Visibility never repacks its structural pairs; explicit `release()`/re-adoption is a structural change and therefore follows the resulting child order. `StackLayout` overlays every visible child into the same client rectangle; desired size is the component-wise maximum, adoption order defines paint order, and later children are therefore topmost. Terminal and Rendered presentation treat Grid/Form/Stack as explicit structural containers, while unknown concrete `Container` subclasses remain deferred so future composite controls cannot silently lose presentation state. Visibility changes conservatively request subtree replay, and forced replay prunes hidden widgets so an uncovered lower stack layer is restored correctly.
 
@@ -270,7 +270,7 @@ Longer-term areas:
 
 ## M8 – Developer productivity foundations
 
-**Status: active (started 2026-10-21).** Slice 1 establishes the backend-neutral type-identity and
+**Status: completed on 2026-11-17.** Slice 1 establishes the backend-neutral type-identity and
 immutable built-in catalog foundation. Slice 2 adds the immutable property-schema foundation, Slice 3
 adds typed runtime value access while keeping schema and instance access separate, Slice 4 adds
 target-type-relative effective property defaults, Slice 5 adds exact runtime identification of
@@ -291,7 +291,9 @@ validation (ADR 0191). Slice 22 adds immutable source/target contracts for all e
 reference kinds and the RadioGroup graph constraint (ADR 0192), completing the current validation-
 metadata coverage. Slices 23–28 complete property categories and the typed resource pipeline.
 Slice 29 proves the installed headless tooling composition contract and adds exact type
-constructibility metadata (ADR 0199). M8.30 remains the explicit milestone exit review.
+constructibility metadata (ADR 0199). Slice 30 completes the milestone exit review and scope
+consolidation ([ADR 0200](../adr/0200-m8-developer-productivity-foundations-exit-decision.md) and the
+[M8 exit review](M8_EXIT_REVIEW.md)).
 
 - [x] component type identity and built-in catalog foundation
   - [x] immutable built-in type catalog
@@ -329,7 +331,7 @@ constructibility metadata (ADR 0199). M8.30 remains the explicit milestone exit 
     - [x] JSON v1 parser and validated format-neutral document model (ADR 0187)
     - [x] built-in Component construction and property restoration (ADR 0188)
     - [x] ownership/reference reconstruction (ADR 0188)
-- [ ] resource system
+- [x] resource system for the current M8 scope
   - [x] stable resource-key and typed TextStyle dictionary foundation (ADR 0194)
   - [x] resource references and explicit resolution/scoping
     - [x] resource-reference metadata and authoring contract (ADR 0195)
@@ -338,8 +340,6 @@ constructibility metadata (ADR 0199). M8.30 remains the explicit milestone exit 
     - [x] resource-aware format-neutral description and canonical JSON v2 encoding/validated
       loading (ADR 0197)
     - [x] resource-aware reconstruction/materialization (ADR 0198)
-  - [ ] richer resource families when justified by real backend consumers (deferred until a real
-    backend/tooling consumer requires another family; formal M8 parent review belongs to M8.30)
 - [x] IDE/tooling integration points
   - [x] installed headless metadata/document consumer contract (ADR 0199)
 
@@ -347,11 +347,21 @@ Human-facing localized presentation/editor attributes remain deferred until a re
 consumer defines concrete localization, presentation and editing requirements. This is a deliberate
 consumer-owned scope decision, not an open M8 blocker.
 
+Deferred beyond M8:
+
+- richer resource families when justified by a real backend/tooling consumer;
+- localized display/help text, icons, editor kinds and Property Grid/palette policy; and
+- a visual RAD designer or concrete IDE integration, which remains a separate consumer or sister
+  project.
+
 Slice 9 covers `RadioButton.text` and `selected` (ADR 0179).
 Slice 13 covers `ComboBox.items` and optional `selectedIndex` (ADR 0183); Slice 18 restores them in
 that metadata order. The current built-in pipeline now supports capture -> encode -> parse -> reconstruct.
 
 A full visual designer/RAD environment is intentionally a **separate sister project**, not part of the toolkit core.
+
+No M9 is currently defined. Further milestones will be defined only from concrete product and
+consumer requirements after the current release cycle.
 
 ## Deliberately later
 

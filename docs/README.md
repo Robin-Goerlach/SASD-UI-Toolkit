@@ -2,7 +2,10 @@
 
 This directory contains the project documentation in **German** and **English**.
 
-> **Project status:** M2 Terminal Preview / v0.1.0 is complete and published. M3 rendered desktop validation is in progress. The documented API remains pre-1.0 and is not yet a long-term source-compatibility promise.
+> **Project status:** M8 Developer Productivity Foundations is complete. Version 0.2.0 remains
+> unreleased; the visible macOS/Cocoa M3 validation and a separate release-readiness review remain
+> external gates. The documented API is pre-1.0 and is not yet a long-term source-compatibility
+> promise.
 
 ## Content
 
@@ -16,6 +19,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend and platform strategy](en/BACKENDS.md)
 - [Development guidelines](en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](en/ROADMAP.md)
+- [M8 exit review](en/M8_EXIT_REVIEW.md)
 - [M2 terminal smoke test](en/M2_TERMINAL_SMOKE_TEST.md)
 - [M3 rendered desktop smoke test](en/M3_RENDERED_DESKTOP_SMOKE_TEST.md)
 - [v0.1.0 release checklist](en/V0_1_0_RELEASE_CHECKLIST.md)
@@ -32,6 +36,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend- und Plattformstrategie](de/BACKENDS.md)
 - [Entwicklungsrichtlinien](de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](de/ROADMAP.md)
+- [M8 Exit Review](de/M8_EXIT_REVIEW.md)
 - [M2-Terminal-Smoke-Test](de/M2_TERMINAL_SMOKE_TEST.md)
 - [M3-Rendered-Desktop-Smoke-Test](de/M3_RENDERED_DESKTOP_SMOKE_TEST.md)
 - [v0.1.0-Release-Checkliste](de/V0_1_0_RELEASE_CHECKLIST.md)
