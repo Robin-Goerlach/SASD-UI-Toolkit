@@ -7,6 +7,23 @@ This directory contains the project documentation in **German** and **English**.
 > external gates. The documented API is pre-1.0 and is not yet a long-term source-compatibility
 > promise.
 
+## SASD governance and traceability
+
+- [Project classification](SASD_PROJECT_CLASSIFICATION.md)
+- [Canonical Core requirement matrix](SASD_CORE_REQUIREMENT_MATRIX.md)
+- [Canonical project requirements](SASD_PROJECT_REQUIREMENTS.md)
+- [Security assessment](SASD_SECURITY_ASSESSMENT.md)
+- [English alignment declaration](en/SASD_COMPLIANCE.md)
+- [German alignment summary](de/SASD_COMPLIANCE.md)
+- [Root Security Policy](../SECURITY.md)
+- [Code of Conduct](../CODE_OF_CONDUCT.md)
+
+English is authoritative for the canonical classification, compliance declaration, requirement
+matrix, project requirements and security assessment. German compliance text is an informative
+same-commit summary that links to those sources. Other paired English/German technical documents are
+maintained with the same technical intent in one repository commit; bilingual ADRs remain
+authoritative within their single files.
+
 ## Content
 
 ### English
@@ -19,6 +36,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend and platform strategy](en/BACKENDS.md)
 - [Development guidelines](en/DEVELOPMENT_GUIDELINES.md)
 - [Roadmap](en/ROADMAP.md)
+- [SASD alignment declaration](en/SASD_COMPLIANCE.md)
 - [M8 exit review](en/M8_EXIT_REVIEW.md)
 - [M2 terminal smoke test](en/M2_TERMINAL_SMOKE_TEST.md)
 - [M3 rendered desktop smoke test](en/M3_RENDERED_DESKTOP_SMOKE_TEST.md)
@@ -36,6 +54,7 @@ This directory contains the project documentation in **German** and **English**.
 - [Backend- und Plattformstrategie](de/BACKENDS.md)
 - [Entwicklungsrichtlinien](de/ENTWICKLUNGSRICHTLINIEN.md)
 - [Roadmap](de/ROADMAP.md)
+- [SASD-Alignment-Zusammenfassung](de/SASD_COMPLIANCE.md)
 - [M8 Exit Review](de/M8_EXIT_REVIEW.md)
 - [M2-Terminal-Smoke-Test](de/M2_TERMINAL_SMOKE_TEST.md)
 - [M3-Rendered-Desktop-Smoke-Test](de/M3_RENDERED_DESKTOP_SMOKE_TEST.md)

@@ -9,6 +9,15 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- Governance: adopted the SASD Development Standard Version 1.0 Specification Candidate at immutable
+  commit `f12e2c038205892107440b4a58bfd41f21214036` as a Core-profile, SASD Recommended pilot. Added
+  project classification, a 610-row requirement/evidence matrix, 24 stable project requirements,
+  alignment declarations, Security Policy and risk assessment, Code of Conduct and ADR 0201. CI now
+  uses explicit read-only permissions, immutable `actions/checkout` v4.4.0 pinning, disabled checkout
+  credential persistence, cancellation and timeouts; monthly grouped GitHub Actions dependency
+  updates are configured. The self-assessment is Partially Aligned because a verified confidential
+  security-reporting route remains open. This is not certification or release approval.
+
 - M8 Slice 30: reviewed and formally closed M8 Developer Productivity Foundations without changing
   runtime, public API, JSON formats or package semantics. Roadmaps, README and documentation indexes
   now reflect the completed machine-readable type/property, validation, UI-description,
