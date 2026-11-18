@@ -3,7 +3,9 @@
 ## Assessment scope
 
 - **Project:** SASD UI Toolkit
-- **Assessed product commit:** `3304658409e163fc7e667b9b03acf2e1d086b94e` (M8-complete baseline); this declaration also assesses the governance-only remediation in its own review change
+- **Assessed product commit:** `3304658409e163fc7e667b9b03acf2e1d086b94e` (M8-complete baseline)
+- **Adoption implementation commit:** `833ff0f4436b838b7879d3813a7ab083aeaf6825`
+  (governance-only final merge, including the CI timeout correction described below)
 - **Reference standard:** SASD Development Standard Version 1.0 Specification Candidate
 - **Immutable standard commit:** `f12e2c038205892107440b4a58bfd41f21214036`
 - **Standard status:** Approved normative 0.8.0 Foundation/Governance and 0.9.0 Core/Profile/Process baseline; not `1.0.0` or `1.0.0-rc.N`
@@ -73,6 +75,46 @@ GitHub runs, including the three green post-M8 workflows at
 
 The visible macOS/Cocoa M3 test remains **OPEN**. AppleClang and AppKit CI are executed evidence but do
 not replace that human platform gate.
+
+## Adoption completion record
+
+This section records how [ADR 0201](../adr/0201-sasd-development-standard-adoption.md) was implemented
+after the M8 exit decision in
+[ADR 0200](../adr/0200-m8-developer-productivity-foundations-exit-decision.md). It is an execution
+record, not another normative requirement matrix and not a new product milestone.
+
+1. Commit `e245afc7dd57cae9dd883fa11cb0e825ba4c5b5c` introduced the Recommended/Core pilot
+   classification, the 610-row Core requirement matrix, 24 stable project requirements, the security
+   assessment and policy, root repository-governance files, ADR 0201 and CI/supply-chain hardening.
+2. [PR 108](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/108) completed all eleven pull-request
+   checks and merged as `2f642f120180e519ebf47f19a0a663ece4dd9b1d`. For that merge SHA, Main CI
+   (`44138106753`) and GTK Native CI (`44138106667`) succeeded, while AppKit Native CI
+   (`44138106430`) exceeded the newly introduced 30-minute job limit during a documented hosted
+   macOS capacity slowdown. The cancelled run was not treated as successful evidence.
+3. Commit `8b009e7b682b2a71559887900c3908bda38a7dda` corrected the AppKit limit to a finite but
+   realistic 45 minutes without removing or weakening the build-and-test gate.
+   [PR 110](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/110) again completed all eleven
+   checks and merged as the final adoption implementation commit
+   `833ff0f4436b838b7879d3813a7ab083aeaf6825`.
+4. Exact-SHA post-merge evidence for `833ff0f4436b838b7879d3813a7ab083aeaf6825` is fully green:
+   [Main CI run 44188598888](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44188598888),
+   [GTK Native CI run 44188598945](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44188598945) and
+   [AppKit Native CI run 44188598993](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44188598993).
+   Main CI includes GCC, Clang, MSVC, AppleClang, ASan/UBSan, SDL3 and Linux/Windows/macOS Release,
+   test, install and package-consumer verification.
+
+Local validation also covered Markdown relative links, Debug and Release GCC warnings-as-errors
+builds under WSL, both complete CTest configurations, installation-content checks, package consumers
+and release-tree hygiene. No `include/`, `src/`, public API or runtime-semantic file changed. Sixteen
+pre-existing user-owned working-tree paths were protected and remained 16/16 SHA-256-identical at
+the final cleanup check. The task branch was removed locally and remotely after the green post-merge
+runs.
+
+The later completion-record review reproduced the same hosted-runner slowdown in the AppleClang
+matrix job: check `134655658672` reached its 30-minute limit while GitHub reported macOS arm64
+capacity constraints. The matrix now keeps 30-minute bounds for Linux and Windows while assigning
+AppleClang a finite 45-minute bound. This correction changes scheduling tolerance only; it does not
+remove or weaken any build, test, install or package-consumer gate.
 
 ## Approved exceptions
 
