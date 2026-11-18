@@ -16,22 +16,27 @@ jobs:
   build-and-test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: Linux GCC
             os: ubuntu-latest
+            timeout_minutes: 30
             compiler_args: -DCMAKE_CXX_COMPILER=g++
           - name: Linux Clang
             os: ubuntu-latest
+            timeout_minutes: 30
             compiler_args: -DCMAKE_CXX_COMPILER=clang++
           - name: Windows MSVC
             os: windows-latest
+            timeout_minutes: 30
             compiler_args: ""
           - name: macOS AppleClang
             os: macos-latest
+            # Hosted arm64 runners can experience substantial capacity-related build slowdowns.
+            timeout_minutes: 45
             compiler_args: -DCMAKE_CXX_COMPILER=clang++
 
     steps:

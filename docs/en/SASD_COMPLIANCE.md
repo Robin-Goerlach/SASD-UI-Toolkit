@@ -110,6 +110,12 @@ pre-existing user-owned working-tree paths were protected and remained 16/16 SHA
 the final cleanup check. The task branch was removed locally and remotely after the green post-merge
 runs.
 
+The later completion-record review reproduced the same hosted-runner slowdown in the AppleClang
+matrix job: check `134655658672` reached its 30-minute limit while GitHub reported macOS arm64
+capacity constraints. The matrix now keeps 30-minute bounds for Linux and Windows while assigning
+AppleClang a finite 45-minute bound. This correction changes scheduling tolerance only; it does not
+remove or weaken any build, test, install or package-consumer gate.
+
 ## Approved exceptions
 
 None. No open gap is relabelled as an exception.

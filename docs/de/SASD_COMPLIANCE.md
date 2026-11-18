@@ -78,6 +78,13 @@ geprüft. Produktcode, öffentliche API und Runtime-Semantik blieben unveränder
 vorhandenen user-owned Working-Tree-Pfade waren beim finalen Cleanup 16/16 SHA-256-identisch; der
 Task-Branch wurde danach lokal und remote entfernt.
 
+Beim späteren Review dieses Abschlussnachweises trat dieselbe Hosted-Runner-Verlangsamung auch im
+AppleClang-Matrixjob reproduzierbar auf: Check `134655658672` erreichte sein 30-Minuten-Limit,
+während GitHub Kapazitätsengpässe für macOS-arm64-Runner meldete. Die Matrix behält 30 Minuten für
+Linux und Windows und verwendet für AppleClang ein weiterhin endliches 45-Minuten-Limit. Diese
+Korrektur ändert ausschließlich die Scheduling-Toleranz; kein Build-, Test-, Installations- oder
+Package-Consumer-Gate wird entfernt oder abgeschwächt.
+
 ## Grenzen der Aussage
 
 Dies ist keine Zertifizierung, keine offizielle Compliance-Bestätigung und keine Behauptung stabiler
