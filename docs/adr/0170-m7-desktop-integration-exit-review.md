@@ -21,6 +21,19 @@ add deterministic native seam coverage for the plural Open operation on Win32, A
 the three native consumers now test the same order-preserving plural-result boundary as well as the
 single-file and option paths.
 
+### Implementation and validation record
+
+The documentation-only file-dialog review was merged as PR #61
+(`20d6fe02ce33de368d05ae7e7c05e22d1b3ebbda`). The M7 exit review was then merged as PR #62: its
+final review head was `8c3e834c4ad6948c284700b861b45fd2483a71cd`, and the resulting `main` merge was
+`522e3548ee21b9391c99a5ee040e704797794066`.
+
+For that final `main`, the post-merge Main CI, GTK Native CI and AppKit Native CI completed
+successfully (workflow runs `39467187651`, `39467187607` and `39467187357`, respectively). The
+exit-review branch also passed the local strict Debug and Release builds and the configured test
+suite. Native GUI interaction was not claimed from WSL: the visible macOS/Cocoa M3 gate remains open,
+as stated below.
+
 ### Completed scope
 
 M7 has validated three real native consumers for the same backend-neutral Core boundary:
@@ -68,6 +81,19 @@ Changelog sowie englische und deutsche Roadmaps. Es wurde kein Produktions-Vertr
 keine Regression gefunden. Der Review ergänzte deterministische native Seam-Tests für die Mehrfach-
 Open-Operation auf Win32, AppKit und GTK4. Damit testen alle drei nativen Consumer nun dieselbe
 reihenfolgetreue Mehrfach-Result-Grenze sowie die Einzel- und Optionspfade.
+
+### Implementierungs- und Validierungsprotokoll
+
+Der dokumentations-only File-Dialog-Review wurde als PR #61 gemergt
+(`20d6fe02ce33de368d05ae7e7c05e22d1b3ebbda`). Danach wurde der M7-Exit-Review als PR #62 gemergt:
+Der finale Review-Head war `8c3e834c4ad6948c284700b861b45fd2483a71cd`; der daraus entstandene
+`main`-Merge war `522e3548ee21b9391c99a5ee040e704797794066`.
+
+Für diesen finalen `main` liefen Main CI, GTK Native CI und AppKit Native CI erfolgreich durch
+(Workflow-Runs `39467187651`, `39467187607` beziehungsweise `39467187357`). Der Exit-Review-Branch
+bestand außerdem die lokalen strikten Debug- und Release-Builds sowie die konfigurierte Testsuite.
+Native GUI-Interaktion wurde unter WSL nicht behauptet: Der sichtbare macOS/Cocoa-M3-Gate bleibt wie
+unten beschrieben offen.
 
 ### Abgeschlossener Umfang
 
