@@ -69,6 +69,47 @@ Application/Window/Component resource owner, global registry or hidden scope mec
 remains the only concrete resource family. Richer families remain deferred until a real backend
 consumer establishes their contracts.
 
+### Implementation and completion record
+
+This slice started from merge commit `7ce132290465970cb9dca32dcc0079577d9b5631`, the verified M8.27
+baseline. The implementation was developed on
+`codex/m8-resource-aware-reconstruction-materialization` and committed as
+`af6377ed85f7d0caeab67fd20b27247812783e57` (`feat: materialize UI description resources`). It
+changed only the reconstruction/materialization path, its tests, the console demonstration, the
+installed-package consumer and the directly affected bilingual documentation. Neither JSON format
+nor parser grammar changed.
+
+The existing `reconstructBuiltInUiDescription()` entry point was retained. Its Reconstructor now
+materializes the validated document resources into a private `ResourceDictionary`, exposes it to
+the normal property-restore phase as one explicit document-local scope and delegates resolution to
+the M8.26 `resolveTextStyleResource()` contract. The resulting owned value is passed to the existing
+text-style property writer. This composition was chosen deliberately: it reuses the previously
+validated key, dictionary, metadata, resolution and property-write contracts instead of creating a
+second lookup policy inside reconstruction.
+
+Focused tests prove resource-backed reconstruction for all six supported controls, mixed inline and
+referenced values, independent copies from a shared resource, lifetime independence after the
+document and Reconstructor have been destroyed, acceptance of unused resources, and fail-closed
+revalidation of manually mutated documents. The v2 end-to-end test covers encode, parse and
+reconstruction. A recapture test demonstrates that the runtime tree produces ordinary v1 inline
+style data and does not invent the discarded v2 authoring identity. Existing v1 reconstruction and
+v1/v2 canonical golden tests remained unchanged and passing.
+
+Local validation covered strict warnings-as-errors Debug and Release builds with MSVC, a strict GCC
+Debug build, the complete configured CTest suites, 561 Core checks, the JSON demo, installed public
+API/package consumers, Release installation and repository hygiene, and all 441 tracked
+documentation links. Pull request [#104](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/104)
+passed the eleven required gates: Linux GCC, Linux Clang, Linux Clang ASan/UBSan, Linux SDL3,
+Windows MSVC, macOS AppleClang, GTK Native, AppKit Native, and the Linux, Windows and macOS Release
+jobs.
+
+PR #104 was merged normally as `817d914afc9473988b13f1dc2b373d75cc1a625b`. For that exact merge
+SHA, Main CI including the complete Release matrix, GTK Native CI and AppKit Native CI all completed
+successfully. The feature branches and slice-specific build trees were removed, `main` and
+`origin/main` were synchronized to the merge SHA, and all 15 pre-existing protected local paths
+remained SHA-256-identical. No release or tag was created. The visible macOS/Cocoa M3 acceptance gate
+remains open, and no M8.29 work was started.
+
 ## Deutsch
 
 ### Kontext
@@ -137,3 +178,45 @@ Es gibt weder Live Reload, Theme Switching, Cascade, Feld-Merge, Fallback, exter
 Application-/Window-/Component-Resource-Owner, globale Registry noch versteckte Scope-Mechanismen.
 TextStyle bleibt die einzige konkrete Resource-Familie. Weitere Familien bleiben zurückgestellt,
 bis ein realer Backend-Consumer ihre Verträge begründet.
+
+### Implementierungs- und Abschlussprotokoll
+
+Dieser Slice begann auf dem verifizierten M8.27-Ausgangsstand
+`7ce132290465970cb9dca32dcc0079577d9b5631`. Die Implementierung entstand auf
+`codex/m8-resource-aware-reconstruction-materialization` und wurde als
+`af6377ed85f7d0caeab67fd20b27247812783e57` (`feat: materialize UI description resources`)
+committet. Geändert wurden ausschließlich Reconstruction/Materialisierung, zugehörige Tests, die
+Konsolendemo, der installierte Package-Consumer und unmittelbar betroffene zweisprachige
+Dokumentation. JSON-Formate und Parser-Grammatik blieben unverändert.
+
+Der bestehende Entry Point `reconstructBuiltInUiDescription()` blieb erhalten. Sein Reconstructor
+materialisiert die validierten Dokument-Resources nun in ein privates `ResourceDictionary`, stellt
+es der normalen Property-Restore-Phase als genau einen expliziten dokumentlokalen Scope bereit und
+delegiert die Auflösung an den M8.26-Vertrag `resolveTextStyleResource()`. Der resultierende
+besitzende Wert wird an den vorhandenen TextStyle-Property-Writer übergeben. Diese Komposition wurde
+bewusst gewählt: Sie verwendet die bereits validierten Verträge für Key, Dictionary, Metadaten,
+Resolution und Property Write wieder, statt eine zweite Lookup-Policy in der Rekonstruktion zu
+erzeugen.
+
+Fokussierte Tests belegen Resource-gestützte Rekonstruktion für alle sechs unterstützten Controls,
+gemischte Inline- und Reference-Werte, unabhängige Kopien einer gemeinsam genutzten Resource,
+Lifetime-Unabhängigkeit nach Zerstörung von Dokument und Reconstructor, gültige unbenutzte Resources
+sowie fail-closed Revalidierung manuell mutierter Dokumente. Der v2-End-to-End-Test umfasst Encode,
+Parse und Reconstruction. Ein Recapture-Test zeigt, dass der Runtime-Baum gewöhnliche v1-Inline-
+Style-Daten erzeugt und die verworfene v2-Authoring-Identität nicht erfindet. Bestehende v1-
+Reconstruction- sowie kanonische v1-/v2-Golden-Tests blieben unverändert und erfolgreich.
+
+Die lokale Validierung umfasste strikte Warnings-as-Errors-Debug- und Release-Builds mit MSVC, einen
+strikten GCC-Debug-Build, die vollständigen konfigurierten CTest-Suiten, 561 Core-Prüfungen, die
+JSON-Demo, installierte Public-API-/Package-Consumer, Release-Installation und Repository-Hygiene
+sowie alle 441 getrackten Dokumentlinks. Pull Request
+[#104](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/104) bestand die elf geforderten Gates:
+Linux GCC, Linux Clang, Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, GTK
+Native, AppKit Native sowie die Release-Jobs für Linux, Windows und macOS.
+
+PR #104 wurde regulär als `817d914afc9473988b13f1dc2b373d75cc1a625b` gemergt. Für exakt diesen
+Merge-SHA liefen Main CI einschließlich vollständiger Release-Matrix, GTK Native CI und AppKit
+Native CI erfolgreich durch. Feature-Branches und Slice-spezifische Build-Verzeichnisse wurden
+entfernt, `main` und `origin/main` auf den Merge-SHA synchronisiert und alle 15 vorbestehenden
+geschützten lokalen Pfade blieben SHA-256-identisch. Es wurde weder ein Release noch ein Tag erzeugt.
+Das sichtbare macOS/Cocoa-M3-Abnahme-Gate bleibt offen; M8.29 wurde nicht begonnen.
