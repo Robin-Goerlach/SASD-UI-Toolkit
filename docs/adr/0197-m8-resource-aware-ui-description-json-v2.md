@@ -60,6 +60,60 @@ fallback, live rebinding, new Component members, fonts, images, themes or generi
 This slice proves document encode/parse/encode stability only. It does not promise runtime resource
 reconstruction, and accepting a document while discarding references is forbidden.
 
+### Implementation and validation record
+
+This work session started from the fetched and externally verified `origin/main` commit
+`fb0fd37677e5b07f8d99ea42b076141501cf6b76`, which contained M8 Slice 26 through PR #101. The
+dedicated implementation branch was `codex/m8-durable-resource-description-json-v2`. SSH
+authentication was unavailable in the environment, so affected fetches and remote writes used
+temporary HTTPS plus GitHub CLI credentials without changing the permanent SSH `origin`
+configuration.
+
+The implementation extended `BuiltInUiDescriptionDocument` with concrete `TextStyleResource`
+definitions and nodes with concrete `UiDescriptionResourceReferenceProperty` values. It added the
+public document-based `encodeBuiltInUiDescriptionJsonV2()` and
+`parseBuiltInUiDescriptionJsonV2()` APIs while leaving the Component-based v1 encoder and strict v1
+reader contract unchanged. Shared format-neutral validation now enforces valid and globally unique
+resource keys, valid TextStyle values, exact resource-capable property identity, kind compatibility,
+inline-XOR-reference completeness and document-local target resolution. Resources normalize by
+case-sensitive key-byte order, while resource-backed properties retain normal descriptor order in
+the canonical `properties` array. Existing reconstruction rejects every resource-bearing document
+before creating runtime Components, so no reference can be silently discarded.
+
+Focused coverage proves exact v2 golden bytes, encode/parse/encode byte stability, normalized
+document equality, canonical resource ordering, all supported and malformed ResourceKey cases,
+duplicate definitions, unknown kinds, missing targets, wrong properties, wrong kinds, duplicate or
+missing property authoring values and all six resource-capable TextStyle properties. It also proves
+that an all-inline v2 document remains v2 and that resource-bearing reconstruction fails closed.
+The unchanged v1 golden, parser and resource-free reconstruction coverage passed alongside these
+tests. The headless JSON demo shows `theme.heading` as a document-local definition and
+`sasd.ui.Label.textStyle` as its durable reference without claiming runtime binding. The installed
+package consumer constructs, encodes and parses the new public model.
+
+Local validation used Visual Studio 2022/MSVC with warnings as errors. Strict Debug and Release
+builds succeeded; the complete configured CTest suite passed 5/5 targets in both configurations and
+the Core executable passed 557/557 cases. Release installation, the installed repository package
+consumer, release-tree hygiene, the updated documentation links and `git diff --check` passed. The
+optional SDL3, GTK and AppKit paths were not built locally; the subsequent GitHub matrices covered
+SDL3, GTK Native and AppKit Native as well as GCC, Clang, Clang ASan/UBSan, MSVC, AppleClang and
+Linux, Windows and macOS Release builds.
+
+The implementation commit was
+[`fa2550c96fea59fbffc3ac1b5fd36bb512d0c115`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/fa2550c96fea59fbffc3ac1b5fd36bb512d0c115)
+on [PR #102](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/102); it was also the final PR head.
+All eleven PR gates passed for that exact head. The PR was merged normally as
+`7ce132290465970cb9dca32dcc0079577d9b5631`, and complete post-merge Main, GTK Native and AppKit
+Native workflows, including the full Release matrix, passed for that exact merge commit.
+
+After post-merge CI succeeded, the remote and local feature branches were deleted, local `main` was
+fast-forwarded to the merge commit and the remote was pruned. Slice-specific build, installation,
+consumer, tool and backup directories were removed. The permanent SSH remote configuration was
+preserved. Fourteen pre-existing modified ADR files plus the untracked `..Codex.txt` remained
+byte-for-byte equal to their fifteen pre-work SHA-256 records. Historical PRs #30, #32, #63 and #100
+remained open and were inspected read-only. No release or tag was created. M8 Slice 27 is complete;
+resource-aware reconstruction/materialization remains the explicit M8.28 boundary, and the visible
+macOS/Cocoa M3 gate remains open. M8.28 was not started.
+
 ## Deutsch
 
 ### Kontext
@@ -122,3 +176,62 @@ Resource Registry.
 Dieser Slice beweist ausschließlich Dokument-Encode-/Parse-/Encode-Stabilität. Er verspricht keine
 Runtime-Resource-Rekonstruktion; ein Dokument unter Verlust seiner References zu akzeptieren ist
 verboten.
+
+### Implementierungs- und Validierungsprotokoll
+
+Dieser Arbeitsabschnitt begann auf dem gefetchten und extern verifizierten `origin/main`-Commit
+`fb0fd37677e5b07f8d99ea42b076141501cf6b76`, der M8 Slice 26 über PR #101 enthielt. Der dedizierte
+Implementierungsbranch hieß `codex/m8-durable-resource-description-json-v2`. Da in der Umgebung
+keine SSH-Authentifizierung verfügbar war, verwendeten die betroffenen Fetches und Remote-
+Schreibvorgänge temporäres HTTPS mit GitHub-CLI-Credentials, ohne die permanente SSH-`origin`-
+Konfiguration zu verändern.
+
+Die Implementierung erweiterte `BuiltInUiDescriptionDocument` um konkrete
+`TextStyleResource`-Definitionen und Nodes um konkrete
+`UiDescriptionResourceReferenceProperty`-Werte. Hinzu kamen die öffentlichen dokumentbasierten APIs
+`encodeBuiltInUiDescriptionJsonV2()` und `parseBuiltInUiDescriptionJsonV2()`; der Component-basierte
+v1-Encoder und der strikte v1-Reader-Vertrag blieben unverändert. Die gemeinsame formatneutrale
+Validierung erzwingt nun gültige und global eindeutige Resource Keys, gültige TextStyle-Werte,
+exakte Resource-fähige Property-Identität, Kind-Kompatibilität, Inline-XOR-Reference-Vollständigkeit
+und dokumentlokale Target-Auflösung. Resources werden nach case-sensitive Key-Bytes normalisiert;
+Resource-basierte Properties behalten gleichzeitig die normale Deskriptorreihenfolge im
+kanonischen `properties`-Array. Die bestehende Rekonstruktion lehnt jedes Resource-tragende Dokument
+vor der Erzeugung von Runtime Components ab, sodass keine Reference still verworfen werden kann.
+
+Fokussierte Abdeckung beweist exakte v2-Golden-Bytes, byte-stabiles Encode/Parse/Encode,
+normalisierte Dokumentgleichheit, kanonische Resource-Reihenfolge, alle unterstützten und
+fehlerhaften ResourceKey-Fälle, Duplicate Definitions, unbekannte Kinds, fehlende Targets, falsche
+Properties, falsche Kinds, doppelte oder fehlende Property-Authoring-Werte sowie alle sechs
+Resource-fähigen TextStyle-Properties. Sie beweist außerdem, dass ein vollständig inline
+geschriebenes v2-Dokument v2 bleibt und Resource-tragende Rekonstruktion fail-closed arbeitet. Die
+unveränderten v1-Golden-, Parser- und Resource-freien Rekonstruktionsfälle bestanden gemeinsam mit
+diesen Tests. Die headless JSON-Demo zeigt `theme.heading` als dokumentlokale Definition und
+`sasd.ui.Label.textStyle` als deren dauerhafte Reference, ohne Runtime Binding zu behaupten. Der
+installierte Package-Consumer konstruiert, encodiert und parst das neue öffentliche Modell.
+
+Die lokale Validierung verwendete Visual Studio 2022/MSVC mit Warnings as Errors. Strikte Debug- und
+Release-Builds waren erfolgreich; die vollständige konfigurierte CTest-Suite bestand in beiden
+Konfigurationen 5/5 Targets und das Core-Testprogramm 557/557 Fälle. Release-Installation,
+installierter Repository-Package-Consumer, Release-Tree-Hygiene, die aktualisierten
+Dokumentationslinks und `git diff --check` bestanden. Die optionalen SDL3-, GTK- und AppKit-Pfade
+wurden lokal nicht gebaut; die anschließenden GitHub-Matrizen deckten SDL3, GTK Native und AppKit
+Native sowie GCC, Clang, Clang ASan/UBSan, MSVC, AppleClang und Linux-, Windows- und macOS-Release-
+Builds ab.
+
+Der Implementierungscommit war
+[`fa2550c96fea59fbffc3ac1b5fd36bb512d0c115`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/fa2550c96fea59fbffc3ac1b5fd36bb512d0c115)
+auf [PR #102](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/102); er war zugleich der finale
+PR-Head. Alle elf PR-Gates bestanden für exakt diesen Head. Der PR wurde regulär als
+`7ce132290465970cb9dca32dcc0079577d9b5631` gemergt; die vollständigen Post-Merge-Workflows für Main,
+GTK Native und AppKit Native einschließlich der vollständigen Release-Matrix bestanden für exakt
+diesen Merge-Commit.
+
+Nach grüner Post-Merge-CI wurden Remote- und lokaler Feature-Branch gelöscht, der lokale `main` auf
+den Merge-Commit fast-forwarded und der Remote geprunt. Slice-spezifische Build-, Installations-,
+Consumer-, Tool- und Backup-Verzeichnisse wurden entfernt. Die permanente SSH-Remote-Konfiguration
+blieb unverändert. Vierzehn bereits veränderte ADR-Dateien und das ungetrackte `..Codex.txt` stimmten
+weiterhin bytegenau mit ihren fünfzehn vor Arbeitsbeginn erfassten SHA-256-Werten überein. Die
+historischen PRs #30, #32, #63 und #100 blieben offen und wurden ausschließlich read-only geprüft.
+Es wurde weder ein Release noch ein Tag erzeugt. M8 Slice 27 ist vollständig abgeschlossen;
+Resource-aware Rekonstruktion/Materialisierung bleibt die ausdrückliche M8.28-Grenze, und das
+sichtbare macOS/Cocoa-M3-Gate bleibt offen. M8.28 wurde nicht begonnen.
