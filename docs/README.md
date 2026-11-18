@@ -24,6 +24,15 @@ same-commit summary that links to those sources. Other paired English/German tec
 maintained with the same technical intent in one repository commit; bilingual ADRs remain
 authoritative within their single files.
 
+## Anwenderhandbuch / User guide
+
+- **[Anwenderhandbuch (Deutsch, LaTeX)](manual/README.md)** — ausführliches,
+  modular aufgebautes Entwicklerhandbuch mit zehn Kapiteln, Kapitel-Summaries,
+  Beispielen, Model/View, Commands, Backends und Fehlersuche.
+- **[LaTeX-Hauptdatei](manual/main.tex)** — Druckvorlage und
+  Sprachauswahl. Die vollständige Ausgabe liegt gegenwärtig auf Deutsch
+  vor; Englisch ist für spätere Übersetzung vorbereitet.
+
 ## Content
 
 ### English

@@ -1,0 +1,146 @@
+% SPDX-License-Identifier: MIT
+\chapter{Layout, Fokus und Ereignisse}\label{chap:layout}
+\ChapterSummary{Sie lernen die Zweiphasen-Messung kennen,
+wählen geeignete Layout-Container und verstehen, wie Tastatur-,
+Text- und Pointer-Ereignisse zum richtigen Widget gelangen.
+Das Kapitel vermittelt die Grundlage für reaktionsfähige,
+gut testbare Oberflächen.}
+
+\section{Warum Layout in zwei Phasen erfolgt}
+Ein Widget weiß vor der Darstellung nicht zwingend, wie viel
+Platz seine Beschriftung benötigt: Ein Terminal misst in
+Zeichen-Zellen, eine gerenderte Oberfläche in Schriftmetriken.
+Darum verwendet das Toolkit \term{measure} und \term{arrange}.
+
+\term{measure} fragt mit Minimal- und Maximalbedingungen
+nach der gewünschten Größe. Die \term{MeasurementContext}
+liefert passende backendbezogene Messregeln, ohne dass
+ein Core-Widget das Backend kennen muss.
+\term{arrange} legt danach die endgültige Position
+und Größe innerhalb des zugewiesenen Rechtecks fest.
+
+\begin{lstlisting}[language=SASDCpp]
+sasd::ui::terminal::TerminalMeasurementContext metrics;
+const Size viewport{80, 24};
+(void)form.measure(metrics, {{0, 0}, viewport});
+form.arrange({0, 0, viewport.width, viewport.height});
+\end{lstlisting}
+Der Ausschnitt setzt voraus, dass die Core-Typen aus
+\texttt{sasd::ui} bekannt sind und \texttt{form}
+bereits existiert und Sie den Terminal-Header
+\filepath{sasd/ui/terminal/terminal_measurement_context.hpp}
+eingebunden haben. Eine echte Host-Anwendung passt
+die Werte nach einem Resize erneut an.
+
+\section{Welcher Layouttyp passt?}
+
+\noindent\begin{tabularx}{\linewidth}{@{}p{30mm}X@{}}
+\toprule
+Container & Praktische Verwendung\\\midrule
+\term{VBox} & Beschriftete Schritte, einfache Formulare,
+Aktionsstapel; \texttt{setSpacing}.\\
+\term{HBox} & Horizontale Befehlsleisten und kleine
+zusammengehörige Bedienelemente.\\
+\term{GridLayout} & Regelmäßige Spalten/Raster mit
+konfigurierbaren Zeilen- und Spaltenabständen.\\
+\term{FormLayout} & Label-Feld-Paare; mit
+\texttt{emplaceRow<WidgetTyp>(...)}.\\
+\term{StackLayout} & Mehrere Widgets belegen denselben
+lokalen Inhaltsbereich, etwa für Overlays.\\
+\bottomrule
+\end{tabularx}
+Das sind zurzeit konkrete Container, kein
+CSS-/HTML-Layoutsystem. \term{VBox} und \term{HBox}
+führen keine magische automatische Flexbox-Logik ein,
+die beliebige UI-Fälle bereits abdeckt.
+
+\begin{lstlisting}[language=SASDCpp,caption={FormLayout für beschriftete Felder}]
+auto& fields = window.emplace<FormLayout>();
+fields.setColumnSpacing(2);
+auto nameRow = fields.emplaceRow<TextField>("Benutzer:");
+nameRow.field.setText("admin");
+\end{lstlisting}
+Für Überlagerungen benutzen Sie \term{StackLayout}
+nur dann, wenn das erwartete Sichtbarkeits- und
+Fokusverhalten ausdrücklich geregelt ist.
+Ein Stack ist noch kein vollständiger
+Manager für modale Dialoge.
+
+\section{Fokus ist logischer Zustand}
+\term{FocusManager} verwaltet genau den gültigen
+logischen Empfänger der Tastatureingabe.
+\term{FocusTraversal} bestimmt eine reproduzierbare
+Reihenfolge durch den sichtbaren Widget-Baum.
+\textbf{Tab} und \textbf{Shift+Tab} können so Fokus
+wechseln, ohne dass jeder Button die gesamte
+Oberfläche kennen muss.
+
+Die Wirksamkeit des Fokus hängt von
+\texttt{isFocusable()}, \texttt{isVisible()} und
+\texttt{isEnabled()} ab. Wenn ein zuvor fokussiertes
+Element unbrauchbar wird, darf kein veralteter
+Fokuszeiger unkontrolliert weiterverwendet werden.
+Für große Formulare empfiehlt es sich, zuerst
+die Tab-Reihenfolge festzulegen und danach
+Shortcuts und Popups einzubauen.
+
+\section{KeyEvent ist kein eingegebener Text}
+Ein Druck auf die Taste A ist ein
+\term{KeyEvent}; die vom Betriebssystem bzw.
+Terminal bestätigte Texteingabe ist ein
+\term{TextInputEvent}. Beide sind nicht
+gleichzusetzen. Tastaturbelegung, AltGr,
+Modifikatoren oder Eingabemethoden können
+ein andersartiges Zeichen erzeugen als ein
+physischer Tastencode vermuten lässt.
+
+Die \term{EventQueue} sammelt Ereignisse,
+\term{Application::processEvents()} verarbeitet sie.
+\term{EventDispatcher} kann Ereignisse mit
+\emph{handled/ignored}-Semantik vom Ziel
+zu übergeordneten Elementen weiterreichen.
+Der konkrete Host entscheidet, wie das Ziel
+ermittelt, wann Fokus umgeschaltet und
+wie die nächste Darstellung angestossen wird.
+
+\section{Maus und Pointer: Capture hat einen Besitzer}
+\term{PointerRouter} führt geometrisches Hit-Testing,
+Hover und explizites Pointer-Capture zusammen.
+Beim Ziehen darf nicht plötzlich ein anderes
+Widget die laufende Geste übernehmen, nur weil
+die Maus das ursprüngliche Rechteck verlässt.
+Ein Button besitzt semantische Armed-/Pressed-Zustände;
+der Router verwaltet, welches Widget die physische
+Geste beansprucht. Verliert ein Widget seine
+Capture-Berechtigung, muss es seine Geste sauber
+zurücksetzen.
+
+Das Terminal kennt Pointer-Ereignisse nur dann,
+wenn das verwendete Terminal das entsprechende
+Protokoll liefert und der Host dessen Aktivierung
+gewollt hat. Eine alternative reine Tastaturbedienung
+muss deshalb erhalten bleiben.
+
+\section{Invalidierung und Darstellung}
+Eine Textänderung kann anderes \term{Layout} erfordern,
+eine reine Farb- oder Pressed-Änderung meist nur
+eine neue \term{Darstellung}.
+Das Toolkit unterscheidet Mess-Invalidierung und
+visuelle Invalidierung. Der \term{PresentationCoordinator}
+organisiert danach die anstehenden Präsentationsupdates,
+und ein \term{PresentationSink} erzeugt den Ziel-Frame.
+Bei Oberflächenveränderungen dürfen alte Regionen
+nicht versehentlich sichtbar bleiben; dafür existiert
+konservatives Refresh-Verhalten.
+
+\Important{Callbacks sind keine Einladung zu blockierendem
+I/O im Eventloop. Netzwerkabfragen oder lang laufende
+Administrationsoperationen sollten die Interaktion
+nicht unnötig anhalten. Thread- und Worker-Integration
+ist allerdings kein bereits fertiger universeller
+Async-Runtime-Vertrag des Toolkits.}
+
+\PracticalTip{Testen Sie eine Form zuerst bei grossem,
+dann bei sehr kleinem Terminalfenster. Beobachten Sie
+Fokus, abgeschnittenen Inhalt, die Reaktion auf Resize
+und ob deaktivierte Widgets korrekt übersprungen werden.}

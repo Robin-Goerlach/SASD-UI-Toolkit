@@ -1,0 +1,162 @@
+% SPDX-License-Identifier: MIT
+\chapter{Voraussetzungen, Build und Installation}\label{chap:install}
+\ChapterSummary{Sie richten eine reproduzierbare C++20-Buildumgebung ein,
+starten die Demonstration, führen Tests aus und binden das installierte
+Toolkit in ein eigenes CMake-Projekt ein. Unterschiede zwischen
+Ein-Konfigurations- und Visual-Studio-Builds werden ausdrücklich erklärt.}
+
+\section{Voraussetzungen und Quellen}
+Sie benötigen einen C++20-fähigen Compiler, CMake ab Version 3.24
+(gemäß der aktuellen Wurzel-\filepath{CMakeLists.txt}) und ein
+Buildsystem für Ihre Plattform. Das Haupt-Toolkit ist bewusst ohne
+obligatorische SDL-Abhängigkeit nutzbar. Unter Linux und macOS ist
+ein interaktives ANSI/VT-Terminal für die sichtbare Terminal-Demo
+sinnvoll; unter Windows wird eine geeignete Konsole bzw. ein
+Terminal mit VT-Unterstützung benötigt.
+
+Der kanonische Quellstand liegt unter
+\url{https://github.com/Robin-Goerlach/SASD-UI-Toolkit}.
+Klonen Sie das Repository oder arbeiten Sie in Ihrem vorhandenen
+Arbeitsverzeichnis. Bauen Sie \emph{außerhalb} des Quellbaums in
+einem eigenen Build-Verzeichnis. Dadurch bleiben Quellstand, Cache,
+Tests und Varianten getrennt.
+
+\section{Erster Build unter Linux oder macOS}
+\begin{lstlisting}[language=bash,caption={Konfigurieren, bauen und testen}]
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSASD_UI_BUILD_TESTS=ON \
+  -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+\term{Konfigurieren} prüft Compiler, Features und Abhängigkeiten.
+\term{Bauen} erstellt Bibliotheken, Beispiele und Tests.
+\term{Testen} führt die registrierten CTest-Fälle aus.
+Schlägt schon die Konfiguration fehl, hilft ein Blick in die erste
+aussagekräftige CMake-Fehlermeldung; das spätere Weiterbauen mit
+einem inkonsistenten Cache ist meist keine gute Idee.
+
+\section{Visual Studio 2022 unter Windows}
+\begin{lstlisting}[language={},caption={Multi-Config-Build mit MSVC}]
+cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 ^
+  -DSASD_UI_BUILD_TESTS=ON ^
+  -DSASD_UI_BUILD_EXAMPLES=ON
+cmake --build build-msvc --config Debug --parallel
+ctest --test-dir build-msvc -C Debug --output-on-failure
+\end{lstlisting}
+Die Fortsetzungszeichen \texttt{\char94} sind für \emph{cmd.exe}
+gedacht; unter PowerShell verwenden Sie entweder eine einzige Zeile
+oder deren Backtick-Zeilenfortsetzung. Bei Visual-Studio-Generatoren
+muss die Konfiguration \filepath{Debug} oder \filepath{Release}
+sowohl beim Build als auch bei CTest angegeben werden.
+
+\section{Die Terminal-Demo starten}
+Unter einem üblichhen Linux-Ein-Konfigurations-Build:
+\begin{lstlisting}[language=bash]
+./build/examples/sasd_ui_terminal_demo
+\end{lstlisting}
+Unter Windows ist der Pfad beispielsweise
+\filepath{build-msvc/examples/Debug/sasd_ui_terminal_demo.exe}.
+Eine wirkliche Terminal-Sitzung ist erforderlich; die Anwendung
+lässt sich nicht sinnvoll als nichtinteraktiver Batch-Prozess testen.
+
+Erkunden Sie die Oberfläche: Mit \textbf{Tab} und
+\textbf{Shift+Tab} wechseln Sie den Fokus. \textbf{Enter}
+oder \textbf{Leertaste} aktiviert geeignete Buttons.
+\textbf{F1} zeigt die Demo-Hilfe, \textbf{F10} öffnet das Menü.
+Die Demo unterstützt unter anderem Texteingabe, Checkbox,
+Radiobuttons und eine ComboBox. Beenden ist über den Exit-Button,
+Escape oder den vorgesehenen Demo-Shortcut möglich.
+
+\Important{Terminalgröße, Mausprotokoll und
+Steuersequenzen hängen vom Hostterminal ab. Die \term{TerminalSession}
+verwaltet die Zustandsänderungen per RAII und stellt sie bei normalem
+Verlassen und beim Abwickeln von C++-Ausnahmen wieder her.
+Eine harte Prozessbeendigung kann diese Garantie nicht bieten.}
+
+\section{Release-Build und Installation}
+\begin{lstlisting}[language=bash,caption={Installation in ein gewähltes Präfix}]
+cmake -S . -B build-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSASD_UI_BUILD_TESTS=OFF \
+  -DSASD_UI_BUILD_EXAMPLES=OFF
+cmake --build build-release --parallel
+cmake --install build-release --prefix /opt/sasd-ui
+\end{lstlisting}
+Verwenden Sie unter Windows bei Bedarf zusätzlich
+\filepath{--config Release}. Ein eigenständiges Installationspräfix
+ist für Tests und mehrere Versionen meist sicherer als eine
+ungefragte systemweite Installation.
+
+\section{Das Toolkit als CMake-Paket verwenden}
+\begin{lstlisting}[language={},caption={Auszug aus CMakeLists.txt}]
+cmake_minimum_required(VERSION 3.20)
+project(my_ui_app LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(SASDUIToolkit 0.2 CONFIG REQUIRED)
+add_executable(my_ui_app main.cpp)
+target_link_libraries(my_ui_app PRIVATE SASD::UI::Terminal)
+\end{lstlisting}
+Bei einem abweichenden Installationsort geben Sie ihn über
+\filepath{CMAKE_PREFIX_PATH} an, zum Beispiel:
+\begin{lstlisting}[language=bash]
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/sasd-ui
+\end{lstlisting}
+Die installierten Targets haben unterschiedliche Aufgaben:
+\begin{itemize}
+\item \texttt{SASD::UI}: backendneutraler Core.
+\item \texttt{SASD::UI::Terminal}: Terminal-Backend.
+\item \texttt{SASD::UI::Rendered}: SDL-unabhängige Rendered-Schicht.
+\end{itemize}
+Verlinken Sie nur die Schicht, die Ihre Anwendung tatsächlich benötigt.
+Die Versionsnummer der Paketanforderung ist an den genutzten
+Entwicklungs- bzw. Release-Stand anzupassen: Das veröffentlichte
+v0.1.0-Tag bildet den älteren Terminal-Baseline-Stand ab.
+
+\section{Optional: SDL3 bewusst einschalten}
+Für die experimentelle Desktop-Demo existieren die Optionen
+\filepath{SASD_UI_BUILD_SDL3_ADAPTER=ON} und
+\filepath{SASD_UI_FETCH_SDL3=ON}. Hinzu kommt bei den
+entsprechenden Tests ein Fontpfad über
+\filepath{SASD_UI_SDL3_TEST_FONT}.
+Das normale Toolkit braucht weder SDL3 noch SDL\_ttf.
+Der Adapter wird gegenwärtig \emph{nicht} wie Core, Terminal und
+Rendered als stabiler externer CMake-Installationsvertrag angeboten.
+Weitere Details finden Sie in \filepath{README.md} und
+\filepath{docs/en/M3_RENDERED_DESKTOP_SMOKE_TEST.md}.
+
+\section{Den erfolgreichen Build überprüfen}
+Bevor Sie ein eigenes Projekt aufsetzen, prüfen Sie vier voneinander
+unabhängige Punkte: CMake hat die gewünschten Targets erzeugt;
+der Compiler und Linker haben keine Fehler gemeldet; CTest
+hat die vorgesehenen Testfälle wirklich ausgeführt; und die
+Terminal-Demo lässt sich interaktiv bedienen. Ein erfolgreiches
+Kompilieren allein bestätigt noch nicht den tatsächlichen
+Eingabe- und Darstellungspfad.
+
+\begin{lstlisting}[language=bash,caption={Build- und Testumfang nachvollziehen}]
+cmake --build build --target help
+ctest --test-dir build -N
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+Die erste Zeile listet die vom gewählten Generator angebotenen
+Targets; die zweite zeigt die von CTest registrierten Testfälle,
+ohne sie auszuführen. Fehlen erwartete Tests, prüfen Sie
+\filepath{SASD_UI_BUILD_TESTS} und den CMake-Cache. Für
+Fehleranalysen sollten Sie die erste fehlgeschlagene
+Testausgabe mitsamt Compiler- und Betriebssystemversion
+festhalten, statt ungezielt Build-Dateien zu verändern.
+
+\Important{Ein von CTest bestätigter Headless-Test beweist nicht
+automatisch, dass Ihr konkretes Terminal alle benötigten
+Tasten, Mausprotokolle oder Unicode-Breitenkonventionen
+unterstützt. Testen Sie die Referenz-Demo zusätzlich in der
+später vorgesehenen Zielumgebung.}
+
+\PracticalTip{Bei Problemen zuerst die Demo und die Tests aus dem
+gleichen Checkout bauen. Wenn diese funktionieren, liegt ein Fehler
+bei Ihrem Konsumentenprojekt häufig an Link-Targets,
+Paketpfad oder einer gemischten Debug/Release-Konfiguration.}
