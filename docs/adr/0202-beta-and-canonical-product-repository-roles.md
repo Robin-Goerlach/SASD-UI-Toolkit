@@ -57,6 +57,44 @@ The executable checks and complete exit criteria are maintained in the migration
 - The personal `v0.1.0` release remains historical evidence unless a separately approved process
   recreates its GitHub Release metadata without claiming a new release.
 
+## Implementation and review record
+
+This decision was prepared by the security-closure and migration-readiness review performed on
+2026-11-23. The record below makes the executed work independently reviewable; it does not claim
+that migration or release approval has occurred.
+
+1. The protected starting point was `main` commit
+   `30d4270ab772a5ee545da63c64d4e0e46eb35928`. Its Main, GTK Native and AppKit Native workflows were
+   green. Pre-existing modified ADR files and the untracked `..Codex.txt` in the owner's working tree
+   were left untouched; the review was performed in a separate clone and branch.
+2. GitHub REST API verification of
+   `GET /repos/Robin-Goerlach/SASD-UI-Toolkit/private-vulnerability-reporting` returned
+   `{"enabled":true}`. `SECURITY.md` now identifies GitHub Private Vulnerability Reporting as the
+   confidential route without inventing an email address.
+3. The complete 610-row Core matrix was reassessed against the immutable SASD Development Standard
+   commit `f12e2c038205892107440b4a58bfd41f21214036`. The resulting counts are 515 Satisfied,
+   95 Not Applicable, 0 Exception, 0 Open and 0 Not Assessed. `SASD-REP-003` and `SASD-MNT-010`
+   therefore moved to Satisfied, and the pilot self-assessment moved to `Aligned` without making a
+   certification claim.
+4. The review covered repository structure and history, branches, tags and releases, licensing and
+   third-party attribution, repository URLs, issue/PR/CI links, CMake package identity, installation
+   and package consumers, dependencies, Actions and release gates, security reporting and the future
+   beta/product repository split. The executable exit criteria and pre-/post-creation checklist are
+   recorded in the linked migration-readiness report.
+5. Local validation passed repository-integrity and release-tree checks, Markdown relative-link
+   validation, a strict GCC Debug build under WSL, all four configured CTest tests, staged install
+   verification and an installed-package consumer build/test. Native local MSVC and macOS execution
+   were unavailable; no result was invented for them.
+6. Commit `822c61d00858b68e84f5a1db643357ee78ca03ac` was pushed on
+   `docs/security-migration-readiness` and opened as
+   [PR 112](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/112). All eleven PR checks passed:
+   GCC, Clang, MSVC, AppleClang, ASan/UBSan, SDL3, GTK4, AppKit Native and Linux, Windows and macOS
+   Release/package-consumer validation.
+7. The version remains `0.2.0` and the changelog remains `Unreleased`. No setting, tag, release,
+   target repository, repository transfer or history was changed. The visible manual macOS/Cocoa M3
+   validation remains open. PR 112 was intentionally left open and unmerged pending explicit owner
+   approval.
+
 ## Alternatives considered
 
 ### Transfer the personal repository
@@ -129,6 +167,44 @@ Ausführbare Prüfungen und vollständige Exit-Kriterien stehen im Migration-Rea
   Kopien existieren; vorher bleibt ihr Trigger abwesend.
 - Das persönliche `v0.1.0`-Release bleibt historische Evidence, sofern ein separat freigegebener
   Prozess seine GitHub-Release-Metadaten nicht ohne neue Release-Behauptung nachbildet.
+
+## Umsetzungs- und Review-Nachweis
+
+Diese Entscheidung wurde durch das Security-Closure- und Migration-Readiness-Review vom 23.11.2026
+vorbereitet. Der folgende Nachweis macht die tatsächlich ausgeführten Arbeiten unabhängig prüfbar;
+er behauptet weder eine erfolgte Migration noch eine Release-Freigabe.
+
+1. Geschützter Ausgangspunkt war `main`-Commit
+   `30d4270ab772a5ee545da63c64d4e0e46eb35928`. Dessen Main-, GTK-Native- und AppKit-Native-Workflows
+   waren grün. Bereits veränderte ADR-Dateien und die unversionierte Datei `..Codex.txt` im Working
+   Tree des Owners blieben unangetastet; das Review erfolgte in einem separaten Clone und Branch.
+2. Die GitHub-REST-Abfrage
+   `GET /repos/Robin-Goerlach/SASD-UI-Toolkit/private-vulnerability-reporting` lieferte
+   `{"enabled":true}`. `SECURITY.md` benennt GitHub Private Vulnerability Reporting jetzt als
+   vertraulichen Meldeweg, ohne eine E-Mail-Adresse zu erfinden.
+3. Die vollständige Core-Matrix mit 610 Zeilen wurde gegen den unveränderlichen Commit
+   `f12e2c038205892107440b4a58bfd41f21214036` des SASD Development Standard neu bewertet. Ergebnis:
+   515 Satisfied, 95 Not Applicable, 0 Exception, 0 Open und 0 Not Assessed. `SASD-REP-003` und
+   `SASD-MNT-010` wechselten damit zu Satisfied; das Pilot Self-Assessment wechselte ohne
+   Zertifizierungsbehauptung zu `Aligned`.
+4. Geprüft wurden Repository-Struktur und Historie, Branches, Tags und Releases, Lizenz und
+   Drittanbieter-Attribution, Repository-URLs, Issue-/PR-/CI-Links, CMake-Paketidentität,
+   Installation und Package Consumer, Abhängigkeiten, Actions und Release-Gates, Security Reporting
+   sowie die zukünftige Trennung von Beta- und Produkt-Repository. Ausführbare Exit-Kriterien und die
+   Checkliste vor und nach der Zielerstellung stehen im verlinkten Migration-Readiness-Bericht.
+5. Lokal bestanden Repository-Integrität und Release-Tree-Hygiene, die Prüfung relativer
+   Markdown-Links, ein strikter GCC-Debug-Build unter WSL, alle vier konfigurierten CTest-Tests, die
+   Staged-Install-Prüfung und Build/Test eines Installed-Package-Consumers. Native lokale MSVC- und
+   macOS-Ausführung waren nicht verfügbar; dafür wurde kein Ergebnis erfunden.
+6. Commit `822c61d00858b68e84f5a1db643357ee78ca03ac` wurde auf
+   `docs/security-migration-readiness` gepusht und als
+   [PR 112](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/112) eröffnet. Alle elf PR-Checks
+   bestanden: GCC, Clang, MSVC, AppleClang, ASan/UBSan, SDL3, GTK4, AppKit Native sowie die
+   Linux-, Windows- und macOS-Release-/Package-Consumer-Validierung.
+7. Die Version bleibt `0.2.0`, der Changelog bleibt `Unreleased`. Weder Settings, Tag, Release,
+   Ziel-Repository, Repository-Transfer noch Historie wurden verändert. Die sichtbare manuelle
+   macOS/Cocoa-M3-Validierung bleibt offen. PR 112 blieb bis zu einer ausdrücklichen Owner-Freigabe
+   bewusst offen und ungemergt.
 
 ## Betrachtete Alternativen
 
