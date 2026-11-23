@@ -218,6 +218,7 @@ The table below is generated from every numbered ADR file currently present in t
 | [0199](0199-m8-headless-tooling-integration-contract.md) | M8 Headless Tooling Integration Contract | Accepted |
 | [0200](0200-m8-developer-productivity-foundations-exit-decision.md) | M8 Developer Productivity Foundations Exit Decision | Accepted |
 | [0201](0201-sasd-development-standard-adoption.md) | Adopt the SASD Development Standard for Project Governance | Accepted |
+| [0202](0202-beta-and-canonical-product-repository-roles.md) | Separate Beta Development and Canonical Product Repository Roles | Accepted |
 
 ## ADR policy
 

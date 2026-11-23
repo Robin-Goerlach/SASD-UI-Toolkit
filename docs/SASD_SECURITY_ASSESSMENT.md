@@ -1,12 +1,12 @@
 # SASD UI Toolkit Security Assessment
 
 - **Authority:** canonical project security assessment (English)
-- **Assessed project baseline:** `3304658409e163fc7e667b9b03acf2e1d086b94e`, plus the governance-only remediations in the SASD adoption review
+- **Assessed project baseline:** `30d4270ab772a5ee545da63c64d4e0e46eb35928`, including the M8 baseline and governance-only adoption changes
 - **Standard reference:** SASD Development Standard Version 1.0 Specification Candidate, commit `f12e2c038205892107440b4a58bfd41f21214036`
 - **Quality level:** SASD Recommended
 - **Owner:** repository owner / maintainer
-- **Assessment date:** 2026-11-17
-- **Next review:** before v0.2.0 release readiness, and after a material security-boundary change
+- **Assessment date:** 2026-11-23
+- **Next review:** before canonical repository cutover or v0.2.0 release readiness, and after a material security-boundary change
 
 This is a proportionate security risk assessment for a portable C++ library. It is not an enterprise
 service threat model. Applications embedding the library retain responsibility for their own data,
@@ -48,7 +48,7 @@ Likelihood and impact use `Low`, `Medium` and `High` as qualitative project-leve
 | SEC-R08 | Unsafe native handles or platform lifecycle leaks cross backend boundaries. | Medium / High | Native types stay outside Core public headers; adapters own lifecycle explicitly; TerminalSession, SDL3, GTK and AppKit tests exercise teardown (`docs/en/BACKENDS.md`, ADRs 0022, 0031, 0151–0153). | Medium. Human-visible macOS/Cocoa validation remains open and is not replaced by CI. | Backend maintainers |
 | SEC-R09 | Compromised or mutable dependencies/actions alter CI or release output. | Medium / High | SDL/SDL_ttf releases are explicitly versioned; workflows use least privilege, immutable checkout SHA, disabled credential persistence, timeouts and controlled sources; monthly GitHub Actions Dependabot is configured. | Medium. CMake FetchContent tags are human-readable release tags rather than immutable source commits; reassess pinning during release readiness and monitor upstream advisories. | Repository owner |
 | SEC-R10 | CI credentials or untrusted pull-request data are exposed or executed with elevated rights. | Low / High | `pull_request`, not `pull_request_target`; read-only workflow permissions; no repository secrets referenced; checkout credentials not persisted; no untrusted expression is interpolated into shell scripts. GitHub secret scanning and push protection are enabled. | Low. Keep fork PR permissions read-only and review any future secret-bearing workflow separately. | Repository owner |
-| SEC-R11 | A vulnerability cannot be reported confidentially. | High / Medium | Root `SECURITY.md` warns against public sensitive disclosure and defines triage principles. GitHub API check on 2026-11-17 confirmed Private Vulnerability Reporting is disabled. | **Open.** Before v0.2.0 release readiness, enable GitHub Private Vulnerability Reporting or publish a suitable private contact. | Repository owner |
+| SEC-R11 | A vulnerability cannot be reported confidentially. | Low / Medium | Root `SECURITY.md` links the private GitHub advisory form, warns against public sensitive disclosure and defines triage principles. GitHub REST verification on 2026-11-23 returned `{"enabled":true}`. | Low. Re-verify the setting after repository ownership or canonical-location changes; GitHub settings do not migrate through Git history. | Repository owner |
 | SEC-R12 | Release claims exceed executed evidence or conceal the open macOS gate. | Low / High | Changelog remains Unreleased; M8 Exit Review separates automated evidence from the visible macOS gate; compliance evidence classes distinguish static from executed results. | Low. Release readiness remains a separate review; no RC/tag/release is authorised by this assessment. | Release owner |
 
 ## Security baseline checklist
@@ -62,7 +62,7 @@ Likelihood and impact use `Low`, `Medium` and `High` as qualitative project-leve
 | Logging | Not Applicable | The library has no central telemetry or persistent logging subsystem. Host applications own logging and must avoid secrets/personal data. |
 | Backup and recovery | Not Applicable | The library operates no service and owns no non-reproducible operational datastore. Source/history recovery is provided by Git; host application data is out of scope. |
 | Safe defaults | Satisfied | Optional adapters are opt-in; Core remains dependency-light; parsing and stale-state paths fail closed; workflows use least privilege. |
-| Known limitations | Satisfied | Residual risks are listed above; `SECURITY.md` exposes the missing confidential route; the macOS visible gate remains open. |
+| Known limitations | Satisfied | Residual risks are listed above; `SECURITY.md` documents the confidential route; the macOS visible gate remains open. |
 
 ## Supply-chain observations
 
@@ -76,7 +76,7 @@ Likelihood and impact use `Low`, `Medium` and `High` as qualitative project-leve
 
 ## Security decision
 
-The current controls are proportionate to SASD Recommended for a pre-1.0 C++ library, but the missing
-confidential vulnerability-reporting route is an open requirement. This assessment therefore cannot
-support an `Aligned` claim by itself. It does not close the visible macOS/Cocoa gate and is not a
-release approval.
+The current controls are proportionate to SASD Recommended for a pre-1.0 C++ library. The verified
+confidential vulnerability-reporting route closes the former reporting gap and supports the scoped
+Pilot Alignment Self-Assessment – Aligned result. This assessment does not close the visible
+macOS/Cocoa gate, approve immutable dependency pins for a release, or grant release approval.

@@ -3,7 +3,7 @@
 ## Assessment scope
 
 - **Project:** SASD UI Toolkit
-- **Assessed product commit:** `3304658409e163fc7e667b9b03acf2e1d086b94e` (M8-complete baseline)
+- **Reassessment commit:** `30d4270ab772a5ee545da63c64d4e0e46eb35928` (contains the M8-complete baseline and governance-only adoption changes)
 - **Adoption implementation commit:** `833ff0f4436b838b7879d3813a7ab083aeaf6825`
   (governance-only final merge, including the CI timeout correction described below)
 - **Reference standard:** SASD Development Standard Version 1.0 Specification Candidate
@@ -15,8 +15,8 @@
 - **Formal profiles:** Core
 - **Additional guidance:** selected technology-neutral Desktop guidance is considered where useful; the Desktop profile is not claimed as completely adopted
 - **Responsible role:** repository owner / maintainer
-- **Assessment date:** 2026-11-17
-- **Next review:** 2026-12-01 or before v0.2.0 release readiness, whichever is earlier
+- **Assessment date:** 2026-11-23
+- **Next review:** before canonical repository cutover or v0.2.0 release readiness, whichever is earlier
 
 The assessment covers all Core normative statements using `MUSS`, `MÜSSEN`, `DARF NICHT` or
 `DÜRFEN NICHT`, plus mandatory requirements in the product-applicable classification, ADR, review and
@@ -35,18 +35,19 @@ payments or personal data as a project function. The complete reasoning is in th
 
 ## Overall status
 
-**Pilot Alignment Self-Assessment – Partially Aligned**
+**Pilot Alignment Self-Assessment – Aligned**
 
-The assessment is complete for its stated scope, but two applicable requirements remain Open because
-the repository has no verified confidential security-reporting route. This result is not
-certification, not an “officially compliant” claim and not stable SASD 1.0 alignment.
+The assessment is complete for its stated scope. GitHub Private Vulnerability Reporting is documented
+and the repository REST API returned `{"enabled":true}` on 2026-11-23, closing the two previously
+Open reporting requirements. This result is not certification, not an “officially compliant” claim
+and not stable SASD 1.0 alignment.
 
 | Status | Count |
 |---|---:|
-| Satisfied | 513 |
+| Satisfied | 515 |
 | Not Applicable | 95 |
 | Exception | 0 |
-| Open | 2 |
+| Open | 0 |
 | Not Assessed | 0 |
 | **Total assessed** | **610** |
 
@@ -55,10 +56,10 @@ certification, not an “officially compliant” claim and not stable SASD 1.0 a
 | Area | Status | Main evidence | Open action |
 |---|---|---|---|
 | Project lifecycle and requirements | Satisfied | `README.md`, roadmaps, [project requirements](../SASD_PROJECT_REQUIREMENTS.md), accepted ADRs, M8 Exit Review | None in assessed mandatory scope. |
-| Architecture and documentation | Satisfied | Architecture/backend documents, 200 accepted ADRs, format/tooling documents, documentation index | Continue same-change documentation review. |
-| Repository and quality | Partially Aligned | Root governance files, hardened workflows, exact-SHA executed CI | `SASD-REP-003`: establish a confidential security contact/route. |
-| Security and testing | Partially Aligned | [security assessment](../SASD_SECURITY_ASSESSMENT.md), tests, sanitizers, cross-platform and native CI | Establish confidential reporting; reassess optional dependency immutable pinning at release readiness. |
-| Releases and maintenance | Partially Aligned | v0.1.0 checklist/release evidence, changelog, Release/package/install CI, visible-gate documentation | `SASD-MNT-010`: establish a security-reporting route. |
+| Architecture and documentation | Satisfied | Architecture/backend documents, accepted ADR series, format/tooling documents, documentation index | Continue same-change documentation review. |
+| Repository and quality | Satisfied | Root governance files, hardened workflows, exact-SHA executed CI and verified Private Vulnerability Reporting | None in assessed mandatory scope. |
+| Security and testing | Satisfied | [security assessment](../SASD_SECURITY_ASSESSMENT.md), tests, sanitizers, cross-platform/native CI and verified confidential reporting | Reassess optional dependency immutable pinning at release readiness. |
+| Releases and maintenance | Satisfied | v0.1.0 checklist/release evidence, changelog, Release/package/install CI, visible-gate documentation and `SECURITY.md` reporting routes | None in assessed mandatory scope. |
 | Knowledge management and AI use | Satisfied | `AGENTS.md`, ADR index, architecture/development guidance, repository-tracked review artefacts | Continue human ownership and verification of agent-assisted work. |
 
 The [canonical requirement matrix](../SASD_CORE_REQUIREMENT_MATRIX.md) contains the requirement IDs,
@@ -70,8 +71,9 @@ second translated matrix is maintained.
 The assessment uses the Standard's evidence classes: `P` planned, `A` artefact prepared, `S`
 statically checked, `E` executed with result and `I` independently reviewed. Workflow definitions and
 test source are static evidence only. Successful execution claims are tied to exact commits and
-GitHub runs, including the three green post-M8 workflows at
-`3304658409e163fc7e667b9b03acf2e1d086b94e` recorded in the matrix and M8 Exit Review.
+GitHub runs. The reassessment uses the three green workflows at
+`30d4270ab772a5ee545da63c64d4e0e46eb35928` recorded in the matrix; the M8 Exit Review retains its
+earlier exact-M8 evidence.
 
 The visible macOS/Cocoa M3 test remains **OPEN**. AppleClang and AppKit CI are executed evidence but do
 not replace that human platform gate.
@@ -116,15 +118,26 @@ capacity constraints. The matrix now keeps 30-minute bounds for Linux and Window
 AppleClang a finite 45-minute bound. This correction changes scheduling tolerance only; it does not
 remove or weaken any build, test, install or package-consumer gate.
 
+## Security-reporting closure
+
+On 2026-11-23, `GET
+/repos/Robin-Goerlach/SASD-UI-Toolkit/private-vulnerability-reporting` returned
+`{"enabled":true}`. `SECURITY.md` now links the working private-advisory form and keeps ordinary
+defects on public issues. No email address was invented. Against the immutable Standard commit,
+`SASD-REP-003` and `SASD-MNT-010` therefore move from Open to Satisfied. The matrix was recounted
+from its 610 requirement rows: 515 Satisfied, 95 Not Applicable and zero in every other status.
+
+This verification is repository-specific. A future product repository must enable and verify its
+own reporting route before it becomes canonical.
+
 ## Approved exceptions
 
 None. No open gap is relabelled as an exception.
 
 ## Open actions
 
-| Action | Owner | Priority | Review target | Requirement |
-|---|---|---|---|---|
-| Enable GitHub Private Vulnerability Reporting or publish a suitable private security contact; then update `SECURITY.md` and this assessment. | Repository owner | High | Before v0.2.0 release readiness | `SASD-REP-003`, `SASD-MNT-010` |
+None in the assessed mandatory scope. Migration and release exit criteria remain tracked separately;
+they are not hidden compliance exceptions.
 
 ## Standard feedback
 
@@ -141,8 +154,8 @@ changes to the Standard:
    classification load without weakening evidence.
 3. **Security-reporting scope.** `SASD-SEC-100` is phrased for a public/distributed service while
    repository/maintenance requirements expect a security contact for public distributed projects.
-   Explicit guidance for public libraries with disabled platform private reporting would make the
-   intended status and minimum interim communication clearer.
+   The now-closed period with disabled platform private reporting showed that explicit guidance for
+   public libraries would make the intended status and minimum interim communication clearer.
 
 ## Release boundary
 

@@ -21,21 +21,24 @@ to that application's maintainer.
 
 ## Reporting a vulnerability
 
-GitHub Private Vulnerability Reporting is currently **not enabled** for this repository, and no other
-confidential security contact has been verified. Do not post secrets, exploit details, personal data
-or other sensitive information in a public issue.
+GitHub Private Vulnerability Reporting is enabled for this repository. Use
+[Report a vulnerability](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/security/advisories/new)
+to open a private report that is visible only to the reporter and the repository's security
+maintainers while it is being assessed. GitHub's REST API independently confirmed
+`"enabled": true` on 2026-11-23.
 
-Until the repository owner enables Private Vulnerability Reporting or publishes an appropriate
-private contact, a confidential report cannot be accepted through a repository-documented channel.
-You may open a minimal public issue that asks the maintainer to establish a private channel, but it
-must not contain sensitive details. This is a known governance gap, not a confidential reporting path.
+Do not post secrets, exploit details, personal data or other sensitive information in a public issue,
+pull request or discussion. Public issues remain appropriate for ordinary, non-sensitive defects.
+No security email address is published or implied by this policy.
 
-The repository owner must resolve this before the v0.2.0 release-readiness decision by enabling
-GitHub Private Vulnerability Reporting or documenting a suitable security contact.
+The personal repository is currently the development/beta repository. If a separate canonical
+product repository is established later, Private Vulnerability Reporting must be enabled and its
+own working report link verified there before canonical cutover; this repository's setting does not
+transfer automatically.
 
 ## What to include
 
-Once a confidential route is available, a useful report should include:
+A useful private report should include:
 
 - affected version or commit and platform/backend;
 - impact and realistic attack conditions;
