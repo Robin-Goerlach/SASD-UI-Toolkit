@@ -94,6 +94,15 @@ that migration or release approval has occurred.
    target repository, repository transfer or history was changed. The visible manual macOS/Cocoa M3
    validation remains open. PR 112 was intentionally left open and unmerged pending explicit owner
    approval.
+8. A subsequent merge-closure review re-fetched the remote and verified that PR 112 was open,
+   mergeable and `CLEAN`, that `main` was still
+   `30d4270ab772a5ee545da63c64d4e0e46eb35928`, and that all eleven checks for head
+   `23168e390b16f6cb146c626500a34ca07c7ea96b` had succeeded. The owner's merge authorization was
+   explicitly conditional on the older head `822c61d00858b68e84f5a1db643357ee78ca03ac`. Because the
+   requested ADR execution record had legitimately advanced the PR head, that exact-SHA condition
+   was not met. The merge, post-merge validation and branch cleanup were therefore deliberately not
+   performed. The original inventory of fifteen modified ADR files plus untracked `..Codex.txt` in
+   the owner's working tree remained present and untouched.
 
 ## Alternatives considered
 
@@ -205,6 +214,15 @@ er behauptet weder eine erfolgte Migration noch eine Release-Freigabe.
    Ziel-Repository, Repository-Transfer noch Historie wurden verändert. Die sichtbare manuelle
    macOS/Cocoa-M3-Validierung bleibt offen. PR 112 blieb bis zu einer ausdrücklichen Owner-Freigabe
    bewusst offen und ungemergt.
+8. Ein anschließendes Merge-Closure-Review holte den Remote-Stand erneut ab und bestätigte: PR 112
+   war offen, mergebar und `CLEAN`, `main` stand weiterhin auf
+   `30d4270ab772a5ee545da63c64d4e0e46eb35928`, und alle elf Checks für Head
+   `23168e390b16f6cb146c626500a34ca07c7ea96b` waren erfolgreich. Die Merge-Freigabe des Owners war
+   ausdrücklich an den älteren Head `822c61d00858b68e84f5a1db643357ee78ca03ac` gebunden. Weil der
+   angeforderte ADR-Ausführungsnachweis den PR-Head berechtigt weitergeführt hatte, war diese exakte
+   SHA-Bedingung nicht erfüllt. Merge, Post-Merge-Validierung und Branch-Bereinigung wurden daher
+   bewusst nicht ausgeführt. Der ursprüngliche Bestand von fünfzehn veränderten ADR-Dateien plus der
+   unversionierten Datei `..Codex.txt` im Working Tree des Owners blieb vorhanden und unangetastet.
 
 ## Betrachtete Alternativen
 
