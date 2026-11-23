@@ -13,7 +13,7 @@
 ## SASD Development Standard
 
 - **Primary quality level:** SASD Recommended
-- **Assessment:** Pilot Alignment Self-Assessment – Partially Aligned
+- **Assessment:** Pilot Alignment Self-Assessment – Aligned
 - **Formal profile:** Core
 - **Reference:** SASD Development Standard Version 1.0 Specification Candidate at immutable commit
   `f12e2c038205892107440b4a58bfd41f21214036`
@@ -21,8 +21,18 @@
   [canonical requirement matrix](docs/SASD_CORE_REQUIREMENT_MATRIX.md) and
   [Security Policy](SECURITY.md)
 
-This is a project self-assessment, not certification or a claim of stable SASD 1.0 alignment. The
-remaining open alignment gap is the absence of a verified confidential security-reporting route.
+This is a project self-assessment, not certification or a claim of stable SASD 1.0 alignment. GitHub
+Private Vulnerability Reporting closes the two previously open reporting requirements; release
+readiness and the visible macOS/Cocoa M3 gate remain separate and open.
+
+## Repository roles and migration readiness
+
+This personal repository remains the current project repository and is intended to continue as the
+development/beta repository. A future repository owned by `SASDGMBH` is intended to become the
+canonical product and release repository only after the documented exit criteria are met and an
+authorized owner approves cutover. No destination repository, transfer or release is claimed by this
+statement. See the [migration-readiness review](docs/en/SASDGMBH_MIGRATION_READINESS.md) and
+[ADR 0202](docs/adr/0202-beta-and-canonical-product-repository-roles.md).
 
 SASD UI Toolkit aims to provide a small, understandable and extensible component API that can target very different presentation environments without forcing normal application code to depend on a specific native GUI toolkit.
 

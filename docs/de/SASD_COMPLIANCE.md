@@ -7,7 +7,7 @@ maßgeblich; es gibt keine zweite übersetzte Evidence-Matrix.
 
 ## Bewertungsrahmen
 
-- **Projektstand:** M8-Basis `3304658409e163fc7e667b9b03acf2e1d086b94e`
+- **Neubewerteter Projektstand:** `30d4270ab772a5ee545da63c64d4e0e46eb35928` (enthält die M8-Basis und die Governance-Änderungen)
 - **Finaler Adoption-Implementierungsstand:** `833ff0f4436b838b7879d3813a7ab083aeaf6825`
 - **Standard:** SASD Development Standard Version 1.0 Specification Candidate
 - **Unveränderlicher Referenzcommit:** `f12e2c038205892107440b4a58bfd41f21214036`
@@ -16,8 +16,8 @@ maßgeblich; es gibt keine zweite übersetzte Evidence-Matrix.
 - **Formales Profil:** Core
 - **Desktop:** technology-neutrale Hinweise werden selektiv berücksichtigt; eine vollständige formale Profilübernahme wird nicht behauptet
 - **Bereichsweise Hochstufungen:** keine; einzelne strengere Security-/Release-Praktiken sind freiwillig
-- **Datum:** 17.11.2026
-- **Nächster Review:** 01.12.2026 oder vor der v0.2.0 Release Readiness
+- **Datum:** 23.11.2026
+- **Nächster Review:** vor dem kanonischen Repository-Cutover oder der v0.2.0 Release Readiness
 
 Die Begründung der Einstufung steht in der
 [Projektklassifikation](../SASD_PROJECT_CLASSIFICATION.md). Das Toolkit ist ein großes, langfristig
@@ -26,21 +26,23 @@ eigenständig betriebener geschäftskritischer Production-Dienst.
 
 ## Gesamtstatus
 
-**Pilot Alignment Self-Assessment – Partially Aligned**
+**Pilot Alignment Self-Assessment – Aligned**
 
 | Status | Anzahl |
 |---|---:|
-| Satisfied | 513 |
+| Satisfied | 515 |
 | Not Applicable | 95 |
 | Exception | 0 |
-| Open | 2 |
+| Open | 0 |
 | Not Assessed | 0 |
 | **Gesamt** | **610** |
 
-Offen bleiben `SASD-REP-003` und `SASD-MNT-010`: GitHub Private Vulnerability Reporting ist nicht
-aktiviert, und ein anderer vertraulicher Security-Kontakt wurde nicht verifiziert. `SECURITY.md`
-erfindet deshalb keinen Meldeweg. Der Repository Owner muss vor der v0.2.0 Release Readiness Private
-Vulnerability Reporting aktivieren oder einen geeigneten privaten Kontakt festlegen.
+`SASD-REP-003` und `SASD-MNT-010` sind nun Satisfied: GitHub Private Vulnerability Reporting ist in
+`SECURITY.md` als vertraulicher Meldeweg dokumentiert, und die GitHub REST API lieferte am 23.11.2026
+`{"enabled":true}`. Es wurde keine Security-E-Mail-Adresse erfunden. Die kanonische Matrix wurde über
+alle 610 Requirement-Zeilen neu gezählt: 515 Satisfied, 95 Not Applicable und null in allen übrigen
+Statusgruppen. Ein zukünftiges Produkt-Repository benötigt vor dem kanonischen Cutover eine eigene
+Aktivierung und Verifizierung dieses Repository-spezifischen GitHub-Settings.
 
 Die produktspezifische [Security-Bewertung](../SASD_SECURITY_ASSESSMENT.md) dokumentiert Schutzgüter,
 Trust Boundaries, Risiken, Controls, Restrisiken und die Security Baseline. Die
@@ -84,6 +86,14 @@ während GitHub Kapazitätsengpässe für macOS-arm64-Runner meldete. Die Matrix
 Linux und Windows und verwendet für AppleClang ein weiterhin endliches 45-Minuten-Limit. Diese
 Korrektur ändert ausschließlich die Scheduling-Toleranz; kein Build-, Test-, Installations- oder
 Package-Consumer-Gate wird entfernt oder abgeschwächt.
+
+## Security-Follow-up
+
+Die Neubewertung verwendet die unveränderte Standardreferenz
+`f12e2c038205892107440b4a58bfd41f21214036` und den aktuellen Ausgangs-SHA
+`30d4270ab772a5ee545da63c64d4e0e46eb35928`. Für diesen SHA sind Main CI, GTK Native CI und AppKit
+Native CI vollständig grün. Der Status `Aligned` bezeichnet ausschließlich das Pilot
+Self-Assessment im dokumentierten Scope; er ist weder Zertifizierung noch Release-Freigabe.
 
 ## Grenzen der Aussage
 

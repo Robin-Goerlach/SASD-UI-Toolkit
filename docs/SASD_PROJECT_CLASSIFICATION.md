@@ -1,10 +1,10 @@
 # SASD UI Toolkit Project Classification
 
 - **Project:** SASD UI Toolkit
-- **Date:** 2026-11-17
+- **Date:** 2026-11-23
 - **Responsible role:** repository owner / maintainer
-- **Trigger:** initial adoption of the SASD Development Standard
-- **Assessed baseline:** `3304658409e163fc7e667b9b03acf2e1d086b94e`, plus governance-only adoption changes
+- **Trigger:** security-reporting closure and migration-readiness reassessment
+- **Assessed baseline:** `30d4270ab772a5ee545da63c64d4e0e46eb35928`, including the M8 baseline and governance-only adoption changes
 - **Next reassessment:** before a major release, a material scope/security change, or a change of primary quality level
 
 ## Purpose and lifecycle
@@ -69,12 +69,13 @@ within their single files.
 Independent evidence is supplied where available by GitHub-hosted multi-platform CI. Governance
 judgements are a structured self-review and are not external certification.
 
-## Open points and approval
+## Follow-up and approval
 
-| Open point | Owner | Review target | Risk effect |
-|---|---|---|---|
-| Enable GitHub Private Vulnerability Reporting or publish a suitable private security contact. | Repository owner | Before v0.2.0 release readiness | Prevents confidential vulnerability intake; keeps pilot alignment Partially Aligned. |
+GitHub Private Vulnerability Reporting was verified enabled through the REST API on 2026-11-23;
+`SECURITY.md` documents the working route. The former reporting gap is closed. A later canonical
+product repository must receive and verify its own equivalent setting before cutover because
+repository settings are not part of Git history.
 
 - **Result:** approved as a structured self-assessment for this pilot slice
-- **Self-review date:** 2026-11-17
+- **Self-review date:** 2026-11-23
 - **Reassessment trigger:** v0.2.0 release readiness, major release, material scope/data/security change, or Standard baseline change

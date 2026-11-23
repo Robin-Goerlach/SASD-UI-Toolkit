@@ -2,13 +2,13 @@
 
 - **Authority:** sole canonical requirement-level assessment (English)
 - **Assessment type:** Pilot Alignment Self-Assessment
-- **Project baseline:** `3304658409e163fc7e667b9b03acf2e1d086b94e` plus the governance-only adoption changes assessed by this review
+- **Reassessment baseline:** `30d4270ab772a5ee545da63c64d4e0e46eb35928` (contains the M8-complete baseline and governance-only adoption changes)
 - **Standard reference:** SASD Development Standard Version 1.0 Specification Candidate, immutable commit `f12e2c038205892107440b4a58bfd41f21214036`
 - **Primary quality level:** SASD Recommended
 - **Profiles:** Core; selected technology-neutral Desktop guidance is informative only
 - **Assessor/owner:** repository owner / maintainer (structured self-review)
-- **Assessment date:** 2026-11-17
-- **Next review:** 2026-12-01 or before v0.2.0 release readiness, whichever is earlier
+- **Assessment date:** 2026-11-23
+- **Next review:** before canonical repository cutover or v0.2.0 release readiness, whichever is earlier
 
 The matrix covers every Core requirement whose normative statement contains `MUSS`, `MÜSSEN`, `DARF NICHT` or `DÜRFEN NICHT` (411 rows). It additionally covers mandatory requirements from the product-applicable classification, ADR, review and release processes and from the Compliance/Exceptions governance documents. Standard-maintainer document lifecycle, publication, .NET/Desktop-profile and standard-repository-specific rules are outside the formal product assessment scope.
 
@@ -19,10 +19,11 @@ The matrix covers every Core requirement whose normative statement contains `MUS
 | EV-CLASS | `docs/SASD_PROJECT_CLASSIFICATION.md` | S |
 | EV-COMP | `docs/en/SASD_COMPLIANCE.md` and this matrix | S |
 | EV-M8 | `docs/en/M8_EXIT_REVIEW.md` and ADR 0200; records cross-platform, sanitizer, adapter, Release, package and install evidence | E |
-| EV-CI | Exact base SHA `3304658409e163fc7e667b9b03acf2e1d086b94e`: [CI run 44042801495](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44042801495), [GTK run 44042801620](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44042801620), [AppKit run 44042801486](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44042801486) | E |
+| EV-CI | Exact reassessment SHA `30d4270ab772a5ee545da63c64d4e0e46eb35928`: [CI run 44277502445](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44277502445), [GTK run 44277502392](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44277502392), [AppKit run 44277502335](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/44277502335) | E |
+| EV-PVR | GitHub REST `GET /repos/Robin-Goerlach/SASD-UI-Toolkit/private-vulnerability-reporting` returned `{"enabled":true}` on 2026-11-23; `SECURITY.md` documents and links the private report route | E |
 | EV-REL | `docs/en/V0_1_0_RELEASE_CHECKLIST.md` at release commit `dc34ebd4bf6db4a0f9777fc81320f47dae72b36b` | E |
 
-Evidence class: `P` planned, `A` artefact prepared, `S` statically checked, `E` executed with result, `I` independently reviewed. No row relies on a workflow file or test source as proof of successful execution; executed claims cite EV-CI, EV-M8 or EV-REL.
+Evidence class: `P` planned, `A` artefact prepared, `S` statically checked, `E` executed with result, `I` independently reviewed. No row relies on a workflow file or test source as proof of successful execution; executed claims cite EV-CI, EV-M8, EV-PVR or EV-REL.
 
 ## Core: QL
 
@@ -196,9 +197,9 @@ Evidence class: `P` planned, `A` artefact prepared, `S` statically checked, `E` 
 |---|---|---|---|---|---|---|---|---|
 | `SASD-REP-001` | Ein Repository MUSS einen eindeutigen, stabilen und verständlichen Namen besitzen. | SASD Recommended / Core | **Satisfied** | README.md; LICENSE; CONTRIBUTING.md; CODE_OF_CONDUCT.md; .github/workflows/; EV-CI | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-REP-002` | Beschreibung, Zweck, Status und primäre Technologie oder Projektart MÜSSEN im README oder in den Repository-Metadaten erkennbar sein. | SASD Recommended / Core | **Satisfied** | README.md; LICENSE; CONTRIBUTING.md; CODE_OF_CONDUCT.md; .github/workflows/; EV-CI | — | Repository owner / maintainer | 2026-12-01 | S |
-| `SASD-REP-003` | Ein öffentliches Repository MUSS Lizenz, Sicherheitskontakt und Wartungsstatus auffindbar machen. | Recommended / applicable public-distribution condition | **Open** | A public repository must expose a security contact. SECURITY.md records that no confidential contact is currently verified. GitHub API observation 2026-11-17: Private Vulnerability Reporting disabled. | — | Repository owner / maintainer | 2026-12-01 | S |
-| `SASD-REP-004` | Forks, Mirrors, archivierte Kopien und kanonische Repositories MÜSSEN unterscheidbar sein. | Conditional requirement; trigger absent | **Not Applicable** | No project-controlled mirror or equivalent canonical copy is documented; GitHub is the canonical repository. | — | Repository owner / maintainer | 2026-12-01 | S |
-| `SASD-REP-005` | Der kanonische Standort eines Projekts MUSS benannt werden, wenn mehrere gleichartige Kopien existieren. | Conditional requirement; trigger absent | **Not Applicable** | No project-controlled mirror or equivalent canonical copy is documented; GitHub is the canonical repository. | — | Repository owner / maintainer | 2026-12-01 | S |
+| `SASD-REP-003` | Ein öffentliches Repository MUSS Lizenz, Sicherheitskontakt und Wartungsstatus auffindbar machen. | Recommended / applicable public-distribution condition | **Satisfied** | LICENSE, README.md and SECURITY.md expose licensing, maintenance status and the confidential GitHub Private Vulnerability Reporting route; EV-PVR verifies that the route is enabled. | — | Repository owner / maintainer | Before canonical cutover or v0.2.0 release readiness | E |
+| `SASD-REP-004` | Forks, Mirrors, archivierte Kopien und kanonische Repositories MÜSSEN unterscheidbar sein. | Conditional requirement; trigger absent | **Not Applicable** | The future beta/product split is documented, but no second project-controlled repository was verified as existing. Reassess at cutover. | — | Repository owner / maintainer | Before canonical cutover | S |
+| `SASD-REP-005` | Der kanonische Standort eines Projekts MUSS benannt werden, wenn mehrere gleichartige Kopien existieren. | Conditional requirement; trigger absent | **Not Applicable** | The personal repository remains the current source of truth; ADR 0202 defines how both roles must be named once the future product repository exists. | — | Repository owner / maintainer | Before canonical cutover | S |
 | `SASD-REP-010` | Produktive Quellen, Tests, Dokumentation und erzeugte Artefakte MÜSSEN unterscheidbar sein. | SASD Recommended / Core | **Satisfied** | README.md; LICENSE; CONTRIBUTING.md; CODE_OF_CONDUCT.md; .github/workflows/; EV-CI | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-REP-011` | Repository-Struktur SOLLTE der Größe des Projekts entsprechen und DARF nicht allein aus formalen Gründen unnötig tief oder fragmentiert werden. | SASD Recommended / Core | **Satisfied** | README.md; LICENSE; CONTRIBUTING.md; CODE_OF_CONDUCT.md; .github/workflows/; EV-CI | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-REP-012` | Build- und Laufzeitausgaben MÜSSEN standardmäßig von der Versionskontrolle ausgeschlossen werden, sofern sie keine bewusst versionierten Releaseartefakte sind. | SASD Recommended / Core | **Satisfied** | README.md; LICENSE; CONTRIBUTING.md; CODE_OF_CONDUCT.md; .github/workflows/; EV-CI | — | Repository owner / maintainer | 2026-12-01 | S |
@@ -397,7 +398,7 @@ Evidence class: `P` planned, `A` artefact prepared, `S` statically checked, `E` 
 | `SASD-MNT-002` | Unterstützte Versionen, Plattformen und Laufzeitumgebungen MÜSSEN auffindbar dokumentiert sein. | SASD Recommended / Core | **Satisfied** | README.md; SECURITY.md; CHANGELOG.md; docs/en/ROADMAP.md | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-MNT-003` | Ein Projekt DARF NICHT den Eindruck aktiver Wartung erwecken, wenn keine Wartung mehr vorgesehen ist. | SASD Recommended / Core | **Satisfied** | README.md; SECURITY.md; CHANGELOG.md; docs/en/ROADMAP.md | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-MNT-004` | Production-Projekte MÜSSEN Vertretung, Übergabe oder Eskalationsweg für kritische Wartungsaufgaben berücksichtigen. | Conditional requirement; trigger absent | **Not Applicable** | Production-only condition is absent: the project is classified SASD Recommended and has no area-specific Production elevation. | — | Repository owner / maintainer | 2026-12-01 | S |
-| `SASD-MNT-010` | Nutzer MÜSSEN wissen, wie Fehler oder Sicherheitsprobleme gemeldet werden können, soweit das Projekt verteilt oder betrieben wird. | Recommended / applicable public-distribution condition | **Open** | Distributed users need a security-reporting route. Private Vulnerability Reporting is disabled and no private contact is verified. GitHub API observation 2026-11-17: Private Vulnerability Reporting disabled. | — | Repository owner / maintainer | 2026-12-01 | S |
+| `SASD-MNT-010` | Nutzer MÜSSEN wissen, wie Fehler oder Sicherheitsprobleme gemeldet werden können, soweit das Projekt verteilt oder betrieben wird. | Recommended / applicable public-distribution condition | **Satisfied** | SECURITY.md directs ordinary defects to public issues and sensitive vulnerabilities to the verified private GitHub reporting route; EV-PVR confirms availability. | — | Repository owner / maintainer | Before canonical cutover or v0.2.0 release readiness | E |
 | `SASD-MNT-011` | Fehler MÜSSEN nach Auswirkung, Dringlichkeit, Sicherheitsrelevanz und Reproduzierbarkeit priorisiert werden. | SASD Recommended / Core | **Satisfied** | README.md; SECURITY.md; CHANGELOG.md; docs/en/ROADMAP.md | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-MNT-012` | Supportzusagen DÜRFEN NICHT gemacht werden, wenn sie organisatorisch nicht erfüllbar sind. | SASD Recommended / Core | **Satisfied** | README.md; SECURITY.md; CHANGELOG.md; docs/en/ROADMAP.md | — | Repository owner / maintainer | 2026-12-01 | S |
 | `SASD-MNT-020` | Abhängigkeiten und Zielplattformen MÜSSEN regelmäßig auf Supportstatus und relevante Sicherheitsprobleme geprüft werden. | SASD Recommended / Core | **Satisfied** | README.md; SECURITY.md; CHANGELOG.md; docs/en/ROADMAP.md | — | Repository owner / maintainer | 2026-12-01 | S |
@@ -720,16 +721,20 @@ Evidence class: `P` planned, `A` artefact prepared, `S` statically checked, `E` 
 
 | Status | Count |
 |---|---:|
-| Satisfied | 513 |
+| Satisfied | 515 |
 | Not Applicable | 95 |
 | Exception | 0 |
-| Open | 2 |
+| Open | 0 |
 | Not Assessed | 0 |
 
 ## Overall assessment
 
-**Pilot Alignment Self-Assessment – Partially Aligned.**
+**Pilot Alignment Self-Assessment – Aligned.**
 
-The assessment is complete for the stated scope and contains no hidden Not Assessed rows. It cannot be Aligned because `SASD-REP-003` and `SASD-MNT-010` remain Open: no confidential security contact/reporting route is verified. There are no approved exceptions. The owner action is to enable GitHub Private Vulnerability Reporting or publish a suitable private security contact before v0.2.0 release readiness.
+The assessment is complete for the stated scope and contains no Open, Exception or hidden Not
+Assessed row. `SASD-REP-003` and `SASD-MNT-010` are Satisfied because the repository exposes a
+documented confidential report path and the GitHub REST API verifies Private Vulnerability Reporting
+as enabled. A future canonical repository requires its own same-repository verification; this result
+does not transfer as a Git setting.
 
 This is not certification, not a stable SASD 1.0 claim, not a release approval and not closure of the visible macOS/Cocoa M3 gate.

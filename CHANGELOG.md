@@ -9,14 +9,21 @@ they improve the architecture before compatibility commitments become expensive.
 
 ### Added
 
+- Security closure and migration readiness: verified GitHub Private Vulnerability Reporting through
+  the repository REST API, documented the confidential report path, reassessed `SASD-REP-003` and
+  `SASD-MNT-010` as Satisfied, and recorded a 515 Satisfied / 95 Not Applicable / 0 Open pilot
+  assessment. Added the future beta/product repository boundary, migration exit criteria and an
+  executable cutover checklist without creating, transferring or publishing a repository or release.
+
 - Governance: adopted the SASD Development Standard Version 1.0 Specification Candidate at immutable
   commit `f12e2c038205892107440b4a58bfd41f21214036` as a Core-profile, SASD Recommended pilot. Added
   project classification, a 610-row requirement/evidence matrix, 24 stable project requirements,
   alignment declarations, Security Policy and risk assessment, Code of Conduct and ADR 0201. CI now
   uses explicit read-only permissions, immutable `actions/checkout` v4.4.0 pinning, disabled checkout
   credential persistence, cancellation and timeouts; monthly grouped GitHub Actions dependency
-  updates are configured. The self-assessment is Partially Aligned because a verified confidential
-  security-reporting route remains open. This is not certification or release approval.
+  updates are configured. The initial self-assessment was Partially Aligned because a verified
+  confidential security-reporting route was open; the 2026-11-23 follow-up closes that gap. This is
+  not certification or release approval.
 
 - M8 Slice 30: reviewed and formally closed M8 Developer Productivity Foundations without changing
   runtime, public API, JSON formats or package semantics. Roadmaps, README and documentation indexes
