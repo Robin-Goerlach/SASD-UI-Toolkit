@@ -72,6 +72,11 @@ authoritative within their single files.
 
 The ADR series records durable rationale for decisions such as C++20/CMake, public naming, component ownership, backend/peer architecture, the headless/mock backend, terminal support, Model/View, designer separation and release compatibility.
 
+### Development and quality-assurance reports
+
+- [ADR documentation consolidation — 24 November 2026 (English, canonical)](en/ADR_DOCUMENTATION_CONSOLIDATION_2026_11_24.md)
+- [ADR-Dokumentationskonsolidierung — 24. November 2026 (Deutsch)](de/ADR_DOCUMENTATION_CONSOLIDATION_2026_11_24.md)
+
 ## Documentation policy
 
 Architecture decisions should be documented before they become difficult to reverse. The German and English documents should describe the same technical intent; they do not have to be literal translations, but neither language should contain important decisions that are missing from the other.
