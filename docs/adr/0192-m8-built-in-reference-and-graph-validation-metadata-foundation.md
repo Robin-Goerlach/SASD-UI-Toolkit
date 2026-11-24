@@ -96,6 +96,16 @@ descriptor family. The roadmap's contextual cross-property/graph-validation and 
 subtree can therefore close. Designer-friendly property attributes, resources, IDE integration and
 the enclosing property-metadata/design-time milestone remain open.
 
+### Implementation provenance
+
+Commit `d38e4af7abd4368dbddd2d608cbf4d3804e714f3` implemented this decision in
+[PR #96](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/96). Tests cover the complete
+eleven-entry endpoint catalog, lookup and base-chain compatibility, singular source/kind relations,
+fabricated values and RadioGroup graphs with zero, one or multiple selected members. Parser symbols,
+capture, reconstruction and runtime relation APIs remain unchanged. All eleven PR checks and all
+three workflows for merge `b5d86546d62ece2efd800d2f845c5341c1a5406a` passed. Resources and
+human-facing authoring metadata remained later work.
+
 ## Deutsch
 
 ### Kontext
@@ -177,3 +187,14 @@ TextStyle-Color-Gültigkeit bleibt Teil ihres konkreten Compound-Werts. Der Road
 kontextabhängige Cross-Property-/Graph-Validation und Validation Metadata kann daher schließen.
 Designerfreundliche Property-Attribute, Resources, IDE-Integration und der umschließende Property-
 Metadata-/Design-Time-Meilenstein bleiben offen.
+
+### Implementierungsnachweis
+
+Commit `d38e4af7abd4368dbddd2d608cbf4d3804e714f3` setzte diese Entscheidung in
+[PR #96](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/96) um. Tests decken den vollständigen
+Endpoint-Katalog mit elf Einträgen, Lookup und Base-Chain-Kompatibilität, singuläre Source-/Kind-
+Relationen, fabrizierte Werte und RadioGroup-Graphen mit null, einem oder mehreren ausgewählten
+Membern ab. Parser-Symbole, Capture, Reconstruction und Runtime-Relations-APIs bleiben unverändert.
+Alle elf PR-Checks und alle drei Workflows für Merge
+`b5d86546d62ece2efd800d2f845c5341c1a5406a` bestanden. Resources und menschenlesbare
+Authoring-Metadaten blieben spätere Arbeit.

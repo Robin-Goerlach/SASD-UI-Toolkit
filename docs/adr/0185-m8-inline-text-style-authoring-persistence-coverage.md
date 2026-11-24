@@ -92,6 +92,16 @@ serialization is complete: persisted encoding and deserialization/reconstruction
 The catalog now has 29 types, 28 descriptors, 8 kinds, 16 typed access functions, 8 default query
 families and 8 snapshot collections. Future public API changes must repeat the coverage review.
 
+### Implementation provenance
+
+Commit `08750aac908c1fb1e4413e274d781922f504e270` implemented this decision in
+[PR #89](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/89). Coverage verifies all six
+TextStyle owners, exact descriptor identity and order, defaults, value ownership, unknown runtime
+Color values, same-value writes, visual versus measurement invalidation and exclusion of
+presentation overlays. Installed-package consumers exercise the public API. All eleven PR checks
+and all three workflows for merge `a4fc034154c1de61aa9ae13007c442da66045fd5` passed. Resource
+references, symbolic persisted Color encoding and reconstruction remained later decisions.
+
 ## Deutsch
 
 ### Kontext und Entscheidung
@@ -170,3 +180,14 @@ bestanden. 361 lokale Markdown-Links hatten keine fehlenden Ziele; git diff --ch
 Der automatisierte Vergleich bestätigte unveränderte bisherige Deskriptor-Identitäten/-Reihenfolge,
 die sieben bisherigen Kind-Werte, weiterhin 29 Typen und die neuen Katalogzahlen 28/8/8. Optionale
 SDL3-/Native-Desktop-Builds liefen lokal nicht; die plattformübergreifende Validierung erfolgt in CI.
+
+## Implementierungsnachweis
+
+Commit `08750aac908c1fb1e4413e274d781922f504e270` setzte diese Entscheidung in
+[PR #89](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/89) um. Die Abdeckung prüft alle
+sechs TextStyle-Owner, exakte Descriptor-Identität und -Reihenfolge, Defaults, Value-Ownership,
+unbekannte Runtime-Color-Werte, Same-Value-Writes, visuelle gegenüber Measurement-Invalidierung und
+den Ausschluss von Presentation-Overlays. Consumer des installierten Pakets verwenden die öffentliche
+API. Alle elf PR-Checks und alle drei Workflows für Merge
+`a4fc034154c1de61aa9ae13007c442da66045fd5` bestanden. Resource References, symbolisches
+persistiertes Color-Encoding und Rekonstruktion blieben spätere Entscheidungen.

@@ -75,6 +75,16 @@ images/icons, theme cascade and automatic style inheritance are not promised by 
 Human-facing property authoring attributes also remain deferred until a real designer/tooling
 consumer defines localization and editing requirements.
 
+### Implementation provenance
+
+Commit `74036af806bdf9b704f27ddcf108abc9fb890430` implemented this decision in
+[PR #98](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/98). Tests cover the key grammar,
+caller-buffer and value ownership, exact case sensitivity, deterministic enumeration, duplicate
+rejection without mutation and independent dictionary copies. Installed consumers exercise both
+public headers and non-inline APIs. All eleven PR checks and all three workflows for merge
+`5b15dd7ce9df5622236abdb86fecd58f4d36906d` passed. Resource references, scope resolution,
+persistence and additional resource families remained separate later decisions.
+
 ## Deutsch
 
 ### Kontext
@@ -150,3 +160,13 @@ Description/Encoding/Reconstruction sowie durch Consumer begründete weitere Res
 Images/Icons, Theme Cascade und automatische Style Inheritance sind durch diese Grundlage nicht
 versprochen. Menschenlesbare Property-Authoring-Attribute bleiben ebenfalls zurückgestellt, bis ein
 realer Designer-/Tooling-Consumer Lokalisierungs- und Bearbeitungsanforderungen definiert.
+
+### Implementierungsnachweis
+
+Commit `74036af806bdf9b704f27ddcf108abc9fb890430` setzte diese Entscheidung in
+[PR #98](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/98) um. Tests decken Key-Grammatik,
+Caller-Buffer- und Value-Ownership, exakte Case-Sensitivity, deterministische Enumeration,
+Duplicate-Ablehnung ohne Mutation und unabhängige Dictionary-Kopien ab. Installierte Consumer
+verwenden beide öffentlichen Header und ihre Non-Inline-APIs. Alle elf PR-Checks und alle drei
+Workflows für Merge `5b15dd7ce9df5622236abdb86fecd58f4d36906d` bestanden. Resource References,
+Scope Resolution, Persistenz und weitere Resource-Familien blieben getrennte spätere Entscheidungen.

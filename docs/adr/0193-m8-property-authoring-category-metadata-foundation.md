@@ -74,6 +74,16 @@ This slice does not implement a Property Grid, visual designer, IDE adapter, res
 reference-authoring UX. Designer-friendly properties and the enclosing property-metadata/design-time
 roadmap item remain open for human-facing/tooling attributes beyond these categories.
 
+### Implementation provenance
+
+Commit `01b3436ddf2a2802a679008000524789e54205aa` implemented this decision in
+[PR #97](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/97). Complete-catalog tests verify
+all 28 descriptors, the category counts 6 appearance / 4 behavior / 7 content / 8 layout / 3 state,
+exact value identity, malformed inputs and inherited properties. The metadata demo and installed
+consumers perform discovery without constructing Components. All eleven PR checks and all three
+workflows for merge `8388996e5602673d36c104b95035f44ad61e7a2b` passed. Display names, editor
+policy, resources and IDE integration remained deliberately outside this foundation.
+
 ## Deutsch
 
 ### Kontext
@@ -148,3 +158,13 @@ Editor-Vertrag wartet auf eine reale Consumer-Lücke.
 Dieser Slice implementiert weder Property Grid, visuellen Designer, IDE Adapter, Resource-System
 noch Reference-Authoring-UX. Designerfreundliche Properties und der umschließende Roadmap-Punkt für
 Property Metadata/Design-Time bleiben für menschenlesbare und weitere Tooling-Attribute offen.
+
+### Implementierungsnachweis
+
+Commit `01b3436ddf2a2802a679008000524789e54205aa` setzte diese Entscheidung in
+[PR #97](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/97) um. Complete-Catalog-Tests prüfen
+alle 28 Deskriptoren, die Kategorienzahlen 6 Appearance / 4 Behavior / 7 Content / 8 Layout / 3 State,
+exakte Value-Identity, fehlerhafte Eingaben und geerbte Properties. Metadata-Demo und installierte
+Consumer führen Discovery ohne Component-Konstruktion aus. Alle elf PR-Checks und alle drei
+Workflows für Merge `8388996e5602673d36c104b95035f44ad61e7a2b` bestanden. Anzeigenamen,
+Editor-Policy, Resources und IDE-Integration blieben bewusst außerhalb dieser Grundlage.

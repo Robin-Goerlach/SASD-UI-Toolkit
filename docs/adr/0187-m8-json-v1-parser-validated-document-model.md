@@ -74,6 +74,17 @@ future runtime construction cannot fail. Alternatives such as parsing into captu
 a generic DOM/dependency, strict canonical-byte acceptance, or silent default filling were rejected
 because they obscure these boundaries or change persisted meaning.
 
+### Implementation provenance
+
+Commit `bf647414cc6b7caffedfdfb5f4fe92882f8e6e57` implemented this decision in
+[PR #91](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/91). Parser and validator tests
+cover strict JSON members, UTF-8 and surrogate decoding, exact integers, all symbols, complete
+property schemas, root ID 0 and ownership pre-order, reference compatibility and the concrete
+ComboBox, GridLayout, SizeConstraints, TextField and RadioGroup invariants. A 1,024-node chain
+exercises iterative graph validation. All eleven PR checks and all three workflows for merge
+`555519132f3a0b71e86dc81d86a88f49e51cbe1b` passed. Component construction and resources remained
+outside this slice.
+
 ## Deutsch
 
 ### Kontext
@@ -142,3 +153,14 @@ gehören zur späteren Rekonstruktion. Model-Payloads, Resources und transienter
 außen vor. Parse-Erfolg garantiert den heutigen v1-Vertrag, keine unfehlbare spätere Konstruktion.
 Capture-Snapshot als Ladeziel, generischer DOM/Dependency, Byte-Kanonizität als Lesepflicht und
 stille Default-Ergänzung wurden wegen vermischter Schichten bzw. veränderter Bedeutung verworfen.
+
+### Implementierungsnachweis
+
+Commit `bf647414cc6b7caffedfdfb5f4fe92882f8e6e57` setzte diese Entscheidung in
+[PR #91](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/91) um. Parser- und Validator-Tests
+decken strikte JSON-Member, UTF-8-/Surrogat-Decoding, exakte Integer, alle Symbole, vollständige
+Property-Schemas, numerische Root-ID 0 und Ownership-Pre-order, Reference-Kompatibilität sowie die
+konkreten ComboBox-, GridLayout-, SizeConstraints-, TextField- und RadioGroup-Invarianten ab. Eine
+Kette aus 1.024 Nodes prüft iterative Graphvalidierung. Alle elf PR-Checks und alle drei Workflows
+für Merge `555519132f3a0b71e86dc81d86a88f49e51cbe1b` bestanden. Component-Konstruktion und
+Resources blieben außerhalb dieses Slices.

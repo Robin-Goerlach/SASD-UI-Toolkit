@@ -66,6 +66,16 @@ and destruction. Public ownership APIs cannot manufacture duplicate/cyclic or mi
 structures; defensive rejection is implemented without adding corruption APIs or undefined-behavior
 test fixtures. The headless metadata demo prints nodes and explicit ordered ownership edges.
 
+### Implementation provenance
+
+Commit `ee8820594e3fbe24f720468106e85ee717259e1f` implemented this decision in
+[PR #84](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/84). Tests cover standalone and
+nested roots, mixed visual and non-visual ownership, deterministic pre-order IDs, exact type and
+property values, fail-closed rejection and snapshot ownership after runtime destruction. The
+installed-package consumer also exercised the public snapshot API. All eleven PR checks and all
+three workflows for merge `a39d33612e65549dc39f878b7a5a0c768d878a1f` passed. Reference edges,
+encoding and reconstruction remained separate later decisions.
+
 ## Deutsch
 
 ### Kontext
@@ -125,3 +135,13 @@ nach Mutation/Zerstörung. Öffentliche Ownership-APIs erlauben keine doppelten/
 inkonsistenten Owner-/Parent-Strukturen; defensive Prüfungen werden ohne neue Korruptions-API oder
 undefiniertes Verhalten in Tests implementiert. Die headless Metadaten-Demo zeigt Nodes und geordnete
 Ownership-Edges. Dies bleibt eine Grundlage, keine vollständige UI Description.
+
+### Implementierungsnachweis
+
+Commit `ee8820594e3fbe24f720468106e85ee717259e1f` setzte diese Entscheidung in
+[PR #84](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/84) um. Tests decken einzelne und
+verschachtelte Roots, gemischtes visuelles und non-visuelles Ownership, deterministische Pre-order-
+IDs, exakte Typ-/Property-Werte, Fail-closed-Ablehnung und Snapshot-Ownership nach Runtime-Zerstörung
+ab. Auch der Consumer des installierten Pakets verwendete die öffentliche Snapshot-API. Alle elf
+PR-Checks und alle drei Workflows für Merge `a39d33612e65549dc39f878b7a5a0c768d878a1f`
+bestanden. Reference-Edges, Encoding und Rekonstruktion blieben getrennte spätere Entscheidungen.

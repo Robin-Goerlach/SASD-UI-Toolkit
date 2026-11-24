@@ -43,6 +43,18 @@ passed; both headless component metadata demos displayed the expected RadioButto
 Descriptor count is 19; changed-document relative links and git diff --check passed.
 Native platform/SDL3 coverage is delegated to the unchanged CI matrix.
 
+## Implementation provenance
+
+Commit `2304f2f10155e2743cccbfa177f4701549d8e156` implemented this decision in
+[PR #83](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/83). It added the two
+`RadioButton` descriptors and reused the existing string/boolean access, default and snapshot
+pipelines. Selection writes delegate to `setSelected()`, preserve group exclusivity and do not
+access the control after a callback that may destroy it. Regression coverage includes exact
+descriptor identity, same-value writes, group transitions, destructive callbacks and owned
+snapshots. All eleven PR checks and all three workflows for merge
+`5b4697f8cb8085c9e10c4dc8dc7e235fe0997d89` passed. Group membership and serialization remained
+outside this slice.
+
 ## Deutsch
 
 ### Kontext und Entscheidung
@@ -81,3 +93,15 @@ Strikte Debug-/Release-Builds mit Warnings-as-Errors in der vorhandenen WSL/GCC-
 erfolgreich. Fokussierte Core-Tests, alle vier CTest-Suites (Core, Terminal, Rendered, POSIX PTY)
 und beide headless Metadaten-Demos bestanden. Katalogzahl 19, relative Dokumentlinks und
 Diff-Whitespace wurden geprüft. Native Plattformen/SDL3 werden durch die unveränderte CI geprüft.
+
+### Implementierungsnachweis
+
+Commit `2304f2f10155e2743cccbfa177f4701549d8e156` setzte diese Entscheidung in
+[PR #83](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/83) um. Er ergänzte die zwei
+`RadioButton`-Deskriptoren und verwendete die vorhandenen String-/Boolean-Access-, Default- und
+Snapshot-Pipelines. Selection-Writes delegieren an `setSelected()`, erhalten Gruppenexklusivität
+und greifen nach einem potenziell zerstörenden Callback nicht mehr auf das Control zu. Tests decken
+exakte Descriptor-Identität, Same-Value-Writes, Gruppenübergänge, zerstörende Callbacks und besitzende
+Snapshots ab. Alle elf PR-Checks und alle drei Workflows für Merge
+`5b4697f8cb8085c9e10c4dc8dc7e235fe0997d89` bestanden. Gruppenmitgliedschaft und Serialisierung
+blieben außerhalb dieses Slices.

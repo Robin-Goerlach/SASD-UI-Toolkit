@@ -78,6 +78,16 @@ resources and SelectionModel associations require separate future decisions.
 - Status: Akzeptiert
 - Datum: 24.10.2026
 
+## Implementation provenance
+
+Commit `2628f959c555725a53877bb652d62030b3b41caa` implemented this decision in
+[PR #85](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/85). Regression tests cover all
+five reference kinds, deterministic forward and shared-target ordering, null and expired bindings,
+atomic rejection of live external targets, unknown components and owned-root rejection. The demo
+uses description-local node IDs and kind names without exposing pointers. All eleven PR checks and
+all three workflows for merge `70268f84f635601ac4db731ec7ce9d6dc0ee761a` passed. SelectionModel
+relations, model payloads, resources and reconstruction remained outside this foundation.
+
 ## Kontext
 
 Slice 10 liefert beschreibungslokale Component-Node-IDs und geordnete Ownership-Snapshots. Erst diese
@@ -136,3 +146,14 @@ Owned-Root-Ablehnung. Die headless Demo zeigt Node-IDs und Edge-Kinds ohne Point
 Kein Serializer, Encoding, Deserializer, Factory, Rekonstruktionsablauf, allgemeine Reflection,
 mutable Registry oder Third-Party-Relation-Registrierung. Collection-/Compound-Properties, externe
 Ressourcen und SelectionModel-Assoziationen benötigen eigene spätere Entscheidungen.
+
+## Implementierungsnachweis
+
+Commit `2628f959c555725a53877bb652d62030b3b41caa` setzte diese Entscheidung in
+[PR #85](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/85) um. Regressionstests decken alle
+fünf Reference-Kinds, deterministische Forward-/Shared-Target-Reihenfolge, null/abgelaufene Bindings,
+atomare Ablehnung lebender externer Ziele, unbekannte Components und Owned-Root-Ablehnung ab. Das
+Demo verwendet beschreibungslokale Node-IDs und Kind-Namen ohne Pointer offenzulegen. Alle elf
+PR-Checks und alle drei Workflows für Merge `70268f84f635601ac4db731ec7ce9d6dc0ee761a`
+bestanden. SelectionModel-Relationen, Model-Payloads, Resources und Rekonstruktion blieben außerhalb
+dieser Grundlage.
