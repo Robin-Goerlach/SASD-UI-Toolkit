@@ -83,6 +83,20 @@ Component, resource materialization, presentation, events, layout, Model/View an
 change. No factory, reflection registry, generic property carrier, new resource family, IDE plugin or
 designer engine is introduced.
 
+### Implementation provenance and historical scope
+
+Commit `612e4232414967d2e38018ae0cd11075be246777` implemented this decision in
+[PR #106](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/106). Complete-catalog tests verify
+29 exact types, 26 constructible description nodes, three abstract model contracts, all 28 property
+descriptors and fail-closed descriptor identity. The headless demo and installed-package consumers
+exercise instance-free discovery, documents and JSON v2 without initializing a backend. All eleven
+PR checks and all three workflows for merge `6811f6acc6f860e8fdda1158857c7153e1a1132b`
+passed.
+
+At the end of this implementation session, M8.29 was complete and M8.30 had not yet begun. This is
+a historical session boundary, not current milestone status; the later M8 completion decision is
+recorded in [ADR 0200](0200-m8-developer-productivity-foundations-exit-decision.md).
+
 ## Deutsch
 
 ### Kontext
@@ -167,3 +181,17 @@ JSON-v1-/v2-Schemas, Versionsnummern, Symbole, Reihenfolge und Golden Bytes änd
 Runtime-Component-, Resource-Materialisierungs-, Presentation-, Event-, Layout-, Model/View- und
 Backend-Verhalten ändern sich nicht. Es entstehen weder Factory, Reflection Registry, generischer
 Property Carrier, neue Resource-Familie, IDE-Plugin noch Designer Engine.
+
+### Implementierungsnachweis und historischer Umfang
+
+Commit `612e4232414967d2e38018ae0cd11075be246777` setzte diese Entscheidung in
+[PR #106](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/106) um. Complete-Catalog-Tests
+prüfen 29 exakte Typen, 26 konstruierbare Description-Nodes, drei abstrakte Model-Verträge, alle
+28 Property-Deskriptoren und Fail-closed-Descriptor-Identität. Headless Demo und Consumer des
+installierten Pakets verwenden instanzfreie Discovery, Dokumente und JSON v2 ohne Backend-
+Initialisierung. Alle elf PR-Checks und alle drei Workflows für Merge
+`6811f6acc6f860e8fdda1158857c7153e1a1132b` bestanden.
+
+Am Ende dieser Implementierungssitzung war M8.29 abgeschlossen und M8.30 noch nicht begonnen. Dies
+ist eine historische Sitzungsgrenze, kein aktueller Meilensteinstatus; die spätere M8-
+Abschlussentscheidung steht in [ADR 0200](0200-m8-developer-productivity-foundations-exit-decision.md).
