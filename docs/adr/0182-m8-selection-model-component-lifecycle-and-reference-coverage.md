@@ -76,6 +76,16 @@ independent model bindings, deterministic edge order, external rejection, expire
 snapshot values after runtime destruction. Collection/compound coverage, encoding and reconstruction
 remain open; the ownership/reference graph coverage item is complete for the current baseline.
 
+### Implementation provenance
+
+Commit `cf14763c232cfe9ee1e78b9b2ca1c56e6fc97c42` implemented this decision in
+[PR #86](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/86). Tests verify the 29-type
+catalog, exact runtime identity, non-visual ownership, empty scalar snapshots despite active
+selection, all six SelectionModel reference kinds, sharing, independent model bindings, ordering,
+external-target rejection and expired bindings. All eleven PR checks and all three workflows for
+merge `f9d58bc8d46d6debcc432b2b3c73e60dcfa6cc9d` passed. Current selection values, model payloads,
+encoding and reconstruction remained excluded.
+
 ## Deutsch
 
 ### Kontext
@@ -140,3 +150,13 @@ Ownership-Reihenfolge, leere Property-Snapshots trotz Selection, vollständiges 
 Familien, Sharing, unabhängige Model-Bindings, deterministische Edge-Reihenfolge, externe und
 abgelaufene Ziele sowie Snapshot-Werte nach Runtime-Zerstörung. Ownership-/Reference-Abdeckung der
 aktuellen Baseline ist vollständig; Collection/Compound, Encoding und Rekonstruktion bleiben offen.
+
+### Implementierungsnachweis
+
+Commit `cf14763c232cfe9ee1e78b9b2ca1c56e6fc97c42` setzte diese Entscheidung in
+[PR #86](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/86) um. Tests prüfen den 29-Typen-
+Katalog, exakte Runtime-Identität, non-visuelles Ownership, leere Scalar-Snapshots trotz aktiver
+Selection, alle sechs SelectionModel-Reference-Kinds, Sharing, unabhängige Model-Bindings,
+Reihenfolge, externe Ziele und abgelaufene Bindings. Alle elf PR-Checks und alle drei Workflows für
+Merge `f9d58bc8d46d6debcc432b2b3c73e60dcfa6cc9d` bestanden. Aktuelle Selection-Werte,
+Model-Payloads, Encoding und Rekonstruktion blieben ausgeschlossen.

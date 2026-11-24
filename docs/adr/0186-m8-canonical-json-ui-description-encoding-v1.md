@@ -82,6 +82,16 @@ recorded in this decision instead of editing that locally modified file. Build/a
 remain ignored under build-codex/slice16. An overlapping initial build caused an archive collision;
 after both processes ended, orderly final builds and tests passed.
 
+### Implementation provenance
+
+Commit `185e172133c68fbc9dd2df698b73a0373140abc0` implemented this decision in
+[PR #90](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/90). Frozen golden tests cover all
+property, reference and Color symbols, UTF-8 and escaping, integer boundaries, deterministic output,
+line endings, capture failures and exclusion of transient state. Installed consumers exercise the
+public writer without a third-party JSON dependency. All eleven PR checks and all three workflows
+for merge `5368821cb2558baf5faf18fb1fbca0b543b8c1e7` passed. Parsing, reconstruction and resources
+remained outside JSON v1 encoding.
+
 ## Deutsch
 
 ### Kontext
@@ -161,3 +171,13 @@ und SHA-256 geschützt und blieben unangetastet. Das optionale Color-Follow-up f
 deshalb hier statt in der lokal geänderten Datei. Build-/Audit-Artefakte bleiben unter
 build-codex/slice16 ignoriert. Ein anfangs überlappender Build verursachte eine Archivkollision;
 nach Ende beider Prozesse bestanden die geordneten finalen Builds und Tests.
+
+### Implementierungsnachweis
+
+Commit `185e172133c68fbc9dd2df698b73a0373140abc0` setzte diese Entscheidung in
+[PR #90](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/90) um. Eingefrorene Golden-Tests
+decken alle Property-, Reference- und Color-Symbole, UTF-8 und Escaping, Integergrenzen,
+deterministischen Output, Zeilenenden, Capture-Fehler und den Ausschluss transienten Zustands ab.
+Installierte Consumer verwenden den öffentlichen Writer ohne Third-Party-JSON-Abhängigkeit. Alle
+elf PR-Checks und alle drei Workflows für Merge `5368821cb2558baf5faf18fb1fbca0b543b8c1e7`
+bestanden. Parsing, Rekonstruktion und Resources blieben außerhalb des JSON-v1-Encodings.

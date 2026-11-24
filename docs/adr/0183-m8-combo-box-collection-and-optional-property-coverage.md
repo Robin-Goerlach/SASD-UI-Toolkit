@@ -68,6 +68,16 @@ items and selectedIndex values. Descriptor/enum compatibility, the complete 29-t
 relative document links and diff whitespace were checked. Other platform/toolchain checks belong
 to CI; visible macOS/Cocoa M3 validation remains separate.
 
+### Implementation provenance
+
+Commit `7bba26fb4933ee6cc4227220b46d01c9e192b99c` implemented this decision in
+[PR #87](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/87). Tests cover exact descriptor
+identity, owned collections, absent and present optional values, portable integer conversion,
+same-value writes, domain errors, callback ordering, selection clearing and source destruction.
+The installed-package consumer verifies the public API. All eleven PR checks and all three workflows
+for merge `c8d210ec6671ea4228e13b1b8dada7bbc1e1fc26` passed. `Widget.sizeConstraints`, encoding and
+reconstruction remained later work.
+
 ## Deutsch
 
 ### Kontext und Entscheidung
@@ -119,3 +129,14 @@ konfigurierte Release-Consumer des installierten Public-Pakets bestanden jeweils
 headless Demos zeigten besitzende Items und selectedIndex. Descriptor-/Enum-Kompatibilität,
 vollständige 29-Typen-Liste in ADR 0177, relative Dokumentlinks und Diff-Whitespace wurden geprüft.
 Andere Plattformen/Toolchains werden über CI geprüft; sichtbare macOS-/Cocoa-M3-Validierung bleibt separat.
+
+### Implementierungsnachweis
+
+Commit `7bba26fb4933ee6cc4227220b46d01c9e192b99c` setzte diese Entscheidung in
+[PR #87](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/87) um. Tests decken exakte
+Descriptor-Identität, besitzende Collections, abwesende und vorhandene Optional-Werte, portable
+Integer-Konvertierung, Same-Value-Writes, Domain-Fehler, Callback-Reihenfolge, Selection-Clearing
+und Zerstörung der Quelle ab. Der Consumer des installierten Pakets prüft die öffentliche API.
+Alle elf PR-Checks und alle drei Workflows für Merge
+`c8d210ec6671ea4228e13b1b8dada7bbc1e1fc26` bestanden. `Widget.sizeConstraints`, Encoding und
+Rekonstruktion blieben spätere Arbeit.

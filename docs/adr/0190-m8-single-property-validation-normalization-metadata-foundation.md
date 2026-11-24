@@ -74,6 +74,17 @@ introduced. `ComboBox.selectedIndex < items.size()` remains a concrete cross-pro
 RadioGroup exclusivity remains a graph/reference invariant. TextStyle color fields are not property
 descriptors. Designer-friendly attributes, resource metadata and IDE integration remain future work.
 
+### Implementation provenance
+
+Commit `f50234092ec629ce4e327d70f1e2c8b2df3a5af8` implemented this decision in
+[PR #94](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/94). Tests cover all six string
+descriptors, exact descriptor value identity, Unicode normalization policies and every invalid
+`Widget.sizeConstraints` range. Parser/validator and reconstruction regressions confirm that the
+format-neutral document validator consumes the metadata without changing runtime setters or JSON
+v1 bytes. All eleven PR checks and all three workflows for merge
+`2dd0b6fa8017562a418c9b7f29c866476f2affe5` passed. Cross-property, graph, resource and
+designer-facing metadata remained separate work.
+
 ## Deutsch
 
 ### Kontext
@@ -147,3 +158,14 @@ Expression-Sprache noch DSL. `ComboBox.selectedIndex < items.size()` bleibt eine
 Property-Regel des Validators; RadioGroup-Exklusivität bleibt Graph-/Reference-Invariante.
 TextStyle-Color-Felder sind keine Property-Deskriptoren. Designer-freundliche Attribute,
 Resource-Metadaten und IDE-Integration bleiben spätere Arbeit.
+
+### Implementierungsnachweis
+
+Commit `f50234092ec629ce4e327d70f1e2c8b2df3a5af8` setzte diese Entscheidung in
+[PR #94](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/94) um. Tests decken alle sechs
+String-Deskriptoren, exakte Descriptor-Value-Identity, Unicode-Normalisierungs-Policies und sämtliche
+ungültigen `Widget.sizeConstraints`-Ranges ab. Parser-/Validator- und Reconstruction-Regressionen
+bestätigen, dass der formatneutrale Document Validator die Metadaten verwendet, ohne Runtime-Setter
+oder JSON-v1-Bytes zu verändern. Alle elf PR-Checks und alle drei Workflows für Merge
+`2dd0b6fa8017562a418c9b7f29c866476f2affe5` bestanden. Cross-Property-, Graph-, Resource- und
+designerorientierte Metadaten blieben getrennte Arbeit.

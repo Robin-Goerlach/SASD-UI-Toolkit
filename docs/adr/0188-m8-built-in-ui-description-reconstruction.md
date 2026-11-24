@@ -109,6 +109,26 @@ a tracked-document link check. A separate local Clang build could not be run bec
 WSL environment has no `clang++`; the repository CI remains responsible for Clang, AppleClang and
 MSVC coverage.
 
+### Implementation and integration record
+
+M8 Slice 18 was implemented in commit
+[`4bade1fc87010ddfc0bf7d093213aa17f7acbabb`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/4bade1fc87010ddfc0bf7d093213aa17f7acbabb)
+on PR [#92](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/92), whose final head was that
+same commit. The PR was merged normally; the merge commit and resulting `main` head are
+`69bed7ee081b3f4361f53448adfc2823ca5a9b67`.
+
+All required PR checks passed for the final PR head: Linux GCC, Linux Clang, Linux Clang ASan/UBSan,
+Linux SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native, and Linux, Windows and macOS
+Release. On the exact merge commit, Main CI, GTK Native CI, AppKit Native CI and the complete Release
+matrix also passed. Local Debug and Release CTest suites each passed all four configured tests. The
+local encode/parse/reconstruct demo, installed public API consumer, repository package consumer and
+tracked documentation-link check passed as well. Clang was exercised in CI; a separate local Clang
+build was unavailable because this WSL environment did not provide `clang++`.
+
+The serialization roadmap parent is complete for the current built-in state boundary. Resource
+support, design-time validation metadata, designer-friendly properties, custom component
+serialization and the macOS/Cocoa M3 gate remain outside this slice. No release or tag was created.
+
 ## Deutsch
 
 ### Kontext
@@ -215,3 +235,25 @@ einem installierten Public-API-Consumer, dem Repository-Package-Consumer, den be
 Parser-Tests und einer Linkprüfung der getrackten Dokumentation validiert. Ein separater lokaler
 Clang-Build war nicht möglich, weil die verfügbare WSL-Umgebung kein `clang++` besitzt; Clang-,
 AppleClang- und MSVC-Abdeckung bleibt Aufgabe der Repository-CI.
+
+### Implementierungs- und Integrationsnachweis
+
+M8 Slice 18 wurde in Commit
+[`4bade1fc87010ddfc0bf7d093213aa17f7acbabb`](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/commit/4bade1fc87010ddfc0bf7d093213aa17f7acbabb)
+über [PR #92](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/92) implementiert; dieser
+Commit war auch der finale PR-Head. Der PR wurde regulär gemergt. Merge-Commit und resultierender
+`main`-Head sind `69bed7ee081b3f4361f53448adfc2823ca5a9b67`.
+
+Alle erforderlichen PR-Prüfungen waren für den finalen PR-Head erfolgreich: Linux GCC, Linux Clang,
+Linux Clang ASan/UBSan, Linux SDL3, Windows MSVC, macOS AppleClang, GTK Native, AppKit Native sowie
+Linux-, Windows- und macOS-Release. Für den exakten Merge-Commit waren außerdem Main CI, GTK Native
+CI, AppKit Native CI und die vollständige Release-Matrix erfolgreich. Die lokalen Debug- und
+Release-CTest-Suiten bestanden jeweils alle vier konfigurierten Tests. Auch das lokale
+Encode/Parse/Reconstruct-Demo, ein installierter Public-API-Consumer, der Repository-Package-Consumer
+und die Prüfung der getrackten Dokumentationslinks waren erfolgreich. Clang lief in CI; ein eigener
+lokaler Clang-Build war nicht möglich, weil diese WSL-Umgebung kein `clang++` bereitstellte.
+
+Der Serialization-Roadmap-Parent ist für die aktuelle Built-in-State-Grenze abgeschlossen. Resource
+Support, Design-Time-Validation-Metadaten, designerfreundliche Properties, Custom-Component-
+Serialisierung und das macOS/Cocoa-M3-Gate bleiben außerhalb dieses Slices. Es wurde weder ein
+Release noch ein Tag erstellt.
