@@ -63,6 +63,12 @@ This decision was prepared by the security-closure and migration-readiness revie
 2026-11-23. The record below makes the executed work independently reviewable; it does not claim
 that migration or release approval has occurred.
 
+### Intermediate guarded state
+
+The following numbered record describes the guarded state before final merge authorization. In
+particular, items 7 and 8 are historical: PR #112 remained unmerged because the authorization named
+an older head SHA after the review record had legitimately advanced the branch.
+
 1. The protected starting point was `main` commit
    `30d4270ab772a5ee545da63c64d4e0e46eb35928`. Its Main, GTK Native and AppKit Native workflows were
    green. Pre-existing modified ADR files and the untracked `..Codex.txt` in the owner's working tree
@@ -103,6 +109,21 @@ that migration or release approval has occurred.
    was not met. The merge, post-merge validation and branch cleanup were therefore deliberately not
    performed. The original inventory of fifteen modified ADR files plus untracked `..Codex.txt` in
    the owner's working tree remained present and untouched.
+
+### Later final closure
+
+After updated owner authorization named head `e56203126ae88557c6ff574027d77f91f7bbebb4`,
+[PR #112](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/112) was merged normally as the
+two-parent commit `8aabcfc9b97a535fc346fb794d0eb4fa8a14a2c1`. All eleven checks had passed for
+that exact head. The exact merge SHA then passed
+[Main CI run 45186467088](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467088),
+[GTK Native CI run 45186467448](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467448)
+and [AppKit Native CI run 45186467180](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467180).
+
+This closure changed neither the repository-role decision nor its outstanding exit criteria. No
+tag, GitHub Release, destination repository, migration or SASD Development Standard change was
+created. Version `0.2.0` remains `Unreleased`; the manual macOS/Cocoa M3 validation, release-readiness
+decision, dependency-pin decision and destination-repository cutover remain open.
 
 ## Alternatives considered
 
@@ -183,6 +204,12 @@ Diese Entscheidung wurde durch das Security-Closure- und Migration-Readiness-Rev
 vorbereitet. Der folgende Nachweis macht die tatsächlich ausgeführten Arbeiten unabhängig prüfbar;
 er behauptet weder eine erfolgte Migration noch eine Release-Freigabe.
 
+### Zwischenstand mit Merge-Schutz
+
+Der folgende nummerierte Nachweis beschreibt den geschützten Zwischenstand vor der finalen Merge-
+Freigabe. Insbesondere sind Punkte 7 und 8 historisch: PR #112 blieb ungemergt, weil die Freigabe
+eine ältere Head-SHA benannte, nachdem der Review-Nachweis den Branch berechtigt weitergeführt hatte.
+
 1. Geschützter Ausgangspunkt war `main`-Commit
    `30d4270ab772a5ee545da63c64d4e0e46eb35928`. Dessen Main-, GTK-Native- und AppKit-Native-Workflows
    waren grün. Bereits veränderte ADR-Dateien und die unversionierte Datei `..Codex.txt` im Working
@@ -223,6 +250,21 @@ er behauptet weder eine erfolgte Migration noch eine Release-Freigabe.
    SHA-Bedingung nicht erfüllt. Merge, Post-Merge-Validierung und Branch-Bereinigung wurden daher
    bewusst nicht ausgeführt. Der ursprüngliche Bestand von fünfzehn veränderten ADR-Dateien plus der
    unversionierten Datei `..Codex.txt` im Working Tree des Owners blieb vorhanden und unangetastet.
+
+### Späterer finaler Abschluss
+
+Nachdem eine aktualisierte Owner-Freigabe Head `e56203126ae88557c6ff574027d77f91f7bbebb4`
+benannte, wurde [PR #112](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/pull/112) normal als
+Zwei-Eltern-Commit `8aabcfc9b97a535fc346fb794d0eb4fa8a14a2c1` gemergt. Alle elf Checks waren
+für exakt diesen Head erfolgreich. Für den exakten Merge-SHA bestanden anschließend
+[Main CI Lauf 45186467088](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467088),
+[GTK Native CI Lauf 45186467448](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467448)
+und [AppKit Native CI Lauf 45186467180](https://github.com/Robin-Goerlach/SASD-UI-Toolkit/actions/runs/45186467180).
+
+Dieser Abschluss änderte weder die Repository-Rollenentscheidung noch ihre offenen Exit-Kriterien.
+Es entstanden weder Tag, GitHub Release, Ziel-Repository, Migration noch Änderung am SASD Development
+Standard. Version `0.2.0` bleibt `Unreleased`; manuelle macOS/Cocoa-M3-Validierung, Release-Readiness-
+Entscheidung, Dependency-Pin-Entscheidung und Cutover des Ziel-Repositorys bleiben offen.
 
 ## Betrachtete Alternativen
 
